@@ -617,7 +617,7 @@
       <div class="sidebar-footer">
         <button class="side-btn" onclick="toggleTheme()">🌓 Alternar tema</button>
         <button class="side-btn" onclick="goPage('backup')">☁️ Backup & restauração</button>
-        <div class="muted" style="font-size:.78rem; text-align:center; padding-top:4px;">Versão <strong id="appVersionLabel">v3.3.2-modelagem-atualizada</strong></div>
+        <div class="muted" style="font-size:.78rem; text-align:center; padding-top:4px;">Versão <strong id="appVersionLabel">v3.3.3-respostas-integradas</strong></div>
       </div>
     </aside>
 
@@ -760,12 +760,19 @@
       <section class="page" id="page-import">
         <div class="page-head">
           <div>
-            <h2>Importar Google Forms</h2>
-            <p>Importe o CSV de respostas, mapeie colunas e traga as sessões para o sistema.</p>
+            <h2>Importar respostas</h2>
+            <p>Use CSV do Google Forms ou sincronize respostas diretas da página pública via Supabase.</p>
           </div>
         </div>
-        <div class="alert">No Google Forms → Respostas → ⋮ → Baixar respostas (.csv)</div>
+        <div class="alert">Você pode continuar usando CSV do Google Forms ou usar a nova página pública separada, que envia direto para a tabela <strong>patient_form_responses</strong>.</div>
         <div class="grid-2">
+          <div class="card">
+            <div class="card-title"><h3>Respostas diretas da nuvem</h3><small>Sem CSV</small></div>
+            <p class="muted">Lê a tabela <strong>patient_form_responses</strong> no Supabase, reconhece o paciente por WhatsApp/nome e cria as sessões automaticamente.</p>
+            <div class="toolbar">
+              <button class="btn primary" onclick="syncPatientResponsesFromCloud()">☁️ Sincronizar respostas da nuvem</button>
+            </div>
+          </div>
           <div class="card">
             <div class="card-title"><h3>CSV das respostas</h3><small>Arraste ou selecione</small></div>
             <div class="dropzone" id="dropzone" onclick="document.getElementById('csvFileInput').click()">
@@ -788,6 +795,11 @@
             </div>
           </div>
         </div>
+        <div class="card" style="margin-top:16px;">
+          <div class="card-title"><h3>SQL da tabela pública</h3><small>Respostas diretas do paciente</small></div>
+          <div class="sql-box" id="responsesSqlBox"></div>
+        </div>
+
         <div class="card hidden" id="mappingCard" style="margin-top:16px;">
           <div class="card-title"><h3>Mapeamento de colunas</h3><small>Auto-detecção editável</small></div>
           <div class="table-wrap">
@@ -1910,6 +1922,8 @@
   function renderFormsLink(){
     const cfg = getConfig();
     document.getElementById('formsLinkInput').value = cfg.formsLink || cfg.formUrl || '';
+    const sqlBox = document.getElementById('responsesSqlBox');
+    if(sqlBox) sqlBox.textContent = PATIENT_RESPONSE_SQL;
   }
   function saveFormsLink(){ const cfg = getConfig(); cfg.formsLink = document.getElementById('formsLinkInput').value.trim(); saveConfig(cfg); toast('Link do Forms salvo', 'success'); }
   function copyFormsLink(){ const v = document.getElementById('formsLinkInput').value.trim(); if(!v){ toast('Salve um link primeiro', 'warning'); return; } navigator.clipboard.writeText(v).then(()=>toast('Link copiado', 'success')).catch(()=>toast('Não foi possível copiar', 'error')); }
@@ -1999,6 +2013,174 @@
     }).join('');
     document.getElementById('mappingCard').classList.remove('hidden');
   }
+
+  const PATIENT_RESPONSE_SQL = `create table if not exists patient_form_responses (
+  id uuid primary key default gen_random_uuid(),
+  submitted_at timestamptz default now(),
+  response_date date not null,
+  patient_name text not null,
+  patient_whatsapp text not null,
+  patient_pathology text,
+  pain integer,
+  functionality integer,
+  satisfaction integer,
+  symptoms text[],
+  obs text,
+  source text default 'patient_public_form',
+  imported boolean default false,
+  linked_patient_id text,
+  imported_at timestamptz
+);
+
+alter table patient_form_responses enable row level security;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'patient_form_responses'
+      and policyname = 'Public insert and read'
+  ) then
+    create policy "Public insert and read"
+    on patient_form_responses
+    for all
+    using (true)
+    with check (true);
+  end if;
+end
+$$;`;
+
+  function normalizeResponseSymptoms(v){
+    if(Array.isArray(v)) return v.filter(Boolean);
+    return parseSymptoms(v);
+  }
+
+  async function markResponseImported(id, patientId){
+    const cfg = getConfig();
+    const body = {
+      imported: true,
+      linked_patient_id: patientId || null,
+      imported_at: new Date().toISOString()
+    };
+    const res = await fetch(cfg.supabaseUrl + '/rest/v1/patient_form_responses?id=eq.' + encodeURIComponent(id), {
+      method:'PATCH',
+      headers: supabaseHeaders(true),
+      body: JSON.stringify(body)
+    });
+    if(!res.ok) throw new Error(await res.text());
+  }
+
+  async function syncPatientResponsesFromCloud(){
+    const cfg = getConfig();
+    if(!cfg.supabaseUrl || !cfg.supabaseKey){ showSupabaseConfig(); toast('Preencha a configuração do Supabase', 'warning'); return; }
+    toast('Sincronizando respostas diretas do Supabase...', 'info');
+
+    try{
+      const url = cfg.supabaseUrl + '/rest/v1/patient_form_responses?select=*&imported=is.false&order=submitted_at.asc';
+      const res = await fetch(url, { headers:supabaseHeaders(false) });
+      if(!res.ok) throw new Error(await res.text());
+      const rows = await res.json();
+      if(!rows.length){
+        document.getElementById('importLogCard').classList.remove('hidden');
+        document.getElementById('importLog').innerHTML = '<div class="log-line warning">Nenhuma resposta pendente encontrada.</div>';
+        document.getElementById('importSummary').textContent = '0 importadas';
+        toast('Nenhuma resposta pendente encontrada', 'warning');
+        return;
+      }
+
+      const patients = getPatients();
+      const sessions = getSessions();
+      const keySet = new Set(sessions.map(s => sessionKey(s.patient_id, s.date, s.pain)));
+      let imported = 0, ignored = 0, created = 0, updatedPhones = 0, marked = 0;
+      const logs = [];
+
+      for(const row of rows){
+        const rawName = String(row.patient_name || '').trim();
+        const phone = normPhone(row.patient_whatsapp || '');
+        const date = parseDateFlexible(row.response_date || row.submitted_at || '') || todayISO();
+        const pain = clampInt(row.pain, 0, 10);
+        const functionality = clampInt(row.functionality, 0, 10);
+        const satisfaction = clampInt(row.satisfaction, 1, 5);
+        const symptoms = normalizeResponseSymptoms(row.symptoms);
+        const obs = String(row.obs || '').trim();
+
+        if(!normName(rawName) || pain == null){
+          ignored++;
+          logs.push({ type:'error', text:`❌ ${rawName || '(sem nome)'} — resposta sem dados mínimos, não importada` });
+          continue;
+        }
+
+        let p = phone ? patients.find(x => normPhone(x.whatsapp) === phone) : null;
+        if(!p) p = patients.find(x => normName(x.name) === normName(rawName));
+
+        if(!p){
+          p = {
+            id:'p' + Date.now() + Math.random().toString(36).slice(2,5),
+            name: rawName,
+            pathology: String(row.patient_pathology || '').trim(),
+            whatsapp: phone,
+            created_at: new Date().toISOString()
+          };
+          patients.push(p);
+          created++;
+          logs.push({ type:'info', text:`ℹ️ ${rawName} — paciente criado automaticamente pela resposta pública` });
+        } else if(phone && normPhone(p.whatsapp) !== phone){
+          p.whatsapp = phone;
+          updatedPhones++;
+          logs.push({ type:'info', text:`ℹ️ ${p.name} — WhatsApp atualizado pela resposta pública` });
+        }
+
+        const key = sessionKey(p.id, String(date).slice(0,10), pain);
+        if(keySet.has(key)){
+          ignored++;
+          logs.push({ type:'warning', text:`⚠️ ${p.name} em ${fmtDate(date)} — sessão duplicada, resposta marcada como importada` });
+          await markResponseImported(row.id, p.id);
+          marked++;
+          continue;
+        }
+
+        const session = {
+          id:'s' + Date.now() + Math.random().toString(36).slice(2,6),
+          patient_id:p.id,
+          date:String(date).slice(0,10),
+          pain,
+          functionality,
+          satisfaction,
+          symptoms,
+          obs,
+          source:'forms',
+          created_at:new Date().toISOString()
+        };
+        sessions.push(session);
+        keySet.add(key);
+        imported++;
+        logs.push({ type:'success', text:`✅ ${p.name} em ${fmtDate(session.date)} — resposta pública importada` });
+        await markResponseImported(row.id, p.id);
+        marked++;
+      }
+
+      savePatients(patients);
+      saveSessions(sessions);
+      document.getElementById('importLogCard').classList.remove('hidden');
+      document.getElementById('importLog').innerHTML = logs.map(l => `<div class="log-line ${l.type}">${escapeHtml(l.text)}</div>`).join('') || '<div class="muted">Nenhum log.</div>';
+      document.getElementById('importSummary').textContent = `${imported} importadas · ${ignored} ignoradas · ${created} novos pacientes`;
+      const alert = document.getElementById('importAlertMissing');
+      if(created || updatedPhones){
+        alert.classList.remove('hidden');
+        alert.textContent = `${created} paciente(s) criado(s) automaticamente e ${updatedPhones} WhatsApp(s) atualizado(s). Revise os cadastros depois da sincronização.`;
+      } else { alert.classList.add('hidden'); }
+
+      toast(`Sincronização concluída: ${imported} importadas`, imported ? 'success' : 'warning');
+      refreshDashboard();
+      populatePatientSelects();
+      if(window.currentPage === 'analysis') renderAnalysis();
+    }catch(e){
+      console.error(e);
+      toast('Erro ao sincronizar respostas da nuvem', 'error');
+    }
+  }
+
   function parseDateFlexible(v){
     if(!v) return '';
     const s = String(v).trim();
