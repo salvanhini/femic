@@ -155,7 +155,7 @@
         <button class="btn secondary" onclick="clearForm()">Limpar</button>
       </div>
 
-      <div id="okBox" class="alert success hidden">Resposta enviada com sucesso. Obrigado pelo preenchimento.</div>
+      <div id="okBox" class="alert success hidden">✅ Resposta enviada com sucesso! Obrigado pelo preenchimento.</div>
       <div id="errBox" class="alert danger hidden">Não foi possível enviar. Confira as configurações e tente novamente.</div>
 
       <div class="footer-note">
@@ -251,7 +251,11 @@
         }
 
         $('okBox').classList.remove('hidden');
+        $('okBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
         clearForm();
+        setTimeout(() => {
+          $('okBox').classList.add('hidden');
+        }, 4000);
       }catch(err){
         console.error(err);
         $('errBox').classList.remove('hidden');
