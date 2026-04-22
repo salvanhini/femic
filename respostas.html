@@ -155,7 +155,7 @@
         <button class="btn secondary" onclick="clearForm()">Limpar</button>
       </div>
 
-      <div id="okBox" class="alert success hidden">Resposta enviada com sucesso.</div>
+      <div id="okBox" class="alert success hidden">Resposta enviada com sucesso. Obrigado pelo preenchimento.</div>
       <div id="errBox" class="alert danger hidden">Não foi possível enviar. Confira as configurações e tente novamente.</div>
 
       <div class="footer-note">
@@ -164,50 +164,18 @@
     </section>
 
     <section class="card" style="margin-top:16px;">
-      <h3 style="margin:0 0 12px;color:var(--primary)">Configuração técnica</h3>
-      <div class="grid grid-2">
-        <div class="field">
-          <label>Supabase URL</label>
-          <input id="supabaseUrl" placeholder="https://xxxx.supabase.co">
-        </div>
-        <div class="field">
-          <label>Anon key</label>
-          <input id="supabaseKey" placeholder="Anon key">
-        </div>
-      </div>
+      <h3 style="margin:0 0 12px;color:var(--primary)">Orientação rápida</h3>
       <div class="footer-note">
-        Essas configurações podem ficar salvas no navegador deste dispositivo. Depois de configurar uma vez, o link pode continuar sendo o mesmo.
-      </div>
-      <div class="toolbar" style="margin-top:12px;">
-        <button class="btn secondary" onclick="saveConfig()">Salvar configurações</button>
-        <button class="btn secondary" onclick="loadConfig(true)">Recarregar salvas</button>
+        Preencha seus dados com atenção e clique em <strong>Enviar resposta</strong>.  
+        Use sempre o mesmo nome e o mesmo WhatsApp para facilitar o reconhecimento no sistema da clínica.
       </div>
     </section>
   </div>
 
   <script>
-    const STORAGE_KEY = 'femic_patient_form_config_v1';
     const SYMPTOMS = ['Dor em repouso','Dor em movimento','Rigidez','Edema','Formigamento','Fraqueza','Limitação ADM','Outros'];
 
     function $(id){ return document.getElementById(id); }
-
-    function saveConfig(){
-      const payload = {
-        supabaseUrl: $('supabaseUrl').value.trim(),
-        supabaseKey: $('supabaseKey').value.trim()
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      alert('Configurações salvas neste navegador.');
-    }
-
-    function loadConfig(showAlert){
-      try{
-        const cfg = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-        $('supabaseUrl').value = cfg.supabaseUrl || '';
-        $('supabaseKey').value = cfg.supabaseKey || '';
-        if(showAlert) alert('Configurações carregadas.');
-      }catch(e){}
-    }
 
     function renderSymptoms(){
       $('symptomChips').innerHTML = SYMPTOMS.map(s => '<button type="button" class="chip" data-value="' + s + '" onclick="toggleSymptom(this)">' + s + '</button>').join('');
@@ -241,8 +209,8 @@
 
     async function submitResponse(){
       clearMessages();
-      const url = $('supabaseUrl').value.trim().replace(/\/$/, '');
-      const key = $('supabaseKey').value.trim();
+      const url = 'https://ljblnrqeakpbjojuenjm.supabase.co';
+      const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqYmxucnFlYWtwYmpvanVlbmptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3ODE5ODAsImV4cCI6MjA5MjM1Nzk4MH0.MDsXiO348tgrLMt4wUglpvJCfTmS6zrnw5tjIg3QJ7I';
 
       const payload = {
         submitted_at: new Date().toISOString(),
@@ -258,8 +226,8 @@
         source: 'patient_public_form'
       };
 
-      if(!url || !key || !payload.patient_name || !payload.patient_whatsapp || !payload.response_date){
-        $('errBox').textContent = 'Preencha nome, WhatsApp, data e a configuração do Supabase.';
+      if(!payload.patient_name || !payload.patient_whatsapp || !payload.response_date){
+        $('errBox').textContent = 'Preencha nome, WhatsApp e data antes de enviar.';
         $('errBox').classList.remove('hidden');
         return;
       }
@@ -292,7 +260,6 @@
 
     renderSymptoms();
     clearForm();
-    loadConfig(false);
   </script>
 </body>
 </html>
