@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FEMIC — Resposta do Paciente</title>
+  <meta name="theme-color" content="#0b3c6f" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --primary:#0b3c6f; --primary2:#1fb6e9; --success:#10b981; --danger:#ef4444;
+      --bg:#f4f8fb; --card:#ffffff; --text:#19324a; --muted:#6b7f92; --line:rgba(11,60,111,.12);
+      --shadow:0 22px 52px rgba(11,60,111,.12); --radius:24px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:'DM Sans',sans-serif; color:var(--text);
+      background:
+        radial-gradient(circle at 0% 0%, rgba(31,182,233,.12), transparent 28%),
+        radial-gradient(circle at 100% 0%, rgba(11,60,111,.10), transparent 26%),
+        var(--bg);
+    }
+    .wrap{max-width:920px; margin:0 auto; padding:24px 18px 42px}
+    .hero,.card{
+      background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.9));
+      border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);
+    }
+    .hero{padding:22px; margin-bottom:16px}
+    .brand{display:flex; align-items:center; gap:12px; margin-bottom:10px}
+    .badge{
+      width:52px; height:52px; border-radius:18px;
+      background:linear-gradient(145deg,var(--primary),#0d5ea8 58%,var(--primary2));
+      position:relative; overflow:hidden;
+    }
+    .badge:before,.badge:after{content:''; position:absolute; border-radius:999px; background:rgba(255,255,255,.92)}
+    .badge:before{
+      width:10px; height:10px; top:8px; left:8px;
+      box-shadow:13px 7px 0 rgba(255,255,255,.92),3px 21px 0 rgba(255,255,255,.92);
+    }
+    .badge:after{
+      width:54px; height:18px; right:-8px; bottom:9px; transform:rotate(-28deg);
+      background:rgba(255,255,255,.18);
+    }
+    h1{margin:0; font-family:'DM Serif Display',serif; color:var(--primary); font-size:2rem}
+    .lead{margin:8px 0 0; color:var(--muted); line-height:1.65}
+    .card{padding:22px}
+    .grid{display:grid; gap:14px}
+    .grid-2{grid-template-columns:1fr 1fr}
+    .field label{display:block; margin-bottom:8px; color:var(--primary); font-weight:700}
+    input,select,textarea{
+      width:100%; padding:14px 15px; border-radius:16px; border:1px solid var(--line);
+      background:#fff; color:var(--text); font:inherit; outline:none;
+    }
+    input:focus,select:focus,textarea:focus{
+      border-color:rgba(31,182,233,.6); box-shadow:0 0 0 4px rgba(31,182,233,.12);
+    }
+    textarea{min-height:110px; resize:vertical}
+    .chips{display:flex; flex-wrap:wrap; gap:8px}
+    .chip{
+      border:1px solid var(--line); background:#fff; border-radius:999px; padding:10px 12px; cursor:pointer;
+      font:inherit; color:var(--text)
+    }
+    .chip.active{background:linear-gradient(135deg,var(--primary),#0d5ea8); color:#fff; border-color:transparent}
+    .toolbar{display:flex; gap:10px; flex-wrap:wrap}
+    .btn{border:none; border-radius:16px; padding:13px 16px; font-weight:800; cursor:pointer; font:inherit}
+    .btn.primary{background:linear-gradient(135deg,var(--primary),#0d5ea8 58%,var(--primary2)); color:#fff}
+    .btn.secondary{background:#fff; border:1px solid var(--line); color:var(--text)}
+    .muted{color:var(--muted)}
+    .small{font-size:.9rem}
+    .alert{
+      margin-top:14px; padding:14px 16px; border-radius:16px; border:1px solid var(--line); background:#f8fbff
+    }
+    .success{background:rgba(16,185,129,.08); border-color:rgba(16,185,129,.2)}
+    .danger{background:rgba(239,68,68,.08); border-color:rgba(239,68,68,.2)}
+    .hidden{display:none}
+    .footer-note{margin-top:14px; color:var(--muted); font-size:.88rem; line-height:1.6}
+    @media (max-width:720px){ .grid-2{grid-template-columns:1fr} h1{font-size:1.7rem} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="brand">
+        <div class="badge" aria-hidden="true"></div>
+        <div>
+          <h1>FEMIC — Resposta do Paciente</h1>
+          <div class="muted">Preenchimento rápido para acompanhamento fisioterapêutico</div>
+        </div>
+      </div>
+      <p class="lead">
+        Esta página é separada do sistema principal. O paciente preenche e as respostas vão direto para o Supabase.
+        O sistema principal pode depois ler esses dados sem depender de Google Forms.
+      </p>
+    </section>
+
+    <section class="card">
+      <div class="grid grid-2">
+        <div class="field">
+          <label>Nome completo *</label>
+          <input id="patientName" placeholder="Digite seu nome completo">
+        </div>
+        <div class="field">
+          <label>WhatsApp com DDD *</label>
+          <input id="patientWhatsapp" placeholder="Ex.: 16999999999">
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:14px;">
+        <div class="field">
+          <label>Data *</label>
+          <input id="responseDate" type="date">
+        </div>
+        <div class="field">
+          <label>Patologia / região (opcional)</label>
+          <input id="patientPathology" placeholder="Ex.: lombar, ombro, joelho">
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:14px;">
+        <div class="field">
+          <label>Dor hoje (0 a 10) *</label>
+          <input id="pain" type="number" min="0" max="10" step="1" value="5">
+        </div>
+        <div class="field">
+          <label>Funcionalidade hoje (0 a 10) *</label>
+          <input id="functionality" type="number" min="0" max="10" step="1" value="5">
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:14px;">
+        <label>Satisfação hoje (1 a 5)</label>
+        <select id="satisfaction">
+          <option value="1">1 - Muito ruim</option>
+          <option value="2">2 - Ruim</option>
+          <option value="3" selected>3 - Regular</option>
+          <option value="4">4 - Boa</option>
+          <option value="5">5 - Muito boa</option>
+        </select>
+      </div>
+
+      <div class="field" style="margin-top:14px;">
+        <label>Sintomas</label>
+        <div class="chips" id="symptomChips"></div>
+      </div>
+
+      <div class="field" style="margin-top:14px;">
+        <label>Observações</label>
+        <textarea id="obs" placeholder="Ex.: dor maior ao acordar, melhorou à tarde, dificuldade para subir escadas..."></textarea>
+      </div>
+
+      <div class="toolbar" style="margin-top:18px;">
+        <button class="btn primary" onclick="submitResponse()">Enviar resposta</button>
+        <button class="btn secondary" onclick="clearForm()">Limpar</button>
+      </div>
+
+      <div id="okBox" class="alert success hidden">Resposta enviada com sucesso.</div>
+      <div id="errBox" class="alert danger hidden">Não foi possível enviar. Confira as configurações e tente novamente.</div>
+
+      <div class="footer-note">
+        Dica: use sempre o mesmo nome e o mesmo WhatsApp para facilitar o reconhecimento do paciente no sistema.
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:16px;">
+      <h3 style="margin:0 0 12px;color:var(--primary)">Configuração técnica</h3>
+      <div class="grid grid-2">
+        <div class="field">
+          <label>Supabase URL</label>
+          <input id="supabaseUrl" placeholder="https://xxxx.supabase.co">
+        </div>
+        <div class="field">
+          <label>Anon key</label>
+          <input id="supabaseKey" placeholder="Anon key">
+        </div>
+      </div>
+      <div class="footer-note">
+        Essas configurações podem ficar salvas no navegador deste dispositivo. Depois de configurar uma vez, o link pode continuar sendo o mesmo.
+      </div>
+      <div class="toolbar" style="margin-top:12px;">
+        <button class="btn secondary" onclick="saveConfig()">Salvar configurações</button>
+        <button class="btn secondary" onclick="loadConfig(true)">Recarregar salvas</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'femic_patient_form_config_v1';
+    const SYMPTOMS = ['Dor em repouso','Dor em movimento','Rigidez','Edema','Formigamento','Fraqueza','Limitação ADM','Outros'];
+
+    function $(id){ return document.getElementById(id); }
+
+    function saveConfig(){
+      const payload = {
+        supabaseUrl: $('supabaseUrl').value.trim(),
+        supabaseKey: $('supabaseKey').value.trim()
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      alert('Configurações salvas neste navegador.');
+    }
+
+    function loadConfig(showAlert){
+      try{
+        const cfg = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        $('supabaseUrl').value = cfg.supabaseUrl || '';
+        $('supabaseKey').value = cfg.supabaseKey || '';
+        if(showAlert) alert('Configurações carregadas.');
+      }catch(e){}
+    }
+
+    function renderSymptoms(){
+      $('symptomChips').innerHTML = SYMPTOMS.map(s => '<button type="button" class="chip" data-value="' + s + '" onclick="toggleSymptom(this)">' + s + '</button>').join('');
+    }
+
+    function toggleSymptom(btn){
+      btn.classList.toggle('active');
+    }
+
+    function selectedSymptoms(){
+      return [...document.querySelectorAll('#symptomChips .chip.active')].map(x => x.dataset.value);
+    }
+
+    function clearMessages(){
+      $('okBox').classList.add('hidden');
+      $('errBox').classList.add('hidden');
+    }
+
+    function clearForm(){
+      $('patientName').value = '';
+      $('patientWhatsapp').value = '';
+      $('patientPathology').value = '';
+      $('pain').value = 5;
+      $('functionality').value = 5;
+      $('satisfaction').value = 3;
+      $('obs').value = '';
+      document.querySelectorAll('#symptomChips .chip').forEach(c => c.classList.remove('active'));
+      $('responseDate').value = new Date().toISOString().slice(0,10);
+      clearMessages();
+    }
+
+    async function submitResponse(){
+      clearMessages();
+      const url = $('supabaseUrl').value.trim().replace(/\/$/, '');
+      const key = $('supabaseKey').value.trim();
+
+      const payload = {
+        submitted_at: new Date().toISOString(),
+        response_date: $('responseDate').value,
+        patient_name: $('patientName').value.trim(),
+        patient_whatsapp: $('patientWhatsapp').value.trim(),
+        patient_pathology: $('patientPathology').value.trim(),
+        pain: Number($('pain').value),
+        functionality: Number($('functionality').value),
+        satisfaction: Number($('satisfaction').value),
+        symptoms: selectedSymptoms(),
+        obs: $('obs').value.trim(),
+        source: 'patient_public_form'
+      };
+
+      if(!url || !key || !payload.patient_name || !payload.patient_whatsapp || !payload.response_date){
+        $('errBox').textContent = 'Preencha nome, WhatsApp, data e a configuração do Supabase.';
+        $('errBox').classList.remove('hidden');
+        return;
+      }
+
+      try{
+        const res = await fetch(url + '/rest/v1/patient_form_responses', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': key,
+            'Authorization': 'Bearer ' + key,
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if(!res.ok){
+          const txt = await res.text();
+          console.error(txt);
+          throw new Error(txt);
+        }
+
+        $('okBox').classList.remove('hidden');
+        clearForm();
+      }catch(err){
+        console.error(err);
+        $('errBox').classList.remove('hidden');
+      }
+    }
+
+    renderSymptoms();
+    clearForm();
+    loadConfig(false);
+  </script>
+</body>
+</html>
