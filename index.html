@@ -2204,7 +2204,7 @@
         let matchFilter = true;
         if(window.patientFilter === 'active') matchFilter = !archived;
         else if(window.patientFilter === 'archived') matchFilter = archived;
-        else if(window.patientFilter === 'all') matchFilter = true;
+        else if(window.patientFilter === 'all') matchFilter = !archived;
         else matchFilter = !archived && evo === window.patientFilter;
         return matchTerm && matchFilter;
       }).sort((a,b)=> String(a?.name || '').localeCompare(String(b?.name || ''), 'pt-BR'));
