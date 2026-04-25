@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>FEMIC — Resposta do Paciente v2.2.4</title>
+  <meta name="description" content="Formulário de acompanhamento fisioterapêutico FEMIC Fisioterapia · Araraquara, SP" />
+  <meta name="theme-color" content="#0b3c6f" />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --primary:#0b3c6f; --primary2:#1fb6e9;
+      --success:#10b981; --danger:#ef4444; --warning:#f59e0b;
+      --bg:#f4f8fb; --card:#ffffff; --text:#19324a; --muted:#6b7f92;
+      --line:rgba(11,60,111,.12);
+      --shadow:0 22px 52px rgba(11,60,111,.12); --radius:24px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:'DM Sans',sans-serif; color:var(--text);
+      background:
+        radial-gradient(circle at 0% 0%, rgba(31,182,233,.12), transparent 28%),
+        radial-gradient(circle at 100% 0%, rgba(11,60,111,.10), transparent 26%),
+        var(--bg);
+      min-height:100vh;
+    }
+    .wrap{max-width:760px; margin:0 auto; padding:24px 16px 52px}
+
+    /* ── Hero ── */
+    .hero,.card{
+      background:linear-gradient(180deg,rgba(255,255,255,.97),rgba(255,255,255,.90));
+      border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);
+    }
+    .hero{padding:22px 24px; margin-bottom:14px}
+    .brand{display:flex; align-items:center; gap:14px; margin-bottom:10px}
+    .brand-badge{
+      width:52px; height:52px; border-radius:18px; flex:0 0 auto;
+      background:linear-gradient(145deg,var(--primary),#0d5ea8 58%,var(--primary2));
+      position:relative; overflow:hidden;
+    }
+    .brand-badge:before,.brand-badge:after{content:'';position:absolute;border-radius:999px;background:rgba(255,255,255,.92)}
+    .brand-badge:before{width:10px;height:10px;top:8px;left:8px;box-shadow:13px 7px 0 rgba(255,255,255,.92),3px 21px 0 rgba(255,255,255,.92)}
+    .brand-badge:after{width:54px;height:18px;right:-8px;bottom:9px;transform:rotate(-28deg);background:rgba(255,255,255,.18)}
+    h1{margin:0;font-family:'DM Serif Display',serif;color:var(--primary);font-size:1.9rem;letter-spacing:-.02em}
+    .brand-sub{color:var(--muted);font-size:.88rem;margin-top:3px}
+    .lead{margin:8px 0 0;color:var(--muted);line-height:1.65;font-size:.95rem}
+
+    /* ── Card ── */
+    .card{padding:22px 24px;margin-bottom:14px}
+    .card-title{
+      font-family:'DM Serif Display',serif;color:var(--primary);
+      font-size:1.12rem;font-weight:400;margin:0 0 16px;
+      padding-bottom:12px;border-bottom:1px solid var(--line);
+    }
+
+    /* ── Fields ── */
+    .grid{display:grid;gap:14px}
+    .grid-2{grid-template-columns:1fr 1fr}
+    .field{display:grid;gap:7px}
+    .field label{color:var(--primary);font-weight:700;font-size:.93rem}
+    .req{color:var(--danger);font-size:.8rem;margin-left:3px}
+    input,select,textarea{
+      width:100%;padding:13px 15px;border-radius:16px;border:1px solid var(--line);
+      background:#fff;color:var(--text);font:inherit;outline:none;
+      transition:border-color .15s,box-shadow .15s;
+    }
+    input:focus,select:focus,textarea:focus{
+      border-color:rgba(31,182,233,.6);box-shadow:0 0 0 4px rgba(31,182,233,.12);
+    }
+    input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(239,68,68,.10)}
+    .field-error{font-size:.82rem;color:var(--danger);display:none}
+    .field-error.show{display:block}
+    textarea{min-height:100px;resize:vertical}
+    .char-count{font-size:.78rem;color:var(--muted);text-align:right;transition:color .2s}
+
+    /* ── Sliders ── */
+    .slider-wrap{display:flex;align-items:center;gap:12px}
+    input[type="range"]{
+      flex:1;height:7px;border-radius:999px;padding:0;border:none;
+      box-shadow:none;cursor:pointer;accent-color:var(--primary);
+      background:linear-gradient(to right,var(--primary) 50%,rgba(11,60,111,.12) 50%);
+    }
+    input[type="range"]:focus{box-shadow:none;border:none;outline:none}
+    .slider-val{
+      min-width:44px;text-align:center;font-weight:800;font-size:1.12rem;
+      padding:6px 10px;border-radius:12px;border:1px solid var(--line);
+      background:var(--bg);color:var(--primary);transition:color .2s;
+    }
+    .slider-labels{display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted);margin-top:3px}
+
+    /* ── Stars ── */
+    .stars{display:flex;gap:8px;margin-top:2px}
+    .star{
+      font-size:1.75rem;cursor:pointer;opacity:.3;transition:opacity .12s,transform .12s;
+      background:none;border:none;padding:0;line-height:1;
+    }
+    .star.active,.star:hover~.star+.star,.star:hover{opacity:1}
+    .star:active{transform:scale(.88)}
+    .star-label{font-size:.83rem;color:var(--muted);min-height:1.3em;transition:color .2s}
+
+    /* ── Chips ── */
+    .chips{display:flex;flex-wrap:wrap;gap:8px}
+    .chip{
+      border:1px solid var(--line);background:#fff;border-radius:999px;
+      padding:9px 13px;cursor:pointer;font:inherit;color:var(--text);
+      font-size:.88rem;transition:.15s ease;
+    }
+    .chip:hover{border-color:rgba(11,60,111,.3);background:rgba(11,60,111,.04)}
+    .chip.active{background:linear-gradient(135deg,var(--primary),#0d5ea8);color:#fff;border-color:transparent}
+    .chip:focus-visible{outline:2px solid var(--primary2);outline-offset:2px}
+
+    /* ── Recall banner ── */
+    .recall-banner{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      background:linear-gradient(135deg,rgba(31,182,233,.10),rgba(11,60,111,.06));
+      border:1px solid rgba(31,182,233,.25);border-radius:18px;
+      padding:12px 16px;margin-bottom:14px;font-size:.9rem;flex-wrap:wrap;
+    }
+    .recall-banner strong{color:var(--primary)}
+    .recall-btns{display:flex;gap:6px;flex-wrap:wrap}
+    .recall-btn{
+      border:none;background:var(--primary);color:#fff;border-radius:12px;
+      padding:7px 13px;font:inherit;font-size:.84rem;cursor:pointer;
+      white-space:nowrap;transition:.15s;
+    }
+    .recall-btn:hover{opacity:.88}
+    .recall-clear{background:transparent!important;color:var(--muted)!important;border:1px solid var(--line)!important}
+
+    /* ── Buttons ── */
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+    .btn{
+      border:none;border-radius:16px;padding:13px 20px;
+      font-weight:800;cursor:pointer;font:inherit;font-size:1rem;
+      display:inline-flex;align-items:center;gap:8px;transition:.2s ease;
+    }
+    .btn.primary{
+      background:linear-gradient(135deg,var(--primary),#0d5ea8 58%,var(--primary2));
+      color:#fff;box-shadow:0 10px 24px rgba(11,60,111,.16);
+    }
+    .btn.primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 14px 28px rgba(11,60,111,.22)}
+    .btn.secondary{background:#fff;border:1px solid var(--line);color:var(--text)}
+    .btn:disabled{opacity:.6;cursor:not-allowed;transform:none!important}
+    .btn.sent{background:linear-gradient(135deg,var(--success),#0ea871)!important;color:#fff}
+
+    /* ── Alerts ── */
+    .alert{
+      margin-top:14px;padding:15px 18px;border-radius:18px;
+      border:1px solid var(--line);box-shadow:0 10px 24px rgba(11,60,111,.07);
+    }
+    .alert strong{display:block;font-size:1.04rem;margin-bottom:3px}
+    .alert.success{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.25)}
+    .alert.danger{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.22)}
+    .alert.warning{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.25)}
+    .success-pulse{animation:sPulse .5s ease}
+    @keyframes sPulse{
+      0%{transform:scale(.99);box-shadow:0 0 0 0 rgba(16,185,129,.35)}
+      60%{transform:scale(1.007);box-shadow:0 0 0 10px rgba(16,185,129,0)}
+      100%{transform:scale(1);box-shadow:none}
+    }
+
+    /* ── Success screen ── */
+    .success-screen{
+      text-align:center;padding:38px 22px 30px;display:none;
+    }
+    .success-icon{font-size:3.8rem;line-height:1;margin-bottom:12px}
+    .success-screen h2{
+      font-family:'DM Serif Display',serif;color:var(--success);
+      margin:0 0 8px;font-size:1.6rem;
+    }
+    .success-screen p{color:var(--muted);margin:0 0 18px;line-height:1.65}
+    .success-detail{
+      background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.2);
+      border-radius:16px;padding:14px 16px;margin-bottom:20px;
+      text-align:left;font-size:.9rem;line-height:1.9;
+    }
+
+    .footer-note{margin-top:14px;color:var(--muted);font-size:.85rem;line-height:1.65;padding-top:14px;border-top:1px solid var(--line)}
+    .hidden{display:none!important}
+
+    @media(max-width:560px){
+      .grid-2{grid-template-columns:1fr}
+      h1{font-size:1.55rem}
+      .hero,.card{padding:18px 16px}
+      .recall-banner{flex-direction:column;align-items:flex-start}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="brand">
+      <div class="brand-badge" aria-hidden="true"></div>
+      <div>
+        <h1>FEMIC Fisioterapia</h1>
+        <div class="brand-sub">Araraquara, SP · Aceitamos Unimed e Hapvida</div>
+      </div>
+    </div>
+    <p class="lead">
+      Preencha seus dados com atenção e toque em <strong>Enviar resposta</strong>.<br>
+      Use sempre o <strong>mesmo nome</strong> e o <strong>mesmo WhatsApp</strong>.
+    </p>
+  </section>
+
+  <!-- Banner de recall (dados salvos) -->
+  <div id="recallBanner" class="recall-banner hidden">
+    <div>Bem-vindo(a) de volta! Preencher com os dados de <strong id="recallName"></strong>?</div>
+    <div class="recall-btns">
+      <button class="recall-btn" onclick="applyRecall()">✔ Usar esses dados</button>
+      <button class="recall-btn recall-clear" onclick="dismissRecall()">Não</button>
+    </div>
+  </div>
+
+  <!-- ── Formulário ── -->
+  <div id="formSection">
+
+    <!-- 1. Identificação -->
+    <section class="card">
+      <div class="card-title">1. Identificação</div>
+      <div class="grid grid-2">
+        <div class="field">
+          <label>Nome completo <span class="req">*</span></label>
+          <input id="patientName" placeholder="Digite seu nome completo"
+            autocomplete="name" autocapitalize="words"
+            oninput="clearFieldErr('patientName','err-name')">
+          <div class="field-error" id="err-name">Informe seu nome completo.</div>
+        </div>
+        <div class="field">
+          <label>WhatsApp com DDD <span class="req">*</span></label>
+          <input id="patientWhatsapp" placeholder="(99) 99999-9999"
+            inputmode="numeric" autocomplete="tel" maxlength="15"
+            oninput="formatWhatsappInput(this); clearFieldErr('patientWhatsapp','err-whatsapp')">
+          <div class="field-error" id="err-whatsapp">WhatsApp inválido. Use o formato (99) 99999-9999.</div>
+        </div>
+      </div>
+      <div class="grid grid-2" style="margin-top:14px;">
+        <div class="field">
+          <label>Data <span class="req">*</span></label>
+          <input id="responseDate" type="date"
+            oninput="clearFieldErr('responseDate','err-date')">
+          <div class="field-error" id="err-date">Selecione a data.</div>
+        </div>
+        <div class="field">
+          <label>Região / patologia <span style="font-weight:400;color:var(--muted);font-size:.85rem">(opcional)</span></label>
+          <input id="patientPathology" placeholder="Ex.: lombar, ombro, joelho" autocomplete="off">
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Como está hoje -->
+    <section class="card">
+      <div class="card-title">2. Como você está hoje?</div>
+
+      <!-- Dor -->
+      <div class="field">
+        <label>Nível de dor <span class="req">*</span>
+          <span style="font-weight:400;font-size:.83rem;color:var(--muted)">&nbsp;0 = sem dor · 10 = máxima</span>
+        </label>
+        <div class="slider-wrap">
+          <input type="range" id="pain" min="0" max="10" step="1" value="5"
+            aria-label="Nível de dor de 0 a 10"
+            oninput="updateSlider('pain','painVal',true)">
+          <div class="slider-val" id="painVal">5</div>
+        </div>
+        <div class="slider-labels"><span>0 — Sem dor</span><span>10 — Dor máxima</span></div>
+      </div>
+
+      <!-- Funcionalidade -->
+      <div class="field" style="margin-top:18px;">
+        <label>Funcionalidade <span class="req">*</span>
+          <span style="font-weight:400;font-size:.83rem;color:var(--muted)">&nbsp;0 = sem função · 10 = plena</span>
+        </label>
+        <div class="slider-wrap">
+          <input type="range" id="functionality" min="0" max="10" step="1" value="5"
+            aria-label="Funcionalidade de 0 a 10"
+            oninput="updateSlider('functionality','funcVal',false)">
+          <div class="slider-val" id="funcVal">5</div>
+        </div>
+        <div class="slider-labels"><span>0 — Sem função</span><span>10 — Plena</span></div>
+      </div>
+
+      <!-- Satisfação -->
+      <div class="field" style="margin-top:20px;">
+        <label>Satisfação com o atendimento</label>
+        <div class="stars" id="starsWrap"
+          role="group" aria-label="Avaliação de satisfação de 1 a 5 estrelas"></div>
+        <div class="star-label" id="starLabel">Regular</div>
+        <input type="hidden" id="satisfaction" value="3">
+      </div>
+
+      <!-- Sintomas -->
+      <div class="field" style="margin-top:20px;">
+        <label>Sintomas
+          <span style="font-weight:400;color:var(--muted);font-size:.85rem">(selecione todos que se aplicam)</span>
+        </label>
+        <div class="chips" id="symptomChips"
+          role="group" aria-label="Seleção de sintomas"></div>
+      </div>
+
+      <!-- Observações -->
+      <div class="field" style="margin-top:20px;">
+        <label>Observações</label>
+        <textarea id="obs" placeholder="Ex.: dor maior ao acordar, melhorou à tarde, dificuldade para subir escadas..."
+          maxlength="600" oninput="updateCharCount()"></textarea>
+        <div class="char-count"><span id="obsCount">0</span>/600 caracteres</div>
+      </div>
+    </section>
+
+    <!-- Ações -->
+    <div class="toolbar">
+      <button id="submitBtn" class="btn primary" onclick="submitResponse()">
+        <span id="submitIcon">📤</span><span id="submitLabel">Enviar resposta</span>
+      </button>
+      <button class="btn secondary" onclick="confirmClear()">Limpar</button>
+    </div>
+
+    <!-- Alertas -->
+    <div id="errBox" class="alert danger hidden">
+      <strong>⚠️ Não foi possível enviar.</strong>
+      <span id="errMsg">Confira sua conexão e tente novamente.</span>
+    </div>
+    <div id="warnBox" class="alert warning hidden">
+      <strong>⚠️ Atenção</strong>
+      <span id="warnMsg"></span>
+    </div>
+
+    <div class="footer-note">
+      💡 Use sempre o mesmo nome e WhatsApp para facilitar o reconhecimento no sistema da FEMIC.
+    </div>
+  </div><!-- /formSection -->
+
+  <!-- Tela de sucesso -->
+  <div class="card success-screen" id="successSection">
+    <div class="success-icon">✅</div>
+    <h2>Resposta enviada!</h2>
+    <p>Obrigado pelo preenchimento. Seus dados foram registrados com sucesso e serão analisados pela equipe da FEMIC.</p>
+    <div class="success-detail" id="successDetail"></div>
+    <button class="btn primary" onclick="resetToForm()">📋 Enviar nova resposta</button>
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+  // ── Configuração ────────────────────────────────────────────────────────────
+  // A chave anon do Supabase é pública por design. A segurança é garantida
+  // por políticas RLS no banco: INSERT público, sem SELECT/UPDATE/DELETE aberto.
+  const SUPABASE_URL  = 'https://ljblnrqeakpbjojuenjm.supabase.co';
+  const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqYmxucnFlYWtwYmpvanVlbmptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3ODE5ODAsImV4cCI6MjA5MjM1Nzk4MH0.MDsXiO348tgrLMt4wUglpvJCfTmS6zrnw5tjIg3QJ7I';
+  const TABLE         = 'patient_form_responses';
+  const RECALL_KEY    = 'femic_patient_recall';
+
+  const SYMPTOMS      = ['Dor em repouso','Dor em movimento','Rigidez','Edema','Formigamento','Fraqueza','Limitação ADM','Outros'];
+  const STAR_LABELS   = ['','Muito ruim','Ruim','Regular','Boa','Muito boa'];
+
+  // ── Utilitários ─────────────────────────────────────────────────────────────
+  function $(id){ return document.getElementById(id); }
+  function normPhone(v){ return String(v||'').replace(/\D/g,''); }
+  function today(){ return new Date().toISOString().slice(0,10); }
+  function clamp(v,min,max){ return Math.min(max,Math.max(min,Math.round(Number(v)||0))); }
+  function escHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function fmtDate(d){ const p=String(d||'').slice(0,10).split('-'); return p.length===3?[p[2],p[1],p[0]].join('/'): d||''; }
+
+  // ── Máscara de telefone ──────────────────────────────────────────────────────
+  function formatWhatsappInput(input){
+    let v = normPhone(input.value).slice(0,11);
+
+    if(v.length > 6){
+      input.value = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
+    } else if(v.length > 2){
+      input.value = `(${v.slice(0,2)}) ${v.slice(2)}`;
+    } else if(v.length > 0){
+      input.value = `(${v}`;
+    } else {
+      input.value = '';
+    }
+  }
+
+  // ── Sliders com cor dinâmica ─────────────────────────────────────────────────
+  function updateSlider(inputId, valId, isPain){
+    const input = $(inputId);
+    const val   = clamp(input.value, 0, 10);
+    const valEl = $(valId);
+
+    // Cor semântica: dor alta = ruim; funcionalidade alta = boa
+    const color = isPain
+      ? (val <= 3 ? 'var(--success)' : val <= 6 ? 'var(--warning)' : 'var(--danger)')
+      : (val >= 7 ? 'var(--success)' : val >= 4 ? 'var(--warning)' : 'var(--danger)');
+
+    if(valEl){ valEl.textContent = val; valEl.style.color = color; }
+
+    const pct = (val / 10) * 100;
+    input.style.background = `linear-gradient(to right, ${color} ${pct}%, rgba(11,60,111,.12) ${pct}%)`;
+  }
+
+  // ── Estrelas ─────────────────────────────────────────────────────────────────
+  function renderStars(current){
+    current = clamp(current, 1, 5);
+    const wrap = $('starsWrap');
+    wrap.innerHTML = [1,2,3,4,5].map(i => `
+      <button type="button" class="star ${i<=current?'active':''}"
+        data-val="${i}" aria-label="${i} estrela${i>1?'s':''}"
+        onclick="setStar(${i})"
+        onmouseenter="previewStars(${i})"
+        onmouseleave="renderStars(Number($('satisfaction').value))">${i<=current?'⭐':'☆'}</button>`
+    ).join('');
+  }
+  function setStar(v){
+    $('satisfaction').value = v;
+    renderStars(v);
+    const lbl = $('starLabel');
+    if(lbl){
+      lbl.textContent = STAR_LABELS[v] || '';
+      lbl.style.color = v >= 4 ? 'var(--success)' : v <= 2 ? 'var(--danger)' : 'var(--muted)';
+    }
+  }
+  function previewStars(v){
+    $('starsWrap').querySelectorAll('.star').forEach((s,i)=>{
+      s.classList.toggle('active', i < v);
+      s.textContent = i < v ? '⭐' : '☆';
+    });
+  }
+
+  // ── Sintomas ──────────────────────────────────────────────────────────────────
+  function renderSymptoms(){
+    $('symptomChips').innerHTML = SYMPTOMS.map(s =>
+      `<button type="button" class="chip" data-value="${escHtml(s)}"
+        aria-pressed="false" onclick="toggleChip(this)">${escHtml(s)}</button>`
+    ).join('');
+  }
+  function toggleChip(btn){
+    const active = btn.classList.toggle('active');
+    btn.setAttribute('aria-pressed', String(active));
+  }
+  function selectedSymptoms(){
+    return [...document.querySelectorAll('#symptomChips .chip.active')].map(x=>x.dataset.value);
+  }
+  function clearChips(){
+    document.querySelectorAll('#symptomChips .chip').forEach(c=>{
+      c.classList.remove('active');
+      c.setAttribute('aria-pressed','false');
+    });
+  }
+
+  // ── Contador de caracteres ────────────────────────────────────────────────────
+  function updateCharCount(){
+    const len = $('obs').value.length;
+    const el  = $('obsCount');
+    if(!el) return;
+    el.textContent = len;
+    el.parentElement.style.color = len > 540 ? 'var(--warning)' : 'var(--muted)';
+  }
+
+  // ── Recall (dados salvos no localStorage) ─────────────────────────────────────
+  function loadRecall(){
+    try{
+      const saved = JSON.parse(localStorage.getItem(RECALL_KEY) || 'null');
+      if(!saved || !saved.name) return;
+      window._recall = saved;
+      $('recallName').textContent = saved.name;
+      $('recallBanner').classList.remove('hidden');
+    }catch(e){}
+  }
+  function applyRecall(){
+    const s = window._recall;
+    if(!s) return;
+    $('patientName').value      = s.name     || '';
+    $('patientWhatsapp').value  = s.phone    || '';
+    $('patientPathology').value = s.pathology|| '';
+    $('recallBanner').classList.add('hidden');
+  }
+  function dismissRecall(){
+    $('recallBanner').classList.add('hidden');
+  }
+  function saveRecall(name, phone, pathology){
+    try{ localStorage.setItem(RECALL_KEY, JSON.stringify({name, phone, pathology})); }catch(e){}
+  }
+
+  // ── Validação ─────────────────────────────────────────────────────────────────
+  function clearFieldErr(inputId, errId){
+    const el = $(inputId); if(el) el.classList.remove('invalid');
+    const er = $(errId);   if(er) er.classList.remove('show');
+  }
+  function fieldErr(inputId, errId){
+    const el = $(inputId); if(el) el.classList.add('invalid');
+    const er = $(errId);   if(er) er.classList.add('show');
+  }
+  function validate(){
+    let ok = true;
+    const name  = $('patientName').value.trim();
+    const phone = normPhone($('patientWhatsapp').value);
+    const date  = $('responseDate').value;
+
+    if(name.length < 2){ fieldErr('patientName','err-name');      ok = false; }
+    if(phone.length < 10){ fieldErr('patientWhatsapp','err-whatsapp'); ok = false; }
+    if(!date){ fieldErr('responseDate','err-date');                ok = false; }
+
+    return ok;
+  }
+
+  // ── Mensagens globais ──────────────────────────────────────────────────────────
+  function hideMessages(){
+    $('errBox').classList.add('hidden');
+    $('warnBox').classList.add('hidden');
+  }
+  function showErr(msg){
+    $('errMsg').textContent = msg;
+    $('errBox').classList.remove('hidden');
+    $('errBox').scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+  function showWarn(msg){
+    $('warnMsg').textContent = msg;
+    $('warnBox').classList.remove('hidden');
+  }
+
+  // ── Som de sucesso ────────────────────────────────────────────────────────────
+  function playSuccessBeep(){
+    try{
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if(!Ctx) return;
+      const ctx = new Ctx(); const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(0.001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.04,  ctx.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 0.22);
+    }catch(e){}
+  }
+
+  // ── Limpar formulário ──────────────────────────────────────────────────────────
+  function resetFields(){
+    ['patientName','patientWhatsapp','patientPathology','obs'].forEach(id => $(id).value = '');
+    $('responseDate').value = today();
+    $('pain').value = 5;         updateSlider('pain','painVal',true);
+    $('functionality').value = 5; updateSlider('functionality','funcVal',false);
+    setStar(3);
+    clearChips();
+    updateCharCount();
+    hideMessages();
+    document.querySelectorAll('.field-error.show').forEach(e=>e.classList.remove('show'));
+    document.querySelectorAll('.invalid').forEach(e=>e.classList.remove('invalid'));
+  }
+  function confirmClear(){
+    const dirty = $('patientName').value.trim() || $('obs').value.trim();
+    if(dirty && !confirm('Limpar o formulário? Os dados preenchidos serão perdidos.')) return;
+    resetFields();
+  }
+
+  // ── Tela de sucesso ────────────────────────────────────────────────────────────
+  function showSuccessScreen(payload){
+    $('formSection').classList.add('hidden');
+    $('successDetail').innerHTML = [
+      `📋 <b>Nome:</b> ${escHtml(payload.patient_name)}`,
+      `📱 <b>WhatsApp:</b> ${escHtml(payload.patient_whatsapp)}`,
+      `📅 <b>Data:</b> ${fmtDate(payload.response_date)}`,
+      `🔴 <b>Dor:</b> ${payload.pain}/10 &nbsp;·&nbsp; 🟢 <b>Func.:</b> ${payload.functionality}/10`,
+      `⭐ <b>Satisfação:</b> ${escHtml(STAR_LABELS[payload.satisfaction] || String(payload.satisfaction))}`,
+      payload.symptoms && payload.symptoms.length
+        ? `💊 <b>Sintomas:</b> ${escHtml(payload.symptoms.join(', '))}` : ''
+    ].filter(Boolean).join('<br>');
+    const s = $('successSection');
+    s.style.display = 'block';
+    s.scrollIntoView({behavior:'smooth',block:'start'});
+    playSuccessBeep();
+    if(navigator.vibrate) navigator.vibrate([80,60,80]);
+  }
+
+  function resetToForm(){
+    $('successSection').style.display = 'none';
+    $('formSection').classList.remove('hidden');
+    resetFields();
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  // ── Envio principal ────────────────────────────────────────────────────────────
+  async function submitResponse(){
+    hideMessages();
+    if(!validate()) return;
+
+    const btn   = $('submitBtn');
+    const icon  = $('submitIcon');
+    const label = $('submitLabel');
+    btn.disabled = true;
+    if(icon)  icon.textContent  = '⏳';
+    if(label) label.textContent = 'Enviando...';
+
+    // Valores sanitizados — nunca confia no input bruto
+    const pain  = clamp($('pain').value, 0, 10);
+    const func  = clamp($('functionality').value, 0, 10);
+    const sat   = clamp($('satisfaction').value, 1, 5);
+    const phone = normPhone($('patientWhatsapp').value);
+
+    const payload = {
+      submitted_at:      new Date().toISOString(),
+      response_date:     $('responseDate').value,
+      patient_name:      $('patientName').value.trim(),
+      patient_whatsapp:  phone,
+      patient_pathology: $('patientPathology').value.trim(),
+      pain,
+      functionality:     func,
+      satisfaction:      sat,
+      symptoms:          selectedSymptoms(),
+      obs:               $('obs').value.trim().slice(0, 600), // limite backend
+      source:            'patient_public_form'
+    };
+
+    try{
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}`, {
+        method:  'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey':        SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'Prefer':        'return=minimal'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if(!res.ok){
+        const txt = await res.text();
+        let msg = 'Erro ao salvar. Tente novamente em alguns instantes.';
+        try{ const j = JSON.parse(txt); msg = j.message || j.details || msg; }catch(e){}
+        throw new Error(msg);
+      }
+
+      // Salva para recall na próxima visita
+      saveRecall(payload.patient_name, payload.patient_whatsapp, payload.patient_pathology);
+
+      // Feedback visual rápido no botão, depois mostra tela de sucesso
+      btn.classList.add('sent');
+      if(icon)  icon.textContent  = '✔';
+      if(label) label.textContent = 'Enviado!';
+
+      setTimeout(()=>{
+        showSuccessScreen(payload);
+        // Reseta botão para quando o usuário voltar ao formulário
+        btn.classList.remove('sent');
+        btn.disabled = false;
+        if(icon)  icon.textContent  = '📤';
+        if(label) label.textContent = 'Enviar resposta';
+      }, 650);
+
+    }catch(err){
+      console.error('[FEMIC Form]', err.message || err);
+      showErr(err.message || 'Confira sua conexão e tente novamente.');
+      btn.disabled = false;
+      if(icon)  icon.textContent  = '📤';
+      if(label) label.textContent = 'Enviar resposta';
+    }
+  }
+
+  // ── Inicialização ──────────────────────────────────────────────────────────────
+  renderSymptoms();
+  renderStars(3);
+  updateSlider('pain','painVal',true);
+  updateSlider('functionality','funcVal',false);
+  $('responseDate').value = today();
+  updateCharCount();
+  loadRecall();
+</script>
+</body>
+</html>
