@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dor Crônica | FEMIC</title>
+  <meta name="description" content="Material educativo FEMIC sobre dor crônica, com orientações simples, seguras e baseadas em evidências para pacientes." />
+
+  <style>
+    :root {
+      --azul: #1f7fd1;
+      --azul-escuro: #155f9f;
+      --azul-claro: #eaf5ff;
+      --verde: #2fb67c;
+      --verde-claro: #eafaf3;
+      --amarelo: #ffb84d;
+      --vermelho: #e85d5d;
+      --cinza-texto: #2d3748;
+      --cinza-suave: #f6f8fb;
+      --branco: #ffffff;
+      --borda: #dbe7f3;
+      --sombra: 0 10px 30px rgba(31, 127, 209, 0.10);
+      --radius: 22px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #f2f8ff 0%, #ffffff 40%, #f7fbff 100%);
+      color: var(--cinza-texto);
+      line-height: 1.65;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .page {
+      width: 100%;
+      overflow-x: hidden;
+    }
+
+    .hero {
+      position: relative;
+      padding: 34px 18px 28px;
+      background:
+        radial-gradient(circle at top left, rgba(47, 182, 124, 0.18), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(31, 127, 209, 0.22), transparent 36%),
+        linear-gradient(135deg, #1f7fd1 0%, #155f9f 100%);
+      color: var(--branco);
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 220px;
+      height: 220px;
+      border: 28px solid rgba(255,255,255,0.08);
+      border-radius: 50%;
+      right: -90px;
+      top: -70px;
+    }
+
+    .brand {
+      position: relative;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.16);
+      border: 1px solid rgba(255,255,255,0.25);
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      font-size: 0.9rem;
+      margin-bottom: 18px;
+    }
+
+    .brand-icon {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.22);
+    }
+
+    .hero h1 {
+      position: relative;
+      z-index: 1;
+      margin: 0;
+      font-size: clamp(2rem, 8vw, 4.1rem);
+      line-height: 1.05;
+      letter-spacing: -1px;
+    }
+
+    .hero p {
+      position: relative;
+      z-index: 1;
+      max-width: 780px;
+      margin: 16px auto 0;
+      font-size: clamp(1rem, 3vw, 1.25rem);
+      opacity: 0.96;
+    }
+
+    .hero-note {
+      position: relative;
+      z-index: 1;
+      margin: 20px auto 0;
+      max-width: 760px;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      padding: 14px 16px;
+      border-radius: 18px;
+      font-size: 0.95rem;
+    }
+
+    .quickbar {
+      max-width: 1100px;
+      margin: -26px auto 24px;
+      padding: 0 16px;
+      position: relative;
+      z-index: 4;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .quick-item {
+      background: var(--branco);
+      border: 1px solid var(--borda);
+      border-radius: 18px;
+      box-shadow: var(--sombra);
+      padding: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .quick-emoji {
+      flex: 0 0 42px;
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: var(--azul-claro);
+      font-size: 1.3rem;
+    }
+
+    .quick-item strong {
+      display: block;
+      color: var(--azul-escuro);
+      margin-bottom: 2px;
+    }
+
+    .quick-item span {
+      display: block;
+      font-size: 0.92rem;
+      color: #4a5568;
+      line-height: 1.4;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 16px 42px;
+    }
+
+    .section {
+      background: var(--branco);
+      border: 1px solid var(--borda);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgba(21, 95, 159, 0.06);
+      padding: 22px;
+      margin: 16px 0;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .icon {
+      flex: 0 0 44px;
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border-radius: 16px;
+      background: var(--azul-claro);
+      font-size: 1.35rem;
+    }
+
+    h2 {
+      color: var(--azul-escuro);
+      margin: 0;
+      font-size: clamp(1.3rem, 4vw, 1.75rem);
+      line-height: 1.2;
+    }
+
+    p {
+      margin: 10px 0;
+    }
+
+    .lead {
+      font-size: 1.06rem;
+      color: #344054;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .mini-card {
+      background: var(--cinza-suave);
+      border: 1px solid #e6eef7;
+      border-radius: 18px;
+      padding: 16px;
+    }
+
+    .mini-card strong {
+      color: var(--azul-escuro);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    ul {
+      padding-left: 20px;
+      margin: 10px 0;
+    }
+
+    li {
+      margin: 8px 0;
+    }
+
+    .audio-box {
+      display: grid;
+      gap: 12px;
+      background: linear-gradient(135deg, #eaf5ff 0%, #eafaf3 100%);
+      border: 1px dashed #9fc8ec;
+      border-radius: 20px;
+      padding: 18px;
+    }
+
+    .audio-player-fake {
+      height: 54px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.78);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      color: #667085;
+      font-size: 0.95rem;
+    }
+
+    .play {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--azul);
+      color: white;
+      font-size: 0.9rem;
+    }
+
+    .bar {
+      flex: 1;
+      height: 8px;
+      border-radius: 999px;
+      background: #d7e8f8;
+      overflow: hidden;
+    }
+
+    .bar::before {
+      content: "";
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: var(--verde);
+    }
+
+    .alert {
+      border-color: #ffd0d0;
+      background: linear-gradient(180deg, #fff7f7 0%, #ffffff 100%);
+    }
+
+    .alert .icon {
+      background: #fff0f0;
+    }
+
+    .alert h2 {
+      color: #b42318;
+    }
+
+    .truth-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .truth {
+      border-radius: 18px;
+      padding: 16px;
+      border: 1px solid #e6eef7;
+      background: #ffffff;
+    }
+
+    .truth.mito {
+      border-left: 6px solid var(--vermelho);
+    }
+
+    .truth.verdade {
+      border-left: 6px solid var(--verde);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: var(--azul-claro);
+      color: var(--azul-escuro);
+    }
+
+    .summary {
+      background: linear-gradient(135deg, #155f9f 0%, #1f7fd1 100%);
+      color: white;
+      border: none;
+    }
+
+    .summary h2 {
+      color: white;
+    }
+
+    .summary .icon {
+      background: rgba(255,255,255,0.16);
+    }
+
+    .message {
+      background: linear-gradient(135deg, #eafaf3 0%, #ffffff 100%);
+      border-color: #c6f0dc;
+    }
+
+    .references {
+      font-size: 0.94rem;
+      color: #4a5568;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 24px 16px 34px;
+      color: #5b677a;
+      font-size: 0.92rem;
+    }
+
+    .important {
+      font-weight: 700;
+      color: var(--azul-escuro);
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .pill {
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: var(--azul-claro);
+      color: var(--azul-escuro);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    @media (min-width: 720px) {
+      .quickbar {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .quick-item {
+        display: block;
+        text-align: center;
+      }
+
+      .quick-emoji {
+        margin: 0 auto 10px;
+      }
+
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .truth-list {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .section {
+        padding: 28px;
+      }
+    }
+
+    @media (min-width: 980px) {
+      .grid.three {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .hero {
+        padding-top: 52px;
+        padding-bottom: 56px;
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+
+      .quickbar {
+        margin-top: 16px;
+      }
+
+      .section,
+      .quick-item {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+
+    <header class="hero">
+      <div class="brand">
+        <span class="brand-icon">💙</span>
+        FEMIC • Educação em Saúde
+      </div>
+      <h1>Dor Crônica</h1>
+      <p>
+        Entenda por que a dor pode persistir, como o corpo pode ficar mais sensível
+        e quais atitudes ajudam na retomada segura da rotina.
+      </p>
+      <div class="hero-note">
+        Dor crônica é real. Ela não significa fraqueza, exagero ou falta de vontade.
+        Com orientação adequada, é possível melhorar função, confiança e qualidade de vida.
+      </div>
+    </header>
+
+    <section class="quickbar" aria-label="Destaques rápidos">
+      <div class="quick-item">
+        <div class="quick-emoji">⏳</div>
+        <strong>Dura mais tempo</strong>
+        <span>Geralmente persiste por mais de 3 meses.</span>
+      </div>
+      <div class="quick-item">
+        <div class="quick-emoji">🧠</div>
+        <strong>Sistema sensível</strong>
+        <span>A dor pode continuar mesmo sem lesão ativa.</span>
+      </div>
+      <div class="quick-item">
+        <div class="quick-emoji">🚶</div>
+        <strong>Movimento ajuda</strong>
+        <span>O corpo melhora com progressão segura.</span>
+      </div>
+      <div class="quick-item">
+        <div class="quick-emoji">🌙</div>
+        <strong>Sono e estresse contam</strong>
+        <span>Recuperação envolve corpo, rotina e comportamento.</span>
+      </div>
+    </section>
+
+    <main>
+
+      <section class="section">
+        <div class="section-header">
+          <div class="icon">🎧</div>
+          <h2>Área de áudio</h2>
+        </div>
+        <div class="audio-box">
+          <p>
+            Esta página já está preparada para receber futuramente um áudio explicativo FEMIC
+            sobre dor crônica.
+          </p>
+          <div class="audio-player-fake" aria-label="Área reservada para áudio futuro">
+            <div class="play">▶</div>
+            <div class="bar"></div>
+            <span>Áudio em breve</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <div class="icon">🔎</div>
+          <h2>O que é dor crônica?</h2>
+        </div>
+        <p class="lead">
+          A dor crônica é uma dor que persiste por mais tempo do que o esperado,
+          geralmente por mais de 3 meses. Ela pode começar após uma lesão, cirurgia,
+          doença, sobrecarga ou período de estresse, mas em muitos casos passa a envolver
+          também mudanças na forma como o sistema nervoso interpreta os sinais do corpo.
+        </p>
+        <p>
+          Isso significa que a dor é verdadeira, mesmo quando exames não mostram uma lesão
+          proporcional à intensidade do sintoma. O corpo pode ficar em um estado de maior
+          proteção e sensibilidade, como se o “alarme da dor” estivesse mais fácil de disparar.
+        </p>
+        <div class="pill-row">
+          <span class="pill">Dor real</span>
+          <span class="pill">Sistema nervoso sensível</span>
+          <span class="pill">Tratamento progressivo</span>
+          <span class="pill">Cuidado integral</span>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <div class="icon">📌</div>
+          <h2>Sintomas comuns</h2>
+        </div>
+        <div class="grid">
+          <div class="mini-card">
+            <strong>Dor persistente ou recorrente</strong>
+            Pode variar ao longo do dia, piorar em alguns movimentos ou aparecer mesmo em repouso.
+          </div>
+          <div class="mini-card">
+            <strong>Sensibilidade aumentada</strong>
+            Toques, esforços leves ou atividades simples podem parecer mais desconfortáveis.
+          </div>
+          <div class="mini-card">
+            <strong>Medo de se movimentar</strong>
+            Muitas pessoas passam a evitar atividades por receio de piorar ou se machucar.
+          </div>
+          <div class="mini-card">
+            <strong>Cansaço e sono ruim</strong>
+            Dor, estresse e noites mal dormidas podem se alimentar em ciclo.
+          </div>
+          <div class="mini-card">
+            <strong>Oscilação emocional</strong>
+            Frustração, ansiedade e desânimo podem aparecer quando a dor limita a rotina.
+          </div>
+          <div class="mini-card">
+            <strong>Redução da atividade física</strong>
+            A pessoa pode fazer menos coisas, perder condicionamento e ficar mais insegura.
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <div class="icon">🧩</div>
+          <h2>Causas e fatores que influenciam</h2>
+        </div>
+        <p>
+          A dor crônica costuma ter múltiplos fatores. Nem sempre existe uma única causa.
+          Ela pode ser influenciada por aspectos físicos, emocionais, sociais e comportamentais.
+        </p>
+        <ul>
+          <li>Lesões antigas, cirurgias, inflamações ou doenças prévias.</li>
+          <li>Períodos longos de sedentarismo, perda de força ou redução da mobilidade.</li>
+          <li>Sono insuficiente ou pouco reparador.</li>
+          <li>Estresse persistente, ansiedade, preocupação e tensão corporal.</li>
+          <li>Medo do movimento e evitação de atividades importantes.</li>
+          <li>Excesso de carga sem progressão ou alternância entre “fazer tudo” e “parar tudo”.</li>
+        </ul>
+        <p>
+          Entender esses fatores ajuda a montar um plano mais realista e seguro.
+        </p>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <div class="icon">✅</div>
+          <h2>O que fazer</h2>
+        </div>
+        <div class="grid">
+          <div class="mini-card">
+            <strong>Volte aos poucos</strong>
+            Retome movimentos e tarefas em etapas. Pequenos avanços consistentes são mais seguros.
+          </div>
+          <div class="mini-card">
+            <strong>Respeite o limite, sem parar tudo</strong>
+            Dor leve durante a reabilitação pode acontecer, mas deve ser monitorada e não ignorada.
+          </div>
+          <div class="mini-card">
+            <strong>Cuide do sono</strong>
+            Horários mais regulares, rotina de desaceleração e redução de telas à noite podem ajudar.
+          </div>
+          <div class="mini-card">
+            <strong>Observe o estresse</strong>
+            Respiração, pausas, atividades prazerosas e apoio profissional podem reduzir a sobrecarga.
+          </div>
+          <div class="mini-card">
+            <strong>Tenha um plano</strong>
+            Exercícios, metas e progressão precisam fazer sentido para sua rotina.
+          </div>
+          <div class="mini-card">
+            <strong>Converse com o terapeuta</strong>
+            Ajustes de carga, frequência e exercícios fazem parte do tratamento.
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <div class="icon">⛔</div>
+          <h2>O que evitar</h2>
+        </div>
+        <ul>
+          <li>Ficar completamente parado por medo da dor, salvo orientação específica.</li>
+          <li>Forçar além do tolerável acreditando que “tem que doer para melhorar”.</li>
+          <li>Buscar soluções milagrosas ou promessas de cura rápida.</li>
+          <li>Comparar sua recuperação com a de outras pessoas.</li>
+          <li>Ignorar sono, estresse, alimentação, rotina e adesão ao tratamento.</li>
+          <li>Interpretar todo aumento de dor como sinal de dano ou piora grave.</li>
+        </ul>
+      </section>
+
+      <section class="section alert">
+        <div class="section-header">
+          <div class="icon">🚨</div>
+          <h2>Sinais de alerta</h2>
+        </div>
+        <p>
+          Procure avaliação médica com prioridade se a dor vier acompanhada de:
+        </p>
+        <ul>
+          <li>Perda de força progressiva ou importante.</li>
+          <li>Febre, mal-estar intenso ou sinais de infecção.</li>
+          <li>Perda de peso inexplicada.</li>
+          <li>Alteração importante de sensibilidade, equilíbrio ou controle urinário/intestinal.</li>
+          <li>Dor após trauma importante, queda ou acidente.</li>
+          <li>Dor noturna intensa e persistente, sem alívio, especialmente se associada a outros sintomas.</li>
+        </ul>
+        <p class="important">
+          Esses sinais não significam necessariamente algo grave, mas precisam ser avaliados com cuidado.
+        </p>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <div class="icon">🧪</div>
+          <h2>Exames</h2>
+        </div>
+        <p>
+          Exames como raio-X, ultrassom, tomografia ou ressonância podem ser úteis em algumas situações,
+          principalmente para investigar sinais de alerta ou compreender melhor certas condições.
+        </p>
+        <p>
+          Porém, na dor crônica, o resultado do exame nem sempre explica sozinho a intensidade da dor.
+          Muitas alterações aparecem também em pessoas sem dor. Por isso, o mais importante é juntar:
+        </p>
+        <ul>
+          <li>história do paciente;</li>
+          <li>exame físico;</li>
+          <li>funcionalidade;</li>
+          <li>objetivos pessoais;</li>
+          <li>resposta ao movimento e à progressão.</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <div class="icon">🏋️</div>
+          <h2>Tratamento / fisioterapia</h2>
+        </div>
+        <p>
+          A fisioterapia na dor crônica busca melhorar movimento, força, confiança, função e autonomia.
+          O tratamento costuma ser progressivo e individualizado.
+        </p>
+        <div class="grid">
+          <div class="mini-card">
+            <strong>Educação em dor</strong>
+            Entender como a dor funciona ajuda a reduzir medo e melhorar adesão.
+          </div>
+          <div class="mini-card">
+            <strong>Exercícios progressivos</strong>
+            A carga é ajustada ao seu momento, com evolução gradual.
+          </div>
+          <div class="mini-card">
+            <strong>Treino funcional</strong>
+            O foco é recuperar atividades importantes: caminhar, trabalhar, subir escadas, cuidar da casa ou praticar lazer.
+          </div>
+          <div class="mini-card">
+            <strong>Estratégias de alívio</strong>
+            Técnicas manuais, calor, relaxamento ou ajustes de rotina podem ser usados quando indicados.
+          </div>
+          <div class="mini-card">
+            <strong>Planejamento de metas</strong>
+            O tratamento fica mais efetivo quando há metas claras e alcançáveis.
+          </div>
+          <div class="mini-card">
+            <strong>Autonomia</strong>
+            O objetivo é que você aprenda a manejar sua condição com mais segurança.
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <div class="icon">🏠</div>
+          <h2>Cuidados em casa</h2>
+        </div>
+        <ul>
+          <li>Faça pausas curtas durante o dia, especialmente em posições mantidas por muito tempo.</li>
+          <li>Mantenha uma rotina possível de exercícios orientados.</li>
+          <li>Use o conceito de “pouco e frequente” para retomar atividades.</li>
+          <li>Observe quais situações pioram ou aliviam a dor, sem transformar isso em medo.</li>
+          <li>Priorize sono, hidratação, alimentação equilibrada e momentos de recuperação.</li>
+          <li>Comunique ao fisioterapeuta quando algo estiver difícil de cumprir.</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <div class="icon">💬</div>
+          <h2>Mitos e verdades</h2>
+        </div>
+        <div class="truth-list">
+          <div class="truth mito">
+            <span class="badge">Mito</span>
+            <strong>“Se dói, é porque está machucando.”</strong>
+            <p>Nem sempre. Na dor crônica, o sistema nervoso pode estar mais sensível e gerar dor mesmo sem dano proporcional.</p>
+          </div>
+          <div class="truth verdade">
+            <span class="badge">Verdade</span>
+            <strong>“A dor é real.”</strong>
+            <p>Dor crônica não é invenção. Ela precisa ser acolhida, compreendida e tratada com seriedade.</p>
+          </div>
+          <div class="truth mito">
+            <span class="badge">Mito</span>
+            <strong>“Preciso parar tudo para melhorar.”</strong>
+            <p>Repouso absoluto prolongado pode piorar condicionamento, medo e limitação.</p>
+          </div>
+          <div class="truth verdade">
+            <span class="badge">Verdade</span>
+            <strong>“Movimento seguro ajuda.”</strong>
+            <p>Exercícios ajustados e progressivos ajudam o corpo a recuperar confiança e função.</p>
+          </div>
+          <div class="truth mito">
+            <span class="badge">Mito</span>
+            <strong>“Exame normal significa que a dor não existe.”</strong>
+            <p>Exames não medem toda a complexidade da dor. A avaliação clínica continua sendo essencial.</p>
+          </div>
+          <div class="truth verdade">
+            <span class="badge">Verdade</span>
+            <strong>“Sono e estresse influenciam.”</strong>
+            <p>O corpo sente mais quando está cansado, tenso ou sobrecarregado.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <div class="icon">🛡️</div>
+          <h2>Prevenção e controle de crises</h2>
+        </div>
+        <p>
+          Em dor crônica, a prevenção não significa nunca mais sentir dor. Significa reduzir crises,
+          entender gatilhos, melhorar a capacidade do corpo e saber como agir quando a dor oscila.
+        </p>
+        <ul>
+          <li>Mantenha atividade física regular, adaptada ao seu nível atual.</li>
+          <li>Evite grandes variações: muitos dias parado e depois excesso de esforço.</li>
+          <li>Planeje tarefas maiores com pausas e divisão de carga.</li>
+          <li>Tenha estratégias de alívio para dias difíceis.</li>
+          <li>Monitore sono, estresse e rotina, pois eles podem mudar a sensibilidade à dor.</li>
+          <li>Valorize pequenas conquistas: caminhar mais, dormir melhor, sentir menos medo, fazer uma tarefa com mais confiança.</li>
+        </ul>
+      </section>
+
+      <section class="section summary">
+        <div class="section-header">
+          <div class="icon">📝</div>
+          <h2>Resumo para o paciente</h2>
+        </div>
+        <p>
+          Dor crônica é uma dor persistente e real, que pode envolver aumento da sensibilidade
+          do sistema nervoso. Ela não depende apenas de uma lesão visível no exame.
+        </p>
+        <p>
+          O tratamento costuma envolver movimento seguro, exercícios progressivos, educação,
+          cuidado com o sono, manejo do estresse e participação ativa do paciente.
+        </p>
+        <p>
+          O objetivo não é “forçar o corpo”, mas recuperar confiança, função e qualidade de vida
+          com segurança e constância.
+        </p>
+      </section>
+
+      <section class="section message">
+        <div class="section-header">
+          <div class="icon">💙</div>
+          <h2>Mensagem FEMIC</h2>
+        </div>
+        <p>
+          Você não precisa enfrentar a dor crônica sozinho. O caminho pode ser gradual,
+          mas cada passo seguro importa. Com orientação, paciência e participação ativa,
+          é possível entender melhor o corpo, reduzir o medo do movimento e retomar atividades
+          importantes da sua vida.
+        </p>
+        <p class="important">
+          Este material não substitui avaliação individualizada.
+        </p>
+      </section>
+
+      <section class="section references">
+        <div class="section-header">
+          <div class="icon">📚</div>
+          <h2>Referências</h2>
+        </div>
+        <ul>
+          <li>International Association for the Study of Pain (IASP). Terminology and concepts related to pain.</li>
+          <li>World Health Organization (WHO). ICD-11: chronic pain classification.</li>
+          <li>National Institute for Health and Care Excellence (NICE). Chronic pain: assessment and management.</li>
+          <li>British Pain Society. Guidelines and patient education resources on persistent pain.</li>
+          <li>Sociedade Brasileira para o Estudo da Dor (SBED). Materiais e diretrizes sobre dor.</li>
+        </ul>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      <strong>FEMIC • Educação em Saúde</strong><br />
+      Conteúdo educativo para apoio ao cuidado. Este material não substitui avaliação individualizada.
+    </footer>
+
+  </div>
+</body>
+</html>
