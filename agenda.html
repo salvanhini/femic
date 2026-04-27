@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>FEMIC Agenda v1.4.38 - Refino Grade Semanal</title>
+<title>FEMIC Agenda v1.4.43 - Grade Semanal Equilibrada</title>
 <meta name="theme-color" content="#0b3c6f" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1293,11 +1293,831 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
   .femic-week-board{--day-min:110px;min-width:830px!important}
 }
 
+
+/* =========================================================
+   FEMIC Agenda v1.4.39 — Refino Aba DIA mobile + desktop safe
+   Alteração visual somente: não altera JS, Supabase, dados ou regras.
+   ========================================================= */
+#panel-day .card:first-child{border-radius:20px!important}
+#panel-day .quick-note{margin-top:10px!important;border-radius:14px!important}
+#panel-day #dayKpis{gap:10px!important}
+#panel-day #dayKpis .kpi{border-radius:16px!important;background:linear-gradient(180deg,#ffffff,#f7fbff)!important}
+#panel-day #dayList{gap:10px!important}
+#panel-day #dayList .item{padding:13px 14px!important;border-radius:18px!important;box-shadow:0 8px 22px rgba(11,60,111,.075)!important;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease!important;overflow:hidden!important}
+#panel-day #dayList .item>div{gap:9px!important}
+#panel-day #dayList .appt-weekday{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-width:38px!important;height:24px!important;padding:3px 7px!important;border-radius:999px!important;background:rgba(31,182,233,.12)!important;border:1px solid rgba(31,182,233,.25)!important;color:var(--primary)!important;font-size:.68rem!important;font-weight:900!important;line-height:1!important}
+#panel-day #dayList .item strong{font-size:.95rem!important;color:var(--primary)!important;line-height:1.18!important;letter-spacing:-.01em!important}
+#panel-day #dayList .item .status-chip{font-size:.68rem!important;padding:3px 7px!important;border-radius:999px!important}
+#panel-day #dayList .item span[style*="font-size:.82rem"]{font-size:.86rem!important;font-weight:800!important;color:var(--text)!important}
+#panel-day #dayList .item .muted{font-size:.74rem!important;line-height:1.25!important}
+#panel-day #dayList .item div[style*="border-top"]{display:flex!important;align-items:center!important;gap:7px!important;border-top:1px solid rgba(11,60,111,.10)!important;padding-top:9px!important}
+#panel-day #dayList .item .btn,#panel-day #dayList .item select{min-height:32px!important;padding:7px 10px!important;font-size:.72rem!important;border-radius:11px!important}
+#panel-day #dayList .item select{width:auto!important;min-width:104px!important;background:#fff!important}
+@media(min-width:769px){#panel-day #dayList .item:hover{transform:translateY(-2px)!important;box-shadow:0 14px 30px rgba(11,60,111,.13)!important;border-color:rgba(31,182,233,.28)!important}}
+@media(max-width:768px){#panel-day .section-title{gap:10px!important}#panel-day .section-title .toolbar{width:100%!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important}#panel-day .section-title .toolbar input[type="date"]{grid-column:1/-1!important;max-width:none!important}#panel-day #dayKpis{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}#panel-day #dayKpis .kpi{padding:10px!important}#panel-day #dayKpis .kpi strong{font-size:1.12rem!important}#panel-day #dayList{gap:9px!important}#panel-day #dayList .item{padding:11px!important;border-radius:16px!important}#panel-day #dayList .item>div{gap:8px!important}#panel-day #dayList .item>div>div:nth-child(1),#panel-day #dayList .item>div>div:nth-child(2){align-items:flex-start!important;gap:6px!important}#panel-day #dayList .appt-weekday{min-width:34px!important;height:22px!important;font-size:.62rem!important;padding:3px 6px!important}#panel-day #dayList .item strong{font-size:.86rem!important}#panel-day #dayList .item .status-chip{font-size:.62rem!important;padding:3px 6px!important}#panel-day #dayList .item span[style*="font-size:.82rem"]{width:100%!important;font-size:.82rem!important}#panel-day #dayList .item .muted{font-size:.7rem!important}#panel-day #dayList .item div[style*="border-top"]{display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important;padding-top:8px!important}#panel-day #dayList .item .btn,#panel-day #dayList .item select{width:100%!important;min-width:0!important;min-height:34px!important;justify-content:center!important;text-align:center!important;font-size:.68rem!important;padding:7px 6px!important}}
+@media(max-width:430px){#panel-day #dayKpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}#panel-day #dayList .item div[style*="border-top"]{grid-template-columns:1fr!important}#panel-day #dayList .item .btn,#panel-day #dayList .item select{min-height:36px!important}}
+
+
+
+/* =========================================================
+   FEMIC Agenda v1.4.40 — Refino Ficha do Paciente
+   Apenas visual/UX. Não altera lógica, Supabase, pacotes ou dados.
+   ========================================================= */
+
+/* Modal da ficha mais confortável em desktop */
+#patientModal .modal{
+  width:min(980px,100%) !important;
+  border-radius:30px;
+  overflow:hidden;
+}
+
+#patientModal .modal-head{
+  background:
+    radial-gradient(circle at 0 0, rgba(31,182,233,.12), transparent 34%),
+    linear-gradient(180deg,#fff,#f8fbff);
+  align-items:flex-start;
+}
+
+#patientModal .modal-head h3{
+  color:var(--primary);
+  font-size:1.24rem;
+  line-height:1.15;
+}
+
+#patientFicha{
+  display:grid;
+  gap:14px;
+}
+
+/* Resumo superior da ficha */
+#patientFicha .patient-summary{
+  grid-template-columns:1.35fr 1fr .7fr .7fr;
+  gap:10px;
+}
+
+#patientFicha .patient-summary .kpi{
+  border-radius:18px;
+  background:linear-gradient(180deg,#ffffff,#f8fbff);
+  box-shadow:0 8px 18px rgba(11,60,111,.055);
+  min-height:82px;
+}
+
+#patientFicha .patient-summary .kpi .small{
+  font-size:.72rem;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  font-weight:900;
+}
+
+#patientFicha .patient-summary .kpi strong{
+  line-height:1.15;
+  word-break:break-word;
+}
+
+/* Blocos internos da ficha */
+#patientFicha > .card{
+  margin-top:0 !important;
+  border-radius:22px;
+  box-shadow:0 10px 24px rgba(11,60,111,.07);
+}
+
+#patientFicha > .card > .eyebrow{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 9px;
+  border-radius:999px;
+  background:rgba(31,182,233,.10);
+  border:1px solid rgba(31,182,233,.18);
+  color:var(--primary);
+  margin-bottom:12px;
+}
+
+/* Pacotes dentro da ficha */
+#patientFicha .package-card,
+#patientFicha .item.package-card{
+  border-radius:18px;
+  padding:13px;
+  background:linear-gradient(180deg,#fff,#fbfdff);
+}
+
+#patientFicha .package-progress{
+  height:11px;
+  margin-top:10px;
+}
+
+#patientFicha .package-actions{
+  margin-top:10px;
+}
+
+#patientFicha .package-actions .btn{
+  min-height:34px;
+  border-radius:12px;
+  padding:7px 10px;
+  font-size:.76rem;
+}
+
+/* Padrão de agendamento do pacote — leitura mais clara */
+#patientFicha .package-pattern,
+#patientFicha .pkg-pattern,
+#patientFicha .package-schedule-pattern,
+#patientFicha .femic-package-pattern{
+  margin-top:10px !important;
+  border-radius:16px !important;
+  background:linear-gradient(180deg,#f4fbff,#fff) !important;
+  border:1px solid rgba(31,182,233,.18) !important;
+  padding:10px 11px !important;
+}
+
+#patientFicha .package-pattern-title,
+#patientFicha .pkg-pattern-title,
+#patientFicha .femic-package-pattern-title{
+  color:var(--primary) !important;
+  font-size:.78rem !important;
+  font-weight:900 !important;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  margin-bottom:6px !important;
+}
+
+/* Timeline de agendamentos */
+#patientFicha .timeline-list{
+  display:grid;
+  gap:9px;
+  max-height:44vh !important;
+  padding-right:5px;
+}
+
+#patientFicha .timeline-item{
+  border-radius:17px;
+  padding:12px;
+  background:linear-gradient(180deg,#fff,#fbfdff);
+  box-shadow:0 7px 16px rgba(11,60,111,.055);
+}
+
+#patientFicha .timeline-item .item-top{
+  align-items:flex-start;
+  gap:10px;
+}
+
+#patientFicha .timeline-item strong{
+  display:block;
+  color:var(--primary);
+  font-size:.9rem;
+  line-height:1.25;
+}
+
+#patientFicha .timeline-item .muted.small{
+  margin-top:5px;
+}
+
+#patientFicha .timeline-item .toolbar{
+  justify-content:flex-end;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+#patientFicha .timeline-item .toolbar .btn,
+#patientFicha .timeline-item .status-actions .btn{
+  min-height:32px;
+  padding:6px 9px;
+  border-radius:11px;
+  font-size:.72rem;
+}
+
+#patientFicha .timeline-item .status-actions{
+  margin-top:8px;
+  padding-top:8px;
+  border-top:1px solid rgba(11,60,111,.10);
+}
+
+/* Scroll discreto na ficha */
+#patientFicha .timeline-list::-webkit-scrollbar{
+  width:6px;
+}
+#patientFicha .timeline-list::-webkit-scrollbar-track{
+  background:rgba(11,60,111,.04);
+  border-radius:999px;
+}
+#patientFicha .timeline-list::-webkit-scrollbar-thumb{
+  background:rgba(11,60,111,.18);
+  border-radius:999px;
+}
+
+/* Mobile: ficha em cartões mais tocáveis e sem apertar botões */
+@media(max-width:768px){
+  #patientModal .modal,
+  #patientModal .modal.sm{
+    width:100% !important;
+    border-radius:22px 22px 0 0 !important;
+  }
+
+  #patientModal .modal-head{
+    padding:13px 14px;
+  }
+
+  #patientModal .modal-head h3{
+    font-size:1.06rem;
+  }
+
+  #patientFicha{
+    gap:10px;
+  }
+
+  #patientFicha .patient-summary{
+    grid-template-columns:1fr 1fr !important;
+    gap:8px;
+  }
+
+  #patientFicha .patient-summary .kpi{
+    min-height:70px;
+    padding:10px;
+    border-radius:15px;
+  }
+
+  #patientFicha .patient-summary .kpi .small{
+    font-size:.62rem;
+  }
+
+  #patientFicha .patient-summary .kpi strong,
+  #patientFicha .patient-summary .kpi strong[style]{
+    font-size:.86rem !important;
+  }
+
+  #patientFicha > .card{
+    border-radius:18px;
+    padding:12px;
+  }
+
+  #patientFicha > .card > .eyebrow{
+    font-size:.62rem;
+    padding:4px 7px;
+    margin-bottom:9px;
+  }
+
+  #patientFicha .package-card,
+  #patientFicha .item.package-card{
+    padding:10px;
+    border-radius:15px;
+  }
+
+  #patientFicha .package-actions{
+    justify-content:flex-start;
+  }
+
+  #patientFicha .package-actions .btn{
+    flex:1 1 auto;
+    justify-content:center;
+    font-size:.68rem;
+    padding:6px 7px;
+  }
+
+  #patientFicha .timeline-list{
+    max-height:36dvh !important;
+    gap:8px;
+  }
+
+  #patientFicha .timeline-item{
+    padding:10px;
+    border-radius:15px;
+  }
+
+  #patientFicha .timeline-item .item-top{
+    flex-direction:column;
+    gap:7px;
+  }
+
+  #patientFicha .timeline-item strong{
+    font-size:.8rem;
+  }
+
+  #patientFicha .timeline-item .muted.small{
+    font-size:.7rem;
+  }
+
+  #patientFicha .timeline-item .toolbar{
+    width:100%;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+  }
+
+  #patientFicha .timeline-item .toolbar .btn{
+    width:100%;
+    justify-content:center;
+    font-size:.68rem;
+    padding:6px 7px;
+  }
+
+  #patientFicha .timeline-item .status-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:5px;
+  }
+
+  #patientFicha .timeline-item .status-actions .btn{
+    justify-content:center;
+    font-size:.66rem;
+    padding:6px 6px;
+  }
+}
+
+@media(max-width:430px){
+  #patientFicha .patient-summary{
+    grid-template-columns:1fr !important;
+  }
+
+  #patientFicha .timeline-item .toolbar,
+  #patientFicha .timeline-item .status-actions{
+    grid-template-columns:1fr;
+  }
+}
+
+
+
+/* =========================================================
+   FEMIC Agenda v1.4.41 — Correção desktop da grade semanal
+   Tipo: visual/UX. Não altera Supabase, banco, pacotes ou salvamento.
+   Motivo: em desktop, muitos pacientes simultâneos deixavam cards estreitos.
+   Estratégia: ampliar colunas no desktop, aumentar respiro vertical e simplificar card.
+   ========================================================= */
+
+@media (min-width: 769px){
+  #weekView{
+    overflow-x:auto !important;
+    overflow-y:visible !important;
+    padding:10px 2px 16px !important;
+    border-radius:24px !important;
+    scrollbar-width:thin;
+  }
+
+  #weekBoard.week-board{
+    overflow:visible !important;
+  }
+
+  .femic-week-board{
+    --time-col:86px !important;
+    --day-min:320px !important;
+    --hour-h:86px !important;
+    min-width:2326px !important;
+    border-radius:26px !important;
+    background:#fff !important;
+  }
+
+  .femic-week-head{
+    min-height:50px !important;
+    font-size:.9rem !important;
+    padding:11px 8px !important;
+    background:linear-gradient(180deg,#f8fbff,#eef6fb) !important;
+  }
+
+  .femic-week-axis{
+    background:linear-gradient(180deg,#f8fbfd,#f2f7fb) !important;
+  }
+
+  .femic-week-hour{
+    right:12px !important;
+    font-size:.78rem !important;
+    color:#526b80 !important;
+  }
+
+  .femic-week-day{
+    overflow:hidden !important;
+    background:linear-gradient(180deg,#fff,#fbfdff) !important;
+  }
+
+  .femic-week-day.today{
+    background:linear-gradient(180deg,#eefaff,#ffffff) !important;
+  }
+
+  .femic-week-line{
+    background:rgba(11,60,111,.085) !important;
+  }
+
+  .femic-week-line.major{
+    background:rgba(11,60,111,.18) !important;
+  }
+
+  .femic-week-period{
+    background:rgba(31,182,233,.035) !important;
+  }
+
+  .femic-week-empty-label{
+    top:7px !important;
+    right:8px !important;
+    font-size:.68rem !important;
+    padding:4px 8px !important;
+    background:rgba(255,255,255,.92) !important;
+  }
+
+  .femic-week-card{
+    padding:7px 8px !important;
+    border-radius:13px !important;
+    min-height:34px !important;
+    gap:3px !important;
+    box-shadow:0 6px 14px rgba(11,60,111,.10) !important;
+    border:1px solid rgba(11,60,111,.10) !important;
+    border-left-width:6px !important;
+    overflow:hidden !important;
+  }
+
+  .femic-week-card:hover{
+    z-index:40 !important;
+    min-height:max-content !important;
+    width:max(180px, var(--femic-card-width, 100%)) !important;
+    max-width:260px !important;
+    overflow:visible !important;
+  }
+
+  .femic-week-card .appt-time{
+    font-size:.68rem !important;
+    padding:2px 6px !important;
+    margin:0 !important;
+    width:max-content !important;
+  }
+
+  .femic-week-card .appt-name{
+    display:block !important;
+    font-size:.82rem !important;
+    line-height:1.15 !important;
+    font-weight:900 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    margin-top:1px !important;
+  }
+
+  .femic-week-card .small{
+    display:none !important;
+  }
+
+  .femic-week-card .appt-meta{
+    display:none !important;
+  }
+
+  .femic-week-card:hover .small,
+  .femic-week-card:hover .appt-meta{
+    display:flex !important;
+    white-space:normal !important;
+    overflow:visible !important;
+    margin-top:3px !important;
+  }
+
+  .femic-week-card:hover .small{
+    display:block !important;
+    font-size:.68rem !important;
+    line-height:1.18 !important;
+  }
+
+  .femic-week-card .appt-actions{
+    margin-top:5px !important;
+  }
+
+  .femic-week-card .mini-action{
+    font-size:.66rem !important;
+    padding:4px 6px !important;
+  }
+}
+
+@media (min-width: 1200px){
+  .femic-week-board{
+    --day-min:340px !important;
+    min-width:2466px !important;
+  }
+}
+
+@media (min-width: 1500px){
+  .femic-week-board{
+    --day-min:360px !important;
+    min-width:2606px !important;
+  }
+}
+
+
+
+/* =========================================================
+   FEMIC Agenda v1.4.42 — Semana desktop completa e rolável
+   Tipo: visual/UX. Não altera JS, Supabase, banco, pacotes ou regras.
+   Correção: v1.4.41 deixou as colunas largas demais e escondia sex/sáb/dom.
+   Estratégia: usar largura total do navegador na aba Agenda e colunas equilibradas.
+   ========================================================= */
+@media (min-width: 769px){
+
+  /* A aba Agenda ganha largura total do desktop sem afetar as outras abas */
+  #panel-agenda{
+    width:calc(100vw - 24px) !important;
+    max-width:none !important;
+    margin-left:calc(50% - 50vw + 12px) !important;
+    margin-right:0 !important;
+  }
+
+  #panel-agenda > .card{
+    border-radius:22px !important;
+    padding:14px !important;
+  }
+
+  #weekView{
+    width:100% !important;
+    max-width:100% !important;
+    overflow-x:auto !important;
+    overflow-y:visible !important;
+    padding:8px 0 14px !important;
+    scrollbar-width:thin !important;
+  }
+
+  #weekBoard.week-board{
+    width:100% !important;
+    max-width:none !important;
+    overflow:visible !important;
+  }
+
+  .femic-week-board{
+    --time-col:72px !important;
+    --day-min:178px !important;
+    --hour-h:78px !important;
+    width:100% !important;
+    min-width:1320px !important;
+    grid-template-columns:var(--time-col) repeat(7,minmax(var(--day-min),1fr)) !important;
+    border-radius:22px !important;
+    box-shadow:0 14px 30px rgba(11,60,111,.09) !important;
+  }
+
+  .femic-week-head{
+    min-height:46px !important;
+    height:46px !important;
+    font-size:.82rem !important;
+    padding:9px 6px !important;
+  }
+
+  .femic-week-hour{
+    right:9px !important;
+    font-size:.74rem !important;
+  }
+
+  .femic-week-empty-label{
+    top:6px !important;
+    right:6px !important;
+    font-size:.62rem !important;
+    padding:3px 7px !important;
+  }
+
+  .femic-week-card{
+    padding:6px 7px !important;
+    border-radius:12px !important;
+    min-height:30px !important;
+    gap:2px !important;
+    box-shadow:0 5px 12px rgba(11,60,111,.09) !important;
+  }
+
+  .femic-week-card .appt-time{
+    font-size:.64rem !important;
+    padding:2px 6px !important;
+    margin:0 !important;
+    max-width:100% !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+
+  .femic-week-card .appt-name{
+    font-size:.76rem !important;
+    line-height:1.12 !important;
+    font-weight:900 !important;
+  }
+
+  .femic-week-card .small,
+  .femic-week-card .appt-meta{
+    display:none !important;
+  }
+
+  .femic-week-card:hover{
+    z-index:45 !important;
+    width:min(230px, max(100%, 170px)) !important;
+    min-height:max-content !important;
+    overflow:visible !important;
+  }
+
+  .femic-week-card:hover .small{
+    display:block !important;
+    font-size:.66rem !important;
+    line-height:1.18 !important;
+    white-space:normal !important;
+  }
+
+  .femic-week-card:hover .appt-meta{
+    display:flex !important;
+  }
+}
+
+/* Em telas muito largas, aumenta um pouco o conforto sem esconder a semana */
+@media (min-width: 1500px){
+  .femic-week-board{
+    --day-min:190px !important;
+    min-width:1402px !important;
+  }
+}
+
+/* Em notebooks menores, mantém a semana usável com rolagem horizontal real */
+@media (min-width: 769px) and (max-width: 1180px){
+  .femic-week-board{
+    min-width:1260px !important;
+    --day-min:170px !important;
+  }
+}
+
+
+
+/* =========================================================
+   FEMIC Agenda v1.4.43 — Grade semanal equilibrada no desktop
+   Tipo: visual apenas. Menor risco: não altera JS, banco, Supabase,
+   pacotes, status, regras de horário ou salvamento.
+   Objetivo: caber os 7 dias no desktop com cards legíveis e hover para detalhes.
+   ========================================================= */
+@media (min-width: 769px){
+  #panel-agenda{
+    width:calc(100vw - 20px) !important;
+    max-width:none !important;
+    margin-left:calc(50% - 50vw + 10px) !important;
+    margin-right:0 !important;
+  }
+
+  #panel-agenda > .card{
+    padding:12px !important;
+    border-radius:20px !important;
+  }
+
+  #weekView{
+    width:100% !important;
+    max-width:100% !important;
+    overflow-x:auto !important;
+    overflow-y:visible !important;
+    padding:6px 0 12px !important;
+    border-radius:20px !important;
+    background:linear-gradient(180deg,rgba(255,255,255,.76),rgba(248,252,255,.58)) !important;
+    scrollbar-width:thin !important;
+  }
+
+  #weekBoard.week-board{
+    width:100% !important;
+    max-width:none !important;
+    overflow:visible !important;
+  }
+
+  .femic-week-board{
+    --time-col:62px !important;
+    --day-min:0px !important;
+    width:100% !important;
+    min-width:0 !important;
+    max-width:100% !important;
+    grid-template-columns:var(--time-col) repeat(7,minmax(0,1fr)) !important;
+    border-radius:20px !important;
+    border-color:rgba(11,60,111,.12) !important;
+    box-shadow:0 12px 28px rgba(11,60,111,.08) !important;
+    background:#fff !important;
+  }
+
+  .femic-week-head{
+    height:42px !important;
+    min-height:42px !important;
+    padding:7px 5px !important;
+    font-size:.78rem !important;
+    line-height:1.1 !important;
+    letter-spacing:-.01em !important;
+  }
+
+  .femic-week-axis{
+    background:linear-gradient(180deg,#f8fbfd,#f2f7fb) !important;
+  }
+
+  .femic-week-hour{
+    right:7px !important;
+    font-size:.68rem !important;
+    color:#526b80 !important;
+  }
+
+  .femic-week-day{
+    overflow:hidden !important;
+    background:linear-gradient(180deg,#fff,#fbfdff) !important;
+  }
+
+  .femic-week-day.today{
+    background:linear-gradient(180deg,#eefaff,#ffffff) !important;
+  }
+
+  .femic-week-line{background:rgba(11,60,111,.075) !important;}
+  .femic-week-line.major{background:rgba(11,60,111,.15) !important;}
+  .femic-week-period{background:rgba(31,182,233,.032) !important;}
+
+  .femic-week-empty-label{
+    top:5px !important;
+    right:5px !important;
+    font-size:.58rem !important;
+    padding:2px 6px !important;
+    background:rgba(255,255,255,.88) !important;
+  }
+
+  .femic-week-card{
+    padding:5px 5px !important;
+    border-radius:10px !important;
+    min-height:26px !important;
+    gap:1px !important;
+    box-shadow:0 4px 10px rgba(11,60,111,.08) !important;
+    border:1px solid rgba(11,60,111,.09) !important;
+    border-left-width:5px !important;
+    overflow:hidden !important;
+    background-clip:padding-box !important;
+  }
+
+  .femic-week-card .appt-time{
+    max-width:100% !important;
+    font-size:.58rem !important;
+    line-height:1.05 !important;
+    padding:2px 5px !important;
+    margin:0 0 1px 0 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+
+  .femic-week-card .appt-name{
+    display:block !important;
+    max-width:100% !important;
+    font-size:.68rem !important;
+    line-height:1.08 !important;
+    font-weight:900 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    margin:0 !important;
+    color:var(--primary) !important;
+  }
+
+  .femic-week-card .small,
+  .femic-week-card .appt-meta,
+  .femic-week-card .service-badge,
+  .femic-week-card .appt-actions{
+    display:none !important;
+  }
+
+  .femic-week-card:hover,
+  .femic-week-card:focus-within{
+    z-index:60 !important;
+    min-height:max-content !important;
+    width:min(240px, max(170px, 100%)) !important;
+    overflow:visible !important;
+    box-shadow:0 16px 30px rgba(11,60,111,.18) !important;
+  }
+
+  .femic-week-card:hover .small,
+  .femic-week-card:focus-within .small{
+    display:block !important;
+    font-size:.64rem !important;
+    line-height:1.18 !important;
+    white-space:normal !important;
+    overflow:visible !important;
+    margin-top:3px !important;
+  }
+
+  .femic-week-card:hover .appt-meta,
+  .femic-week-card:focus-within .appt-meta{
+    display:flex !important;
+    margin-top:3px !important;
+  }
+
+  .femic-week-card:hover .appt-actions,
+  .femic-week-card:focus-within .appt-actions{
+    display:flex !important;
+  }
+
+  .femic-week-card .mini-action{
+    font-size:.62rem !important;
+    padding:4px 5px !important;
+  }
+}
+
+/* Notebooks estreitos: mantém 7 dias visíveis, reduzindo só tipografia e respiro */
+@media (min-width: 769px) and (max-width: 1280px){
+  .femic-week-board{--time-col:56px !important;}
+  .femic-week-head{font-size:.72rem !important;padding:6px 3px !important;}
+  .femic-week-hour{font-size:.62rem !important;right:5px !important;}
+  .femic-week-card{padding:4px 4px !important;border-radius:9px !important;border-left-width:4px !important;}
+  .femic-week-card .appt-time{font-size:.52rem !important;padding:1px 4px !important;}
+  .femic-week-card .appt-name{font-size:.62rem !important;}
+  .femic-week-empty-label{font-size:.52rem !important;padding:2px 5px !important;}
+}
+
+/* Telas muito largas: aproveita espaço, mas sem exagerar nas colunas */
+@media (min-width: 1600px){
+  .femic-week-board{--time-col:66px !important;}
+  .femic-week-card .appt-name{font-size:.72rem !important;}
+  .femic-week-card .appt-time{font-size:.62rem !important;}
+}
+
 </style>
 </head>
 <body>
 <div class="toast-wrap" id="toastWrap"></div>
-<div class="topbar"><div class="topbar-inner"><div class="brand"><div class="logo"></div><div><h1>FEMIC Agenda v1.4.38</h1><p>Ficha com dia da semana · agenda preservada</p></div></div><div class="toolbar"><button class="btn primary" onclick="openAppt()">+ Agendar</button><button class="btn" onclick="loadAll()">↻ Atualizar</button><button class="btn ghost" onclick="goToday()">Hoje</button></div></div></div>
+<div class="topbar"><div class="topbar-inner"><div class="brand"><div class="logo"></div><div><h1>FEMIC Agenda v1.4.43</h1><p>Grade semanal equilibrada · desktop completo · mobile preservado</p></div></div><div class="toolbar"><button class="btn primary" onclick="openAppt()">+ Agendar</button><button class="btn" onclick="loadAll()">↻ Atualizar</button><button class="btn ghost" onclick="goToday()">Hoje</button></div></div></div>
 <div class="wrap">
   <div class="tabs">
     <button class="tab active" data-panel="dashboard" onclick="showPanel('dashboard')">📊 Dashboard</button>
@@ -2590,8 +3410,8 @@ function renderWeek(){
   $('periodLabel').textContent=`Semana de ${fmtDate(isoDate(days[0]))} a ${fmtDate(isoDate(days[6]))}`;
   const bounds=femicWeekBoundsV1434();
   const mobile=window.matchMedia&&window.matchMedia('(max-width:768px)').matches;
-  const pxPerMin=mobile?1.03:1.2;
-  const bodyH=Math.max(520,Math.round(bounds.total*pxPerMin));
+  const pxPerMin=mobile?1.03:1.55;
+  const bodyH=Math.max(mobile?520:680,Math.round(bounds.total*pxPerMin));
   const hourMarks=[]; for(let m=bounds.start;m<=bounds.end;m+=60) hourMarks.push(m);
   const slotLines=slots().map(timeToMin).filter(m=>m>=bounds.start&&m<=bounds.end);
   let html=`<div class="femic-week-board" style="grid-template-rows:44px ${bodyH}px">`;
