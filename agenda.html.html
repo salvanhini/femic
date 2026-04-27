@@ -339,7 +339,22 @@ function renderMonth(){$('monthView').classList.remove('hidden');$('weekView').c
 function renderWeek(){$('monthView').classList.add('hidden');$('weekView').classList.remove('hidden');const start=weekStart(currentDate);const days=[0,1,2,3,4,5,6].map(i=>{const d=new Date(start);d.setDate(start.getDate()+i);return d});$('periodLabel').textContent=`Semana de ${fmtDate(isoDate(days[0]))} a ${fmtDate(isoDate(days[6]))}`;let html='<div class="week-cell head week-time">Hora</div>';days.forEach(d=>{const ds=isoDate(d);html+=`<div class="week-cell head ${ds===todayIso()?'today-head':''}">${d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})}</div>`});slots().forEach(slot=>{html+=`<div class="week-cell week-time">${slot}</div>`;days.forEach(d=>{const ds=isoDate(d),off=isClosedForView(ds);const base=agendaFiltered(appointments.filter(a=>a.appointment_date===ds));const atSlot=base.filter(a=>normalizeTime(a.start_time)===slot);const overlapping=base.filter(a=>a.status!=='cancelado'&&timeToMin(normalizeTime(a.start_time))<timeToMin(addMinutes(slot,Number(settings.slot_interval_minutes||30)))&&timeToMin(normalizeTime(a.end_time))>timeToMin(slot));html+=`<div class="week-cell week-slot ${ds===todayIso()?'today-slot':''} ${off?'closed':''}" onclick="${off?'':'openAppt(\''+ds+'\',null,\''+slot+'\')'}">`;if(!off)html+=`<div class="capacity ${overlapping.length>=Number(settings.max_patients_per_slot||4)?'full':''}">${overlapping.length}/${settings.max_patients_per_slot||4}</div>`;atSlot.forEach(a=>html+=apptCard(a,'week-appt'));html+='</div>'})});$('weekBoard').innerHTML=html}
 function weekdayShort(dateStr){if(!dateStr)return'';const d=new Date(String(dateStr)+'T00:00:00');return['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()]||''}
 function weekdayFull(dateStr){if(!dateStr)return'';const d=new Date(String(dateStr)+'T00:00:00');return['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'][d.getDay()]||''}
-function apptCard(a,cls){const p=patientById(a.patient_id),s=serviceById(a.service_id);const label={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;return `<div class="${cls} status-${a.status}" onclick="event.stopPropagation();openAppt('${a.appointment_date}','${a.id}')"><div class="appt-time">${normalizeTime(a.start_time)}–${normalizeTime(a.end_time)}</div><strong>${esc(p.name||'Paciente')}</strong><div class="muted small">${esc(s.name||'Sem serviço')} · <span class="status-chip ${a.status}">${label}</span></div>${saldoBadge(a.patient_id,a.service_id)}</div>`}
+function apptCard(a,cls){
+  const p=patientById(a.patient_id),s=serviceById(a.service_id);
+  const label={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;
+  return `<div class="${cls} status-${a.status}" onclick="event.stopPropagation();openAppt('${a.appointment_date}','${a.id}')">
+    <div class="appt-weekday">${weekdayShort(a.appointment_date)}</div>
+    <div class="appt-time">${normalizeTime(a.start_time)}–${normalizeTime(a.end_time)}</div>
+    <strong class="appt-name" title="${esc(p.name||'Paciente')}">${esc(p.name||'Paciente')}</strong>
+    <div class="appt-meta"><span class="status-chip ${a.status}">${label}</span></div>
+    <div class="small" style="margin-top:3px;color:var(--muted);font-size:.7rem">${esc(s.name||'Sem serviço')}</div>
+    ${saldoBadge(a.patient_id,a.service_id)}
+    <div class="appt-actions">
+      <button class="mini-action" onclick="event.stopPropagation();openPatient('${a.patient_id}')">👤 Ficha</button>
+      <button class="mini-action" onclick="event.stopPropagation();sendWhatsapp('${a.id}',false,'appointment')">💬 WhatsApp</button>
+    </div>
+  </div>`;
+}
 function saldoBadge(pid,sid){const pk=packages.find(p=>String(p.patient_id)===String(pid)&&String(p.service_id)===String(sid)&&p.active!==false);if(!pk)return'<div class="small muted">Sem pacote</div>';const total=Number(pk.total_sessions||0),r=Number(pk.remaining_sessions||0),used=Math.max(0,total-r);return`<div class="small ${r===0?'saldo-zero':r<=3?'saldo-low':'muted'}"><span class="used-counter">${used}/${total} usadas</span> · saldo ${r}</div>`}
 function getServiceDefaultPrice(sid){const s=serviceById(sid);return Number(s.price||0)}
 function setAppointmentPriceFromService(force=false){const input=$('apptPrice');if(!input)return;const current=String(input.value||'').trim();if(force||!current){input.value=String(getServiceDefaultPrice($('apptService').value)||0)}}
