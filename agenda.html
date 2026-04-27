@@ -17,6 +17,279 @@
 .rec-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:10px}.rec-day-card{border:1px solid var(--line);border-radius:16px;background:#fff;padding:10px;display:grid;gap:8px}.rec-day-card .rec-title{display:flex;align-items:center;gap:8px;font-weight:800;color:var(--primary)}.rec-day-card input[type=time]{padding:9px 10px}.rec-day-card:not(.active){opacity:.62;background:#f8fbfd}.rec-day-card.active{box-shadow:0 10px 22px rgba(11,60,111,.08);border-color:rgba(31,182,233,.35)}
 
 /* =========================================================
+   FEMIC Agenda v1.4.44 - Grade Semanal Visual Aprimorada
+   Melhorias visuais: cards, separação de horários, legibilidade
+   ========================================================= */
+
+/* Grade semanal - melhorias visuais */
+.week-board {
+  grid-template-columns: 90px repeat(7, minmax(180px, 1fr));
+  border-radius: 28px;
+  background: linear-gradient(180deg, #fff, #f9fcff);
+  box-shadow: 0 20px 48px rgba(11, 60, 111, 0.12);
+  border: 1.5px solid rgba(11, 60, 111, 0.12);
+}
+
+.week-cell {
+  min-height: 135px;
+  padding: 10px;
+  border-right: 1.5px solid rgba(11, 60, 111, 0.08);
+  border-bottom: 1.5px solid rgba(11, 60, 111, 0.08);
+  background: #fff;
+}
+
+.week-cell.head {
+  padding: 14px 10px;
+  background: linear-gradient(180deg, #f5faff, #edf6fd);
+  font-size: 0.88rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  color: var(--primary);
+  border-bottom: 2px solid rgba(11, 60, 111, 0.15);
+}
+
+.week-cell.today-head {
+  background: linear-gradient(135deg, #e0f8ff, #f0fbff);
+  box-shadow: inset 0 -4px 0 rgba(31, 182, 233, 0.4);
+  color: #0a4d6e;
+}
+
+.week-time {
+  font-size: 0.92rem;
+  font-weight: 900;
+  background: linear-gradient(180deg, #f9fbfd, #f3f8fb);
+  color: #5a7186;
+  padding-right: 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-right: 2px solid rgba(11, 60, 111, 0.12);
+}
+
+.week-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px;
+  background: #fff;
+  border-radius: 4px;
+  position: relative;
+}
+
+.week-slot::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(11, 60, 111, 0.08), transparent);
+}
+
+.week-slot.today-slot {
+  background: linear-gradient(180deg, #f4fcff, #ffffff) !important;
+  box-shadow: inset 0 0 0 2px rgba(31, 182, 233, 0.15);
+}
+
+.week-slot.closed {
+  background: repeating-linear-gradient(
+    135deg,
+    #f3f6f9,
+    #f3f6f9 10px,
+    #e8edf3 10px,
+    #e8edf3 20px
+  );
+  opacity: 0.65;
+}
+
+.week-slot:not(.closed):hover {
+  background: linear-gradient(180deg, #f9fdff, #f0faff);
+  transform: scale(1.005);
+  transition: all 0.2s ease;
+}
+
+/* Cards de agendamento aprimorados */
+.week-appt, .appt {
+  position: relative;
+  border: 1.5px solid rgba(11, 60, 111, 0.12);
+  border-radius: 14px;
+  padding: 9px 10px;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(11, 60, 111, 0.08);
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  margin: 0;
+}
+
+.week-appt:hover, .appt:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 32px rgba(11, 60, 111, 0.16);
+  z-index: 15;
+  border-color: rgba(31, 182, 233, 0.3);
+}
+
+.week-appt strong, .appt strong {
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--primary);
+  line-height: 1.3;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.appt-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #0a4d6e;
+  background: rgba(31, 182, 233, 0.12);
+  border: 1px solid rgba(31, 182, 233, 0.22);
+  border-radius: 999px;
+  padding: 3px 8px;
+  margin-bottom: 5px;
+}
+
+.appt-name {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.appt-meta {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 5px;
+}
+
+.appt-meta .status-chip,
+.appt-meta .service-badge {
+  font-size: 0.68rem;
+  padding: 3px 7px;
+  font-weight: 800;
+}
+
+/* Indicador de capacidade melhorado */
+.capacity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+  font-size: 0.76rem;
+  font-weight: 900;
+  color: #5a7186;
+}
+
+.capacity::after {
+  content: '';
+  height: 8px;
+  flex: 1;
+  min-width: 40px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(31, 182, 233, 0.45) var(--occ, 0%),
+    #e8f3f8 var(--occ, 0%)
+  );
+  border: 1.5px solid rgba(11, 60, 111, 0.1);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.capacity.full::after {
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.6) 100%, #e8f3f8 100%);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Status aprimorados com melhor contraste */
+.status-agendado {
+  background: linear-gradient(180deg, #fffcf3, #fff);
+  border-left: 7px solid var(--warning);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.12);
+}
+
+.status-confirmado {
+  background: linear-gradient(180deg, #f0f7ff, #fff);
+  border-left: 7px solid #2563eb;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+}
+
+.status-concluido {
+  background: linear-gradient(180deg, #f1fdf6, #fff);
+  border-left: 7px solid var(--success);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.12);
+}
+
+.status-cancelado {
+  background: linear-gradient(180deg, #fef3f3, #fff);
+  border-left: 7px solid var(--danger);
+  opacity: 0.78;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.12);
+}
+
+.status-cancelado .appt-name {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+/* Melhorias responsivas para grade semanal */
+@media (min-width: 1200px) {
+  .week-board {
+    grid-template-columns: 95px repeat(7, minmax(185px, 1fr));
+  }
+  
+  .week-cell {
+    min-height: 145px;
+  }
+  
+  .week-time {
+    font-size: 0.96rem;
+  }
+}
+
+@media (max-width: 1100px) {
+  .week-board {
+    grid-template-columns: 80px repeat(7, minmax(160px, 1fr));
+  }
+  
+  .week-cell {
+    min-height: 115px;
+    padding: 8px;
+  }
+  
+  .week-appt strong {
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 980px) {
+  .week-board {
+    grid-template-columns: 70px repeat(7, minmax(145px, 1fr));
+  }
+  
+  .week-cell {
+    min-height: 100px;
+    padding: 7px;
+  }
+  
+  .week-appt, .appt {
+    padding: 7px 8px;
+  }
+  
+  .appt-actions {
+    display: flex !important;
+  }
+}
+
+/* =========================================================
    FEMIC Agenda v1.4.36 - Ficha com dia da semana — Refinamento visual responsivo
    Ajuste apenas visual: mantém lógica, Supabase e funções existentes.
    ========================================================= */
