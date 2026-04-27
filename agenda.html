@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>FEMIC Agenda v1.4.36 - Ficha com dia da semana</title>
+<title>FEMIC Agenda v1.4.38 - Refino Grade Semanal</title>
 <meta name="theme-color" content="#0b3c6f" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1135,7 +1135,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
 }
 
 
-/* FEMIC Agenda v1.4.37 — Padrão visual do pacote na ficha */
+/* FEMIC Agenda v1.4.38 — Padrão visual do pacote na ficha */
 .package-pattern{margin-top:10px;padding:10px 11px;border:1px solid rgba(11,60,111,.11);border-radius:15px;background:linear-gradient(180deg,#f8fbff,#fff)}
 .package-pattern-title{display:flex;align-items:center;gap:7px;font-size:.78rem;font-weight:900;color:var(--primary);margin-bottom:7px}
 .package-pattern-list{display:flex;flex-wrap:wrap;gap:6px}
@@ -1143,11 +1143,161 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
 .package-pattern-note{margin-top:7px;color:var(--muted);font-size:.72rem;line-height:1.25}
 @media(max-width:768px){.package-pattern{padding:8px 9px;border-radius:13px}.package-pattern-title{font-size:.72rem}.package-pattern-chip{font-size:.66rem;padding:4px 7px}.package-pattern-note{font-size:.66rem}}
 
+
+
+/* =========================================================
+   FEMIC Agenda v1.4.38 — Refino visual seguro da grade semanal
+   Tipo: visual. Não altera JS, Supabase, dados, pacotes ou regras.
+   Objetivo: melhorar alinhamento, leitura e consistência dos cards.
+   ========================================================= */
+#weekView{
+  border-radius:24px;
+  background:linear-gradient(180deg,rgba(255,255,255,.72),rgba(248,252,255,.58));
+}
+.femic-week-board{
+  --time-col:78px;
+  --day-min:162px;
+  --hour-h:74px;
+  border-radius:26px!important;
+  border-color:rgba(11,60,111,.12)!important;
+  box-shadow:0 18px 40px rgba(11,60,111,.10)!important;
+}
+.femic-week-head{
+  min-height:46px;
+  padding:9px 7px!important;
+  font-size:.84rem!important;
+  letter-spacing:-.01em;
+}
+.femic-week-axis{
+  box-shadow:inset -1px 0 0 rgba(11,60,111,.04);
+}
+.femic-week-hour{
+  right:10px!important;
+  font-size:.72rem!important;
+  padding:2px 0;
+  color:#5f7388!important;
+}
+.femic-week-day{
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.98),rgba(250,253,255,.96));
+}
+.femic-week-day.today{
+  background:
+    linear-gradient(180deg,rgba(239,251,255,.98),rgba(255,255,255,.97))!important;
+}
+.femic-week-day.closed{
+  opacity:.82!important;
+}
+.femic-week-line{
+  background:rgba(11,60,111,.07)!important;
+}
+.femic-week-line.major{
+  background:rgba(11,60,111,.15)!important;
+}
+.femic-week-period{
+  background:rgba(31,182,233,.035)!important;
+}
+.femic-week-empty-label{
+  top:7px!important;
+  right:7px!important;
+  font-size:.58rem!important;
+  opacity:.82;
+}
+.femic-week-card{
+  border-radius:13px!important;
+  padding:6px 7px!important;
+  gap:3px!important;
+  box-shadow:0 7px 15px rgba(11,60,111,.095)!important;
+  border:1px solid rgba(11,60,111,.09)!important;
+  border-left-width:6px!important;
+  transition:box-shadow .15s ease, transform .15s ease, filter .15s ease!important;
+}
+.femic-week-card:hover{
+  transform:translateY(-1px)!important;
+  filter:saturate(1.02);
+}
+.femic-week-card .appt-time{
+  width:max-content;
+  max-width:100%;
+  font-size:.58rem!important;
+  line-height:1.05!important;
+  padding:2px 5px!important;
+  margin-bottom:1px!important;
+}
+.femic-week-card .appt-name{
+  font-size:.7rem!important;
+  line-height:1.12!important;
+  letter-spacing:-.01em;
+}
+.femic-week-card .small{
+  font-size:.56rem!important;
+  line-height:1.12!important;
+  opacity:.92;
+}
+.femic-week-card .appt-meta{
+  gap:3px!important;
+}
+.femic-week-card .status-chip,
+.femic-week-card .service-badge{
+  font-size:.52rem!important;
+  padding:2px 4px!important;
+  line-height:1!important;
+  max-width:100%;
+}
+.femic-week-card .appt-actions{
+  border:1px solid rgba(11,60,111,.08)!important;
+}
+.femic-week-card .mini-action,
+.femic-week-card .btn{
+  min-height:24px!important;
+  padding:4px 6px!important;
+  font-size:.62rem!important;
+  border-radius:8px!important;
+}
+/* mantém a cor semântica, mas reduz ruído visual */
+.femic-week-card.status-agendado{background:linear-gradient(180deg,#fffaf0,#fff)!important;}
+.femic-week-card.status-confirmado{background:linear-gradient(180deg,#eff6ff,#fff)!important;}
+.femic-week-card.status-concluido{background:linear-gradient(180deg,#f0fdf4,#fff)!important;}
+.femic-week-card.status-cancelado{background:linear-gradient(180deg,#fef2f2,#fff)!important;}
+@media(max-width:768px){
+  #weekView{border-radius:18px;padding-bottom:10px}
+  .femic-week-board{
+    --time-col:54px;
+    --day-min:118px;
+    --hour-h:64px;
+    min-width:890px!important;
+    border-radius:18px!important;
+  }
+  .femic-week-head{
+    min-height:40px;
+    font-size:.65rem!important;
+    padding:6px 4px!important;
+  }
+  .femic-week-hour{
+    right:5px!important;
+    font-size:.58rem!important;
+  }
+  .femic-week-card{
+    border-left-width:5px!important;
+    border-radius:10px!important;
+    padding:5px 5px!important;
+    gap:2px!important;
+  }
+  .femic-week-card .appt-time{font-size:.5rem!important;padding:1px 4px!important}
+  .femic-week-card .appt-name{font-size:.61rem!important;line-height:1.08!important}
+  .femic-week-card .small{font-size:.49rem!important}
+  .femic-week-card .status-chip,
+  .femic-week-card .service-badge{font-size:.48rem!important;padding:1px 3px!important}
+}
+@media(max-width:430px){
+  .femic-week-board{--day-min:110px;min-width:830px!important}
+}
+
 </style>
 </head>
 <body>
 <div class="toast-wrap" id="toastWrap"></div>
-<div class="topbar"><div class="topbar-inner"><div class="brand"><div class="logo"></div><div><h1>FEMIC Agenda v1.4.36 - Ficha com dia da semana</h1><p>Ficha com dia da semana · agenda preservada</p></div></div><div class="toolbar"><button class="btn primary" onclick="openAppt()">+ Agendar</button><button class="btn" onclick="loadAll()">↻ Atualizar</button><button class="btn ghost" onclick="goToday()">Hoje</button></div></div></div>
+<div class="topbar"><div class="topbar-inner"><div class="brand"><div class="logo"></div><div><h1>FEMIC Agenda v1.4.38</h1><p>Ficha com dia da semana · agenda preservada</p></div></div><div class="toolbar"><button class="btn primary" onclick="openAppt()">+ Agendar</button><button class="btn" onclick="loadAll()">↻ Atualizar</button><button class="btn ghost" onclick="goToday()">Hoje</button></div></div></div>
 <div class="wrap">
   <div class="tabs">
     <button class="tab active" data-panel="dashboard" onclick="showPanel('dashboard')">📊 Dashboard</button>
