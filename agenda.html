@@ -1065,6 +1065,75 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
   .item strong{font-size:.8rem}
 }
 
+
+
+/* =========================================================
+   FEMIC Agenda v1.4.35 — Grade semanal reestruturada
+   Correção segura: semana proporcional por minuto, sem invadir colunas/horários.
+   ========================================================= */
+#weekView{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}
+#weekBoard.week-board{display:block!important;overflow:visible!important;border:0!important;box-shadow:none!important;background:transparent!important;border-radius:0!important}
+.femic-week-board{--time-col:74px;--day-min:154px;--hour-h:72px;display:grid;grid-template-columns:var(--time-col) repeat(7,minmax(var(--day-min),1fr));grid-template-rows:44px auto;min-width:1180px;border:1px solid var(--line);border-radius:24px;overflow:hidden;background:#fff;box-shadow:var(--shadow)}
+.femic-week-head{position:sticky;top:0;z-index:6;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px 6px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:linear-gradient(180deg,#f7fbff,#eef6fb);font-weight:900;color:var(--primary);font-size:.82rem;line-height:1.15}
+.femic-week-head.today{background:linear-gradient(135deg,#dff7ff,#f4fbff);box-shadow:inset 0 -3px 0 rgba(31,182,233,.34)}
+.femic-week-axis{position:relative;grid-column:1;grid-row:2;background:linear-gradient(180deg,#f8fbfd,#f2f7fb);border-right:1px solid var(--line)}
+.femic-week-hour{position:absolute;right:8px;transform:translateY(-50%);font-size:.72rem;font-weight:900;color:var(--muted);white-space:nowrap}
+.femic-week-day{position:relative;grid-row:2;background:#fff;border-right:1px solid var(--line);overflow:hidden;cursor:pointer}
+.femic-week-day:hover{background:#fbfdff}.femic-week-day.today{background:linear-gradient(180deg,#f0fbff,#fff)}
+.femic-week-day.closed{background:repeating-linear-gradient(135deg,#f1f5f9,#f1f5f9 8px,#e9eef5 8px,#e9eef5 16px);opacity:.78;cursor:not-allowed}
+.femic-week-line{position:absolute;left:0;right:0;height:1px;background:rgba(11,60,111,.08);z-index:1}.femic-week-line.major{background:rgba(11,60,111,.16)}
+.femic-week-period{position:absolute;left:0;right:0;background:rgba(31,182,233,.045);border-top:1px solid rgba(31,182,233,.11);border-bottom:1px solid rgba(31,182,233,.08);z-index:0}
+.femic-week-empty-label{position:absolute;top:8px;right:8px;z-index:2;font-size:.62rem;font-weight:900;color:var(--primary);background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:999px;padding:3px 7px;pointer-events:none}.femic-week-empty-label.closed{color:var(--muted)}
+.femic-week-card{position:absolute!important;z-index:4;margin:0!important;display:flex!important;flex-direction:column!important;gap:2px!important;min-height:26px!important;max-height:none!important;overflow:hidden!important;padding:6px 7px!important;border-radius:12px!important;border-top:1px solid rgba(255,255,255,.72)!important;box-shadow:0 8px 16px rgba(11,60,111,.10)!important;cursor:pointer!important;line-height:1.15!important}
+.femic-week-card:hover{z-index:30;min-height:max-content!important;overflow:visible!important;box-shadow:0 16px 28px rgba(11,60,111,.16)!important}
+.femic-week-card .appt-time{font-size:.6rem;margin:0 0 1px 0;padding:1px 5px}.femic-week-card .appt-name{font-size:.7rem!important;line-height:1.1!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0!important;color:var(--primary)}
+.femic-week-card .small{font-size:.58rem!important;line-height:1.08!important;margin:0!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.femic-week-card .appt-meta{margin-top:0}.femic-week-card .status-chip,.femic-week-card .service-badge{font-size:.54rem!important;padding:1px 4px!important}.femic-week-card .appt-actions{display:none!important;background:#fff;border-radius:10px;padding:5px;margin-top:4px;box-shadow:0 10px 22px rgba(11,60,111,.12)}.femic-week-card:hover .appt-actions{display:flex!important}
+@media(max-width:768px){#weekView{margin-left:-2px;margin-right:-2px}.femic-week-board{--time-col:52px;--day-min:116px;--hour-h:62px;min-width:865px;border-radius:18px}.femic-week-head{height:40px;font-size:.66rem;padding:6px 3px}.femic-week-hour{font-size:.6rem;right:5px}.femic-week-empty-label{font-size:.52rem;top:5px;right:4px;padding:2px 5px}.femic-week-card{padding:5px 5px!important;border-radius:10px!important}.femic-week-card .appt-name{font-size:.62rem!important}.femic-week-card .appt-time{font-size:.52rem}.femic-week-card .small{font-size:.52rem!important}.femic-week-card:hover .appt-actions{display:none!important}}
+@media(max-width:430px){.femic-week-board{--day-min:108px;min-width:808px}}
+
+
+/* FEMIC v1.4.35 — contador de capacidade e horário cheio */
+.capacity,
+.slot-capacity,
+.week-slot .capacity{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:max-content!important;
+  min-height:18px!important;
+  padding:3px 7px!important;
+  margin:0 0 4px 0!important;
+  border-radius:999px!important;
+  font-size:.64rem!important;
+  font-weight:900!important;
+  line-height:1!important;
+  border:1px solid rgba(11,60,111,.12)!important;
+  background:rgba(11,60,111,.06)!important;
+  color:var(--primary)!important;
+}
+.capacity.full,
+.slot-capacity.full,
+.week-slot.full .capacity,
+.week-slot.slot-full .capacity{
+  background:rgba(239,68,68,.12)!important;
+  border-color:rgba(239,68,68,.28)!important;
+  color:var(--danger)!important;
+}
+.capacity.almost,
+.slot-capacity.almost,
+.week-slot.almost-full .capacity{
+  background:rgba(245,158,11,.12)!important;
+  border-color:rgba(245,158,11,.28)!important;
+  color:var(--warning)!important;
+}
+.week-slot.full,
+.week-slot.slot-full{
+  box-shadow:inset 0 0 0 2px rgba(239,68,68,.18)!important;
+}
+.week-slot.almost-full{
+  box-shadow:inset 0 0 0 2px rgba(245,158,11,.16)!important;
+}
+
 </style>
 </head>
 <body>
@@ -2239,6 +2308,162 @@ setTimeout(()=>{
   updateRecurringTotalSessionsPreview();
 }, 300);
 
+
+
+/* =========================================================
+   FEMIC Agenda v1.4.35 — funções seguras da semana proporcional
+   ========================================================= */
+function weekdayShort(dateStr){
+  const nomes=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  return nomes[dateDay(dateStr)] || '';
+}
+function femicClamp(n,min,max){return Math.max(min,Math.min(max,n));}
+function femicWeekBoundsV1434(){
+  const periods=parsePeriods();
+  let start=8*60,end=20*60;
+  if(periods.length){
+    start=Math.min(...periods.map(p=>timeToMin(p.start)));
+    end=Math.max(...periods.map(p=>timeToMin(p.end)));
+  }else{
+    start=timeToMin(settings.start_time||'08:00');
+    end=timeToMin(settings.end_time||'20:00');
+  }
+  if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start){start=8*60;end=20*60;}
+  start=Math.floor(start/60)*60;
+  end=Math.ceil(end/60)*60;
+  return {start,end,total:end-start};
+}
+function femicIntervalsOverlapV1434(a,b){return a.start < b.end && b.start < a.end;}
+function femicLayoutAppointmentsV1434(list,bounds){
+  const items=list.map(a=>{
+    let st=timeToMin(normalizeTime(a.start_time));
+    let en=timeToMin(normalizeTime(a.end_time));
+    if(!Number.isFinite(st)) st=bounds.start;
+    if(!Number.isFinite(en)||en<=st) en=st+Number(a.duration_minutes||serviceById(a.service_id).duration_minutes||45||45);
+    st=femicClamp(st,bounds.start,bounds.end);
+    en=femicClamp(en,bounds.start,bounds.end);
+    if(en<=st) en=Math.min(bounds.end,st+15);
+    return {a,start:st,end:en,col:0,cols:1};
+  }).sort((x,y)=>(x.start-y.start)||(x.end-y.end));
+  const groups=[];
+  items.forEach(it=>{
+    let g=groups.find(gr=>gr.some(o=>femicIntervalsOverlapV1434(it,o)));
+    if(!g){g=[];groups.push(g);}
+    g.push(it);
+  });
+  groups.forEach(group=>{
+    group.sort((x,y)=>(x.start-y.start)||(x.end-y.end));
+    const colEnds=[];
+    group.forEach(it=>{
+      let col=colEnds.findIndex(end=>end<=it.start);
+      if(col<0){col=colEnds.length;colEnds.push(it.end);}else colEnds[col]=it.end;
+      it.col=col;
+    });
+    const totalCols=Math.max(1,colEnds.length);
+    group.forEach(it=>it.cols=totalCols);
+  });
+  return items;
+}
+function femicWeekCardV1434(a,style){
+  const p=patientById(a.patient_id),s=serviceById(a.service_id);
+  const label={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;
+  return `<div class="femic-week-card status-${a.status}" style="${style}" onclick="event.stopPropagation();openAppt('${a.appointment_date}','${a.id}')"><div class="appt-time">${normalizeTime(a.start_time)}–${normalizeTime(a.end_time)}</div><strong class="appt-name" title="${esc(p.name||'Paciente')}">${esc(p.name||'Paciente')}</strong><div class="appt-meta"><span class="status-chip ${a.status}">${label}</span></div><div class="small" style="color:var(--muted)">${esc(s.name||'Sem serviço')}</div>${saldoBadge(a.patient_id,a.service_id)}<div class="appt-actions"><button class="mini-action" onclick="event.stopPropagation();openPatient('${a.patient_id}')">👤 Ficha</button><button class="mini-action" onclick="event.stopPropagation();rescheduleAppointment('${a.id}')">📅 Remarcar</button><button class="mini-action" onclick="event.stopPropagation();sendWhatsapp('${a.id}',false,'appointment')">💬 WhatsApp</button></div></div>`;
+}
+function femicWeekClickV1434(ev,ds,bounds,pxPerMin){
+  if(ev.target.closest('.femic-week-card')) return;
+  const dayEl=ev.currentTarget;
+  if(dayEl.classList.contains('closed')) return;
+  const rect=dayEl.getBoundingClientRect();
+  const y=femicClamp(ev.clientY-rect.top,0,rect.height);
+  const step=Number(settings.slot_interval_minutes||30);
+  const raw=bounds.start + Math.round((y/pxPerMin)/step)*step;
+  const minute=femicClamp(raw,bounds.start,bounds.end-step);
+  openAppt(ds,null,minToTime(minute));
+}
+function renderWeek(){
+  $('monthView').classList.add('hidden');
+  $('weekView').classList.remove('hidden');
+  const start=weekStart(currentDate);
+  const days=[0,1,2,3,4,5,6].map(i=>{const d=new Date(start);d.setDate(start.getDate()+i);return d});
+  $('periodLabel').textContent=`Semana de ${fmtDate(isoDate(days[0]))} a ${fmtDate(isoDate(days[6]))}`;
+  const bounds=femicWeekBoundsV1434();
+  const mobile=window.matchMedia&&window.matchMedia('(max-width:768px)').matches;
+  const pxPerMin=mobile?1.03:1.2;
+  const bodyH=Math.max(520,Math.round(bounds.total*pxPerMin));
+  const hourMarks=[]; for(let m=bounds.start;m<=bounds.end;m+=60) hourMarks.push(m);
+  const slotLines=slots().map(timeToMin).filter(m=>m>=bounds.start&&m<=bounds.end);
+  let html=`<div class="femic-week-board" style="grid-template-rows:44px ${bodyH}px">`;
+  html+='<div class="femic-week-head">Hora</div>';
+  days.forEach(d=>{const ds=isoDate(d);html+=`<div class="femic-week-head ${ds===todayIso()?'today':''}">${d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})}</div>`;});
+  html+=`<div class="femic-week-axis" style="height:${bodyH}px">`;
+  hourMarks.forEach(m=>{const top=(m-bounds.start)*pxPerMin;html+=`<div class="femic-week-hour" style="top:${top}px">${minToTime(m)}</div>`;});
+  html+='</div>';
+  days.forEach(d=>{
+    const ds=isoDate(d),off=isClosedForView(ds);
+    const dayList=agendaFiltered(appointments.filter(a=>a.appointment_date===ds)).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));
+    const layout=femicLayoutAppointmentsV1434(dayList,bounds);
+    html+=`<div class="femic-week-day ${ds===todayIso()?'today':''} ${off?'closed':''}" style="height:${bodyH}px" onclick="femicWeekClickV1434(event,'${ds}',{start:${bounds.start},end:${bounds.end},total:${bounds.total}},${pxPerMin})">`;
+    slotLines.forEach(m=>{const top=(m-bounds.start)*pxPerMin;const major=(m%60===0);html+=`<span class="femic-week-line ${major?'major':''}" style="top:${top}px"></span>`;});
+    parsePeriods().forEach(p=>{let st=femicClamp(timeToMin(p.start),bounds.start,bounds.end);let en=femicClamp(timeToMin(p.end),bounds.start,bounds.end);if(en>st){html+=`<span class="femic-week-period" style="top:${(st-bounds.start)*pxPerMin}px;height:${(en-st)*pxPerMin}px"></span>`;}});
+    if(off){html+='<div class="femic-week-empty-label closed">Fechado</div>';}
+    else{const active=dayList.filter(a=>a.status!=='cancelado').length;html+=`<div class="femic-week-empty-label">${active} at.</div>`;}
+    layout.forEach(it=>{
+      const top=(it.start-bounds.start)*pxPerMin;
+      const h=Math.max(24,(it.end-it.start)*pxPerMin-3);
+      const gap=3;
+      const width=`calc(${100/it.cols}% - ${gap*2}px)`;
+      const left=`calc(${(it.col*100)/it.cols}% + ${gap}px)`;
+      html+=femicWeekCardV1434(it.a,`top:${top}px;height:${h}px;left:${left};width:${width};`);
+    });
+    html+='</div>';
+  });
+  html+='</div>';
+  $('weekBoard').innerHTML=html;
+}
+
+
+/* FEMIC v1.4.35 — fallbacks seguros para aba Dia */
+if(typeof weekdayShort !== 'function'){
+  function weekdayShort(dateStr){
+    if(!dateStr) return '';
+    const d = new Date(String(dateStr) + 'T00:00:00');
+    const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    return dias[d.getDay()] || '';
+  }
+}
+
+if(typeof getNextStatuses !== 'function'){
+  function getNextStatuses(current){
+    const all = [
+      { value:'agendado', label:'Agendado' },
+      { value:'confirmado', label:'Confirmado' },
+      { value:'concluido', label:'Concluído' },
+      { value:'cancelado', label:'Cancelado' }
+    ];
+    return all.filter(s => s.value !== current);
+  }
+}
+
+if(typeof saldoBadgeInline !== 'function'){
+  function saldoBadgeInline(patientId, serviceId){
+    try{
+      if(!Array.isArray(packages)) return '';
+      const pk = packages.find(p =>
+        String(p.patient_id) === String(patientId) &&
+        String(p.service_id) === String(serviceId) &&
+        p.active !== false
+      );
+      if(!pk) return '';
+      const remaining = Number(pk.remaining_sessions ?? pk.saldo ?? 0);
+      const total = Number(pk.total_sessions ?? 0);
+      if(total <= 0) return '';
+      return ` · saldo ${remaining}`;
+    }catch(e){
+      return '';
+    }
+  }
+}
+
 renderWorkDays();renderAll();if(base()&&key())loadAll(true);
 function hasOpenModal(){
   return !!document.querySelector('.modal-backdrop.show');
@@ -2259,6 +2484,71 @@ if(typeof getNextStatuses !== 'function'){
     return all.filter(s => s.value !== current);
   }
 }
+
+
+/* FEMIC v1.4.35 — reforço visual não invasivo dos contadores de horário */
+function femicSlotCapacityLimit_v1435(slotEl){
+  try{
+    const attr = slotEl.getAttribute('data-capacity') || slotEl.getAttribute('data-max') || '';
+    if(attr) return Number(attr) || 0;
+    if(typeof getSlotCapacity === 'function'){
+      const date = slotEl.getAttribute('data-date') || slotEl.dataset.date;
+      const time = slotEl.getAttribute('data-time') || slotEl.dataset.time;
+      return Number(getSlotCapacity(date, time)) || 0;
+    }
+    if(typeof settings !== 'undefined' && settings && settings.slot_capacity) return Number(settings.slot_capacity) || 0;
+    if(typeof config !== 'undefined' && config && config.slot_capacity) return Number(config.slot_capacity) || 0;
+  }catch(e){}
+  return 0;
+}
+
+function femicEnhanceWeekCapacityCounters_v1435(){
+  try{
+    document.querySelectorAll('.week-slot').forEach(slot => {
+      const appts = slot.querySelectorAll('.week-appt, .appt-card, .appointment-card').length;
+      let cap = femicSlotCapacityLimit_v1435(slot);
+
+      let counter = slot.querySelector('.capacity, .slot-capacity');
+      if(!counter){
+        counter = document.createElement('div');
+        counter.className = 'capacity';
+        slot.prepend(counter);
+      }
+
+      if(cap > 0){
+        counter.textContent = `${appts}/${cap}`;
+        counter.title = appts >= cap ? 'Horário cheio' : 'Vagas no horário';
+        counter.classList.toggle('full', appts >= cap);
+        counter.classList.toggle('almost', appts > 0 && appts === cap - 1);
+        slot.classList.toggle('slot-full', appts >= cap);
+        slot.classList.toggle('almost-full', appts > 0 && appts === cap - 1);
+      }else{
+        // Se não houver limite configurado, ainda mostra quantos pacientes estão no horário.
+        counter.textContent = `${appts}`;
+        counter.title = 'Pacientes neste horário';
+        counter.classList.remove('full','almost');
+        slot.classList.remove('slot-full','almost-full');
+      }
+    });
+  }catch(e){
+    console.warn('Contadores de capacidade ignorados:', e);
+  }
+}
+
+(function(){
+  const originalRenderWeek = window.renderWeek;
+  if(typeof originalRenderWeek === 'function' && !window.__femicCapacityPatch1435){
+    window.__femicCapacityPatch1435 = true;
+    window.renderWeek = function(){
+      const r = originalRenderWeek.apply(this, arguments);
+      setTimeout(femicEnhanceWeekCapacityCounters_v1435, 50);
+      return r;
+    };
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    setTimeout(femicEnhanceWeekCapacityCounters_v1435, 300);
+  });
+})();
 
 </script>
 </body>
