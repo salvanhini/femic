@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>FEMIC Agenda v1.4.32 - Mobile Dia - Seleção Segura</title>
+<title>FEMIC Agenda v1.4.36 - Ficha com dia da semana</title>
 <meta name="theme-color" content="#0b3c6f" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,7 +17,7 @@
 .rec-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:10px}.rec-day-card{border:1px solid var(--line);border-radius:16px;background:#fff;padding:10px;display:grid;gap:8px}.rec-day-card .rec-title{display:flex;align-items:center;gap:8px;font-weight:800;color:var(--primary)}.rec-day-card input[type=time]{padding:9px 10px}.rec-day-card:not(.active){opacity:.62;background:#f8fbfd}.rec-day-card.active{box-shadow:0 10px 22px rgba(11,60,111,.08);border-color:rgba(31,182,233,.35)}
 
 /* =========================================================
-   FEMIC Agenda v1.4.32 - Mobile Dia — Refinamento visual responsivo
+   FEMIC Agenda v1.4.36 - Ficha com dia da semana — Refinamento visual responsivo
    Ajuste apenas visual: mantém lógica, Supabase e funções existentes.
    ========================================================= */
 :root{--surface:rgba(255,255,255,.86);--surface-strong:rgba(255,255,255,.98);--soft-blue:#eef8ff}
@@ -29,7 +29,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
 
 
 /* =========================================================
-   FEMIC Agenda v1.4.32 - Mobile Dia — Correção visual recorrência + cards
+   FEMIC Agenda v1.4.36 - Ficha com dia da semana — Correção visual recorrência + cards
    Ajuste seguro: apenas CSS/layout. Não altera banco nem regras.
    ========================================================= */
 
@@ -323,7 +323,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
 
 
 /* =========================================================
-   FEMIC Agenda v1.4.32 - Mobile Dia — Tema refinado para visão mensal
+   FEMIC Agenda v1.4.36 - Ficha com dia da semana — Tema refinado para visão mensal
    Ajuste visual seguro: não altera Supabase, status, pacotes ou regras.
    ========================================================= */
 
@@ -609,7 +609,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
 
 
 /* =========================================================
-   FEMIC Agenda v1.4.32 - Mobile Dia — Seleção segura no novo agendamento
+   FEMIC Agenda v1.4.36 - Ficha com dia da semana — Seleção segura no novo agendamento
    Ajuste seguro: visual + validação de paciente/serviço.
    ========================================================= */
 #apptPatient:invalid,
@@ -643,7 +643,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
 }
 
 /* =========================================================
-   FEMIC Agenda v1.4.32 - Mobile Dia — Modal Novo Agendamento harmonizado
+   FEMIC Agenda v1.4.36 - Ficha com dia da semana — Modal Novo Agendamento harmonizado
    Ajuste visual/estrutural seguro: preserva IDs e funções existentes.
    ========================================================= */
 
@@ -986,7 +986,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
 
 
 /* =========================================================
-   FEMIC Agenda v1.4.32 - Mobile Dia — Estável com rolagem segura
+   FEMIC Agenda v1.4.36 - Ficha com dia da semana — Estável com rolagem segura
    Base: v1.4.24 estável. Ajuste apenas visual de rolagem.
    Não altera salvamento, Supabase, pacotes, status ou regras.
    ========================================================= */
@@ -1068,7 +1068,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
 
 
 /* =========================================================
-   FEMIC Agenda v1.4.35 — Grade semanal reestruturada
+   FEMIC Agenda v1.4.36 — Grade semanal reestruturada
    Correção segura: semana proporcional por minuto, sem invadir colunas/horários.
    ========================================================= */
 #weekView{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}
@@ -1092,7 +1092,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
 @media(max-width:430px){.femic-week-board{--day-min:108px;min-width:808px}}
 
 
-/* FEMIC v1.4.35 — contador de capacidade e horário cheio */
+/* FEMIC v1.4.36 — contador de capacidade e horário cheio */
 .capacity,
 .slot-capacity,
 .week-slot .capacity{
@@ -1134,11 +1134,20 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
   box-shadow:inset 0 0 0 2px rgba(245,158,11,.16)!important;
 }
 
+
+/* FEMIC Agenda v1.4.37 — Padrão visual do pacote na ficha */
+.package-pattern{margin-top:10px;padding:10px 11px;border:1px solid rgba(11,60,111,.11);border-radius:15px;background:linear-gradient(180deg,#f8fbff,#fff)}
+.package-pattern-title{display:flex;align-items:center;gap:7px;font-size:.78rem;font-weight:900;color:var(--primary);margin-bottom:7px}
+.package-pattern-list{display:flex;flex-wrap:wrap;gap:6px}
+.package-pattern-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;border:1px solid rgba(11,60,111,.12);background:#fff;color:var(--primary);font-size:.72rem;font-weight:900}
+.package-pattern-note{margin-top:7px;color:var(--muted);font-size:.72rem;line-height:1.25}
+@media(max-width:768px){.package-pattern{padding:8px 9px;border-radius:13px}.package-pattern-title{font-size:.72rem}.package-pattern-chip{font-size:.66rem;padding:4px 7px}.package-pattern-note{font-size:.66rem}}
+
 </style>
 </head>
 <body>
 <div class="toast-wrap" id="toastWrap"></div>
-<div class="topbar"><div class="topbar-inner"><div class="brand"><div class="logo"></div><div><h1>FEMIC Agenda v1.4.32 - Mobile Dia</h1><p>Cards mobile otimizados · múltiplos agendamentos</p></div></div><div class="toolbar"><button class="btn primary" onclick="openAppt()">+ Agendar</button><button class="btn" onclick="loadAll()">↻ Atualizar</button><button class="btn ghost" onclick="goToday()">Hoje</button></div></div></div>
+<div class="topbar"><div class="topbar-inner"><div class="brand"><div class="logo"></div><div><h1>FEMIC Agenda v1.4.36 - Ficha com dia da semana</h1><p>Ficha com dia da semana · agenda preservada</p></div></div><div class="toolbar"><button class="btn primary" onclick="openAppt()">+ Agendar</button><button class="btn" onclick="loadAll()">↻ Atualizar</button><button class="btn ghost" onclick="goToday()">Hoje</button></div></div></div>
 <div class="wrap">
   <div class="tabs">
     <button class="tab active" data-panel="dashboard" onclick="showPanel('dashboard')">📊 Dashboard</button>
@@ -1399,7 +1408,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
 <div class="modal-backdrop" id="patientModal"><div class="modal"><div class="modal-head"><h3>Ficha do paciente</h3><button class="btn" onclick="closeModal('patientModal')">✕</button></div><div class="modal-body" id="patientFicha"></div></div></div>
 
 <script>
-const SQL_SCHEMA = `-- FEMIC Agenda v1.4.32 - Mobile Dia FINAL LIMPA — Supabase da agenda
+const SQL_SCHEMA = `-- FEMIC Agenda v1.4.36 - Ficha com dia da semana FINAL LIMPA — Supabase da agenda
 -- ATENÇÃO: este SQL reseta APENAS as tabelas da agenda/pacientes deste Supabase.
 -- Use este SQL apenas quando desejar criar ou resetar a estrutura da Agenda FEMIC.
 DROP TABLE IF EXISTS session_movements CASCADE;
@@ -1533,7 +1542,7 @@ NOTIFY pgrst, 'reload schema';`;
 const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],movements=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();
 function toast(msg,type='info'){const el=document.createElement('div');el.className='toast '+type;el.textContent=msg;$('toastWrap').appendChild(el);setTimeout(()=>el.remove(),3600)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function localIsoDate(d){const x=new Date(d);return String(x.getFullYear())+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}function todayIso(){return localIsoDate(new Date())}function isoDate(d){return localIsoDate(d)}function dateDay(dateStr){const [y,m,d]=String(dateStr).split('-').map(Number);return new Date(y,m-1,d).getDay()}function fmtDate(s){if(!s)return'';const [y,m,d]=String(s).split('-');return d+'/'+m+'/'+y}function cleanPhone(v){return String(v||'').replace(/\D/g,'')}function brl(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}function normalizeTime(t){return String(t||'').slice(0,5)}function timeToMin(t){const [h,m]=normalizeTime(t).split(':').map(Number);return h*60+(m||0)}function minToTime(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}function addMinutes(t,m){return minToTime(timeToMin(t)+Number(m||0))}function base(){return ($('sbUrl').value||localStorage.femic_agenda_url||'').trim().replace(/\/$/,'')}function key(){return ($('sbKey').value||localStorage.femic_agenda_key||'').trim()}function headers(){return{apikey:key(),Authorization:'Bearer '+key(),'Content-Type':'application/json',Prefer:'return=representation'}}
+function localIsoDate(d){const x=new Date(d);return String(x.getFullYear())+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}function todayIso(){return localIsoDate(new Date())}function isoDate(d){return localIsoDate(d)}function dateDay(dateStr){const [y,m,d]=String(dateStr).split('-').map(Number);return new Date(y,m-1,d).getDay()}function fmtDate(s){if(!s)return'';const [y,m,d]=String(s).split('-');return d+'/'+m+'/'+y}function fmtWeekday(s){if(!s)return'';const [y,m,d]=String(s).split('-').map(Number);const dias=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];return dias[new Date(y,m-1,d).getDay()]||''}function cleanPhone(v){return String(v||'').replace(/\D/g,'')}function brl(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}function normalizeTime(t){return String(t||'').slice(0,5)}function timeToMin(t){const [h,m]=normalizeTime(t).split(':').map(Number);return h*60+(m||0)}function minToTime(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}function addMinutes(t,m){return minToTime(timeToMin(t)+Number(m||0))}function base(){return ($('sbUrl').value||localStorage.femic_agenda_url||'').trim().replace(/\/$/,'')}function key(){return ($('sbKey').value||localStorage.femic_agenda_key||'').trim()}function headers(){return{apikey:key(),Authorization:'Bearer '+key(),'Content-Type':'application/json',Prefer:'return=representation'}}
 async function api(path,opt={}){const res=await fetch(base()+'/rest/v1/'+path,{headers:headers(),...opt});const txt=await res.text();let data;try{data=txt?JSON.parse(txt):null}catch(e){data=txt}if(!res.ok){console.error('Supabase error',path,res.status,data);throw new Error((data&&data.message)||txt||('HTTP '+res.status))}return data}
 function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊';$('tplReminder').value=tpl;const tplForm=localStorage.femic_tpl_form_reminder||'Olá, {nome}! Tudo bem? Sua sessão de hoje foi concluída. Pode preencher rapidinho o formulário de evolução? Isso nos ajuda a acompanhar sua dor, funcionalidade e evolução. {link_formulario}';if($('tplFormReminder'))$('tplFormReminder').value=tplForm;if($('formLinkInput'))$('formLinkInput').value=localStorage.femic_form_link||''}
 async function testConnection(){try{await api('patients?select=id&limit=1');toast('Conexão e carregamento funcionando.','success')}catch(e){toast('Erro real: '+e.message,'error')}}
@@ -1656,6 +1665,48 @@ async function quickStatus(id,newStatus){
 function renderDashboard(){const today=todayIso(),month=new Date().toISOString().slice(0,7);const t=appointments.filter(a=>a.appointment_date===today).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));const rem=t.filter(a=>['agendado','confirmado'].includes(a.status)&&!(a.appointment_reminder_sent||a.reminder_sent)).length;const low=packages.filter(p=>p.active!==false&&Number(p.remaining_sessions||0)<=3).length;const done=appointments.filter(a=>a.status==='concluido'&&String(a.appointment_date).startsWith(month));const total=done.reduce((sum,a)=>sum+Number(a.service_price_at_time||serviceById(a.service_id).price||0),0);$('dashboardKpis').innerHTML=`<div class="kpi"><div class="small muted">Atendimentos hoje</div><strong>${t.length}</strong></div><div class="kpi"><div class="small muted">Lembretes pendentes</div><strong>${rem}</strong></div><div class="kpi"><div class="small muted">Saldos baixos</div><strong>${low}</strong></div><div class="kpi"><div class="small muted">Mês concluído</div><strong>${brl(total)}</strong></div>`;$('dashToday').innerHTML=t.length?t.map(a=>`<div class="item status-${a.status}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)}–${normalizeTime(a.end_time)} — ${esc(patientName(a.patient_id))}</strong><div class="muted small">${esc(serviceName(a.service_id))} · <span class="status-chip ${a.status}">${a.status}</span></div>${saldoBadge(a.patient_id,a.service_id)}</div><div class="toolbar"><button class="btn" onclick="openPatient('${a.patient_id}')">Ficha</button><button class="btn" onclick="rescheduleAppointment('${a.id}')">Remarcar</button><button class="btn" onclick="openAppt('${a.appointment_date}','${a.id}')">Editar</button></div></div>${statusButtons(a)}</div>`).join(''):'<div class="muted">Nenhum atendimento hoje.</div>';$('dashAlerts').innerHTML=(low?packages.filter(p=>Number(p.remaining_sessions||0)<=3).map(p=>{const used=Math.max(0,Number(p.total_sessions||0)-Number(p.remaining_sessions||0));const pct=Number(p.total_sessions||0)?Math.min(100,(used/Number(p.total_sessions))*100):0;return `<div class="item package-card"><strong>${esc(patientName(p.patient_id))}</strong><div class="muted small">${esc(serviceName(p.service_id))} · <span class="used-counter">${used}/${p.total_sessions} usadas</span> · saldo ${p.remaining_sessions}</div><div class="package-progress"><span style="width:${pct}%"></span></div></div>`}).join(''):'<div class="muted">Sem alertas de saldo.</div>')}
 function renderReport(){const month=$('reportMonth').value||new Date().toISOString().slice(0,7);$('reportMonth').value=month;const done=appointments.filter(a=>a.status==='concluido'&&String(a.appointment_date).startsWith(month));const groups={};done.forEach(a=>{const s=serviceById(a.service_id),key=(s.health_insurance_id||'')+'|'+(s.id||'')+'|'+Number(a.service_price_at_time||s.price||0);if(!groups[key])groups[key]={payer:payerName(s.health_insurance_id),service:s.name||'Sem serviço',q:0,price:Number(a.service_price_at_time||s.price||0)};groups[key].q++});const rows=Object.values(groups),total=rows.reduce((a,r)=>a+r.q*r.price,0);$('reportKpis').innerHTML=`<div class="kpi"><div class="small muted">Concluídos</div><strong>${done.length}</strong></div><div class="kpi"><div class="small muted">Total</div><strong>${brl(total)}</strong></div><div class="kpi"><div class="small muted">Cancelados</div><strong>${appointments.filter(a=>a.status==='cancelado'&&String(a.appointment_date).startsWith(month)).length}</strong></div><div class="kpi"><div class="small muted">Agendados</div><strong>${appointments.filter(a=>['agendado','confirmado'].includes(a.status)&&String(a.appointment_date).startsWith(month)).length}</strong></div>`;$('reportBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.payer)}</td><td>${esc(r.service)}</td><td>${r.q}</td><td>${brl(r.price)}</td><td><strong>${brl(r.q*r.price)}</strong></td></tr>`).join(''):'<tr><td colspan="5" class="muted">Sem atendimentos concluídos.</td></tr>'}
 function exportCsv(){const rows=[['Pagador','Serviço','Quantidade','Valor','Total']];document.querySelectorAll('#reportBody tr').forEach(tr=>{const cells=[...tr.children].map(td=>td.innerText);if(cells.length===5)rows.push(cells)});const csv=rows.map(r=>r.map(c=>'"'+String(c).replaceAll('"','""')+'"').join(';')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='relatorio_agenda_femic.csv';a.click()}
+
+
+function packagePatternSummary(p){
+  try{
+    if(!p || !Array.isArray(appointments)) return '';
+    const packageId = String(p.id);
+    const hasDirectLinks = appointments.some(a => String(a.session_package_id || '') === packageId);
+    const related = appointments.filter(a => {
+      if(String(a.patient_id) !== String(p.patient_id)) return false;
+      if(a.status === 'cancelado') return false;
+      if(hasDirectLinks) return String(a.session_package_id || '') === packageId;
+      return String(a.service_id) === String(p.service_id);
+    });
+    if(!related.length){
+      return `<div class="package-pattern"><div class="package-pattern-title">🗓️ Padrão de agendamento</div><div class="package-pattern-note">Ainda não há agendamentos suficientes para identificar dias e horários deste pacote.</div></div>`;
+    }
+    const weekdayFull = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+    const map = {};
+    related.forEach(a => {
+      const dateStr = a.appointment_date;
+      const timeStr = normalizeTime(a.start_time || '');
+      if(!dateStr || !timeStr) return;
+      const d = new Date(String(dateStr) + 'T00:00:00');
+      if(Number.isNaN(d.getTime())) return;
+      const wd = d.getDay();
+      const key = wd + '|' + timeStr;
+      if(!map[key]) map[key] = { weekday: wd, time: timeStr, count: 0 };
+      map[key].count += 1;
+    });
+    const items = Object.values(map).sort((a,b) => {
+      if(a.weekday !== b.weekday) return a.weekday - b.weekday;
+      return a.time.localeCompare(b.time);
+    });
+    if(!items.length) return '';
+    const chips = items.slice(0,8).map(x =>
+      `<span class="package-pattern-chip">${weekdayFull[x.weekday]} · ${x.time} <span class="muted">${x.count}x</span></span>`
+    ).join('');
+    const extra = items.length > 8 ? `<div class="package-pattern-note">+ ${items.length - 8} outro(s) horário(s) menos frequente(s).</div>` : '';
+    const note = items.length > 1 ? 'Use este resumo como apoio para renovação. Ele é calculado pelo histórico e não altera os agendamentos.' : 'Padrão calculado automaticamente pelo histórico deste pacote.';
+    return `<div class="package-pattern"><div class="package-pattern-title">🗓️ Padrão de agendamento</div><div class="package-pattern-list">${chips}</div>${extra}<div class="package-pattern-note">${note}</div></div>`;
+  }catch(e){return '';}
+}
 function packageCard(p){const total=Number(p.total_sessions||0),remain=Number(p.remaining_sessions||0),used=Math.max(0,total-remain),pct=total?Math.min(100,(used/total)*100):0;const cls=remain<=0?'saldo-zero':(remain<=3?'saldo-low':'');const inactive=p.active===false;return `<div class="item package-card ${inactive?'inactive':''}"><div class="item-top"><div><strong>${esc(patientName(p.patient_id))}</strong>${inactive?' <span class="muted small">(inativo)</span>':''}<div class="muted small">${esc(serviceName(p.service_id))}</div></div><button class="btn danger" onclick="removePackage('${p.id}')">Remover</button></div><div class="small"><span class="used-counter">${used}/${total} sessões usadas</span> · <span class="${cls}">saldo ${remain}</span></div><div class="package-progress"><span style="width:${pct}%"></span></div></div>`}
 function patientCard(p){const linked=appointments.some(a=>String(a.patient_id)===String(p.id))||packages.some(pk=>String(pk.patient_id)===String(p.id))||movements.some(m=>String(m.patient_id)===String(p.id));const archived=p.archived===true;return `<div class="item patient-card ${archived?'archived':''}"><div class="item-top"><div><strong>${esc(p.name||'Sem nome')}</strong>${archived?' <span class="muted small">(inativo)</span>':''}<div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(p.pathology||'Sem patologia')}</div></div><div class="toolbar"><button class="btn" onclick="openPatient('${p.id}')">Ficha</button>${archived?`<button class="btn success" onclick="reactivatePatient('${p.id}')">Reativar</button>`:`<button class="btn warning" onclick="archivePatient('${p.id}')">Inativar</button>`}<button class="btn danger" onclick="deletePatientSafe('${p.id}')">Apagar</button></div></div>${linked?'<div class="muted small" style="margin-top:8px">Possui vínculo: apagar será bloqueado; use inativar.</div>':''}</div>`}
 function renderLists(){$('payerList').innerHTML=payers.map(p=>`<div class="item"><div class="item-top"><strong>${esc(p.name)}</strong><button class="btn danger" onclick="removePayer('${p.id}')">Remover</button></div></div>`).join('')||'<div class="muted">Nenhum pagador.</div>';$('serviceList').innerHTML=services.map(s=>`<div class="item"><div class="item-top"><div><strong>${esc(s.name)}</strong><div class="muted small">${payerName(s.health_insurance_id)} · ${brl(s.price)} · ${s.duration_minutes}min · ${s.appointment_mode}</div></div><button class="btn danger" onclick="removeService('${s.id}')">Remover</button></div></div>`).join('')||'<div class="muted">Nenhum serviço.</div>';const activePk=packages.filter(p=>p.active!==false),inactivePk=packages.filter(p=>p.active===false);if($('packageListActive')){$('packagesActiveCount').textContent=activePk.length+' ativo(s)';$('packagesInactiveCount').textContent=inactivePk.length+' inativo(s)';$('packageListActive').innerHTML=activePk.length?activePk.map(packageCard).join(''):'<div class="muted">Nenhum pacote ativo.</div>';$('packageListInactive').innerHTML=inactivePk.length?inactivePk.map(packageCard).join(''):'<div class="muted">Nenhum pacote inativo.</div>'}else if($('packageList')){$('packageList').innerHTML=packages.length?packages.map(packageCard).join(''):'<div class="muted">Nenhum pacote.</div>'}const activePatients=patients.filter(p=>p.archived!==true),archivedPatients=patients.filter(p=>p.archived===true);if($('patientListActive')){$('patientsActiveCount').textContent=activePatients.length+' ativo(s)';$('patientsArchivedCount').textContent=archivedPatients.length+' inativo(s)';$('patientListActive').innerHTML=activePatients.length?activePatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente ativo.</div>';$('patientListArchived').innerHTML=archivedPatients.length?archivedPatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente inativo.</div>'}}
@@ -1712,7 +1763,7 @@ async function savePayer(){const name=$('payerName').value.trim();if(!name)retur
     toast('Erro: '+e.message,'error');
   }
 }async function saveSettings(){const working=[...document.querySelectorAll('.wd:checked')].map(x=>x.value).join(',')||'1,2,3,4,5,6';const payload={start_time:$('setStart').value,end_time:$('setEnd').value,working_periods:$('setPeriods').value.trim()||(($('setStart').value||'08:00')+'-'+($('setEnd').value||'20:00')),slot_interval_minutes:Number($('setInterval').value),working_days:working,max_patients_per_slot:Number(settings.max_patients_per_slot||4)};try{if(settings.id)await api('schedule_settings?id=eq.'+settings.id,{method:'PATCH',body:JSON.stringify(payload)});else await api('schedule_settings',{method:'POST',body:JSON.stringify(payload)});await loadAll(true);toast('Expediente salvo.','success')}catch(e){toast('Erro: '+e.message,'error')}}async function removePackage(id){const p=packages.find(x=>String(x.id)===String(id));if(!p)return;const used=Number(p.total_sessions||0)-Number(p.remaining_sessions||0);const linked=appointments.some(a=>String(a.session_package_id)===String(id))||movements.some(m=>String(m.session_package_id)===String(id));if(used>0||linked){if(confirm('Este pacote já tem uso ou vínculo no histórico. Para preservar os dados, ele será inativado em vez de apagado. Continuar?')){await api('session_packages?id=eq.'+id,{method:'PATCH',body:JSON.stringify({active:false})});await loadAll(true);toast('Pacote inativado.','success')}return}if(confirm('Remover este pacote definitivamente?')){await api('session_packages?id=eq.'+id,{method:'DELETE'});await loadAll(true);toast('Pacote removido.','success')}}async function removeService(id){if(appointments.some(a=>String(a.service_id)===String(id))||packages.some(p=>String(p.service_id)===String(id))){toast('Serviço em uso. Não removi para preservar histórico.','warning');return}if(confirm('Remover serviço?')){await api('services?id=eq.'+id,{method:'DELETE'});await loadAll(true)}}async function removePayer(id){if(services.some(s=>String(s.health_insurance_id)===String(id))){toast('Pagador vinculado a serviço. Remova/inative serviços primeiro.','warning');return}if(confirm('Remover pagador?')){await api('health_insurances?id=eq.'+id,{method:'DELETE'});await loadAll(true)}}
-function openPatient(pid){const p=patientById(pid);const ap=appointments.filter(a=>String(a.patient_id)===String(pid)).sort((a,b)=>(a.appointment_date+a.start_time).localeCompare(b.appointment_date+b.start_time));const pk=packages.filter(x=>String(x.patient_id)===String(pid));$('patientFicha').innerHTML=`<div class="patient-summary"><div class="kpi"><div class="small muted">Paciente</div><strong style="font-size:1rem">${esc(p.name)}</strong></div><div class="kpi"><div class="small muted">WhatsApp</div><strong style="font-size:1rem">${esc(p.whatsapp||'-')}</strong></div><div class="kpi"><div class="small muted">Futuras</div><strong>${ap.filter(a=>['agendado','confirmado'].includes(a.status)).length}</strong></div><div class="kpi"><div class="small muted">Concluídas</div><strong>${ap.filter(a=>a.status==='concluido').length}</strong></div></div><div class="card" style="margin-top:14px"><div class="eyebrow">Pacotes</div>${pk.map(packageCard).join('')||'<div class="muted">Sem pacote.</div>'}</div><div class="card" style="margin-top:14px"><div class="eyebrow">Agendamentos</div><div class="timeline-list">${ap.map(a=>`<div class="timeline-item status-${a.status}"><div class="item-top"><div><strong>${fmtDate(a.appointment_date)} ${normalizeTime(a.start_time)} — ${esc(serviceName(a.service_id))}</strong><div class="muted small"><span class="status-chip ${a.status}">${a.status}</span></div></div><div class="toolbar"><button class="btn" onclick="rescheduleAppointment('${a.id}')">Remarcar</button><button class="btn" onclick="openAppt('${a.appointment_date}','${a.id}')">Editar</button></div></div>${statusButtons(a)}</div>`).join('')||'<div class="muted">Sem agendamentos.</div>'}</div></div>`;$('patientModal').classList.add('show')}
+function openPatient(pid){const p=patientById(pid);const ap=appointments.filter(a=>String(a.patient_id)===String(pid)).sort((a,b)=>(a.appointment_date+a.start_time).localeCompare(b.appointment_date+b.start_time));const pk=packages.filter(x=>String(x.patient_id)===String(pid));$('patientFicha').innerHTML=`<div class="patient-summary"><div class="kpi"><div class="small muted">Paciente</div><strong style="font-size:1rem">${esc(p.name)}</strong></div><div class="kpi"><div class="small muted">WhatsApp</div><strong style="font-size:1rem">${esc(p.whatsapp||'-')}</strong></div><div class="kpi"><div class="small muted">Futuras</div><strong>${ap.filter(a=>['agendado','confirmado'].includes(a.status)).length}</strong></div><div class="kpi"><div class="small muted">Concluídas</div><strong>${ap.filter(a=>a.status==='concluido').length}</strong></div></div><div class="card" style="margin-top:14px"><div class="eyebrow">Pacotes</div>${pk.map(packageCard).join('')||'<div class="muted">Sem pacote.</div>'}</div><div class="card" style="margin-top:14px"><div class="eyebrow">Agendamentos</div><div class="timeline-list">${ap.map(a=>`<div class="timeline-item status-${a.status}"><div class="item-top"><div><strong>${fmtWeekday(a.appointment_date)} · ${fmtDate(a.appointment_date)} ${normalizeTime(a.start_time)} — ${esc(serviceName(a.service_id))}</strong><div class="muted small"><span class="status-chip ${a.status}">${a.status}</span></div></div><div class="toolbar"><button class="btn" onclick="rescheduleAppointment('${a.id}')">Remarcar</button><button class="btn" onclick="openAppt('${a.appointment_date}','${a.id}')">Editar</button></div></div>${statusButtons(a)}</div>`).join('')||'<div class="muted">Sem agendamentos.</div>'}</div></div>`;$('patientModal').classList.add('show')}
 
 function renderBackupPanel(){
   if($('bkPatients')) $('bkPatients').textContent = patients.length;
@@ -1849,7 +1900,7 @@ async function restoreAgendaBackup(event){
 function saveTemplates(){localStorage.femic_tpl_reminder=$('tplReminder').value;if($('tplFormReminder'))localStorage.femic_tpl_form_reminder=$('tplFormReminder').value;if($('formLinkInput'))localStorage.femic_form_link=$('formLinkInput').value.trim();toast('Modelos salvos.','success')}async function copySql(){await navigator.clipboard.writeText(SQL_SCHEMA);toast('SQL copiado.','success')}
 $('sqlBox').textContent=SQL_SCHEMA;loadConfig();$('dayDate').value=todayIso();$('reminderDate').value=isoDate(new Date(Date.now()+86400000));$('reportMonth').value=new Date().toISOString().slice(0,7);
 /* =========================================================
-   FEMIC Agenda v1.4.32 - Mobile Dia — Correção robusta de consumo de pacote
+   FEMIC Agenda v1.4.36 - Ficha com dia da semana — Correção robusta de consumo de pacote
    - Concluído consome pacote mesmo se o status já estiver concluído
    - Usa pacote do mesmo serviço; se não achar, usa pacote único ativo do paciente
    - Estorna ao sair de concluído
@@ -2018,7 +2069,7 @@ async function quickStatus(id,newStatus){
 
 
 /* =========================================================
-   FEMIC Agenda v1.4.32 - Mobile Dia — Correção de layout semanal + busca + edição de pacotes
+   FEMIC Agenda v1.4.36 - Ficha com dia da semana — Correção de layout semanal + busca + edição de pacotes
    ========================================================= */
 
 function slotEnd(slot){
@@ -2103,6 +2154,7 @@ function packageCard(p){
     </div>
     <div class="small"><span class="used-counter">${used}/${total} sessões usadas</span> · <span class="${cls}">saldo ${remain}</span></div>
     <div class="package-progress"><span style="width:${pct}%"></span></div>
+    ${packagePatternSummary(p)}
   </div>`;
 }
 
@@ -2221,7 +2273,7 @@ function renderLists(){
 
 
 /* =========================================================
-   FEMIC Agenda v1.4.32 - Mobile Dia — Total de sessões visível na recorrência
+   FEMIC Agenda v1.4.36 - Ficha com dia da semana — Total de sessões visível na recorrência
    Ajuste visual: mostra a quantidade total de sessões ao lado do valor.
    ========================================================= */
 
@@ -2311,7 +2363,7 @@ setTimeout(()=>{
 
 
 /* =========================================================
-   FEMIC Agenda v1.4.35 — funções seguras da semana proporcional
+   FEMIC Agenda v1.4.36 — funções seguras da semana proporcional
    ========================================================= */
 function weekdayShort(dateStr){
   const nomes=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -2422,7 +2474,7 @@ function renderWeek(){
 }
 
 
-/* FEMIC v1.4.35 — fallbacks seguros para aba Dia */
+/* FEMIC v1.4.36 — fallbacks seguros para aba Dia */
 if(typeof weekdayShort !== 'function'){
   function weekdayShort(dateStr){
     if(!dateStr) return '';
@@ -2486,7 +2538,7 @@ if(typeof getNextStatuses !== 'function'){
 }
 
 
-/* FEMIC v1.4.35 — reforço visual não invasivo dos contadores de horário */
+/* FEMIC v1.4.36 — reforço visual não invasivo dos contadores de horário */
 function femicSlotCapacityLimit_v1435(slotEl){
   try{
     const attr = slotEl.getAttribute('data-capacity') || slotEl.getAttribute('data-max') || '';
