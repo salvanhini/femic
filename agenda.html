@@ -2514,7 +2514,17 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
         <div class="eyebrow">Como ler o contador</div>
       </div>
     </div>
-    <div class="grid grid-2" style="margin-top:16px"><div class="card"><div class="section-title"><h3>Pacotes ativos</h3><span class="muted small" id="packagesActiveCount"></span></div><div class="list" id="packageListActive"></div></div><div class="card"><div class="section-title"><h3>Pacotes inativos / encerrados</h3><span class="muted small" id="packagesInactiveCount"></span></div><div class="list" id="packageListInactive"></div></div></div>
+    <div class="grid grid-2" style="margin-top:16px">
+      <div class="card">
+        <div class="section-title"><h3>Pacotes ativos</h3><span class="muted small" id="packagesActiveCount"></span></div>
+        <input id="packageSearch" placeholder="🔍 Buscar pacote por paciente ou serviço…" oninput="renderLists()" style="margin-bottom:12px">
+        <div class="list" id="packageListActive"></div>
+      </div>
+      <div class="card">
+        <div class="section-title"><h3>Pacotes inativos / encerrados</h3><span class="muted small" id="packagesInactiveCount"></span></div>
+        <div class="list" id="packageListInactive"></div>
+      </div>
+    </div>
   </section>
 
   <section class="panel" id="panel-settings">
@@ -3618,10 +3628,20 @@ function renderLists(){
   const inactivePk=packages.filter(p=>p.active===false);
 
   if($('packageListActive')){
-    $('packagesActiveCount').textContent=activePk.length+' ativo(s)';
-    $('packagesInactiveCount').textContent=inactivePk.length+' inativo(s)';
-    $('packageListActive').innerHTML=activePk.length?activePk.map(packageCard).join(''):'<div class="muted">Nenhum pacote ativo.</div>';
-    $('packageListInactive').innerHTML=inactivePk.length?inactivePk.map(packageCard).join(''):'<div class="muted">Nenhum pacote inativo.</div>';
+    const pkQuery = $('packageSearch') ? $('packageSearch').value.trim().toLowerCase() : '';
+    const filterPk = pk => {
+      if(!pkQuery) return true;
+      const patName = String((patients.find(p=>String(p.id)===String(pk.patient_id))||{}).name||'').toLowerCase();
+      const svcName = String((services.find(s=>String(s.id)===String(pk.service_id))||{}).name||'').toLowerCase();
+      return patName.includes(pkQuery) || svcName.includes(pkQuery);
+    };
+    const filteredActivePk   = activePk.filter(filterPk);
+    const filteredInactivePk = inactivePk.filter(filterPk);
+    const totalActive = activePk.length;
+    $('packagesActiveCount').textContent   = pkQuery ? `${filteredActivePk.length}/${totalActive} encontrado(s)` : `${activePk.length} ativo(s)`;
+    $('packagesInactiveCount').textContent = inactivePk.length+' inativo(s)';
+    $('packageListActive').innerHTML   = filteredActivePk.length   ? filteredActivePk.map(packageCard).join('')   : `<div class="muted">${pkQuery ? 'Nenhum pacote encontrado.' : 'Nenhum pacote ativo.'}</div>`;
+    $('packageListInactive').innerHTML = filteredInactivePk.length ? filteredInactivePk.map(packageCard).join('') : `<div class="muted">${pkQuery ? 'Nenhum pacote encontrado.' : 'Nenhum pacote inativo.'}</div>`;
   }else if($('packageList')){
     $('packageList').innerHTML=packages.length?packages.map(packageCard).join(''):'<div class="muted">Nenhum pacote.</div>';
   }
