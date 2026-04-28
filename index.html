@@ -2446,6 +2446,29 @@
           : evo === 'stable'
           ? 'linear-gradient(180deg, #f59e0b, #fbbf24)'
           : 'linear-gradient(180deg, #3b82f6, #60a5fa)';
+        // Verificar se há evolução técnica pendente (sinalizada pela agenda)
+        let pendingEvoAlert = '';
+        try{
+          const pendingEvos = JSON.parse(localStorage.getItem('femic_pending_evolutions') || '[]');
+          const hasPending = pendingEvos.some(x => String(x.patient_id) === String(p.id));
+          if(hasPending){
+            const oldest = pendingEvos.filter(x => String(x.patient_id) === String(p.id))
+              .sort((a,b) => String(a.appointment_date).localeCompare(String(b.appointment_date)))[0];
+            const dateLabel = oldest?.appointment_date ? ` · sessão ${fmtDate(oldest.appointment_date)}` : '';
+            pendingEvoAlert = `<div style="
+              display:flex; align-items:center; gap:8px; margin-top:10px;
+              background:linear-gradient(135deg,#fffbeb,#fef3c7);
+              border:1.5px solid #f59e0b; border-radius:14px; padding:9px 13px;
+            ">
+              <span style="font-size:1.1rem">🩺</span>
+              <div style="flex:1">
+                <strong style="color:#92400e;font-size:.88rem">Evolução técnica pendente${dateLabel}</strong>
+                <div style="color:#b45309;font-size:.78rem;margin-top:2px">Sessão concluída na agenda. Registre a evolução técnica no sistema clínico.</div>
+              </div>
+              <button class="btn small" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;white-space:nowrap;font-size:.8rem" onclick="openClinicalEvolutionModal('${p.id}')">🩺 Registrar agora</button>
+            </div>`;
+          }
+        }catch(e){}
         return `
         <div class="card patient-card">
           <div class="accent" style="background:${accent}"></div>
@@ -2469,6 +2492,7 @@
               <div class="meta-pill"><span class="muted">Funcionalidade</span><strong>${latestFunctionality}</strong></div>
               <div class="meta-pill"><span class="muted">Evolução</span><strong>${improvementLabel}</strong></div>
             </div>
+            ${pendingEvoAlert}
             <div class="card-actions">
               <button class="btn small primary" onclick="openSessionModal('${p.id}')">+ Registrar evolução</button>
               <button class="btn small" onclick="openPatientAnalysis('${p.id}')">📈 Evolução</button>
@@ -3572,6 +3596,13 @@ $$;`;
     document.getElementById('clinicalDate').value = todayISO();
     document.getElementById('clinicalConduct').value = '';
     document.getElementById('clinicalGuidance').value = '';
+    // Limpar alerta pendente desta agenda para este paciente
+    try{
+      const pending = JSON.parse(localStorage.getItem('femic_pending_evolutions') || '[]');
+      const updated = pending.filter(x => String(x.patient_id) !== String(pid));
+      localStorage.setItem('femic_pending_evolutions', JSON.stringify(updated));
+      renderPatients(); // Atualizar card para remover o badge
+    }catch(e){}
     populateClinicalHelpers();
     autoSelectClinicalTemplate(p.pathology || '');
     renderClinicalEvolutionList(pid);
