@@ -2697,6 +2697,36 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
 </div>
 <div class="modal-backdrop" id="patientModal"><div class="modal"><div class="modal-head"><h3>Ficha do paciente</h3><button class="btn" onclick="closeModal('patientModal')">✕</button></div><div class="modal-body" id="patientFicha"></div></div></div>
 
+<div class="modal-backdrop" id="editPatientModal">
+  <div class="modal sm">
+    <div class="modal-head">
+      <h3>✏️ Editar paciente</h3>
+      <button class="btn" onclick="closeModal('editPatientModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editPatientId">
+      <div class="grid" style="gap:14px">
+        <div class="field">
+          <label>Nome completo *</label>
+          <input id="editPatientName" placeholder="Nome completo" onkeydown="if(event.key==='Enter')saveEditPatient()">
+        </div>
+        <div class="field">
+          <label>WhatsApp *</label>
+          <input id="editPatientWhatsapp" placeholder="(16) 99999-9999" inputmode="numeric" maxlength="15" oninput="formatWhatsappInput(this)" onkeydown="if(event.key==='Enter')saveEditPatient()">
+        </div>
+        <div class="field">
+          <label>Patologia / observação</label>
+          <input id="editPatientPathology" placeholder="Patologia, queixa ou observação" onkeydown="if(event.key==='Enter')saveEditPatient()">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('editPatientModal')">Cancelar</button>
+      <button class="btn primary" onclick="saveEditPatient()">💾 Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const SQL_SCHEMA = `-- FEMIC Agenda v1.4.36 - Ficha com dia da semana FINAL LIMPA — Supabase da agenda
 -- ATENÇÃO: este SQL reseta APENAS as tabelas da agenda/pacientes deste Supabase.
@@ -3001,7 +3031,7 @@ function packagePatternSummary(p){
   }catch(e){return '';}
 }
 function packageCard(p){const total=Number(p.total_sessions||0),remain=Number(p.remaining_sessions||0),used=Math.max(0,total-remain),pct=total?Math.min(100,(used/total)*100):0;const cls=remain<=0?'saldo-zero':(remain<=3?'saldo-low':'');const inactive=p.active===false;return `<div class="item package-card ${inactive?'inactive':''}"><div class="item-top"><div><strong>${esc(patientName(p.patient_id))}</strong>${inactive?' <span class="muted small">(inativo)</span>':''}<div class="muted small">${esc(serviceName(p.service_id))}</div></div><button class="btn danger" onclick="removePackage('${p.id}')">Remover</button></div><div class="small"><span class="used-counter">${used}/${total} sessões usadas</span> · <span class="${cls}">saldo ${remain}</span></div><div class="package-progress"><span style="width:${pct}%"></span></div></div>`}
-function patientCard(p){const linked=appointments.some(a=>String(a.patient_id)===String(p.id))||packages.some(pk=>String(pk.patient_id)===String(p.id))||movements.some(m=>String(m.patient_id)===String(p.id));const archived=p.archived===true;return `<div class="item patient-card ${archived?'archived':''}"><div class="item-top"><div><strong>${esc(p.name||'Sem nome')}</strong>${archived?' <span class="muted small">(inativo)</span>':''}<div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(p.pathology||'Sem patologia')}</div></div><div class="toolbar"><button class="btn" onclick="openPatient('${p.id}')">Ficha</button>${archived?`<button class="btn success" onclick="reactivatePatient('${p.id}')">Reativar</button>`:`<button class="btn warning" onclick="archivePatient('${p.id}')">Inativar</button>`}<button class="btn danger" onclick="deletePatientSafe('${p.id}')">Apagar</button></div></div>${linked?'<div class="muted small" style="margin-top:8px">Possui vínculo: apagar será bloqueado; use inativar.</div>':''}</div>`}
+function patientCard(p){const linked=appointments.some(a=>String(a.patient_id)===String(p.id))||packages.some(pk=>String(pk.patient_id)===String(p.id))||movements.some(m=>String(m.patient_id)===String(p.id));const archived=p.archived===true;return `<div class="item patient-card ${archived?'archived':''}"><div class="item-top"><div><strong>${esc(p.name||'Sem nome')}</strong>${archived?' <span class="muted small">(inativo)</span>':''}<div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(p.pathology||'Sem patologia')}</div></div><div class="toolbar"><button class="btn" onclick="openPatient('${p.id}')">Ficha</button><button class="btn ghost" onclick="openEditPatient('${p.id}')">✏️ Editar</button>${archived?`<button class="btn success" onclick="reactivatePatient('${p.id}')">Reativar</button>`:`<button class="btn warning" onclick="archivePatient('${p.id}')">Inativar</button>`}<button class="btn danger" onclick="deletePatientSafe('${p.id}')">Apagar</button></div></div>${linked?'<div class="muted small" style="margin-top:8px">Possui vínculo: apagar será bloqueado; use inativar.</div>':''}</div>`}
 function renderLists(){$('payerList').innerHTML=payers.map(p=>`<div class="item"><div class="item-top"><strong>${esc(p.name)}</strong><button class="btn danger" onclick="removePayer('${p.id}')">Remover</button></div></div>`).join('')||'<div class="muted">Nenhum pagador.</div>';$('serviceList').innerHTML=services.map(s=>`<div class="item"><div class="item-top"><div><strong>${esc(s.name)}</strong><div class="muted small">${payerName(s.health_insurance_id)} · ${brl(s.price)} · ${s.duration_minutes}min · ${s.appointment_mode}</div></div><button class="btn danger" onclick="removeService('${s.id}')">Remover</button></div></div>`).join('')||'<div class="muted">Nenhum serviço.</div>';const activePk=packages.filter(p=>p.active!==false),inactivePk=packages.filter(p=>p.active===false);if($('packageListActive')){$('packagesActiveCount').textContent=activePk.length+' ativo(s)';$('packagesInactiveCount').textContent=inactivePk.length+' inativo(s)';$('packageListActive').innerHTML=activePk.length?activePk.map(packageCard).join(''):'<div class="muted">Nenhum pacote ativo.</div>';$('packageListInactive').innerHTML=inactivePk.length?inactivePk.map(packageCard).join(''):'<div class="muted">Nenhum pacote inativo.</div>'}else if($('packageList')){$('packageList').innerHTML=packages.length?packages.map(packageCard).join(''):'<div class="muted">Nenhum pacote.</div>'}const activePatients=patients.filter(p=>p.archived!==true),archivedPatients=patients.filter(p=>p.archived===true);if($('patientListActive')){$('patientsActiveCount').textContent=activePatients.length+' ativo(s)';$('patientsArchivedCount').textContent=archivedPatients.length+' inativo(s)';$('patientListActive').innerHTML=activePatients.length?activePatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente ativo.</div>';$('patientListArchived').innerHTML=archivedPatients.length?archivedPatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente inativo.</div>'}}
 function formatWhatsappInput(input){let v=input.value.replace(/\D/g,'').slice(0,11);if(v.length>6)input.value=`(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;else if(v.length>2)input.value=`(${v.slice(0,2)}) ${v.slice(2)}`;else if(v.length>0)input.value=`(${v}`;}
 function makePatientId(){return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
@@ -3350,13 +3380,67 @@ async function quickStatus(id,newStatus){
     await loadAll(true);
 
     if(newStatus === 'concluido'){
+      // Sinalizar para o sistema clínico (index.html) que há evolução técnica pendente
+      try{
+        const pending = JSON.parse(localStorage.getItem('femic_pending_evolutions') || '[]');
+        const already = pending.some(x => x.appointment_id === String(id));
+        if(!already){
+          pending.push({
+            patient_id: String(old.patient_id),
+            appointment_id: String(id),
+            appointment_date: old.appointment_date,
+            flagged_at: new Date().toISOString()
+          });
+          localStorage.setItem('femic_pending_evolutions', JSON.stringify(pending));
+        }
+      }catch(e){ console.warn('Erro ao gravar pending evolution:', e); }
       toast('Status atualizado e pacote processado.','success');
     }else{
+      // Se voltou de concluído, remove o pending
+      if(old.status === 'concluido'){
+        try{
+          const pending = JSON.parse(localStorage.getItem('femic_pending_evolutions') || '[]');
+          localStorage.setItem('femic_pending_evolutions', JSON.stringify(pending.filter(x => x.appointment_id !== String(id))));
+        }catch(e){}
+      }
       toast('Status atualizado para ' + label + '.','success');
     }
   }catch(e){
     console.error(e);
     toast('Erro ao alterar status: ' + e.message, 'error');
+  }
+}
+
+/* ============================================================
+   EDITAR PACIENTE
+   ============================================================ */
+function openEditPatient(pid){
+  const p = patientById(pid);
+  if(!p){ toast('Paciente não encontrado.','error'); return; }
+  $('editPatientId').value = pid;
+  $('editPatientName').value = p.name || '';
+  $('editPatientWhatsapp').value = p.whatsapp || '';
+  $('editPatientPathology').value = p.pathology || '';
+  $('editPatientModal').classList.add('show');
+}
+
+async function saveEditPatient(){
+  const id    = $('editPatientId').value;
+  const name  = $('editPatientName').value.trim();
+  const whats = $('editPatientWhatsapp').value.trim();
+  const path  = $('editPatientPathology').value.trim();
+  if(!name){ toast('Informe o nome do paciente.','warning'); return; }
+  if(whats && !/^\(\d{2}\)\s\d{5}-\d{4}$/.test(whats)){ toast('WhatsApp inválido. Use (99) 99999-9999.','warning'); return; }
+  try{
+    await api('patients?id=eq.' + encodeURIComponent(id), {
+      method:'PATCH',
+      body: JSON.stringify({ name, whatsapp: whats, pathology: path })
+    });
+    closeModal('editPatientModal');
+    await loadAll(true);
+    toast('Paciente atualizado com sucesso.','success');
+  }catch(e){
+    toast('Erro ao salvar: ' + e.message,'error');
   }
 }
 
