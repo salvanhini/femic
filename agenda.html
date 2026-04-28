@@ -2502,20 +2502,57 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
   <section class="panel" id="panel-report"><div class="card"><div class="toolbar"><input type="month" id="reportMonth" onchange="renderReport()" style="max-width:190px"><button class="btn" onclick="exportCsv()">Exportar CSV</button><button class="btn" onclick="window.print()">Imprimir/PDF</button></div></div><div class="grid grid-4" id="reportKpis" style="margin-top:16px"></div><div class="card" id="reportPrintArea" style="margin-top:16px"><div class="eyebrow">Relatório mensal</div><div class="table-wrap"><table><thead><tr><th>Pagador</th><th>Serviço</th><th>Qtd.</th><th>Valor</th><th>Total</th></tr></thead><tbody id="reportBody"></tbody></table></div></div></section>
 
   
-  <section class="panel" id="panel-packages">
-    <div class="grid grid-2">
-      <div class="card">
-        <div class="eyebrow">Novo pacote</div>
-        <p class="muted small" style="margin-top:0">Cadastre o pacote vinculado ao paciente e ao serviço. O contador principal mostra sessões usadas/total, com saldo como informação secundária. Para evitar pacote no paciente errado, selecione paciente e serviço manualmente antes de salvar.</p>
-        <div class="grid grid-2"><select id="pkgPatient" required></select><select id="pkgService" required></select><input id="pkgTotal" type="number" min="1" placeholder="Total de sessões" required><input id="pkgRemain" type="number" min="0" placeholder="Saldo inicial (opcional)"></div>
-        <button class="btn primary" style="margin-top:12px" onclick="savePackage()">Adicionar pacote</button>
+<section class="panel" id="panel-packages">
+  <!-- BARRA DE BUSCA - NOVA -->
+  <div class="card" style="margin-bottom:16px; padding:14px;">
+    <div class="section-title" style="margin-bottom:10px;">
+      <div><div class="eyebrow">Filtrar pacotes</div><h3>Buscar por paciente ou serviço</h3></div>
+      <button class="btn ghost small" onclick="clearPackageFilters()" style="padding:6px 12px;">Limpar filtros</button>
+    </div>
+    <div class="grid" style="grid-template-columns: 1fr 1fr; gap:12px;">
+      <div class="field">
+        <label>🔍 Nome do paciente</label>
+        <input type="text" id="packageSearchInput" placeholder="Digite o nome..." oninput="filterPackages()" style="padding:10px 12px;">
       </div>
-      <div class="card">
-        <div class="eyebrow">Como ler o contador</div>
+      <div class="field">
+        <label>📋 Serviço</label>
+        <select id="packageServiceFilter" onchange="filterPackages()">
+          <option value="all">Todos os serviços</option>
+        </select>
       </div>
     </div>
-    <div class="grid grid-2" style="margin-top:16px"><div class="card"><div class="section-title"><h3>Pacotes ativos</h3><span class="muted small" id="packagesActiveCount"></span></div><div class="list" id="packageListActive"></div></div><div class="card"><div class="section-title"><h3>Pacotes inativos / encerrados</h3><span class="muted small" id="packagesInactiveCount"></span></div><div class="list" id="packageListInactive"></div></div></div>
-  </section>
+    <div class="muted small" style="margin-top:10px;" id="packageFilterCount">Mostrando todos os pacotes</div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="eyebrow">Novo pacote</div>
+      <p class="muted small" style="margin-top:0">Cadastre o pacote vinculado ao paciente e ao serviço...</p>
+      <div class="grid grid-2">
+        <select id="pkgPatient" required></select>
+        <select id="pkgService" required></select>
+        <input id="pkgTotal" type="number" min="1" placeholder="Total de sessões" required>
+        <input id="pkgRemain" type="number" min="0" placeholder="Saldo inicial (opcional)">
+      </div>
+      <button class="btn primary" style="margin-top:12px" onclick="savePackage()">Adicionar pacote</button>
+    </div>
+    <div class="card">
+      <div class="eyebrow">Como ler o contador</div>
+      <p class="muted small">O contador principal mostra <strong>sessões usadas / total</strong>, com saldo como informação secundária. Para evitar pacote no paciente errado, selecione paciente e serviço manualmente antes de salvar.</p>
+    </div>
+  </div>
+
+  <div class="grid grid-2" style="margin-top:16px">
+    <div class="card">
+      <div class="section-title"><h3>Pacotes ativos</h3><span class="muted small" id="packagesActiveCount"></span></div>
+      <div class="list" id="packageListActive"></div>
+    </div>
+    <div class="card">
+      <div class="section-title"><h3>Pacotes inativos / encerrados</h3><span class="muted small" id="packagesInactiveCount"></span></div>
+      <div class="list" id="packageListInactive"></div>
+    </div>
+  </div>
+</section>
 
   <section class="panel" id="panel-settings">
     <div class="grid grid-2"><div class="card"><div class="section-title"><div><div class="eyebrow">Supabase</div><h3>Conexão</h3></div></div><div class="grid grid-2"><div class="field"><label>URL</label><input id="sbUrl" placeholder="https://xxxx.supabase.co"></div><div class="field"><label>Anon key</label><input id="sbKey" placeholder="anon key"></div></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" onclick="saveConfig();loadAll()">Salvar e carregar</button><button class="btn" onclick="testConnection()">Testar conexão</button></div></div><div class="card"><div class="section-title"><div><div class="eyebrow">Expediente</div><h3>Horários da clínica</h3></div></div><div class="grid grid-3"><div class="field"><label>Início geral</label><input id="setStart" type="time" value="08:00"></div><div class="field"><label>Fim geral</label><input id="setEnd" type="time" value="20:00"></div><div class="field"><label>Intervalo grade</label><select id="setInterval"><option>15</option><option selected>30</option><option>45</option><option>60</option></select></div></div><div class="field" style="margin-top:12px"><label>Períodos de atendimento</label><input id="setPeriods" placeholder="08:00-12:00,16:00-20:00" value="08:00-12:00,16:00-20:00"><div class="period-help small">Use vírgula para separar períodos. A agenda só mostrará horários dentro dessas janelas.</div></div><div class="toolbar" id="workDays" style="margin-top:12px"></div><button class="btn primary" style="margin-top:12px" onclick="saveSettings()">Salvar expediente</button></div></div>
