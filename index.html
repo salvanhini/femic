@@ -2229,10 +2229,73 @@
     document.querySelector('#page-' + page).classList.add('active');
     document.querySelectorAll('.nav-link[data-page]').forEach(n=>n.classList.toggle('active', n.dataset.page===page));
     closeSidebar();
+    if(page === 'patients'){ checkPendingEvolutions(); }
     if(page === 'analysis'){ populatePatientSelects(); renderAnalysis(); }
     if(page === 'reports'){ populatePatientSelects(); renderReportPreview(); }
     if(page === 'backup'){ renderBackupPage(); }
     if(page === 'import'){ renderFormsLink(); loadPendingResponses(); }
+  }
+
+  /* ============================================================
+     ALERTA DE EVOLUÇÃO TÉCNICA PENDENTE — via Supabase
+     Lógica: busca appointments concluídos nos últimos 30 dias e
+     cruza com clinical_evolutions cadastradas no mesmo período.
+     Pacientes com sessão concluída e sem evolução técnica recente
+     recebem o badge âmbar no card.
+  ============================================================ */
+  async function checkPendingEvolutions(){
+    const cfg = getConfig();
+    if(!cfg.supabaseUrl || !cfg.supabaseKey) return;
+
+    try{
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0,10);
+
+      // 1. Buscar appointments concluídos nos últimos 30 dias
+      const apptRes = await fetch(
+        cfg.supabaseUrl + '/rest/v1/appointments'
+        + '?select=patient_id,appointment_date'
+        + '&status=eq.concluido'
+        + '&appointment_date=gte.' + since
+        + '&order=appointment_date.desc',
+        { headers: supabaseHeaders(false) }
+      );
+      if(!apptRes.ok) return;
+      const appts = await apptRes.json();
+
+      // 2. Montar mapa: patient_id → data mais recente de sessão concluída
+      const latestAppt = {};
+      for(const a of appts){
+        const pid = String(a.patient_id);
+        if(!latestAppt[pid] || a.appointment_date > latestAppt[pid]){
+          latestAppt[pid] = a.appointment_date;
+        }
+      }
+
+      // 3. Evoluções técnicas locais (localStorage)
+      const evos = getClinicalEvolutions();
+      const latestEvo = {};
+      for(const e of evos){
+        const pid = String(e.patient_id);
+        if(!latestEvo[pid] || (e.date || '') > latestEvo[pid]){
+          latestEvo[pid] = e.date || '';
+        }
+      }
+
+      // 4. Cruzar: pacientes com sessão concluída mais recente que a última evolução
+      window._pendingEvoPatients = new Set();
+      window._pendingEvoDetails  = {};
+      for(const [pid, apptDate] of Object.entries(latestAppt)){
+        const evoDate = latestEvo[pid] || '';
+        if(apptDate > evoDate){
+          window._pendingEvoPatients.add(pid);
+          window._pendingEvoDetails[pid] = { date: apptDate };
+        }
+      }
+
+      renderPatients(); // Atualizar cards com os badges corretos
+    }catch(e){
+      console.warn('checkPendingEvolutions error:', e);
+    }
   }
   function toggleTheme(){
     const next = getTheme() === 'light' ? 'dark' : 'light';
@@ -2446,15 +2509,13 @@
           : evo === 'stable'
           ? 'linear-gradient(180deg, #f59e0b, #fbbf24)'
           : 'linear-gradient(180deg, #3b82f6, #60a5fa)';
-        // Verificar se há evolução técnica pendente (sinalizada pela agenda)
+        // Verificar se há evolução técnica pendente (consulta Supabase via cache)
         let pendingEvoAlert = '';
         try{
-          const pendingEvos = JSON.parse(localStorage.getItem('femic_pending_evolutions') || '[]');
-          const hasPending = pendingEvos.some(x => String(x.patient_id) === String(p.id));
-          if(hasPending){
-            const oldest = pendingEvos.filter(x => String(x.patient_id) === String(p.id))
-              .sort((a,b) => String(a.appointment_date).localeCompare(String(b.appointment_date)))[0];
-            const dateLabel = oldest?.appointment_date ? ` · sessão ${fmtDate(oldest.appointment_date)}` : '';
+          const pending = window._pendingEvoPatients || new Set();
+          if(pending.has(String(p.id))){
+            const info = (window._pendingEvoDetails || {})[String(p.id)];
+            const dateLabel = info?.date ? ` · sessão ${fmtDate(info.date)}` : '';
             pendingEvoAlert = `<div style="
               display:flex; align-items:center; gap:8px; margin-top:10px;
               background:linear-gradient(135deg,#fffbeb,#fef3c7);
@@ -2463,7 +2524,7 @@
               <span style="font-size:1.1rem">🩺</span>
               <div style="flex:1">
                 <strong style="color:#92400e;font-size:.88rem">Evolução técnica pendente${dateLabel}</strong>
-                <div style="color:#b45309;font-size:.78rem;margin-top:2px">Sessão concluída na agenda. Registre a evolução técnica no sistema clínico.</div>
+                <div style="color:#b45309;font-size:.78rem;margin-top:2px">Sessão concluída na agenda sem evolução registrada neste sistema.</div>
               </div>
               <button class="btn small" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;white-space:nowrap;font-size:.8rem" onclick="openClinicalEvolutionModal('${p.id}')">🩺 Registrar agora</button>
             </div>`;
@@ -3596,13 +3657,9 @@ $$;`;
     document.getElementById('clinicalDate').value = todayISO();
     document.getElementById('clinicalConduct').value = '';
     document.getElementById('clinicalGuidance').value = '';
-    // Limpar alerta pendente desta agenda para este paciente
-    try{
-      const pending = JSON.parse(localStorage.getItem('femic_pending_evolutions') || '[]');
-      const updated = pending.filter(x => String(x.patient_id) !== String(pid));
-      localStorage.setItem('femic_pending_evolutions', JSON.stringify(updated));
-      renderPatients(); // Atualizar card para remover o badge
-    }catch(e){}
+    // Remover badge pendente deste paciente
+    if(window._pendingEvoPatients) window._pendingEvoPatients.delete(String(pid));
+    renderPatients();
     populateClinicalHelpers();
     autoSelectClinicalTemplate(p.pathology || '');
     renderClinicalEvolutionList(pid);
