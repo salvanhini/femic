@@ -2248,51 +2248,57 @@
     if(!cfg.supabaseUrl || !cfg.supabaseKey) return;
 
     try{
-      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0,10);
+      const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0,10);
 
-      // 1. Buscar appointments concluídos nos últimos 30 dias
+      // 1. Buscar TODOS os appointments concluídos dos últimos 60 dias
       const apptRes = await fetch(
         cfg.supabaseUrl + '/rest/v1/appointments'
-        + '?select=patient_id,appointment_date'
+        + '?select=id,patient_id,appointment_date'
         + '&status=eq.concluido'
         + '&appointment_date=gte.' + since
-        + '&order=appointment_date.desc',
+        + '&order=appointment_date.asc',
         { headers: supabaseHeaders(false) }
       );
       if(!apptRes.ok) return;
       const appts = await apptRes.json();
+      if(!appts.length){ window._pendingEvoPatients = new Set(); window._pendingEvoDetails = {}; renderPatients(); return; }
 
-      // 2. Montar mapa: patient_id → data mais recente de sessão concluída
-      const latestAppt = {};
-      for(const a of appts){
-        const pid = String(a.patient_id);
-        if(!latestAppt[pid] || a.appointment_date > latestAppt[pid]){
-          latestAppt[pid] = a.appointment_date;
-        }
-      }
-
-      // 3. Evoluções técnicas locais (localStorage)
-      const evos = getClinicalEvolutions();
-      const latestEvo = {};
+      // 2. Evoluções técnicas locais — mapa patient_id → array de datas
+      const evos = getClinicalEvolutions ? getClinicalEvolutions() : [];
+      const evoDates = {};
       for(const e of evos){
         const pid = String(e.patient_id);
-        if(!latestEvo[pid] || (e.date || '') > latestEvo[pid]){
-          latestEvo[pid] = e.date || '';
+        if(!evoDates[pid]) evoDates[pid] = [];
+        if(e.date) evoDates[pid].push(e.date);
+      }
+
+      // 3. Para cada paciente, contar sessões SEM evolução correspondente.
+      //    Uma sessão está coberta se existe evolução com data >= data da sessão.
+      const pendingByPatient = {};
+      for(const a of appts){
+        const pid = String(a.patient_id);
+        const dates = (evoDates[pid] || []).sort();
+        // Evolução cobre a sessão se há alguma com data >= appointment_date
+        const covered = dates.some(d => d >= a.appointment_date);
+        if(!covered){
+          if(!pendingByPatient[pid]) pendingByPatient[pid] = [];
+          pendingByPatient[pid].push(a.appointment_date);
         }
       }
 
-      // 4. Cruzar: pacientes com sessão concluída mais recente que a última evolução
-      window._pendingEvoPatients = new Set();
+      // 4. Montar sets para uso nos cards
+      window._pendingEvoPatients = new Set(Object.keys(pendingByPatient));
       window._pendingEvoDetails  = {};
-      for(const [pid, apptDate] of Object.entries(latestAppt)){
-        const evoDate = latestEvo[pid] || '';
-        if(apptDate > evoDate){
-          window._pendingEvoPatients.add(pid);
-          window._pendingEvoDetails[pid] = { date: apptDate };
-        }
+      for(const [pid, dates] of Object.entries(pendingByPatient)){
+        window._pendingEvoDetails[pid] = {
+          count: dates.length,
+          dates: dates,                         // todas as datas pendentes
+          oldest: dates[0],                     // mais antiga
+          newest: dates[dates.length - 1]       // mais recente
+        };
       }
 
-      renderPatients(); // Atualizar cards com os badges corretos
+      renderPatients();
     }catch(e){
       console.warn('checkPendingEvolutions error:', e);
     }
@@ -2514,8 +2520,12 @@
         try{
           const pending = window._pendingEvoPatients || new Set();
           if(pending.has(String(p.id))){
-            const info = (window._pendingEvoDetails || {})[String(p.id)];
-            const dateLabel = info?.date ? ` · sessão ${fmtDate(info.date)}` : '';
+            const info = (window._pendingEvoDetails || {})[String(p.id)] || {};
+            const count = info.count || 1;
+            const plural = count > 1 ? `${count} sessões sem evolução técnica` : `1 sessão sem evolução técnica`;
+            const datesLabel = count > 1
+              ? `${fmtDate(info.oldest)} até ${fmtDate(info.newest)}`
+              : fmtDate(info.oldest || info.date || '');
             pendingEvoAlert = `<div style="
               display:flex; align-items:center; gap:8px; margin-top:10px;
               background:linear-gradient(135deg,#fffbeb,#fef3c7);
@@ -2523,10 +2533,10 @@
             ">
               <span style="font-size:1.1rem">🩺</span>
               <div style="flex:1">
-                <strong style="color:#92400e;font-size:.88rem">Evolução técnica pendente${dateLabel}</strong>
-                <div style="color:#b45309;font-size:.78rem;margin-top:2px">Sessão concluída na agenda sem evolução registrada neste sistema.</div>
+                <strong style="color:#92400e;font-size:.88rem">⚠️ ${plural}</strong>
+                <div style="color:#b45309;font-size:.78rem;margin-top:2px">${datesLabel} · Registre a evolução técnica no sistema clínico.</div>
               </div>
-              <button class="btn small" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;white-space:nowrap;font-size:.8rem" onclick="openClinicalEvolutionModal('${p.id}')">🩺 Registrar agora</button>
+              <button class="btn small" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;white-space:nowrap;font-size:.8rem" onclick="openClinicalEvolutionModal('${p.id}')">🩺 Registrar</button>
             </div>`;
           }
         }catch(e){}
