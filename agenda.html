@@ -2503,6 +2503,30 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
 
   
   <section class="panel" id="panel-packages">
+<section class="panel" id="panel-packages">
+  <!-- BARRA DE BUSCA - COLE AQUI -->
+  <div class="card" style="margin-bottom:16px; padding:14px;">
+    <div class="section-title" style="margin-bottom:10px;">
+      <div><div class="eyebrow">Filtrar pacotes</div><h3>Buscar por paciente ou serviço</h3></div>
+      <button class="btn ghost small" onclick="clearPackageFilters()" style="padding:6px 12px;">Limpar filtros</button>
+    </div>
+    <div class="grid" style="grid-template-columns: 1fr 1fr; gap:12px;">
+      <div class="field">
+        <label>🔍 Nome do paciente</label>
+        <input type="text" id="packageSearchInput" placeholder="Digite o nome..." oninput="filterPackages()" style="padding:10px 12px;">
+      </div>
+      <div class="field">
+        <label>📋 Serviço</label>
+        <select id="packageServiceFilter" onchange="filterPackages()">
+          <option value="all">Todos os serviços</option>
+        </select>
+      </div>
+    </div>
+    <div class="muted small" style="margin-top:10px;" id="packageFilterCount">Mostrando todos os pacotes</div>
+  </div>
+  <!-- FIM DA BARRA DE BUSCA -->
+  <div class="grid grid-2">
+    ... (restante do conteúdo existente)
     <div class="grid grid-2">
       <div class="card">
         <div class="eyebrow">Novo pacote</div>
@@ -4046,6 +4070,102 @@ function femicEnhanceWeekCapacityCounters_v1435(){
   });
 })();
 
+... (código existente)
+
+/* ============================================================
+   FILTRO DE PACOTES - Busca por paciente e serviço
+   ============================================================ */
+window.cachedPackages = [];
+
+function populatePackageServiceFilter() {
+  var sel = document.getElementById('packageServiceFilter');
+  if(!sel) return;
+  var uniqueServices = {};
+  packages.forEach(function(pkg) {
+    var svc = serviceById(pkg.service_id);
+    if(svc && svc.id && svc.name) uniqueServices[svc.id] = svc.name;
+  });
+  var options = '<option value="all">Todos os serviços</option>';
+  for(var id in uniqueServices) {
+    options += '<option value="' + id + '">' + esc(uniqueServices[id]) + '</option>';
+  }
+  sel.innerHTML = options;
+}
+
+function filterPackages() {
+  var searchInput = document.getElementById('packageSearchInput');
+  var serviceSelect = document.getElementById('packageServiceFilter');
+  var searchTerm = (searchInput ? searchInput.value.trim().toLowerCase() : '');
+  var serviceFilter = (serviceSelect ? serviceSelect.value : 'all');
+  
+  if(!window.cachedPackages.length) window.cachedPackages = packages.slice();
+  
+  var filtered = [];
+  for(var i = 0; i < window.cachedPackages.length; i++) {
+    var pkg = window.cachedPackages[i];
+    var patient = patientById(pkg.patient_id);
+    var patientName = (patient && patient.name ? patient.name.toLowerCase() : '');
+    var matchesSearch = !searchTerm || patientName.indexOf(searchTerm) !== -1;
+    var matchesService = serviceFilter === 'all' || String(pkg.service_id) === String(serviceFilter);
+    if(matchesSearch && matchesService) filtered.push(pkg);
+  }
+  
+  var activeFiltered = filtered.filter(function(p) { return p.active !== false; });
+  var inactiveFiltered = filtered.filter(function(p) { return p.active === false; });
+  
+  var activeSpan = document.getElementById('packagesActiveCount');
+  var inactiveSpan = document.getElementById('packagesInactiveCount');
+  var countSpan = document.getElementById('packageFilterCount');
+  
+  if(activeSpan) activeSpan.textContent = activeFiltered.length + ' ativo(s)';
+  if(inactiveSpan) inactiveSpan.textContent = inactiveFiltered.length + ' inativo(s)';
+  if(countSpan) {
+    if(searchTerm || serviceFilter !== 'all') {
+      countSpan.innerHTML = '🔍 Filtro ativo: ' + (activeFiltered.length + inactiveFiltered.length) + ' de ' + window.cachedPackages.length + ' pacotes';
+    } else {
+      countSpan.innerHTML = 'Mostrando todos os ' + window.cachedPackages.length + ' pacotes';
+    }
+  }
+  
+  var activeContainer = document.getElementById('packageListActive');
+  var inactiveContainer = document.getElementById('packageListInactive');
+  
+  if(activeContainer) {
+    var activeHtml = '';
+    for(var j = 0; j < activeFiltered.length; j++) {
+      activeHtml += packageCard(activeFiltered[j]);
+    }
+    activeContainer.innerHTML = activeFiltered.length ? activeHtml : '<div class="muted">Nenhum pacote ativo encontrado.</div>';
+  }
+  if(inactiveContainer) {
+    var inactiveHtml = '';
+    for(var k = 0; k < inactiveFiltered.length; k++) {
+      inactiveHtml += packageCard(inactiveFiltered[k]);
+    }
+    inactiveContainer.innerHTML = inactiveFiltered.length ? inactiveHtml : '<div class="muted">Nenhum pacote inativo encontrado.</div>';
+  }
+}
+
+function clearPackageFilters() {
+  var searchInput = document.getElementById('packageSearchInput');
+  var serviceSelect = document.getElementById('packageServiceFilter');
+  if(searchInput) searchInput.value = '';
+  if(serviceSelect) serviceSelect.value = 'all';
+  filterPackages();
+}
+
+// Modifica o renderLists para incluir o filtro (preservando o original)
+var originalRenderLists = window.renderLists;
+window.renderLists = function() {
+  if(originalRenderLists) originalRenderLists();
+  setTimeout(function() {
+    populatePackageServiceFilter();
+    if(window.cachedPackages.length === 0) window.cachedPackages = packages.slice();
+    filterPackages();
+  }, 50);
+};
+
 </script>
 </body>
 </html>
+
