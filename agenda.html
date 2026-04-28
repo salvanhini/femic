@@ -2389,8 +2389,55 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
 </style>
 </head>
 <body>
+<!-- ===== FEMIC LOGIN OVERLAY ===== -->
+<div id="femicLoginOverlay" style="
+  position:fixed; inset:0; z-index:9999;
+  background: linear-gradient(135deg, #0b3c6f 0%, #0f5c5c 60%, #1fb6e9 100%);
+  display:flex; align-items:center; justify-content:center; padding:20px;
+">
+  <div style="
+    background:#fff; border-radius:28px; padding:36px 32px;
+    width:min(400px,100%); box-shadow:0 30px 60px rgba(0,0,0,.28);
+  ">
+    <div style="text-align:center; margin-bottom:28px;">
+      <div style="font-size:2.4rem; font-weight:800; letter-spacing:.08em; color:#0b3c6f;">FEMIC</div>
+      <div style="color:#678282; margin-top:6px; font-size:.95rem;">Agenda · Araraquara, SP</div>
+    </div>
+    <div style="display:grid; gap:14px;">
+      <div>
+        <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">Email</label>
+        <input id="loginEmail" type="email" placeholder="seu@email.com"
+          style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px;
+                 font-size:1rem; outline:none; box-sizing:border-box; transition:.2s;"
+          onkeydown="if(event.key==='Enter')femicLogin()"
+          onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
+          onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+      </div>
+      <div>
+        <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">Senha</label>
+        <input id="loginPassword" type="password" placeholder="••••••••"
+          style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px;
+                 font-size:1rem; outline:none; box-sizing:border-box; transition:.2s;"
+          onkeydown="if(event.key==='Enter')femicLogin()"
+          onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
+          onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+      </div>
+      <button id="loginBtn" onclick="femicLogin()" style="
+        padding:14px; background:linear-gradient(135deg,#0b3c6f,#1fb6e9); color:#fff;
+        border:none; border-radius:14px; font-size:1rem; font-weight:700; cursor:pointer;
+        box-shadow:0 10px 24px rgba(11,60,111,.22); transition:.2s; margin-top:2px;
+      "
+        onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 14px 28px rgba(11,60,111,.28)'"
+        onmouseout="this.style.transform=''; this.style.boxShadow='0 10px 24px rgba(11,60,111,.22)'">
+        Entrar
+      </button>
+      <div id="loginError" style="color:#ef4444; text-align:center; font-size:.88rem; display:none; padding:4px 0;"></div>
+    </div>
+  </div>
+</div>
+
 <div class="toast-wrap" id="toastWrap"></div>
-<div class="topbar"><div class="topbar-inner"><div class="brand"><div class="logo"></div><div><h1>FEMIC Agenda v1.4.43</h1><p>Grade semanal equilibrada · desktop completo · mobile preservado</p></div></div><div class="toolbar"><button class="btn primary" onclick="openAppt()">+ Agendar</button><button class="btn" onclick="loadAll()">↻ Atualizar</button><button class="btn ghost" onclick="goToday()">Hoje</button></div></div></div>
+<div class="topbar"><div class="topbar-inner"><div class="brand"><div class="logo"></div><div><h1>FEMIC Agenda v1.4.43</h1><p>Grade semanal equilibrada · desktop completo · mobile preservado</p></div></div><div class="toolbar"><button class="btn primary" onclick="openAppt()">+ Agendar</button><button class="btn" onclick="loadAll()">↻ Atualizar</button><button class="btn ghost" onclick="goToday()">Hoje</button><button class="btn" onclick="femicLogout()" style="border-color:rgba(239,68,68,.25); color:#b91c1c; background:#fff7f7;">🚪 <span id="loginUserLabel">Sair</span></button></div></div></div>
 <div class="wrap">
   <div class="tabs">
     <button class="tab active" data-panel="dashboard" onclick="showPanel('dashboard')">📊 Dashboard</button>
@@ -2785,7 +2832,10 @@ NOTIFY pgrst, 'reload schema';`;
 const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],movements=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();
 function toast(msg,type='info'){const el=document.createElement('div');el.className='toast '+type;el.textContent=msg;$('toastWrap').appendChild(el);setTimeout(()=>el.remove(),3600)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function localIsoDate(d){const x=new Date(d);return String(x.getFullYear())+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}function todayIso(){return localIsoDate(new Date())}function isoDate(d){return localIsoDate(d)}function dateDay(dateStr){const [y,m,d]=String(dateStr).split('-').map(Number);return new Date(y,m-1,d).getDay()}function fmtDate(s){if(!s)return'';const [y,m,d]=String(s).split('-');return d+'/'+m+'/'+y}function fmtWeekday(s){if(!s)return'';const [y,m,d]=String(s).split('-').map(Number);const dias=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];return dias[new Date(y,m-1,d).getDay()]||''}function cleanPhone(v){return String(v||'').replace(/\D/g,'')}function brl(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}function normalizeTime(t){return String(t||'').slice(0,5)}function timeToMin(t){const [h,m]=normalizeTime(t).split(':').map(Number);return h*60+(m||0)}function minToTime(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}function addMinutes(t,m){return minToTime(timeToMin(t)+Number(m||0))}function base(){return ($('sbUrl').value||localStorage.femic_agenda_url||'').trim().replace(/\/$/,'')}function key(){return ($('sbKey').value||localStorage.femic_agenda_key||'').trim()}function headers(){return{apikey:key(),Authorization:'Bearer '+key(),'Content-Type':'application/json',Prefer:'return=representation'}}
+function localIsoDate(d){const x=new Date(d);return String(x.getFullYear())+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}function todayIso(){return localIsoDate(new Date())}function isoDate(d){return localIsoDate(d)}function dateDay(dateStr){const [y,m,d]=String(dateStr).split('-').map(Number);return new Date(y,m-1,d).getDay()}function fmtDate(s){if(!s)return'';const [y,m,d]=String(s).split('-');return d+'/'+m+'/'+y}function fmtWeekday(s){if(!s)return'';const [y,m,d]=String(s).split('-').map(Number);const dias=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];return dias[new Date(y,m-1,d).getDay()]||''}function cleanPhone(v){return String(v||'').replace(/\D/g,'')}function brl(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}function normalizeTime(t){return String(t||'').slice(0,5)}function timeToMin(t){const [h,m]=normalizeTime(t).split(':').map(Number);return h*60+(m||0)}function minToTime(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}function addMinutes(t,m){return minToTime(timeToMin(t)+Number(m||0))}function base(){return ($('sbUrl').value||localStorage.femic_agenda_url||'').trim().replace(/\/$/,'')}function key(){return ($('sbKey').value||localStorage.femic_agenda_key||'').trim()}function headers(){
+  const jwt = sessionStorage.getItem('femic_jwt') || key();
+  return{apikey:key(),Authorization:'Bearer '+jwt,'Content-Type':'application/json',Prefer:'return=representation'};
+}
 async function api(path,opt={}){const res=await fetch(base()+'/rest/v1/'+path,{headers:headers(),...opt});const txt=await res.text();let data;try{data=txt?JSON.parse(txt):null}catch(e){data=txt}if(!res.ok){console.error('Supabase error',path,res.status,data);throw new Error((data&&data.message)||txt||('HTTP '+res.status))}return data}
 function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊';$('tplReminder').value=tpl;const tplForm=localStorage.femic_tpl_form_reminder||'Olá, {nome}! Tudo bem? Sua sessão de hoje foi concluída. Pode preencher rapidinho o formulário de evolução? Isso nos ajuda a acompanhar sua dor, funcionalidade e evolução. {link_formulario}';if($('tplFormReminder'))$('tplFormReminder').value=tplForm;if($('formLinkInput'))$('formLinkInput').value=localStorage.femic_form_link||''}
 async function testConnection(){try{await api('patients?select=id&limit=1');toast('Conexão e carregamento funcionando.','success')}catch(e){toast('Erro real: '+e.message,'error')}}
@@ -3141,7 +3191,7 @@ async function restoreAgendaBackup(event){
 }
 
 function saveTemplates(){localStorage.femic_tpl_reminder=$('tplReminder').value;if($('tplFormReminder'))localStorage.femic_tpl_form_reminder=$('tplFormReminder').value;if($('formLinkInput'))localStorage.femic_form_link=$('formLinkInput').value.trim();toast('Modelos salvos.','success')}async function copySql(){await navigator.clipboard.writeText(SQL_SCHEMA);toast('SQL copiado.','success')}
-$('sqlBox').textContent=SQL_SCHEMA;loadConfig();$('dayDate').value=todayIso();$('reminderDate').value=isoDate(new Date(Date.now()+86400000));$('reportMonth').value=new Date().toISOString().slice(0,7);
+$('sqlBox').textContent=SQL_SCHEMA;loadConfig();checkFemicAuth();$('dayDate').value=todayIso();$('reminderDate').value=isoDate(new Date(Date.now()+86400000));$('reportMonth').value=new Date().toISOString().slice(0,7);
 /* =========================================================
    FEMIC Agenda v1.4.36 - Ficha com dia da semana — Correção robusta de consumo de pacote
    - Concluído consome pacote mesmo se o status já estiver concluído
@@ -3759,12 +3809,79 @@ if(typeof saldoBadgeInline !== 'function'){
   }
 }
 
-renderWorkDays();renderAll();if(base()&&key())loadAll(true);
+/* ============================================================
+   FEMIC AUTH — Login / Logout / Verificação de sessão
+   ============================================================ */
+async function femicLogin(){
+  const urlVal = (localStorage.femic_agenda_url || '').trim();
+  const keyVal = (localStorage.femic_agenda_key || '').trim();
+  const email    = (document.getElementById('loginEmail').value || '').trim();
+  const password = document.getElementById('loginPassword').value || '';
+  const errEl    = document.getElementById('loginError');
+  const btn      = document.getElementById('loginBtn');
+
+  if(!urlVal || !keyVal){
+    errEl.textContent = 'Configure URL e Anon key do Supabase na aba Configurações primeiro.';
+    errEl.style.display = 'block'; return;
+  }
+  if(!email || !password){
+    errEl.textContent = 'Preencha email e senha.';
+    errEl.style.display = 'block'; return;
+  }
+  errEl.style.display = 'none';
+  btn.textContent = 'Entrando…'; btn.disabled = true;
+
+  try {
+    const res = await fetch(urlVal + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': keyVal },
+      body: JSON.stringify({ email, password })
+    });
+    if(!res.ok){
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error_description || err.message || 'Credenciais inválidas');
+    }
+    const data = await res.json();
+    sessionStorage.setItem('femic_jwt',  data.access_token);
+    sessionStorage.setItem('femic_user', email);
+    document.getElementById('femicLoginOverlay').style.display = 'none';
+    const lbl = document.getElementById('loginUserLabel');
+    if(lbl) lbl.textContent = email.split('@')[0] + ' · Sair';
+    if(base() && key()) loadAll(true);
+    toast('Bem-vindo, ' + email.split('@')[0] + '!', 'success');
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+    btn.textContent = 'Entrar'; btn.disabled = false;
+  }
+}
+
+function femicLogout(){
+  if(!confirm('Sair da sessão?')) return;
+  sessionStorage.removeItem('femic_jwt');
+  sessionStorage.removeItem('femic_user');
+  location.reload();
+}
+
+function checkFemicAuth(){
+  const jwt     = sessionStorage.getItem('femic_jwt');
+  const overlay = document.getElementById('femicLoginOverlay');
+  if(!jwt){
+    if(overlay) overlay.style.display = 'flex';
+    return;
+  }
+  if(overlay) overlay.style.display = 'none';
+  const email = sessionStorage.getItem('femic_user') || '';
+  const lbl   = document.getElementById('loginUserLabel');
+  if(lbl && email) lbl.textContent = email.split('@')[0] + ' · Sair';
+}
+
+renderWorkDays();renderAll();if(base()&&key()&&sessionStorage.getItem('femic_jwt'))loadAll(true);
 function hasOpenModal(){
   return !!document.querySelector('.modal-backdrop.show');
 }
 setInterval(()=>{
-  if(base()&&key()&&!hasOpenModal()) loadAll(true);
+  if(base()&&key()&&sessionStorage.getItem('femic_jwt')&&!hasOpenModal()) loadAll(true);
 },60000);
 
 /* FEMIC v1.4.32 — fallback seguro para status rápidos */
