@@ -707,42 +707,85 @@
   ">
     <div style="
       background:#fff; border-radius:28px; padding:36px 32px;
-      width:min(400px,100%); box-shadow:0 30px 60px rgba(0,0,0,.28);
+      width:min(440px,100%); box-shadow:0 30px 60px rgba(0,0,0,.28);
     ">
-      <div style="text-align:center; margin-bottom:28px;">
+      <div style="text-align:center; margin-bottom:24px;">
         <div style="font-size:2.4rem; font-weight:800; letter-spacing:.08em; color:#0b3c6f;">FEMIC</div>
         <div style="color:#678282; margin-top:6px; font-size:.95rem;">Fisioterapia · Araraquara, SP</div>
       </div>
-      <div style="display:grid; gap:14px;">
-        <div>
-          <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">Email</label>
-          <input id="loginEmail" type="email" placeholder="seu@email.com"
-            style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px;
-                   font-size:1rem; outline:none; box-sizing:border-box; transition:.2s;"
-            onkeydown="if(event.key==='Enter')femicLogin()"
-            onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
-            onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+
+      <!-- PASSO 1: Configuração Supabase (só na 1ª vez) -->
+      <div id="loginStep1">
+        <div style="background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:16px; padding:14px 16px; margin-bottom:20px; display:flex; gap:10px;">
+          <span style="font-size:1.3rem">⚙️</span>
+          <div>
+            <strong style="color:#0369a1; font-size:.9rem;">Primeiro acesso</strong>
+            <div style="color:#0284c7; font-size:.8rem; margin-top:3px;">Informe as credenciais do Supabase. Isso é feito uma única vez.</div>
+          </div>
         </div>
-        <div>
-          <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">Senha</label>
-          <input id="loginPassword" type="password" placeholder="••••••••"
-            style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px;
-                   font-size:1rem; outline:none; box-sizing:border-box; transition:.2s;"
-            onkeydown="if(event.key==='Enter')femicLogin()"
-            onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
-            onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+        <div style="display:grid; gap:14px;">
+          <div>
+            <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">URL do projeto Supabase</label>
+            <input id="setupUrl" type="url" placeholder="https://xxxx.supabase.co"
+              style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px; font-size:.95rem; outline:none; box-sizing:border-box; transition:.2s;"
+              onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
+              onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+          </div>
+          <div>
+            <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">Chave anônima (anon key)</label>
+            <input id="setupKey" type="text" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px; font-size:.78rem; outline:none; box-sizing:border-box; transition:.2s; font-family:monospace;"
+              onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
+              onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+          </div>
+          <button onclick="femicSaveSetup()" style="
+            padding:14px; background:linear-gradient(135deg,#0b3c6f,#1fb6e9); color:#fff;
+            border:none; border-radius:14px; font-size:1rem; font-weight:700; cursor:pointer;
+            box-shadow:0 10px 24px rgba(11,60,111,.22); transition:.2s; margin-top:2px;
+          "
+            onmouseover="this.style.transform='translateY(-1px)'"
+            onmouseout="this.style.transform=''">
+            Salvar e continuar →
+          </button>
+          <div id="setupError" style="color:#ef4444; text-align:center; font-size:.88rem; display:none; padding:4px 0;"></div>
         </div>
-        <button id="loginBtn" onclick="femicLogin()" style="
-          padding:14px; background:linear-gradient(135deg,#0b3c6f,#1fb6e9); color:#fff;
-          border:none; border-radius:14px; font-size:1rem; font-weight:700; cursor:pointer;
-          box-shadow:0 10px 24px rgba(11,60,111,.22); transition:.2s; margin-top:2px;
-        "
-          onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 14px 28px rgba(11,60,111,.28)'"
-          onmouseout="this.style.transform=''; this.style.boxShadow='0 10px 24px rgba(11,60,111,.22)'">
-          Entrar
-        </button>
-        <div id="loginError" style="color:#ef4444; text-align:center; font-size:.88rem; display:none; padding:4px 0;"></div>
       </div>
+
+      <!-- PASSO 2: Login com email e senha -->
+      <div id="loginStep2" style="display:none;">
+        <div style="display:grid; gap:14px;">
+          <div>
+            <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">Email</label>
+            <input id="loginEmail" type="email" placeholder="seu@email.com"
+              style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px; font-size:1rem; outline:none; box-sizing:border-box; transition:.2s;"
+              onkeydown="if(event.key==='Enter')femicLogin()"
+              onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
+              onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+          </div>
+          <div>
+            <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">Senha</label>
+            <input id="loginPassword" type="password" placeholder="••••••••"
+              style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px; font-size:1rem; outline:none; box-sizing:border-box; transition:.2s;"
+              onkeydown="if(event.key==='Enter')femicLogin()"
+              onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
+              onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+          </div>
+          <button id="loginBtn" onclick="femicLogin()" style="
+            padding:14px; background:linear-gradient(135deg,#0b3c6f,#1fb6e9); color:#fff;
+            border:none; border-radius:14px; font-size:1rem; font-weight:700; cursor:pointer;
+            box-shadow:0 10px 24px rgba(11,60,111,.22); transition:.2s;
+          "
+            onmouseover="this.style.transform='translateY(-1px)'"
+            onmouseout="this.style.transform=''">
+            Entrar
+          </button>
+          <div id="loginError" style="color:#ef4444; text-align:center; font-size:.88rem; display:none; padding:4px 0;"></div>
+          <button onclick="femicShowSetup()" style="background:none; border:none; color:#94a3b8; font-size:.8rem; cursor:pointer; text-decoration:underline; padding:0;">
+            ⚙️ Alterar configuração do Supabase
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -3994,8 +4037,42 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
   function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
 
   /* ============================================================
-     FEMIC AUTH — Login / Logout / Verificação de sessão
-     ============================================================ */
+     FEMIC AUTH — Configuração + Login / Logout
+  ============================================================ */
+  function femicShowSetup(){
+    document.getElementById('loginStep1').style.display = 'block';
+    document.getElementById('loginStep2').style.display = 'none';
+    const cfg = getConfig();
+    if(cfg.supabaseUrl) document.getElementById('setupUrl').value = cfg.supabaseUrl;
+    if(cfg.supabaseKey) document.getElementById('setupKey').value = cfg.supabaseKey;
+  }
+
+  function femicSaveSetup(){
+    const url  = (document.getElementById('setupUrl').value || '').trim().replace(/\/$/,'');
+    const akey = (document.getElementById('setupKey').value || '').trim();
+    const errEl = document.getElementById('setupError');
+    if(!url || !url.startsWith('https://')){
+      errEl.textContent = 'Informe a URL completa do Supabase (começa com https://).';
+      errEl.style.display = 'block'; return;
+    }
+    if(!akey || akey.length < 20){
+      errEl.textContent = 'Informe a chave anônima (anon key) do Supabase.';
+      errEl.style.display = 'block'; return;
+    }
+    errEl.style.display = 'none';
+    const cfg = getConfig();
+    cfg.supabaseUrl = url;
+    cfg.supabaseKey = akey;
+    saveConfig(cfg);
+    const urlInp = document.getElementById('supabaseUrlInput');
+    const keyInp = document.getElementById('supabaseKeyInput');
+    if(urlInp) urlInp.value = url;
+    if(keyInp) keyInp.value = akey;
+    document.getElementById('loginStep1').style.display = 'none';
+    document.getElementById('loginStep2').style.display = 'block';
+    setTimeout(() => document.getElementById('loginEmail')?.focus(), 100);
+  }
+
   async function femicLogin(){
     const cfg = getConfig();
     const email    = (document.getElementById('loginEmail').value || '').trim();
@@ -4004,8 +4081,7 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
     const btn      = document.getElementById('loginBtn');
 
     if(!cfg.supabaseUrl || !cfg.supabaseKey){
-      errEl.textContent = 'Supabase não configurado. Verifique o arquivo HTML.';
-      errEl.style.display = 'block'; return;
+      femicShowSetup(); return;
     }
     if(!email || !password){
       errEl.textContent = 'Preencha email e senha.';
@@ -4047,10 +4123,20 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
   }
 
   function checkFemicAuth(){
-    const jwt   = sessionStorage.getItem('femic_jwt');
+    const jwt     = sessionStorage.getItem('femic_jwt');
     const overlay = document.getElementById('femicLoginOverlay');
+    const cfg     = getConfig();
+    const hasConfig = !!(cfg.supabaseUrl && cfg.supabaseKey);
     if(!jwt){
       if(overlay) overlay.style.display = 'flex';
+      if(!hasConfig){
+        document.getElementById('loginStep1').style.display = 'block';
+        document.getElementById('loginStep2').style.display = 'none';
+      } else {
+        document.getElementById('loginStep1').style.display = 'none';
+        document.getElementById('loginStep2').style.display = 'block';
+        setTimeout(() => document.getElementById('loginEmail')?.focus(), 150);
+      }
       return;
     }
     if(overlay) overlay.style.display = 'none';
