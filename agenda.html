@@ -2529,6 +2529,252 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
   z-index: 15 !important;
   border-color: rgba(31,182,233,.35) !important;
 }
+/* =====================================================
+   FEMIC AGENDA — Grade estilo Google Calendar
+   Bloco final: vence todos os anteriores
+   ===================================================== */
+
+/* Container da semana ocupa toda a largura */
+@media (min-width: 769px){
+  #panel-agenda{
+    width: calc(100vw - 20px) !important;
+    max-width: none !important;
+    margin-left: calc(50% - 50vw + 10px) !important;
+    margin-right: 0 !important;
+  }
+  #panel-agenda > .card{
+    padding: 10px !important;
+    border-radius: 20px !important;
+  }
+  #weekView{
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    padding: 4px 0 16px !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(11,60,111,.18) transparent !important;
+  }
+  #weekBoard.week-board{
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* Grade principal */
+  .femic-week-board{
+    --time-col: 64px !important;
+    width: 100% !important;
+    min-width: 900px !important;
+    max-width: 100% !important;
+    grid-template-columns: var(--time-col) repeat(7, minmax(0, 1fr)) !important;
+    border-radius: 20px !important;
+    border: 1px solid rgba(11,60,111,.10) !important;
+    box-shadow: 0 8px 24px rgba(11,60,111,.08) !important;
+    background: #fff !important;
+  }
+
+  /* Cabeçalho dos dias — estilo Google */
+  .femic-week-head{
+    height: 56px !important;
+    min-height: 56px !important;
+    padding: 8px 6px !important;
+    font-size: .82rem !important;
+    font-weight: 700 !important;
+    line-height: 1.25 !important;
+    letter-spacing: .01em !important;
+    color: #5f6368 !important;
+    background: #fff !important;
+    border-bottom: 1px solid rgba(11,60,111,.10) !important;
+    text-transform: uppercase !important;
+    font-size: .72rem !important;
+  }
+
+  /* Hoje — destaque azul no header */
+  .femic-week-head.today{
+    color: var(--primary) !important;
+    background: linear-gradient(180deg,#f0f8ff,#fff) !important;
+    border-bottom: 2px solid rgba(31,182,233,.5) !important;
+    font-weight: 900 !important;
+  }
+
+  /* Coluna de horas */
+  .femic-week-axis{
+    background: #fafbfc !important;
+    border-right: 1px solid rgba(11,60,111,.08) !important;
+  }
+  .femic-week-hour{
+    right: 8px !important;
+    font-size: .72rem !important;
+    font-weight: 700 !important;
+    color: #80868b !important;
+    letter-spacing: .01em !important;
+  }
+
+  /* Colunas de dias */
+  .femic-week-day{
+    background: #fff !important;
+    border-right: 1px solid rgba(11,60,111,.07) !important;
+    overflow: hidden !important;
+  }
+  .femic-week-day:last-child{ border-right: none !important; }
+  .femic-week-day:hover{ background: #fafcff !important; }
+  .femic-week-day.today{ background: linear-gradient(180deg,#f5fbff,#fff) !important; }
+  .femic-week-day.closed{
+    background: repeating-linear-gradient(
+      45deg,#f8fafc,#f8fafc 5px,#f1f5f9 5px,#f1f5f9 10px
+    ) !important;
+    opacity: .7 !important;
+  }
+
+  /* Linhas de hora */
+  .femic-week-line{ background: rgba(11,60,111,.055) !important; }
+  .femic-week-line.major{ background: rgba(11,60,111,.13) !important; }
+  .femic-week-period{ background: rgba(31,182,233,.028) !important; }
+
+  /* Badge de atendimentos */
+  .femic-week-empty-label{
+    top: 5px !important;
+    right: 6px !important;
+    font-size: .62rem !important;
+    font-weight: 800 !important;
+    padding: 3px 7px !important;
+    background: rgba(255,255,255,.92) !important;
+    border: 1px solid rgba(11,60,111,.10) !important;
+  }
+
+  /* ── Cards — estilo Google Calendar ── */
+  .femic-week-card{
+    padding: 5px 8px !important;
+    border-radius: 6px !important;
+    min-height: 22px !important;
+    gap: 1px !important;
+    border: none !important;
+    border-left: 4px solid rgba(11,60,111,.4) !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.06) !important;
+    overflow: hidden !important;
+    transition: box-shadow .15s ease, filter .12s ease !important;
+  }
+
+  /* Status — cores sólidas como Google Calendar */
+  .femic-week-card.status-agendado{
+    background: #fff8e1 !important;
+    border-left-color: #f59e0b !important;
+  }
+  .femic-week-card.status-confirmado{
+    background: #e8f0fe !important;
+    border-left-color: #1a73e8 !important;
+  }
+  .femic-week-card.status-concluido{
+    background: #e6f4ea !important;
+    border-left-color: #34a853 !important;
+  }
+  .femic-week-card.status-cancelado{
+    background: #fce8e6 !important;
+    border-left-color: #ea4335 !important;
+    opacity: .72 !important;
+  }
+
+  /* Hover — expande o card */
+  .femic-week-card:hover,
+  .femic-week-card:focus-within{
+    z-index: 60 !important;
+    min-height: max-content !important;
+    width: min(260px, max(180px, 100%)) !important;
+    overflow: visible !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.08) !important;
+    filter: brightness(1.02) !important;
+  }
+
+  /* Conteúdo dos cards */
+  .femic-week-card .appt-time{
+    font-size: .66rem !important;
+    font-weight: 700 !important;
+    padding: 1px 5px !important;
+    margin: 0 0 2px 0 !important;
+    background: transparent !important;
+    border: none !important;
+    color: inherit !important;
+    opacity: .85 !important;
+    max-width: 100% !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .femic-week-card .appt-name{
+    display: block !important;
+    font-size: .8rem !important;
+    font-weight: 800 !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin: 0 !important;
+    color: #1a1a2e !important;
+    letter-spacing: -.01em !important;
+  }
+
+  .femic-week-card .small,
+  .femic-week-card .appt-meta,
+  .femic-week-card .service-badge,
+  .femic-week-card .appt-actions{
+    display: none !important;
+  }
+
+  .femic-week-card:hover .small,
+  .femic-week-card:focus-within .small{
+    display: block !important;
+    font-size: .7rem !important;
+    line-height: 1.3 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    margin-top: 4px !important;
+    opacity: .85 !important;
+  }
+
+  .femic-week-card:hover .appt-meta,
+  .femic-week-card:focus-within .appt-meta{
+    display: flex !important;
+    margin-top: 4px !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+
+  .femic-week-card:hover .appt-actions,
+  .femic-week-card:focus-within .appt-actions{
+    display: flex !important;
+    margin-top: 6px !important;
+    gap: 5px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .femic-week-card .mini-action{
+    font-size: .65rem !important;
+    padding: 4px 7px !important;
+    border-radius: 8px !important;
+  }
+  .femic-week-card .status-chip,
+  .femic-week-card .service-badge{
+    font-size: .62rem !important;
+    padding: 2px 6px !important;
+  }
+}
+
+/* Tablets */
+@media (min-width: 769px) and (max-width: 1100px){
+  .femic-week-board{
+    min-width: 800px !important;
+  }
+  .femic-week-card .appt-name{ font-size: .74rem !important; }
+}
+
+/* Telas grandes — mais espaçado */
+@media (min-width: 1400px){
+  .femic-week-board{ --time-col: 72px !important; }
+  .femic-week-head{ font-size: .76rem !important; }
+  .femic-week-card .appt-name{ font-size: .84rem !important; }
+  .femic-week-card .appt-time{ font-size: .7rem !important; }
+}
 </style>
 </head>
 <body>
@@ -4023,7 +4269,7 @@ function renderWeek(){
   $('periodLabel').textContent=`Semana de ${fmtDate(isoDate(days[0]))} a ${fmtDate(isoDate(days[6]))}`;
   const bounds=femicWeekBoundsV1434();
   const mobile=window.matchMedia&&window.matchMedia('(max-width:768px)').matches;
-  const pxPerMin=mobile?1.03:1.55;
+  const pxPerMin=mobile?1.03:2.0;
   const bodyH=Math.max(mobile?520:680,Math.round(bounds.total*pxPerMin));
   const hourMarks=[]; for(let m=bounds.start;m<=bounds.end;m+=60) hourMarks.push(m);
   const slotLines=slots().map(timeToMin).filter(m=>m>=bounds.start&&m<=bounds.end);
