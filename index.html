@@ -879,7 +879,7 @@
         <div class="tabs" id="patientTabs">
           <button class="tab active" data-filter="active" onclick="setPatientFilter('active')">Ativos</button>
           <button class="tab" data-filter="all" onclick="setPatientFilter('all')">Todos</button>
-          <button class="tab" data-filter="archived" onclick="setPatientFilter('archived')">📦 Arquivados</button>
+          <button class="tab" data-filter="archived" onclick="setPatientFilter('archived'); loadArchivedPatients()">📦 Arquivados</button>
           <button class="tab" data-filter="improved" onclick="setPatientFilter('improved')">✅ Melhoraram</button>
           <button class="tab" data-filter="worsened" onclick="setPatientFilter('worsened')">❌ Pioraram</button>
           <button class="tab" data-filter="stable" onclick="setPatientFilter('stable')">➡ Estáveis</button>
@@ -1290,20 +1290,82 @@
 
   <div class="modal-backdrop" id="documentsModalWrap">
     <div class="modal lg">
-      <div class="modal-head"><h3>Documentos do paciente</h3><button class="btn-icon" onclick="closeModal('documentsModalWrap')">✕</button></div>
+      <div class="modal-head">
+        <h3>📎 Documentos e Guias — <span id="documentsPatientNameHead"></span></h3>
+        <button class="btn-icon" onclick="closeModal('documentsModalWrap')">✕</button>
+      </div>
       <div class="modal-body">
         <input type="hidden" id="documentsPatientId" />
-        <div class="field"><label>Paciente</label><input id="documentsPatientName" readonly /></div>
-        <div class="grid-2" style="margin-top:12px;">
-          <div class="field"><label>Título do documento</label><input id="documentTitle" placeholder="Ex.: Ressonância lombar" /></div>
-          <div class="field"><label>Categoria</label><input id="documentCategory" placeholder="Ex.: Exame, Laudo, Receita" /></div>
+        <input type="hidden" id="documentsPatientName" />
+
+        <!-- Abas internas -->
+        <div class="tabs" style="margin-bottom:18px;">
+          <button class="tab active" onclick="switchDocTab('docs',this)">📄 Documentos</button>
+          <button class="tab" onclick="switchDocTab('guias',this)">🏥 Guias de Convênio</button>
         </div>
-        <div class="field" style="margin-top:12px;"><label>Link do Google Drive</label><input id="documentUrl" placeholder="https://drive.google.com/..." /></div>
-        <div class="field" style="margin-top:12px;"><label>Observação</label><textarea id="documentObs" rows="2"></textarea></div>
-        <div class="toolbar" style="margin-top:14px;"><button class="btn primary" onclick="savePatientDocument()">➕ Adicionar documento</button></div>
-        <div class="card" style="margin-top:16px; padding:14px;">
-          <div class="card-title"><h3>Links salvos</h3><small>Abra no Google Drive</small></div>
-          <div id="documentsList" class="muted">Nenhum documento salvo.</div>
+
+        <!-- ABA: Documentos -->
+        <div id="docTabDocs">
+          <div class="grid-2" style="margin-bottom:12px;">
+            <div class="field"><label>Título do documento</label><input id="documentTitle" placeholder="Ex.: Ressonância lombar" /></div>
+            <div class="field"><label>Categoria</label>
+              <select id="documentCategory" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); font-size:.95rem;">
+                <option value="">Selecione a categoria</option>
+                <option>Exame de imagem</option>
+                <option>Laudo médico</option>
+                <option>Receita / Prescrição</option>
+                <option>Encaminhamento</option>
+                <option>Relatório fisioterapêutico</option>
+                <option>Outro</option>
+              </select>
+            </div>
+          </div>
+          <div class="field"><label>Link do Google Drive</label><input id="documentUrl" placeholder="https://drive.google.com/..." /></div>
+          <div class="field" style="margin-top:10px;"><label>Observação</label><textarea id="documentObs" rows="2"></textarea></div>
+          <div class="toolbar" style="margin-top:12px;"><button class="btn primary" onclick="savePatientDocument()">➕ Adicionar documento</button></div>
+          <div class="card" style="margin-top:16px; padding:14px;">
+            <div class="card-title"><h3>Documentos salvos</h3></div>
+            <div id="documentsList" class="muted">Nenhum documento salvo.</div>
+          </div>
+        </div>
+
+        <!-- ABA: Guias de Convênio -->
+        <div id="docTabGuias" style="display:none;">
+          <div style="
+            background:linear-gradient(135deg,#f0f9ff,#e0f2fe);
+            border:1.5px solid #bae6fd; border-radius:16px;
+            padding:16px; margin-bottom:18px;
+          ">
+            <strong style="color:#0369a1; font-size:.95rem;">📋 Nova guia de convênio</strong>
+            <div class="grid-2" style="margin-top:12px; gap:12px;">
+              <div class="field">
+                <label>Convênio</label>
+                <select id="guiaConvenio" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); font-size:.95rem;">
+                  <option value="">Selecione</option>
+                  <option>Unimed</option>
+                  <option>Hapvida</option>
+                  <option>NotreDame Intermédica</option>
+                  <option>Amil</option>
+                  <option>SulAmérica</option>
+                  <option>Bradesco Saúde</option>
+                  <option>Particular</option>
+                  <option>Outro</option>
+                </select>
+              </div>
+              <div class="field"><label>Número da guia</label><input id="guiaNumero" placeholder="Ex.: 123456789"></div>
+              <div class="field"><label>Data de autorização</label><input id="guiaDataAuth" type="date"></div>
+              <div class="field"><label>Validade da guia</label><input id="guiaValidade" type="date"></div>
+              <div class="field"><label>Sessões autorizadas</label><input id="guiaSessoesAuth" type="number" min="1" placeholder="Ex.: 20"></div>
+              <div class="field"><label>Sessões já realizadas</label><input id="guiaSessoesUsadas" type="number" min="0" placeholder="Ex.: 6"></div>
+            </div>
+            <div class="field" style="margin-top:10px;"><label>Observações</label><textarea id="guiaObs" rows="2" placeholder="Procedimento autorizado, CID, restrições..."></textarea></div>
+            <div class="field" style="margin-top:10px;"><label>Link da guia (Google Drive)</label><input id="guiaDriveUrl" placeholder="https://drive.google.com/..."></div>
+            <div class="toolbar" style="margin-top:12px;">
+              <button class="btn primary" onclick="saveGuiaConvenio()">💾 Salvar guia</button>
+            </div>
+          </div>
+
+          <div id="guiasList"><div class="muted">Nenhuma guia cadastrada.</div></div>
         </div>
       </div>
       <div class="modal-foot"><button class="btn" onclick="closeModal('documentsModalWrap')">Fechar</button></div>
@@ -2697,18 +2759,29 @@
         if(e.date) evoDates[pid].push(e.date);
       }
 
-      // 3. Para cada paciente, contar sessões SEM evolução correspondente.
-      //    Uma sessão está coberta se existe evolução com data >= data da sessão.
-      const pendingByPatient = {};
+      // 3. Para cada paciente, contar sessões SEM evolução própria.
+      //    Cada sessão precisa de uma evolução registrada entre ela e a sessão seguinte.
+      //    Agrupa sessions por paciente e verifica individualmente.
+      const sessionsByPatient = {};
       for(const a of appts){
         const pid = String(a.patient_id);
-        const dates = (evoDates[pid] || []).sort();
-        // Evolução cobre a sessão se há alguma com data >= appointment_date
-        const covered = dates.some(d => d >= a.appointment_date);
-        if(!covered){
-          if(!pendingByPatient[pid]) pendingByPatient[pid] = [];
-          pendingByPatient[pid].push(a.appointment_date);
+        if(!sessionsByPatient[pid]) sessionsByPatient[pid] = [];
+        sessionsByPatient[pid].push(a.appointment_date);
+      }
+
+      const pendingByPatient = {};
+      for(const [pid, sessionDates] of Object.entries(sessionsByPatient)){
+        const sorted = sessionDates.slice().sort();
+        const evoDatesSorted = (evoDates[pid] || []).slice().sort();
+        const pendingDates = [];
+        for(let i = 0; i < sorted.length; i++){
+          const sessDate = sorted[i];
+          const nextSessDate = sorted[i+1] || '9999-12-31';
+          // Sessão está coberta se existe evolução com data >= sessDate e < próxima sessão
+          const covered = evoDatesSorted.some(d => d >= sessDate && d < nextSessDate);
+          if(!covered) pendingDates.push(sessDate);
         }
+        if(pendingDates.length) pendingByPatient[pid] = pendingDates;
       }
 
       // 4. Montar sets para uso nos cards
@@ -3135,43 +3208,112 @@
       archived_at: shouldArchive ? new Date().toISOString() : ''
     });
     savePatients(patients);
+    // Sincronizar com Supabase
+    const cfg = getConfig();
+    if(cfg.supabaseUrl && cfg.supabaseKey){
+      fetch(cfg.supabaseUrl + '/rest/v1/patients?id=eq.' + encodeURIComponent(pid), {
+        method: 'PATCH',
+        headers: supabaseHeaders(true),
+        body: JSON.stringify({ archived: !!shouldArchive, archived_at: shouldArchive ? new Date().toISOString() : null })
+      }).catch(e => console.warn('Supabase archive sync:', e));
+    }
     closeModal('deleteModalWrap');
     toast(shouldArchive ? 'Paciente arquivado' : 'Paciente reativado', shouldArchive ? 'warning' : 'success');
     fullRefreshUI();
   }
+
+  /* Carrega pacientes arquivados do Supabase sob demanda */
+  async function loadArchivedPatients(){
+    const cfg = getConfig();
+    if(!cfg.supabaseUrl || !cfg.supabaseKey) return;
+    try{
+      const res = await fetch(
+        cfg.supabaseUrl + '/rest/v1/patients?select=*&archived=eq.true&order=name.asc',
+        { headers: supabaseHeaders(false) }
+      );
+      if(!res.ok) return;
+      const archived = await res.json();
+      if(!archived.length){ toast('Nenhum paciente arquivado', 'info'); return; }
+      // Mescla arquivados com os ativos em memória (sem duplicar)
+      const current = getPatients();
+      const ids = new Set(current.map(p => String(p.id)));
+      const merged = [...current, ...archived.filter(p => !ids.has(String(p.id)))];
+      savePatients(merged);
+      renderPatients();
+      toast(archived.length + ' paciente(s) arquivado(s) carregado(s)', 'info');
+    }catch(e){ console.warn('loadArchivedPatients:', e); }
+  }
   function openPatientAnalysis(pid){ goPage('analysis'); document.getElementById('analysisPatientSelect').value = pid; renderAnalysis(); }
   function populatePatientSelects(){
-    const patients = (Array.isArray(getPatients()) ? getPatients() : [])
+    const allInMemory = (Array.isArray(getPatients()) ? getPatients() : [])
       .filter(p => p && typeof p === 'object')
       .map(p => normalizePatientRecord(p))
       .filter(p => p.id)
-      .map(p => ({
-        ...p,
-        id: String(p.id || ''),
-        name: String(p.name || 'Sem nome')
-      }))
-      .sort((a,b)=> String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR'));
+      .map(p => ({ ...p, id: String(p.id||''), name: String(p.name||'Sem nome') }))
+      .sort((a,b) => String(a.name||'').localeCompare(String(b.name||''), 'pt-BR'));
 
-    const options = patients.length
-      ? ['<option value="">Selecione</option>'].concat(
-          patients.map(p => `<option value="${escapeAttr(p.id)}">${escapeHtml(p.name)}</option>`)
-        ).join('')
-      : '<option value="">Nenhum paciente</option>';
+    function buildOptions(patients){
+      const active   = patients.filter(p => !p.archived);
+      const archived = patients.filter(p => p.archived);
+      let opts = '<option value="">Selecione</option>';
+      if(active.length)   opts += '<optgroup label="— Ativos —">'   + active.map(p   => `<option value="${escapeAttr(p.id)}">${escapeHtml(p.name)}</option>`).join('')   + '</optgroup>';
+      if(archived.length) opts += '<optgroup label="— Arquivados —">' + archived.map(p => `<option value="${escapeAttr(p.id)}">${escapeHtml(p.name)} (arquivado)</option>`).join('') + '</optgroup>';
+      return opts || '<option value="">Nenhum paciente</option>';
+    }
 
-    ['analysisPatientSelect','reportPatientSelect'].forEach(id => {
-      const sel = document.getElementById(id);
-      if(!sel) return;
-      const prev = sel.value;
-      sel.innerHTML = options;
-      if(patients.some(p => p.id === prev)) sel.value = prev;
-    });
+    function apply(patients){
+      ['analysisPatientSelect','reportPatientSelect'].forEach(id => {
+        const sel = document.getElementById(id); if(!sel) return;
+        const prev = sel.value;
+        sel.innerHTML = buildOptions(patients);
+        if(patients.some(p => p.id === prev)) sel.value = prev;
+      });
+    }
+
+    apply(allInMemory);
+
+    // Buscar arquivados do Supabase em background para completar os dropdowns
+    const cfg = getConfig();
+    if(cfg.supabaseUrl && cfg.supabaseKey){
+      const archivedInMemory = new Set(allInMemory.filter(p=>p.archived).map(p=>String(p.id)));
+      fetch(cfg.supabaseUrl + '/rest/v1/patients?select=id,name,archived,pathology,whatsapp&archived=eq.true&order=name.asc', { headers: supabaseHeaders(false) })
+        .then(r => r.ok ? r.json() : [])
+        .then(list => {
+          const newOnes = list.filter(p => !archivedInMemory.has(String(p.id))).map(normalizePatientRecord);
+          if(!newOnes.length) return;
+          // Mescla em memória silenciosamente
+          const current = getPatients();
+          const ids = new Set(current.map(p=>String(p.id)));
+          savePatients([...current, ...newOnes.filter(p=>!ids.has(String(p.id)))]);
+          apply([...allInMemory, ...newOnes]);
+        }).catch(() => {});
+    }
   }
   function renderAnalysis(){
     const pid = document.getElementById('analysisPatientSelect').value;
     const cards = document.getElementById('analysisCards'); const tbody = document.getElementById('analysisTableBody');
     safeChartDestroy(window.analysisChart);
     if(!pid){ cards.innerHTML = '<div class="card">Nenhum paciente selecionado.</div>'; tbody.innerHTML=''; renderAnalysisSidePanels(''); emptyChartFallback('analysisChart','Sem dados para análise.'); return; }
-    const patient = getPatients().find(p=>p.id===pid); const ss = getPatientSessions(pid); const first = ss[0]; const last = ss[ss.length-1];
+    let patient = getPatients().find(p=>p.id===pid);
+    // Se paciente não está em memória (arquivado não carregado), buscar do Supabase
+    if(!patient){
+      const cfg = getConfig();
+      if(cfg.supabaseUrl && cfg.supabaseKey){
+        fetch(cfg.supabaseUrl + '/rest/v1/patients?select=*&id=eq.' + encodeURIComponent(pid), { headers: supabaseHeaders(false) })
+          .then(r => r.ok ? r.json() : [])
+          .then(list => {
+            if(!list.length) return;
+            const p = normalizePatientRecord(list[0]);
+            const current = getPatients();
+            if(!current.find(x => String(x.id) === String(p.id))){
+              savePatients([...current, p]);
+            }
+            renderAnalysis(); // re-render agora que está em memória
+          }).catch(() => {});
+      }
+      cards.innerHTML = '<div class="card muted">Carregando dados do paciente arquivado…</div>';
+      return;
+    } const ss = getPatientSessions(pid); const first = ss[0]; const last = ss[ss.length-1];
     const varPct = first && first.pain !== 0 ? Math.round(((Number(last?.pain||0) - Number(first.pain)) / Number(first.pain)) * 100) : 0;
     cards.innerHTML = [
       ['Total sessões', ss.length],
@@ -3243,7 +3385,26 @@
       return;
     }
 
-    const p = getPatients().find(x=>x.id===pid);
+    let p = getPatients().find(x=>x.id===pid);
+    // Se paciente não está em memória (arquivado), buscar do Supabase
+    if(!p){
+      const cfg = getConfig();
+      if(cfg.supabaseUrl && cfg.supabaseKey){
+        fetch(cfg.supabaseUrl + '/rest/v1/patients?select=*&id=eq.' + encodeURIComponent(pid), { headers: supabaseHeaders(false) })
+          .then(r => r.ok ? r.json() : [])
+          .then(list => {
+            if(!list.length) return;
+            const loaded = normalizePatientRecord(list[0]);
+            const current = getPatients();
+            if(!current.find(x => String(x.id) === String(loaded.id))){
+              savePatients([...current, loaded]);
+            }
+            renderReportPreview();
+          }).catch(() => {});
+        target.innerHTML = '<div class="report-empty"><div style="color:#64748b;">Carregando dados do paciente arquivado…</div></div>';
+      }
+      return;
+    }
     const ss = getPatientSessions(pid);
     const an = getAnamneseByPatient(pid);
     const evos = getClinicalEvolutionsByPatient(pid).slice().sort((a,b) => String(a.date).localeCompare(String(b.date)));
@@ -4116,25 +4277,34 @@ $$;`;
     document.getElementById('clinicalConduct').value = '';
     document.getElementById('clinicalGuidance').value = '';
 
-    // Recalcular pendentes deste paciente sem recarregar do Supabase
-    // Uma evolução com a data salva cobre todas as sessões com data <= essa data
-    if(window._pendingEvoDetails && window._pendingEvoDetails[String(pid)]){
+    // Recalcular pendentes deste paciente na memória com a mesma lógica do checkPendingEvolutions
+    if(window._pendingEvoDetails && window._pendingEvoPatients){
       const detail = window._pendingEvoDetails[String(pid)];
-      // Remove datas de sessão que agora estão cobertas (date >= appointment_date)
-      const remaining = (detail.dates || []).filter(d => d > date);
-      if(remaining.length === 0){
-        // Todas cobertas — remove badge
-        window._pendingEvoPatients.delete(String(pid));
-        delete window._pendingEvoDetails[String(pid)];
-      } else {
-        // Atualiza contagem
-        remaining.sort();
-        window._pendingEvoDetails[String(pid)] = {
-          count:   remaining.length,
-          dates:   remaining,
-          oldest:  remaining[0],
-          newest:  remaining[remaining.length - 1]
-        };
+      if(detail){
+        // Pega evoluções atualizadas (incluindo a que acabou de salvar)
+        const allEvos = getClinicalEvolutions()
+          .filter(e => String(e.patient_id) === String(pid) && e.date)
+          .map(e => e.date).sort();
+
+        const sessionDates = (detail.dates || []).slice().sort();
+        const stillPending = [];
+        for(let i = 0; i < sessionDates.length; i++){
+          const sessDate = sessionDates[i];
+          const nextSessDate = sessionDates[i+1] || '9999-12-31';
+          const covered = allEvos.some(d => d >= sessDate && d < nextSessDate);
+          if(!covered) stillPending.push(sessDate);
+        }
+        if(stillPending.length === 0){
+          window._pendingEvoPatients.delete(String(pid));
+          delete window._pendingEvoDetails[String(pid)];
+        } else {
+          window._pendingEvoDetails[String(pid)] = {
+            count:  stillPending.length,
+            dates:  stillPending,
+            oldest: stillPending[0],
+            newest: stillPending[stillPending.length - 1]
+          };
+        }
       }
     }
     renderPatients();
@@ -4148,17 +4318,116 @@ $$;`;
   function renderDocumentsList(pid){
     const wrap = document.getElementById('documentsList'); if(!wrap) return;
     const docs = getDocumentsByPatient(pid);
-    wrap.innerHTML = docs.length ? docs.map(d => `<div class="card" style="padding:12px; margin-top:8px;"><div style="display:flex; justify-content:space-between; gap:10px;"><div><strong>${escapeHtml(d.title || 'Documento')}</strong><div class="muted" style="margin-top:4px;">${escapeHtml(d.category || 'Sem categoria')} · ${fmtDateTime(d.created_at)}</div></div><button class="btn-icon" onclick="deletePatientDocument('${d.id}')">🗑</button></div><div style="margin-top:8px;"><a href="${escapeAttr(d.drive_url)}" target="_blank" rel="noopener">Abrir no Google Drive</a></div>${d.obs ? `<div class="muted" style="margin-top:6px;">${escapeHtml(d.obs)}</div>` : ''}</div>`).join('') : '<div class="muted">Nenhum documento salvo.</div>';
+    wrap.innerHTML = docs.length ? docs.map(d => `
+      <div class="card" style="padding:12px; margin-top:8px;">
+        <div style="display:flex; justify-content:space-between; gap:10px;">
+          <div>
+            <strong>${escapeHtml(d.title || 'Documento')}</strong>
+            <div class="muted" style="margin-top:4px;">${escapeHtml(d.category || 'Sem categoria')} · ${fmtDateTime(d.created_at)}</div>
+          </div>
+          <button class="btn-icon" onclick="deletePatientDocument('${d.id}')">🗑</button>
+        </div>
+        <div style="margin-top:8px;"><a href="${escapeAttr(d.drive_url)}" target="_blank" rel="noopener">Abrir no Google Drive →</a></div>
+        ${d.obs ? `<div class="muted" style="margin-top:6px;">${escapeHtml(d.obs)}</div>` : ''}
+      </div>`).join('') : '<div class="muted">Nenhum documento salvo.</div>';
   }
+
+  function switchDocTab(tab, btn){
+    document.getElementById('docTabDocs').style.display   = tab === 'docs'  ? 'block' : 'none';
+    document.getElementById('docTabGuias').style.display  = tab === 'guias' ? 'block' : 'none';
+    document.querySelectorAll('#documentsModalWrap .tabs .tab').forEach(b => b.classList.remove('active'));
+    if(btn) btn.classList.add('active');
+    if(tab === 'guias'){
+      const pid = document.getElementById('documentsPatientId').value;
+      renderGuiasList(pid);
+    }
+  }
+
+  function getGuias(){ return safeArrayParse('femic_guias'); }
+  function saveGuias(list){ localStorage.setItem('femic_guias', JSON.stringify(list)); }
+  function getGuiasByPatient(pid){ return getGuias().filter(g => String(g.patient_id) === String(pid)); }
+
+  function saveGuiaConvenio(){
+    const pid      = document.getElementById('documentsPatientId').value;
+    const convenio = document.getElementById('guiaConvenio').value.trim();
+    const numero   = document.getElementById('guiaNumero').value.trim();
+    const dataAuth = document.getElementById('guiaDataAuth').value;
+    const validade = document.getElementById('guiaValidade').value;
+    const authSess = parseInt(document.getElementById('guiaSessoesAuth').value) || 0;
+    const usedSess = parseInt(document.getElementById('guiaSessoesUsadas').value) || 0;
+    const obs      = document.getElementById('guiaObs').value.trim();
+    const drive    = document.getElementById('guiaDriveUrl').value.trim();
+    if(!convenio || !numero){ toast('Informe o convênio e o número da guia', 'warning'); return; }
+    const list = getGuias();
+    list.push({
+      id: 'g' + Date.now() + Math.random().toString(36).slice(2,5),
+      patient_id: pid, convenio, numero, data_auth: dataAuth,
+      validade, sessoes_auth: authSess, sessoes_usadas: usedSess,
+      obs, drive_url: drive, created_at: new Date().toISOString()
+    });
+    saveGuias(list);
+    // Limpar campos
+    ['guiaConvenio','guiaNumero','guiaDataAuth','guiaValidade','guiaSessoesAuth','guiaSessoesUsadas','guiaObs','guiaDriveUrl']
+      .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+    toast('Guia de convênio salva!', 'success');
+    renderGuiasList(pid);
+  }
+
+  function renderGuiasList(pid){
+    const wrap = document.getElementById('guiasList'); if(!wrap) return;
+    const list = getGuiasByPatient(pid);
+    if(!list.length){ wrap.innerHTML = '<div class="muted">Nenhuma guia cadastrada.</div>'; return; }
+    wrap.innerHTML = list.map(g => {
+      const restantes = (g.sessoes_auth || 0) - (g.sessoes_usadas || 0);
+      const pct = g.sessoes_auth ? Math.min(100, Math.round(g.sessoes_usadas / g.sessoes_auth * 100)) : 0;
+      const vencida = g.validade && g.validade < new Date().toISOString().slice(0,10);
+      const alerta  = restantes <= 3 && restantes >= 0 && g.sessoes_auth;
+      return `
+      <div class="card" style="padding:14px; margin-bottom:10px; border-left:5px solid ${vencida?'#ef4444':alerta?'#f59e0b':'#0b3c6f'}; background:${vencida?'#fef2f2':alerta?'#fffbeb':'#f8fbff'};">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
+          <div>
+            <strong style="font-size:1rem; color:#0b3c6f;">${escapeHtml(g.convenio)}</strong>
+            <span class="muted" style="margin-left:8px; font-size:.82rem;">Guia nº ${escapeHtml(g.numero)}</span>
+            ${vencida ? '<span style="margin-left:8px; background:#fee2e2; color:#b91c1c; font-size:.72rem; font-weight:800; padding:2px 8px; border-radius:999px;">VENCIDA</span>' : ''}
+            ${alerta && !vencida ? '<span style="margin-left:8px; background:#fef3c7; color:#92400e; font-size:.72rem; font-weight:800; padding:2px 8px; border-radius:999px;">⚠️ POUCAS SESSÕES</span>' : ''}
+          </div>
+          <button class="btn-icon" onclick="deleteGuia('${g.id}', '${pid}')">🗑</button>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; margin-top:10px;">
+          ${g.data_auth ? `<div class="muted" style="font-size:.82rem;"><strong style="display:block; color:#334155;">Autorização</strong>${fmtDate(g.data_auth)}</div>` : ''}
+          ${g.validade  ? `<div class="muted" style="font-size:.82rem;"><strong style="display:block; color:#334155;">Validade</strong>${fmtDate(g.validade)}</div>` : ''}
+          ${g.sessoes_auth ? `<div class="muted" style="font-size:.82rem;"><strong style="display:block; color:#334155;">Sessões</strong>${g.sessoes_usadas}/${g.sessoes_auth} realizadas · <strong>${restantes} restantes</strong></div>` : ''}
+        </div>
+        ${g.sessoes_auth ? `
+        <div style="margin-top:10px; height:8px; border-radius:999px; background:#e5e7eb; overflow:hidden;">
+          <div style="height:100%; width:${pct}%; background:${pct>=80?'#ef4444':pct>=60?'#f59e0b':'#10b981'}; border-radius:999px; transition:width .4s;"></div>
+        </div>` : ''}
+        ${g.obs ? `<div class="muted" style="margin-top:8px; font-size:.84rem;">${escapeHtml(g.obs)}</div>` : ''}
+        ${g.drive_url ? `<div style="margin-top:8px;"><a href="${escapeAttr(g.drive_url)}" target="_blank" rel="noopener" style="font-size:.84rem;">📄 Abrir guia no Drive →</a></div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  function deleteGuia(gid, pid){
+    if(!confirm('Remover esta guia de convênio?')) return;
+    saveGuias(getGuias().filter(g => g.id !== gid));
+    renderGuiasList(pid);
+    toast('Guia removida', 'warning');
+  }
+
   function openDocumentsModal(pid){
     pid = resolvePatientId(pid); const p = getPatients().find(x=>x.id===pid);
     if(!p){ toast('Selecione um paciente', 'warning'); return; }
     document.getElementById('documentsPatientId').value = pid;
     document.getElementById('documentsPatientName').value = p.name;
+    const head = document.getElementById('documentsPatientNameHead');
+    if(head) head.textContent = p.name;
     document.getElementById('documentTitle').value = '';
     document.getElementById('documentCategory').value = '';
     document.getElementById('documentUrl').value = '';
     document.getElementById('documentObs').value = '';
+    // Reset para aba documentos
+    switchDocTab('docs', document.querySelector('#documentsModalWrap .tabs .tab'));
     renderDocumentsList(pid);
     openModal('documentsModalWrap');
   }
@@ -4404,7 +4673,7 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
     toast('Baixando dados da nuvem...', 'info');
     try {
       const [r1, r2, r3, r4, r5] = await Promise.all([
-        fetch(cfg.supabaseUrl + '/rest/v1/patients?select=*', { headers:supabaseHeaders(false) }),
+        fetch(cfg.supabaseUrl + '/rest/v1/patients?select=*&archived=neq.true&order=name.asc', { headers:supabaseHeaders(false) }),
         fetch(cfg.supabaseUrl + '/rest/v1/sessions?select=*', { headers:supabaseHeaders(false) }),
         fetch(cfg.supabaseUrl + '/rest/v1/anamneses?select=*', { headers:supabaseHeaders(false) }),
         fetch(cfg.supabaseUrl + '/rest/v1/clinical_evolutions?select=*', { headers:supabaseHeaders(false) }),
