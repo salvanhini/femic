@@ -4092,24 +4092,52 @@ $$;`;
     document.getElementById('clinicalDate').value = todayISO();
     document.getElementById('clinicalConduct').value = '';
     document.getElementById('clinicalGuidance').value = '';
-    // Remover badge pendente deste paciente
-    if(window._pendingEvoPatients) window._pendingEvoPatients.delete(String(pid));
-    renderPatients();
+    // Não remove o badge aqui — só remove ao salvar
     populateClinicalHelpers();
     autoSelectClinicalTemplate(p.pathology || '');
     renderClinicalEvolutionList(pid);
     openModal('clinicalEvolutionModalWrap');
   }
+
   function saveClinicalEvolution(){
-    const pid = document.getElementById('clinicalPatientId').value; if(!pid){ toast('Paciente não encontrado', 'error'); return; }
-    const conduct = document.getElementById('clinicalConduct').value.trim();
+    const pid = document.getElementById('clinicalPatientId').value;
+    if(!pid){ toast('Paciente não encontrado', 'error'); return; }
+    const conduct  = document.getElementById('clinicalConduct').value.trim();
     const guidance = document.getElementById('clinicalGuidance').value.trim();
-    const date = document.getElementById('clinicalDate').value || todayISO();
+    const date     = document.getElementById('clinicalDate').value || todayISO();
     if(!conduct && !guidance){ toast('Preencha ao menos a conduta ou as orientações', 'warning'); return; }
+
     const list = getClinicalEvolutions();
-    list.push({ id:'e' + Date.now() + Math.random().toString(36).slice(2,5), patient_id:pid, date, conduct, guidance, created_at:new Date().toISOString() });
-    saveClinicalEvolutions(list); toast('Evolução técnica salva', 'success'); renderClinicalEvolutionList(pid); renderAnalysis();
-    document.getElementById('clinicalConduct').value = ''; document.getElementById('clinicalGuidance').value = '';
+    list.push({ id:'e'+Date.now()+Math.random().toString(36).slice(2,5), patient_id:pid, date, conduct, guidance, created_at:new Date().toISOString() });
+    saveClinicalEvolutions(list);
+    toast('Evolução técnica salva', 'success');
+    renderClinicalEvolutionList(pid);
+    renderAnalysis();
+    document.getElementById('clinicalConduct').value = '';
+    document.getElementById('clinicalGuidance').value = '';
+
+    // Recalcular pendentes deste paciente sem recarregar do Supabase
+    // Uma evolução com a data salva cobre todas as sessões com data <= essa data
+    if(window._pendingEvoDetails && window._pendingEvoDetails[String(pid)]){
+      const detail = window._pendingEvoDetails[String(pid)];
+      // Remove datas de sessão que agora estão cobertas (date >= appointment_date)
+      const remaining = (detail.dates || []).filter(d => d > date);
+      if(remaining.length === 0){
+        // Todas cobertas — remove badge
+        window._pendingEvoPatients.delete(String(pid));
+        delete window._pendingEvoDetails[String(pid)];
+      } else {
+        // Atualiza contagem
+        remaining.sort();
+        window._pendingEvoDetails[String(pid)] = {
+          count:   remaining.length,
+          dates:   remaining,
+          oldest:  remaining[0],
+          newest:  remaining[remaining.length - 1]
+        };
+      }
+    }
+    renderPatients();
   }
   function deleteClinicalEvolution(eid){
     if(!confirm('Remover esta evolução técnica?')) return;
