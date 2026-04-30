@@ -2386,6 +2386,149 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
   .femic-week-card .appt-time{font-size:.62rem !important;}
 }
 
+/* =====================================================
+   FEMIC — Grade Semanal: override final (desktop generoso)
+   Resolve conflitos de cascata dos blocos anteriores
+   ===================================================== */
+
+/* Desktop padrão (≥1200px) */
+@media (min-width: 1200px) {
+  .week-board {
+    grid-template-columns: 108px repeat(7, minmax(210px, 1fr)) !important;
+    border-radius: 28px !important;
+    background: linear-gradient(180deg,#fff,#f9fcff) !important;
+    box-shadow: 0 24px 56px rgba(11,60,111,.13) !important;
+    border: 1.5px solid rgba(11,60,111,.11) !important;
+    overflow: auto !important;
+  }
+  .week-cell {
+    min-height: 180px !important;
+    padding: 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .week-cell.head {
+    min-height: auto !important;
+    padding: 18px 12px !important;
+    font-size: 1rem !important;
+    font-weight: 900 !important;
+    letter-spacing: .01em !important;
+    background: linear-gradient(180deg,#f5faff,#edf6fd) !important;
+    border-bottom: 2px solid rgba(11,60,111,.15) !important;
+    text-align: center !important;
+    line-height: 1.5 !important;
+  }
+  .week-cell.today-head {
+    background: linear-gradient(135deg,#dff7ff,#f0fbff) !important;
+    box-shadow: inset 0 -4px 0 rgba(31,182,233,.4) !important;
+  }
+  .week-time {
+    font-size: 1rem !important;
+    font-weight: 900 !important;
+    padding: 16px 16px 0 0 !important;
+    background: linear-gradient(180deg,#f9fbfd,#f3f8fb) !important;
+    border-right: 2px solid rgba(11,60,111,.1) !important;
+  }
+  .week-slot {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    padding: 12px !important;
+    flex: 1 !important;
+  }
+  .week-appt {
+    border-radius: 16px !important;
+    padding: 12px 14px !important;
+    border: 1.5px solid rgba(11,60,111,.11) !important;
+    box-shadow: 0 6px 18px rgba(11,60,111,.08) !important;
+    margin: 0 !important;
+  }
+  .week-appt strong {
+    font-size: .96rem !important;
+    font-weight: 800 !important;
+    line-height: 1.35 !important;
+    display: block !important;
+    margin-bottom: 5px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .appt-name {
+    font-size: .9rem !important;
+    line-height: 1.4 !important;
+    margin-bottom: 6px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .appt-time {
+    font-size: .78rem !important;
+    padding: 4px 10px !important;
+    margin-bottom: 6px !important;
+  }
+  .appt-meta .status-chip,
+  .appt-meta .service-badge {
+    font-size: .74rem !important;
+    padding: 4px 9px !important;
+  }
+  .capacity {
+    font-size: .82rem !important;
+    margin-bottom: 10px !important;
+  }
+  .capacity::after {
+    height: 9px !important;
+  }
+}
+
+/* Desktop médio 1024px–1199px */
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .week-board {
+    grid-template-columns: 96px repeat(7, minmax(178px, 1fr)) !important;
+  }
+  .week-cell {
+    min-height: 160px !important;
+    padding: 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .week-cell.head {
+    min-height: auto !important;
+    font-size: .92rem !important;
+    padding: 15px 10px !important;
+  }
+  .week-time { font-size: .92rem !important; }
+  .week-appt { padding: 10px 12px !important; border-radius: 14px !important; }
+  .week-appt strong { font-size: .9rem !important; }
+  .appt-name { font-size: .85rem !important; }
+}
+
+/* Tablet 768px–1023px */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .week-board {
+    grid-template-columns: 82px repeat(7, minmax(148px, 1fr)) !important;
+  }
+  .week-cell {
+    min-height: 140px !important;
+    padding: 10px !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .week-cell.head { min-height: auto !important; font-size: .86rem !important; }
+  .week-appt { padding: 9px 10px !important; }
+  .week-appt strong { font-size: .86rem !important; }
+}
+
+/* Status — reforço visual */
+.week-appt.status-agendado  { background:linear-gradient(180deg,#fffcf3,#fff) !important; border-left:7px solid var(--warning)  !important; }
+.week-appt.status-confirmado{ background:linear-gradient(180deg,#f0f7ff,#fff) !important; border-left:7px solid #2563eb          !important; }
+.week-appt.status-concluido { background:linear-gradient(180deg,#f1fdf6,#fff) !important; border-left:7px solid var(--success)  !important; }
+.week-appt.status-cancelado { background:linear-gradient(180deg,#fef3f3,#fff) !important; border-left:7px solid var(--danger)   !important; opacity:.76 !important; }
+.week-appt:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 18px 36px rgba(11,60,111,.16) !important;
+  z-index: 15 !important;
+  border-color: rgba(31,182,233,.35) !important;
+}
 </style>
 </head>
 <body>
