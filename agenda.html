@@ -2963,7 +2963,42 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
     <div class="grid grid-2"><div class="card"><div class="section-title"><div><div class="eyebrow">Supabase</div><h3>Conexão</h3></div></div><div class="grid grid-2"><div class="field"><label>URL</label><input id="sbUrl" placeholder="https://xxxx.supabase.co"></div><div class="field"><label>Anon key</label><input id="sbKey" placeholder="anon key"></div></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" onclick="saveConfig();loadAll()">Salvar e carregar</button><button class="btn" onclick="testConnection()">Testar conexão</button></div></div><div class="card"><div class="section-title"><div><div class="eyebrow">Expediente</div><h3>Horários da clínica</h3></div></div><div class="grid grid-3"><div class="field"><label>Início geral</label><input id="setStart" type="time" value="08:00"></div><div class="field"><label>Fim geral</label><input id="setEnd" type="time" value="20:00"></div><div class="field"><label>Intervalo grade</label><select id="setInterval"><option>15</option><option selected>30</option><option>45</option><option>60</option></select></div></div><div class="field" style="margin-top:12px"><label>Períodos de atendimento</label><input id="setPeriods" placeholder="08:00-12:00,16:00-20:00" value="08:00-12:00,16:00-20:00"><div class="period-help small">Use vírgula para separar períodos. A agenda só mostrará horários dentro dessas janelas.</div></div><div class="toolbar" id="workDays" style="margin-top:12px"></div><button class="btn primary" style="margin-top:12px" onclick="saveSettings()">Salvar expediente</button></div></div>
     <div class="grid grid-2" style="margin-top:16px"><div class="card"><div class="section-title"><div><div class="eyebrow">Pagadores</div><h3>Convênios e particulares</h3></div></div><div class="toolbar"><input id="payerName" placeholder="Nome do pagador" style="max-width:260px"><button class="btn primary" onclick="savePayer()">Adicionar</button></div><div class="list" id="payerList" style="margin-top:12px"></div></div><div class="card"><div class="section-title"><div><div class="eyebrow">Serviços</div><h3>Valores, duração e modo</h3></div></div><div class="grid grid-2"><input id="svcName" placeholder="Nome do serviço"><select id="svcPayer"></select><input id="svcPrice" type="number" placeholder="Valor"><select id="svcDur"><option>30</option><option selected>45</option><option>60</option><option>90</option></select><select id="svcMode"><option value="grupo">Grupo</option><option value="individual">Individual</option></select><input id="svcMax" type="number" value="4" placeholder="Limite"></div><button class="btn primary" style="margin-top:12px" onclick="saveService()">Adicionar serviço</button><div class="list" id="serviceList" style="margin-top:12px"></div></div></div>
     
-    <div class="card" style="margin-top:16px"><div class="eyebrow">Modelos WhatsApp</div><div class="grid grid-2"><div class="field"><label>Lembrete de sessão</label><textarea id="tplReminder" rows="5"></textarea></div><div class="field"><label>Formulário pós-atendimento</label><textarea id="tplFormReminder" rows="5"></textarea></div></div><div class="field" style="margin-top:12px"><label>Link do formulário de respostas</label><input id="formLinkInput" placeholder="https://... formulário do paciente"></div><button class="btn primary" style="margin-top:12px" onclick="saveTemplates()">Salvar modelos</button></div>
+    <div class="card" style="margin-top:16px">
+      <div class="section-title"><div><div class="eyebrow">WhatsApp Meta API</div><h3>Configuração e templates</h3></div><div id="waApiStatus"></div></div>
+      <div style="background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:16px;padding:16px;margin-bottom:16px;">
+        <strong style="color:#0369a1;font-size:.9rem;">🔑 Credenciais da API</strong>
+        <div class="grid grid-2" style="gap:12px;margin-top:12px;">
+          <div class="field"><label>Phone Number ID</label><input id="waPhoneId" type="text" placeholder="Ex.: 123456789012345"></div>
+          <div class="field"><label>Token permanente</label><input id="waToken" type="password" placeholder="EAAx..."></div>
+        </div>
+        <div class="field" style="margin-top:10px;"><label>Link do formulário resposta</label><input id="waFormLink" placeholder="https://docs.google.com/forms/..."></div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:14px;padding:12px;background:#fff;border-radius:12px;border:1px solid #e0f2fe;">
+          <input type="checkbox" id="waAutoSend" style="width:18px;height:18px;margin:0;">
+          <label for="waAutoSend" style="margin:0;font-size:.88rem;color:#0369a1;cursor:pointer;font-weight:700;">Envios automáticos ativados<br><span style="font-size:.76rem;font-weight:400;color:#64748b;">Lembrete 12h antes + feedback 5h depois · verifica a cada 2 minutos</span></label>
+        </div>
+        <div class="toolbar" style="margin-top:14px;">
+          <button class="btn primary" onclick="saveWhatsAppConfig()">💾 Salvar configuração</button>
+          <button class="btn" onclick="testWhatsAppApi()">📱 Testar API</button>
+        </div>
+      </div>
+      <div>
+        <strong style="color:#0b3c6f;font-size:.9rem;">Templates de mensagem</strong>
+        <div class="grid grid-2" style="gap:12px;margin-top:12px;">
+          <div class="field">
+            <label>Lembrete (12h antes)</label>
+            <textarea id="tplReminder" rows="5"></textarea>
+            <div class="muted small" style="margin-top:4px;">Variáveis: {nome} {data} {hora} {servico}</div>
+          </div>
+          <div class="field">
+            <label>Feedback (5h depois)</label>
+            <textarea id="tplFormReminder" rows="5"></textarea>
+            <div class="muted small" style="margin-top:4px;">Variáveis: {nome} {data} {servico} {link_formulario}</div>
+          </div>
+        </div>
+        <div class="field" style="margin-top:10px;display:none;"><label>Link do formulário (legado)</label><input id="formLinkInput" placeholder="https://..."></div>
+        <button class="btn primary" style="margin-top:14px;" onclick="saveWhatsAppTemplates()">💾 Salvar templates</button>
+      </div>
+    </div>
   </section>
 
 
@@ -3309,7 +3344,22 @@ function localIsoDate(d){const x=new Date(d);return String(x.getFullYear())+'-'+
   return{apikey:key(),Authorization:'Bearer '+jwt,'Content-Type':'application/json',Prefer:'return=representation'};
 }
 async function api(path,opt={}){const res=await fetch(base()+'/rest/v1/'+path,{headers:headers(),...opt});const txt=await res.text();let data;try{data=txt?JSON.parse(txt):null}catch(e){data=txt}if(!res.ok){console.error('Supabase error',path,res.status,data);throw new Error((data&&data.message)||txt||('HTTP '+res.status))}return data}
-function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊';$('tplReminder').value=tpl;const tplForm=localStorage.femic_tpl_form_reminder||'Olá, {nome}! Tudo bem? Sua sessão de hoje foi concluída. Pode preencher rapidinho o formulário de evolução? Isso nos ajuda a acompanhar sua dor, funcionalidade e evolução. {link_formulario}';if($('tplFormReminder'))$('tplFormReminder').value=tplForm;if($('formLinkInput'))$('formLinkInput').value=localStorage.femic_form_link||''}
+function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}
+function loadConfig(){
+  $('sbUrl').value=localStorage.femic_agenda_url||'';
+  $('sbKey').value=localStorage.femic_agenda_key||'';
+  const tpl=localStorage.femic_tpl_reminder||'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊';
+  $('tplReminder').value=tpl;
+  const tplForm=localStorage.femic_tpl_form_reminder||'Olá, {nome}! Tudo bem? Sua sessão de hoje foi concluída. Pode preencher rapidinho o formulário de evolução? Isso nos ajuda a acompanhar sua dor, funcionalidade e evolução. 👉 {link_formulario}';
+  if($('tplFormReminder'))$('tplFormReminder').value=tplForm;
+  if($('formLinkInput'))$('formLinkInput').value=localStorage.femic_form_link||'';
+  // WhatsApp API
+  if($('waPhoneId'))$('waPhoneId').value=localStorage.femic_wa_phone_id||'';
+  if($('waToken'))$('waToken').value=localStorage.femic_wa_token||'';
+  if($('waFormLink'))$('waFormLink').value=localStorage.femic_form_link||'';
+  if($('waAutoSend'))$('waAutoSend').checked=localStorage.femic_wa_auto==='1';
+  updateWaApiStatusBadge();
+}
 async function testConnection(){try{await api('patients?select=id&limit=1');toast('Conexão e carregamento funcionando.','success')}catch(e){toast('Erro real: '+e.message,'error')}}
 async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const [pa,hi,sv,pk,ap,mv,st]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api('appointments?select=*&order=appointment_date.asc,start_time.asc'),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1')]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];movements=mv||[];settings=Object.assign(settings,(st&&st[0])||{});syncForms();renderAll();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);toast('Erro ao carregar: '+e.message,'error')}}
 function showPanel(name){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.panel===name));$('panel-'+name).classList.add('active');renderAll()}
@@ -3403,7 +3453,7 @@ function renderDay(){
   }).join(''):'<div class="muted">Nenhum agendamento.</div>';
 }
 function reminderFlag(a,kind){return kind==='form'?!!a.form_reminder_sent:!!(a.appointment_reminder_sent||a.reminder_sent)}
-function renderReminders(){const kind=$('reminderType')?$('reminderType').value:'appointment';const date=$('reminderDate').value|| (kind==='appointment'?isoDate(new Date(Date.now()+86400000)):todayIso());$('reminderDate').value=date;let list=[];if(kind==='form'){list=appointments.filter(a=>a.appointment_date===date&&a.status==='concluido').sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));$('reminderTitle').textContent='Formulários pós-atendimento';}else{list=appointments.filter(a=>a.appointment_date===date&&['agendado','confirmado'].includes(a.status)).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));$('reminderTitle').textContent='Lembretes de sessão';}const pending=list.filter(a=>!reminderFlag(a,kind)&&cleanPhone(patientById(a.patient_id).whatsapp).length>=10),sent=list.filter(a=>reminderFlag(a,kind)),no=list.filter(a=>cleanPhone(patientById(a.patient_id).whatsapp).length<10);$('reminderKpis').innerHTML=`<div class="kpi"><div class="small muted">Pendentes</div><strong>${pending.length}</strong></div><div class="kpi"><div class="small muted">Enviados</div><strong>${sent.length}</strong></div><div class="kpi"><div class="small muted">Sem WhatsApp</div><strong>${no.length}</strong></div>`;$('reminderList').innerHTML=list.length?list.map(a=>{const p=patientById(a.patient_id),sentFlag=reminderFlag(a,kind),cls=sentFlag?'reminder-enviado':cleanPhone(p.whatsapp).length<10?'reminder-semwhats':'reminder-pendente';return `<div class="item ${cls}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)} — ${esc(p.name||'Paciente')}</strong><div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(serviceName(a.service_id))} · <span class="status-chip ${a.status}">${a.status}</span></div></div><div class="toolbar"><button class="btn primary" onclick="sendWhatsapp('${a.id}',true,'${kind}')">Enviar</button>${!sentFlag?`<button class="btn" onclick="markReminder('${a.id}','${kind}')">Marcar enviado</button>`:''}</div></div></div>`}).join(''):'<div class="muted">Nenhum lembrete nesta data.</div>'}
+function renderReminders(){const kind=$('reminderType')?$('reminderType').value:'appointment';const date=$('reminderDate').value|| (kind==='appointment'?isoDate(new Date(Date.now()+86400000)):todayIso());$('reminderDate').value=date;let list=[];if(kind==='form'){list=appointments.filter(a=>a.appointment_date===date&&a.status==='concluido').sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));$('reminderTitle').textContent='Formulários pós-atendimento';}else{list=appointments.filter(a=>a.appointment_date===date&&['agendado','confirmado'].includes(a.status)).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));$('reminderTitle').textContent='Lembretes de sessão';}const pending=list.filter(a=>!reminderFlag(a,kind)&&cleanPhone(patientById(a.patient_id).whatsapp||'').length>=10),sent=list.filter(a=>reminderFlag(a,kind)),no=list.filter(a=>cleanPhone(patientById(a.patient_id).whatsapp||'').length<10);const cfg=getWaConfig();const apiLabel=cfg.phoneId&&cfg.token?'<span style="background:#dcfce7;color:#15803d;font-size:.7rem;font-weight:800;padding:2px 7px;border-radius:999px;border:1px solid #86efac;margin-left:6px;">API ativa</span>':'<span style="background:#fef9c3;color:#854d0e;font-size:.7rem;font-weight:800;padding:2px 7px;border-radius:999px;border:1px solid #fde047;margin-left:6px;">Manual wa.me</span>';$('reminderKpis').innerHTML=`<div class="kpi"><div class="small muted">Pendentes</div><strong>${pending.length}</strong></div><div class="kpi"><div class="small muted">Enviados</div><strong>${sent.length}</strong></div><div class="kpi"><div class="small muted">Sem WhatsApp</div><strong>${no.length}</strong></div><div class="kpi" style="grid-column:span 3">${apiLabel}</div>`;$('reminderList').innerHTML=list.length?list.map(a=>{const p=patientById(a.patient_id),sentFlag=reminderFlag(a,kind);const via=kind==='form'?a.form_reminder_via:a.reminder_via;const viaLabel=via==='api_auto'?'🤖 Auto':via==='api'?'📡 API':via==='manual'?'💬 Manual':'';const cls=sentFlag?'reminder-enviado':cleanPhone(p.whatsapp||'').length<10?'reminder-semwhats':'reminder-pendente';return `<div class="item ${cls}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)} — ${esc(p.name||'Paciente')}</strong><div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(serviceName(a.service_id))} · <span class="status-chip ${a.status}">${a.status}</span>${sentFlag&&viaLabel?` · <strong>${viaLabel}</strong>`:''}</div></div><div class="toolbar"><button class="btn primary" onclick="sendWhatsapp('${a.id}',true,'${kind}')">Enviar</button>${!sentFlag?`<button class="btn" onclick="markReminder('${a.id}','${kind}')">Marcar enviado</button>`:''}</div></div></div>`}).join(''):'<div class="muted">Nenhum lembrete nesta data.</div>'}
 async function markReminder(id,kind='appointment'){const body=kind==='form'?{form_reminder_sent:true,form_reminder_sent_at:new Date().toISOString()}:{appointment_reminder_sent:true,appointment_reminder_sent_at:new Date().toISOString(),reminder_sent:true,reminder_sent_at:new Date().toISOString()};await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});await loadAll(true);toast('Lembrete marcado como enviado.','success')}function sendWhatsapp(id,mark=false,kind='appointment'){const a=appointments.find(x=>String(x.id)===String(id));if(!a)return;const p=patientById(a.patient_id);const phone='55'+cleanPhone(p.whatsapp);if(phone.length<12){toast('Paciente sem WhatsApp válido.','warning');return}const tpl=(kind==='form'?(localStorage.femic_tpl_form_reminder||$('tplFormReminder')?.value):(localStorage.femic_tpl_reminder||$('tplReminder').value))||'';const link=localStorage.femic_form_link||$('formLinkInput')?.value||'';const msg=tpl.replaceAll('{nome}',p.name||'').replaceAll('{data}',fmtDate(a.appointment_date)).replaceAll('{hora}',normalizeTime(a.start_time)).replaceAll('{servico}',serviceName(a.service_id)).replaceAll('{link_formulario}',link);window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');if(mark)markReminder(id,kind)}function sendNextReminder(){const kind=$('reminderType')?$('reminderType').value:'appointment';const date=$('reminderDate').value;const list=kind==='form'?appointments.filter(a=>a.appointment_date===date&&a.status==='concluido'&&!reminderFlag(a,kind)&&cleanPhone(patientById(a.patient_id).whatsapp).length>=10):appointments.filter(a=>a.appointment_date===date&&['agendado','confirmado'].includes(a.status)&&!reminderFlag(a,kind)&&cleanPhone(patientById(a.patient_id).whatsapp).length>=10);const next=list.sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)))[0];if(!next)toast('Nenhum lembrete pendente.','info');else sendWhatsapp(next.id,true,kind)}
 function statusButtons(a){
   const id=String(a.id);
@@ -3662,8 +3712,222 @@ async function restoreAgendaBackup(event){
   }
 }
 
-function saveTemplates(){localStorage.femic_tpl_reminder=$('tplReminder').value;if($('tplFormReminder'))localStorage.femic_tpl_form_reminder=$('tplFormReminder').value;if($('formLinkInput'))localStorage.femic_form_link=$('formLinkInput').value.trim();toast('Modelos salvos.','success')}async function copySql(){await navigator.clipboard.writeText(SQL_SCHEMA);toast('SQL copiado.','success')}
-$('sqlBox').textContent=SQL_SCHEMA;loadConfig();checkFemicAuth();$('dayDate').value=todayIso();$('reminderDate').value=isoDate(new Date(Date.now()+86400000));$('reportMonth').value=new Date().toISOString().slice(0,7);
+function saveWhatsAppTemplates(){
+  localStorage.femic_tpl_reminder=$('tplReminder').value;
+  if($('tplFormReminder'))localStorage.femic_tpl_form_reminder=$('tplFormReminder').value;
+  if($('formLinkInput'))localStorage.femic_form_link=$('formLinkInput').value.trim();
+  if($('waFormLink'))localStorage.femic_form_link=$('waFormLink').value.trim();
+  toast('Templates salvos.','success');
+}
+function saveTemplates(){ saveWhatsAppTemplates(); } // compat
+
+function saveWhatsAppConfig(){
+  const phoneId=($('waPhoneId').value||'').trim();
+  const token=($('waToken').value||'').trim();
+  const formLink=($('waFormLink').value||'').trim();
+  const auto=$('waAutoSend').checked;
+  if(!phoneId||!token){ toast('Preencha o Phone Number ID e o Token.','warning'); return; }
+  localStorage.femic_wa_phone_id=phoneId;
+  localStorage.femic_wa_token=token;
+  if(formLink) localStorage.femic_form_link=formLink;
+  localStorage.femic_wa_auto=auto?'1':'0';
+  toast('Configuração WhatsApp salva!','success');
+  updateWaApiStatusBadge();
+  if(auto) startWaAutoScheduler();
+}
+
+function getWaConfig(){
+  return {
+    phoneId: localStorage.femic_wa_phone_id||'',
+    token:   localStorage.femic_wa_token||'',
+    formLink:localStorage.femic_form_link||'',
+    auto:    localStorage.femic_wa_auto==='1'
+  };
+}
+
+function updateWaApiStatusBadge(){
+  const el=$('waApiStatus'); if(!el) return;
+  const cfg=getWaConfig();
+  if(cfg.phoneId && cfg.token){
+    el.innerHTML=`<span style="background:#dcfce7;color:#15803d;font-size:.75rem;font-weight:800;padding:4px 10px;border-radius:999px;border:1px solid #86efac;">✅ API configurada${cfg.auto?' · Auto ativo':''}</span>`;
+  } else {
+    el.innerHTML=`<span style="background:#fef9c3;color:#854d0e;font-size:.75rem;font-weight:800;padding:4px 10px;border-radius:999px;border:1px solid #fde047;">⚙️ API não configurada</span>`;
+  }
+}
+
+async function sendViaMetaApi(phone, message){
+  const cfg=getWaConfig();
+  if(!cfg.phoneId||!cfg.token) throw new Error('API não configurada');
+  const cleanedPhone='55'+cleanPhone(phone);
+  const url=`https://graph.facebook.com/v19.0/${cfg.phoneId}/messages`;
+  const body={
+    messaging_product:'whatsapp',
+    to: cleanedPhone,
+    type:'text',
+    text:{ body: message }
+  };
+  const res=await fetch(url,{
+    method:'POST',
+    headers:{ 'Authorization':'Bearer '+cfg.token, 'Content-Type':'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data=await res.json();
+  if(!res.ok) throw new Error(data?.error?.message||'Erro na API');
+  return data;
+}
+
+async function testWhatsAppApi(){
+  const phoneId=($('waPhoneId')?.value||localStorage.femic_wa_phone_id||'').trim();
+  const token=($('waToken')?.value||localStorage.femic_wa_token||'').trim();
+  if(!phoneId||!token){ toast('Preencha Phone Number ID e Token primeiro.','warning'); return; }
+  try{
+    const url=`https://graph.facebook.com/v19.0/${phoneId}?fields=display_phone_number,verified_name&access_token=${token}`;
+    const res=await fetch(url);
+    const data=await res.json();
+    if(data.error) throw new Error(data.error.message);
+    toast(`✅ API conectada! Número: ${data.display_phone_number||''} (${data.verified_name||''})`, 'success');
+  }catch(e){ toast('❌ Erro: '+e.message,'error'); }
+}
+
+function buildWaMessage(kind, appt){
+  const p=patientById(appt.patient_id);
+  const svc=serviceById(appt.service_id);
+  const cfg=getWaConfig();
+  const tplKey=kind==='form'?'femic_tpl_form_reminder':'femic_tpl_reminder';
+  const tpl=localStorage[tplKey]||($('tplReminder')?.value||'');
+  return tpl
+    .replaceAll('{nome}', p.name||'')
+    .replaceAll('{data}', fmtDate(appt.appointment_date))
+    .replaceAll('{hora}', normalizeTime(appt.start_time))
+    .replaceAll('{servico}', svc?.name||'')
+    .replaceAll('{link_formulario}', cfg.formLink||'');
+}
+
+async function sendWhatsapp(id, mark=false, kind='appointment'){
+  const a=appointments.find(x=>String(x.id)===String(id));
+  if(!a) return;
+  const p=patientById(a.patient_id);
+  const phone=cleanPhone(p.whatsapp||'');
+  if(phone.length<10){ toast('Paciente sem WhatsApp válido.','warning'); return; }
+  const message=buildWaMessage(kind,a);
+  const cfg=getWaConfig();
+
+  if(cfg.phoneId && cfg.token){
+    // Envio via Meta API
+    try{
+      await sendViaMetaApi(p.whatsapp, message);
+      toast('✅ Mensagem enviada via API WhatsApp!','success');
+      if(mark||true) await markReminderApi(id, kind, 'api');
+      renderReminders();
+    }catch(e){
+      toast('Erro na API: '+e.message+' — abrindo WhatsApp manual.','warning');
+      window.open('https://wa.me/55'+phone+'?text='+encodeURIComponent(message),'_blank');
+      if(mark) await markReminderApi(id, kind, 'manual');
+    }
+  } else {
+    // Fallback manual
+    window.open('https://wa.me/55'+phone+'?text='+encodeURIComponent(message),'_blank');
+    if(mark) await markReminderApi(id, kind, 'manual');
+    renderReminders();
+  }
+}
+
+async function markReminderApi(id, kind='appointment', via='manual'){
+  const now=new Date().toISOString();
+  const body = kind==='form'
+    ? { form_reminder_sent:true, form_reminder_sent_at:now, form_reminder_via:via }
+    : { appointment_reminder_sent:true, appointment_reminder_sent_at:now, reminder_sent:true, reminder_sent_at:now, reminder_via:via };
+  try{
+    await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});
+    await loadAll(true);
+  }catch(e){ console.warn('markReminderApi:',e); }
+}
+
+async function markReminder(id,kind='appointment'){
+  await markReminderApi(id, kind, 'manual');
+  toast('Lembrete marcado como enviado.','success');
+}
+
+function sendNextReminder(){
+  const kind=$('reminderType')?$('reminderType').value:'appointment';
+  const date=$('reminderDate').value;
+  const list=(kind==='form'
+    ? appointments.filter(a=>a.appointment_date===date&&a.status==='concluido'&&!reminderFlag(a,kind)&&cleanPhone(patientById(a.patient_id).whatsapp||'').length>=10)
+    : appointments.filter(a=>a.appointment_date===date&&['agendado','confirmado'].includes(a.status)&&!reminderFlag(a,kind)&&cleanPhone(patientById(a.patient_id).whatsapp||'').length>=10)
+  ).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));
+  if(!list.length){ toast('Nenhum lembrete pendente.','info'); return; }
+  sendWhatsapp(list[0].id,true,kind);
+}
+
+// ── Auto-scheduler ────────────────────────────────────────────
+let _waSchedulerTimer=null;
+
+function startWaAutoScheduler(){
+  if(_waSchedulerTimer) clearInterval(_waSchedulerTimer);
+  _waSchedulerTimer=setInterval(runWaAutoCheck, 2*60*1000); // 2 min
+  console.log('[FEMIC WA] Auto-scheduler iniciado');
+  runWaAutoCheck(); // roda imediatamente ao ligar
+}
+
+async function runWaAutoCheck(){
+  const cfg=getWaConfig();
+  if(!cfg.phoneId||!cfg.token||!cfg.auto) return;
+  const now=new Date();
+  const todayStr=isoDate(now);
+  const tomorrowStr=isoDate(new Date(now.getTime()+86400000));
+
+  // Janela de lembrete: sessões que começam daqui a 11h–13h (centro em 12h)
+  const msNow=now.getTime();
+  const win11h=msNow+11*3600*1000;
+  const win13h=msNow+13*3600*1000;
+
+  // Janela de feedback: sessões que terminaram há 4h–6h (centro em 5h)
+  const win4h=msNow-6*3600*1000;
+  const win6h=msNow-4*3600*1000;
+
+  let sent=0;
+  for(const a of appointments){
+    const p=patientById(a.patient_id);
+    if(!p||cleanPhone(p.whatsapp||'').length<10) continue;
+    const apptMs=new Date(`${a.appointment_date}T${normalizeTime(a.start_time)}:00`).getTime();
+    const apptEndMs=new Date(`${a.appointment_date}T${normalizeTime(a.end_time)}:00`).getTime();
+
+    // Lembrete 12h antes
+    if(['agendado','confirmado'].includes(a.status) && !reminderFlag(a,'appointment')){
+      if(apptMs>=win11h && apptMs<=win13h){
+        try{
+          await sendViaMetaApi(p.whatsapp, buildWaMessage('appointment',a));
+          await markReminderApi(a.id,'appointment','api_auto');
+          sent++;
+          console.log(`[FEMIC WA] Lembrete enviado: ${p.name} ${a.appointment_date} ${a.start_time}`);
+        }catch(e){ console.warn('[FEMIC WA] Lembrete falhou:',p.name,e.message); }
+      }
+    }
+
+    // Feedback 5h depois
+    if(a.status==='concluido' && !reminderFlag(a,'form')){
+      if(apptEndMs>=win4h && apptEndMs<=win6h){
+        try{
+          await sendViaMetaApi(p.whatsapp, buildWaMessage('form',a));
+          await markReminderApi(a.id,'form','api_auto');
+          sent++;
+          console.log(`[FEMIC WA] Feedback enviado: ${p.name} ${a.appointment_date}`);
+        }catch(e){ console.warn('[FEMIC WA] Feedback falhou:',p.name,e.message); }
+      }
+    }
+  }
+  if(sent>0){ toast(`📱 ${sent} mensagem(ns) enviada(s) automaticamente.`,'success'); await loadAll(true); }
+}
+$('sqlBox').textContent=SQL_SCHEMA;
+loadConfig();
+checkFemicAuth();
+$('dayDate').value=todayIso();
+$('reminderDate').value=isoDate(new Date(Date.now()+86400000));
+$('reportMonth').value=new Date().toISOString().slice(0,7);
+// Iniciar auto-scheduler se já configurado
+if(getWaConfig().auto && getWaConfig().phoneId) startWaAutoScheduler();
+
+async function copySql(){await navigator.clipboard.writeText(SQL_SCHEMA);toast('SQL copiado.','success')}
 /* =========================================================
    FEMIC Agenda v1.4.36 - Ficha com dia da semana — Correção robusta de consumo de pacote
    - Concluído consome pacote mesmo se o status já estiver concluído
