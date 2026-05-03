@@ -2570,7 +2570,7 @@
     closeModal('orientationPackModalWrap');
   }
 
-  console.log('FEMIC booting...');
+
   window.statusChart = null;
   window.overviewChart = null;
   window.analysisChart = null;
@@ -2590,7 +2590,10 @@
   }
   function getPatients(){ return safeArrayParse('femic_patients').map(normalizePatientRecord).filter(p => p.id && p.name); }
   function savePatients(v){ localStorage.setItem('femic_patients', JSON.stringify((Array.isArray(v) ? v : []).map(normalizePatientRecord).filter(p => p.id && p.name))); }
-  function getSessions(){ return safeArrayParse('femic_sessions').map(normalizeSessionRecord).filter(s => s.id && s.patient_id && s.date); }
+  function getSessions(){
+    if(window._sessionsCache) return window._sessionsCache;
+    return safeArrayParse('femic_sessions').map(normalizeSessionRecord).filter(s => s.id && s.patient_id && s.date);
+  }
   function saveSessions(v){ localStorage.setItem('femic_sessions', JSON.stringify((Array.isArray(v) ? v : []).map(normalizeSessionRecord).filter(s => s.id && s.patient_id && s.date))); }
   function getAnamneses(){ return safeArrayParse('femic_anamneses').filter(x => x && x.patient_id); }
   function saveAnamneses(v){ localStorage.setItem('femic_anamneses', JSON.stringify(Array.isArray(v) ? v : [])); }
@@ -2710,7 +2713,7 @@
   }
 
   function goPage(page){
-    console.log('goPage', page);
+
     window.currentPage = page;
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.querySelector('#page-' + page).classList.add('active');
@@ -2976,6 +2979,8 @@
     const gridEl = document.getElementById('patientsGrid');
     const visibleEl = document.getElementById('visiblePatientsCount');
     if(!gridEl) return;
+    // Cache de sessões para evitar múltiplos JSON.parse durante o render
+    window._sessionsCache = safeArrayParse('femic_sessions').map(normalizeSessionRecord).filter(s => s.id && s.patient_id && s.date);
     try {
       if(!window.patientFilter) window.patientFilter = 'active';
       document.querySelectorAll('#patientTabs .tab').forEach(t => t.classList.toggle('active', t.dataset.filter===window.patientFilter));
@@ -3083,6 +3088,8 @@
       if(visibleEl) visibleEl.textContent = '0';
       gridEl.innerHTML = '<div class="card patient-empty-card"><strong>Não foi possível exibir os pacientes.</strong><p class="muted" style="margin-top:8px;">Os dados foram carregados, mas houve um problema ao montar a lista. Tente atualizar a tela.</p></div>';
       toast('Erro ao montar a lista de pacientes', 'error');
+    } finally {
+      window._sessionsCache = null; // Libera cache de render
     }
   }
   function openPatientModal(id){
