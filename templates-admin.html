@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>FEMIC — Templates Clínicos</title>
+  <meta name="theme-color" content="#0b3c6f" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0b3c6f;
+      --primary-2: #1fb6e9;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --radius: 16px;
+      --shadow: 0 18px 45px rgba(11,60,111,.12);
+      --shadow-soft: 0 8px 24px rgba(11,60,111,.08);
+    }
+    html[data-theme="light"] {
+      --bg: #f4f8f8; --card: #fff; --text: #183232;
+      --muted: #678282; --line: rgba(11,60,111,.12);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100dvh;
+    }
+
+    /* ── OVERLAY LOGIN ── */
+    #loginOverlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: linear-gradient(135deg, #0b3c6f 0%, #0f5c5c 60%, #1fb6e9 100%);
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .login-card {
+      background: #fff; border-radius: 28px; padding: 36px 32px;
+      width: min(440px,100%); box-shadow: 0 30px 60px rgba(0,0,0,.28);
+    }
+    .login-logo { text-align: center; margin-bottom: 28px; }
+    .login-logo .wordmark { font-size: 2.2rem; font-weight: 800; letter-spacing: .08em; color: #0b3c6f; }
+    .login-logo small { display: block; color: #678282; font-size: .9rem; margin-top: 4px; }
+    .login-card h3 { font-size: 1.05rem; color: #0b3c6f; margin-bottom: 18px; }
+
+    /* ── LAYOUT PRINCIPAL ── */
+    .topbar {
+      background: linear-gradient(135deg, #0b3c6f, #0f5c5c);
+      color: #fff; padding: 14px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 4px 20px rgba(11,60,111,.25);
+    }
+    .topbar-brand { font-size: 1.1rem; font-weight: 800; letter-spacing: .06em; }
+    .topbar-brand span { color: #1fb6e9; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; font-size: .85rem; color: rgba(255,255,255,.7); }
+    .topbar-right button { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); color: #fff; padding: 7px 14px; border-radius: 10px; cursor: pointer; font-size: .8rem; font-weight: 700; }
+    .topbar-right button:hover { background: rgba(255,255,255,.22); }
+
+    .main { max-width: 1200px; margin: 0 auto; padding: 28px 20px 60px; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--card); border-radius: var(--radius);
+      box-shadow: var(--shadow-soft); border: 1px solid var(--line);
+      padding: 22px 24px; margin-bottom: 20px;
+    }
+    .card-title { font-size: 1.05rem; font-weight: 800; color: var(--primary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .eyebrow { font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--primary-2); margin-bottom: 4px; }
+
+    /* ── GRID ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    /* ── FIELDS ── */
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: .82rem; font-weight: 700; color: var(--muted); }
+    input, select, textarea {
+      padding: 11px 13px; border: 1.5px solid var(--line); border-radius: 12px;
+      font-size: .92rem; font-family: inherit; color: var(--text);
+      background: var(--card); outline: none; transition: border .18s, box-shadow .18s;
+      width: 100%;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary-2);
+      box-shadow: 0 0 0 3px rgba(31,182,233,.15);
+    }
+    textarea { resize: vertical; line-height: 1.55; min-height: 80px; }
+
+    /* ── BUTTONS ── */
+    .btn {
+      padding: 10px 18px; border-radius: 12px; border: 1.5px solid var(--line);
+      font-size: .88rem; font-weight: 700; cursor: pointer; transition: all .15s;
+      background: var(--card); color: var(--text); font-family: inherit;
+    }
+    .btn:hover { border-color: var(--primary-2); background: #f0faff; }
+    .btn.primary {
+      background: linear-gradient(135deg, #0b3c6f, #1fb6e9); color: #fff; border: none;
+      box-shadow: 0 6px 18px rgba(11,60,111,.2);
+    }
+    .btn.primary:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(11,60,111,.28); }
+    .btn.danger { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+    .btn.danger:hover { background: #fecaca; }
+    .btn.ai {
+      background: linear-gradient(135deg, #7c3aed, #a855f7); color: #fff; border: none;
+      box-shadow: 0 6px 18px rgba(124,58,237,.22);
+    }
+    .btn.ai:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(124,58,237,.32); }
+    .btn.sm { padding: 7px 12px; font-size: .8rem; border-radius: 9px; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; transform: none !important; }
+    .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+
+    /* ── AI BADGE ── */
+    .ai-badge {
+      display: inline-flex; align-items: center; gap: 5px; font-size: .72rem; font-weight: 800;
+      padding: 3px 9px; border-radius: 999px;
+      background: linear-gradient(135deg, #ede9fe, #f3e8ff);
+      color: #7c3aed; border: 1px solid #ddd6fe;
+      margin-left: 8px;
+    }
+
+    /* ── TIPO TABS ── */
+    .type-tabs { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+    .type-tab {
+      padding: 9px 18px; border-radius: 999px; border: 1.5px solid var(--line);
+      font-size: .85rem; font-weight: 700; cursor: pointer; transition: all .15s;
+      background: var(--card); color: var(--muted); font-family: inherit;
+    }
+    .type-tab.active {
+      background: var(--primary); color: #fff; border-color: var(--primary);
+      box-shadow: 0 4px 14px rgba(11,60,111,.2);
+    }
+    .type-tab:hover:not(.active) { border-color: var(--primary-2); color: var(--primary); }
+
+    /* ── LISTA DE TEMPLATES ── */
+    .tpl-list { display: flex; flex-direction: column; gap: 10px; }
+    .tpl-item {
+      background: var(--card); border: 1.5px solid var(--line); border-radius: 14px;
+      padding: 14px 16px; display: flex; align-items: flex-start; gap: 12px;
+      transition: box-shadow .15s;
+    }
+    .tpl-item:hover { box-shadow: var(--shadow-soft); }
+    .tpl-item-body { flex: 1; min-width: 0; }
+    .tpl-item-title { font-weight: 800; font-size: .95rem; color: var(--primary); margin-bottom: 3px; }
+    .tpl-item-group { font-size: .75rem; color: var(--primary-2); font-weight: 700; margin-bottom: 6px; }
+    .tpl-item-preview { font-size: .82rem; color: var(--muted); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .tpl-item-actions { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+    .type-badge {
+      display: inline-block; font-size: .68rem; font-weight: 800; padding: 3px 8px;
+      border-radius: 999px; letter-spacing: .04em; text-transform: uppercase;
+    }
+    .badge-anamnese  { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+    .badge-evolucao  { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .badge-frases    { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+
+    /* ── MODAL ── */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(11,60,111,.35);
+      backdrop-filter: blur(4px); z-index: 500;
+      display: none; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal { background: var(--card); border-radius: 24px; width: min(720px,100%); max-height: 92dvh; overflow-y: auto; box-shadow: 0 30px 80px rgba(11,60,111,.22); }
+    .modal-head { padding: 20px 24px 0; display: flex; align-items: center; justify-content: space-between; }
+    .modal-head h3 { font-size: 1.1rem; font-weight: 800; color: var(--primary); }
+    .modal-body { padding: 18px 24px; }
+    .modal-foot { padding: 12px 24px 20px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--line); margin-top: 8px; }
+    .btn-icon { background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 6px; border-radius: 8px; transition: background .15s; }
+    .btn-icon:hover { background: #f0f4f4; }
+
+    /* ── AI PANEL ── */
+    .ai-panel {
+      background: linear-gradient(135deg, #faf5ff, #f5f3ff);
+      border: 1.5px solid #ddd6fe; border-radius: 16px; padding: 16px;
+      margin-bottom: 18px;
+    }
+    .ai-panel-title { font-size: .88rem; font-weight: 800; color: #7c3aed; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+    .ai-loading { display: flex; align-items: center; gap: 10px; color: #7c3aed; font-size: .85rem; font-weight: 700; padding: 10px 0; }
+    .ai-spinner { width: 18px; height: 18px; border: 2.5px solid #ddd6fe; border-top-color: #7c3aed; border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .ai-result { background: #fff; border: 1px solid #ddd6fe; border-radius: 12px; padding: 14px; margin-top: 10px; font-size: .88rem; line-height: 1.6; white-space: pre-wrap; }
+
+    /* ── TOAST ── */
+    #toastWrap { position: fixed; bottom: 24px; right: 24px; z-index: 9998; display: flex; flex-direction: column; gap: 8px; }
+    .toast { padding: 12px 18px; border-radius: 14px; font-size: .88rem; font-weight: 700; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.18); max-width: 320px; transition: opacity .3s; }
+    .toast.success { background: #10b981; }
+    .toast.error   { background: #ef4444; }
+    .toast.warning { background: #f59e0b; }
+    .toast.info    { background: #3b82f6; }
+    .toast.out     { opacity: 0; }
+
+    /* ── EMPTY STATE ── */
+    .empty-state { text-align: center; padding: 48px 20px; color: var(--muted); }
+    .empty-state .emoji { font-size: 2.5rem; margin-bottom: 12px; }
+
+    /* ── SECTION DIVIDERS ── */
+    .section-sep { height: 1px; background: var(--line); margin: 18px 0; }
+
+    /* ── CONFIG BANNER ── */
+    .config-banner {
+      background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+      border: 1.5px solid #bae6fd; border-radius: 14px; padding: 14px 16px;
+      display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+    }
+    .config-banner span { font-size: 1.4rem; }
+    .config-banner-text strong { display: block; color: #0369a1; font-size: .9rem; }
+    .config-banner-text small { color: #0284c7; font-size: .8rem; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOGIN OVERLAY — 2 etapas (mesmo padrão do index.html)
+════════════════════════════════════════════════════════════ -->
+<div id="loginOverlay">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="wordmark">FEM<span style="color:#1fb6e9">IC</span></div>
+      <small>Templates Clínicos · Admin</small>
+    </div>
+
+    <div id="loginStep1">
+      <div class="config-banner">
+        <span>⚙️</span>
+        <div class="config-banner-text">
+          <strong>Configuração do Supabase</strong>
+          <small>Feita uma única vez — mesmas credenciais do sistema principal</small>
+        </div>
+      </div>
+      <div style="display:grid; gap:12px;">
+        <div class="field">
+          <label>URL do projeto Supabase</label>
+          <input id="setupUrl" type="text" placeholder="https://xxxx.supabase.co">
+        </div>
+        <div class="field">
+          <label>Chave anônima (anon key)</label>
+          <input id="setupKey" type="text" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="font-size:.78rem; font-family:monospace;">
+        </div>
+        <button class="btn primary" onclick="adminSaveSetup()">Salvar e continuar →</button>
+        <div id="setupError" style="color:#ef4444; font-size:.85rem; text-align:center; display:none;"></div>
+      </div>
+    </div>
+
+    <div id="loginStep2" style="display:none;">
+      <h3>Entrar na conta</h3>
+      <div style="display:grid; gap:12px; margin-top:14px;">
+        <div class="field">
+          <label>Email</label>
+          <input id="loginEmail" type="email" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')adminLogin()">
+        </div>
+        <div class="field">
+          <label>Senha</label>
+          <input id="loginPassword" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')adminLogin()">
+        </div>
+        <button id="loginBtn" class="btn primary" onclick="adminLogin()">Entrar</button>
+        <div id="loginError" style="color:#ef4444; font-size:.85rem; text-align:center; display:none;"></div>
+        <button onclick="adminShowSetup()" style="background:none; border:none; color:#94a3b8; font-size:.8rem; cursor:pointer; text-decoration:underline;">
+          ⚙️ Alterar configuração do Supabase
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TOPBAR
+════════════════════════════════════════════════════════════ -->
+<header class="topbar">
+  <div class="topbar-brand">FEM<span>IC</span> · Templates Clínicos</div>
+  <div class="topbar-right">
+    <span id="userLabel"></span>
+    <button onclick="adminLogout()">Sair</button>
+    <button onclick="window.open('index.html','_blank')" style="background:rgba(31,182,233,.2); border-color:rgba(31,182,233,.4);">
+      ← Sistema principal
+    </button>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN
+════════════════════════════════════════════════════════════ -->
+<main class="main">
+
+  <!-- KPIs -->
+  <div class="grid-2" style="margin-bottom:20px;">
+    <div class="card" style="padding:16px 20px;">
+      <div class="eyebrow">Templates cadastrados</div>
+      <div style="font-size:2rem; font-weight:800; color:var(--primary); margin-top:4px;" id="kpiTotal">—</div>
+    </div>
+    <div class="card" style="padding:16px 20px;">
+      <div class="eyebrow">Disponíveis no sistema</div>
+      <div style="font-size:1rem; font-weight:700; color:var(--muted); margin-top:10px; display:flex; gap:12px; flex-wrap:wrap;" id="kpiBreakdown">—</div>
+    </div>
+  </div>
+
+  <!-- FORMULÁRIO DE CRIAÇÃO / EDIÇÃO -->
+  <div class="card">
+    <div class="card-title" id="formTitle">✨ Novo template</div>
+
+    <!-- AI PANEL -->
+    <div class="ai-panel">
+      <div class="ai-panel-title">🤖 Gerar conteúdo com IA <span class="ai-badge">Claude AI</span></div>
+      <div class="grid-2" style="gap:10px;">
+        <div class="field">
+          <label>Patologia / tema</label>
+          <input id="aiPathology" placeholder="Ex.: gonartrose, hérnia lombar, tendinopatia de Aquiles...">
+        </div>
+        <div class="field">
+          <label>Tipo de template</label>
+          <select id="aiType">
+            <option value="anamnese">Anamnese</option>
+            <option value="evolucao">Evolução técnica</option>
+            <option value="frases">Frases prontas</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <label>Detalhe adicional (opcional)</label>
+        <input id="aiDetail" placeholder="Ex.: paciente pós-operatório, fase aguda, idoso, atleta...">
+      </div>
+      <div class="toolbar" style="margin-top:12px;">
+        <button class="btn ai" onclick="generateWithAI()" id="aiBtn">🤖 Gerar com IA</button>
+        <button class="btn sm" onclick="clearAIResult()" id="clearAiBtn" style="display:none;">✕ Limpar</button>
+      </div>
+      <div id="aiStatus" style="display:none;"></div>
+      <div id="aiResult" style="display:none;"></div>
+      <div id="aiApplyBtns" style="display:none; margin-top:10px;">
+        <div class="toolbar">
+          <button class="btn primary sm" onclick="applyAIToForm()">✅ Aplicar ao formulário</button>
+          <button class="btn sm" onclick="clearAIResult()">✕ Descartar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CAMPOS DO FORMULÁRIO -->
+    <input type="hidden" id="editingId">
+    <div class="grid-2">
+      <div class="field">
+        <label>Tipo *</label>
+        <select id="tplType" onchange="updateFormFields()">
+          <option value="anamnese">Anamnese</option>
+          <option value="evolucao">Evolução técnica</option>
+          <option value="frases">Frases prontas</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Título *</label>
+        <input id="tplTitle" placeholder="Ex.: Gonartrose grau III">
+      </div>
+    </div>
+    <div class="field" style="margin-top:12px;">
+      <label>Grupo (categoria)</label>
+      <input id="tplGroup" placeholder="Ex.: Joelho · Coluna · Ombro · Pé e Tornozelo">
+    </div>
+
+    <div class="section-sep"></div>
+
+    <!-- CAMPOS ANAMNESE -->
+    <div id="fieldsAnamnese">
+      <div style="font-size:.82rem; font-weight:700; color:var(--muted); margin-bottom:12px; text-transform:uppercase; letter-spacing:.06em;">Campos da anamnese</div>
+      <div style="display:grid; gap:12px;">
+        <div class="field"><label>Queixa principal</label><textarea id="aChief" rows="2" placeholder="Paciente refere dor em região..."></textarea></div>
+        <div class="field"><label>História da moléstia atual</label><textarea id="aHistory" rows="2" placeholder="Quadro de início..."></textarea></div>
+        <div class="field"><label>Hipótese diagnóstica</label><textarea id="aDiagnosis" rows="2" placeholder="Hipótese compatível com..."></textarea></div>
+        <div class="field"><label>Limitações funcionais</label><textarea id="aLimitations" rows="2" placeholder="Limitação para..."></textarea></div>
+        <div class="field"><label>Objetivos do tratamento</label><textarea id="aGoals" rows="2" placeholder="Redução do quadro álgico..."></textarea></div>
+        <div class="field"><label>Observações</label><textarea id="aObs" rows="2" placeholder="Paciente orientado(a) quanto a..."></textarea></div>
+      </div>
+    </div>
+
+    <!-- CAMPOS EVOLUÇÃO -->
+    <div id="fieldsEvolucao" style="display:none;">
+      <div style="font-size:.82rem; font-weight:700; color:var(--muted); margin-bottom:12px; text-transform:uppercase; letter-spacing:.06em;">Campos da evolução técnica</div>
+      <div style="display:grid; gap:12px;">
+        <div class="field"><label>Conduta fisioterapêutica</label><textarea id="eConduct" rows="4" placeholder="Realizados exercícios de..."></textarea></div>
+        <div class="field"><label>Orientações domiciliares</label><textarea id="eGuidance" rows="3" placeholder="Orientado(a) a manter..."></textarea></div>
+      </div>
+    </div>
+
+    <!-- CAMPOS FRASES -->
+    <div id="fieldsFrases" style="display:none;">
+      <div style="font-size:.82rem; font-weight:700; color:var(--muted); margin-bottom:12px; text-transform:uppercase; letter-spacing:.06em;">Frase pronta</div>
+      <div style="display:grid; gap:12px;">
+        <div class="field">
+          <label>Campo de destino</label>
+          <select id="fField">
+            <option value="chief">Queixa principal</option>
+            <option value="history">História da moléstia</option>
+            <option value="diagnosis">Diagnóstico</option>
+            <option value="limitations">Limitações</option>
+            <option value="goals">Objetivos</option>
+            <option value="obs">Observações</option>
+            <option value="conduct">Conduta</option>
+            <option value="guidance">Orientações</option>
+          </select>
+        </div>
+        <div class="field"><label>Texto da frase</label><textarea id="fText" rows="3" placeholder="Paciente refere piora ao..."></textarea></div>
+      </div>
+    </div>
+
+    <div class="toolbar" style="margin-top:18px;">
+      <button class="btn primary" onclick="saveTemplate()">💾 Salvar template</button>
+      <button class="btn" onclick="resetForm()">✕ Limpar formulário</button>
+    </div>
+  </div>
+
+  <!-- LISTA DE TEMPLATES -->
+  <div class="card">
+    <div class="card-title">📋 Templates cadastrados</div>
+
+    <!-- Filtro por tipo -->
+    <div class="type-tabs" id="filterTabs">
+      <button class="type-tab active" onclick="setFilter('all', this)">Todos</button>
+      <button class="type-tab" onclick="setFilter('anamnese', this)">Anamnese</button>
+      <button class="type-tab" onclick="setFilter('evolucao', this)">Evolução</button>
+      <button class="type-tab" onclick="setFilter('frases', this)">Frases</button>
+    </div>
+
+    <!-- Busca -->
+    <div class="field" style="margin-bottom:16px;">
+      <input id="searchInput" type="search" placeholder="Buscar por título, grupo ou conteúdo..." oninput="renderList()">
+    </div>
+
+    <div id="tplList" class="tpl-list"></div>
+  </div>
+
+</main>
+
+<!-- MODAL CONFIRMAÇÃO EXCLUSÃO -->
+<div class="modal-backdrop" id="deleteModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-head"><h3>🗑 Remover template</h3><button class="btn-icon" onclick="closeModal('deleteModal')">✕</button></div>
+    <div class="modal-body"><p style="color:var(--muted); line-height:1.6;">Tem certeza que deseja remover o template <strong id="deleteModalTitle"></strong>? Esta ação não pode ser desfeita.</p></div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('deleteModal')">Cancelar</button>
+      <button class="btn danger" onclick="confirmDelete()">🗑 Remover</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastWrap"></div>
+
+<script>
+/* ============================================================
+   FEMIC Templates Admin — JS completo
+   Supabase CRUD + Claude AI (Anthropic API)
+   ============================================================ */
+
+/* ── CONFIG / AUTH ── */
+function getAdminConfig(){
+  try { return Object.assign({ supabaseUrl:'', supabaseKey:'' }, JSON.parse(localStorage.getItem('femic_config') || '{}')); }
+  catch(e){ return { supabaseUrl:'', supabaseKey:'' }; }
+}
+function saveAdminConfig(v){ localStorage.setItem('femic_config', JSON.stringify(v)); }
+
+function adminHeaders(write = false){
+  const cfg = getAdminConfig();
+  const jwt = sessionStorage.getItem('femic_jwt') || cfg.supabaseKey;
+  const h = { 'Content-Type':'application/json', 'apikey': cfg.supabaseKey, 'Authorization':'Bearer '+jwt };
+  if(write) h['Prefer'] = 'resolution=merge-duplicates,return=representation';
+  return h;
+}
+
+function adminShowSetup(){
+  document.getElementById('loginStep1').style.display = 'block';
+  document.getElementById('loginStep2').style.display = 'none';
+  const cfg = getAdminConfig();
+  if(cfg.supabaseUrl) document.getElementById('setupUrl').value = cfg.supabaseUrl;
+  if(cfg.supabaseKey) document.getElementById('setupKey').value = cfg.supabaseKey;
+}
+
+function adminSaveSetup(){
+  const url  = (document.getElementById('setupUrl').value || '').trim().replace(/\/$/,'');
+  const akey = (document.getElementById('setupKey').value || '').trim();
+  const errEl = document.getElementById('setupError');
+  if(!url || !url.startsWith('https://')) { errEl.textContent = 'Informe a URL completa do Supabase.'; errEl.style.display='block'; return; }
+  if(!akey || akey.length < 20) { errEl.textContent = 'Informe a anon key do Supabase.'; errEl.style.display='block'; return; }
+  errEl.style.display = 'none';
+  const cfg = getAdminConfig();
+  cfg.supabaseUrl = url; cfg.supabaseKey = akey;
+  saveAdminConfig(cfg);
+  document.getElementById('loginStep1').style.display = 'none';
+  document.getElementById('loginStep2').style.display = 'block';
+  setTimeout(() => document.getElementById('loginEmail')?.focus(), 80);
+}
+
+async function adminLogin(){
+  const cfg = getAdminConfig();
+  const email    = (document.getElementById('loginEmail').value || '').trim();
+  const password = document.getElementById('loginPassword').value || '';
+  const errEl    = document.getElementById('loginError');
+  const btn      = document.getElementById('loginBtn');
+  if(!cfg.supabaseUrl || !cfg.supabaseKey) { adminShowSetup(); return; }
+  if(!email || !password) { errEl.textContent = 'Preencha email e senha.'; errEl.style.display='block'; return; }
+  errEl.style.display = 'none'; btn.textContent = 'Entrando…'; btn.disabled = true;
+  try {
+    const res = await fetch(cfg.supabaseUrl + '/auth/v1/token?grant_type=password', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'apikey': cfg.supabaseKey },
+      body: JSON.stringify({ email, password })
+    });
+    if(!res.ok){ const e = await res.json().catch(()=>({})); throw new Error(e.error_description || e.message || 'Credenciais inválidas'); }
+    const data = await res.json();
+    sessionStorage.setItem('femic_jwt', data.access_token);
+    sessionStorage.setItem('femic_user', email);
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('userLabel').textContent = email.split('@')[0];
+    await initAdmin();
+    toast('Bem-vindo, ' + email.split('@')[0] + '!', 'success');
+  } catch(e){
+    errEl.textContent = e.message; errEl.style.display='block';
+    btn.textContent = 'Entrar'; btn.disabled = false;
+  }
+}
+
+function adminLogout(){
+  if(!confirm('Sair da sessão?')) return;
+  sessionStorage.removeItem('femic_jwt'); sessionStorage.removeItem('femic_user');
+  location.reload();
+}
+
+function checkAdminAuth(){
+  const jwt = sessionStorage.getItem('femic_jwt');
+  const overlay = document.getElementById('loginOverlay');
+  const cfg = getAdminConfig();
+  const hasConfig = !!(cfg.supabaseUrl && cfg.supabaseKey);
+  if(!jwt){
+    overlay.style.display = 'flex';
+    if(!hasConfig){ document.getElementById('loginStep1').style.display='block'; document.getElementById('loginStep2').style.display='none'; }
+    else { document.getElementById('loginStep1').style.display='none'; document.getElementById('loginStep2').style.display='block'; setTimeout(()=>document.getElementById('loginEmail')?.focus(),80); }
+    return false;
+  }
+  overlay.style.display = 'none';
+  const email = sessionStorage.getItem('femic_user') || '';
+  if(email) document.getElementById('userLabel').textContent = email.split('@')[0];
+  return true;
+}
+
+/* ── SUPABASE CRUD ── */
+let templates = []; // cache local
+
+async function loadTemplates(){
+  const cfg = getAdminConfig();
+  if(!cfg.supabaseUrl) return;
+  try {
+    const res = await fetch(cfg.supabaseUrl.replace(/\/$/,'') + '/rest/v1/clinical_templates?select=*&order=created_at.desc', { headers: adminHeaders() });
+    if(!res.ok) throw new Error(await res.text());
+    templates = await res.json();
+    updateKpis();
+    renderList();
+  } catch(e){
+    toast('Erro ao carregar templates: ' + e.message, 'error');
+  }
+}
+
+async function saveTemplate(){
+  const type  = document.getElementById('tplType').value;
+  const title = document.getElementById('tplTitle').value.trim();
+  const group = document.getElementById('tplGroup').value.trim() || 'Personalizados';
+  if(!title){ toast('Informe o título do template', 'warning'); return; }
+
+  let content = {};
+  if(type === 'anamnese'){
+    content = {
+      group,
+      chief:       document.getElementById('aChief').value.trim(),
+      history:     document.getElementById('aHistory').value.trim(),
+      diagnosis:   document.getElementById('aDiagnosis').value.trim(),
+      limitations: document.getElementById('aLimitations').value.trim(),
+      goals:       document.getElementById('aGoals').value.trim(),
+      obs:         document.getElementById('aObs').value.trim()
+    };
+    if(!content.chief && !content.diagnosis){ toast('Preencha ao menos queixa principal e diagnóstico', 'warning'); return; }
+  } else if(type === 'evolucao'){
+    content = {
+      group,
+      conduct:  document.getElementById('eConduct').value.trim(),
+      guidance: document.getElementById('eGuidance').value.trim()
+    };
+    if(!content.conduct){ toast('Preencha a conduta fisioterapêutica', 'warning'); return; }
+  } else {
+    content = {
+      field: document.getElementById('fField').value,
+      text:  document.getElementById('fText').value.trim()
+    };
+    if(!content.text){ toast('Preencha o texto da frase', 'warning'); return; }
+  }
+
+  const editingId = document.getElementById('editingId').value;
+  const cfg = getAdminConfig();
+  const payload = { type, title, group_name: group, content };
+
+  try {
+    let url = cfg.supabaseUrl.replace(/\/$/,'') + '/rest/v1/clinical_templates';
+    let method = 'POST';
+    if(editingId){ url += '?id=eq.' + editingId; method = 'PATCH'; }
+    const res = await fetch(url, { method, headers: adminHeaders(true), body: JSON.stringify(payload) });
+    if(!res.ok) throw new Error(await res.text());
+    toast(editingId ? 'Template atualizado!' : 'Template criado!', 'success');
+    resetForm();
+    await loadTemplates();
+  } catch(e){ toast('Erro ao salvar: ' + e.message, 'error'); }
+}
+
+let _deleteId = null;
+function deleteTemplate(id){
+  const t = templates.find(x => x.id === id);
+  document.getElementById('deleteModalTitle').textContent = t ? '"' + t.title + '"' : '';
+  _deleteId = id;
+  openModal('deleteModal');
+}
+
+async function confirmDelete(){
+  if(!_deleteId) return;
+  const cfg = getAdminConfig();
+  try {
+    const res = await fetch(cfg.supabaseUrl.replace(/\/$/,'') + '/rest/v1/clinical_templates?id=eq.' + _deleteId, { method:'DELETE', headers: adminHeaders() });
+    if(!res.ok) throw new Error(await res.text());
+    toast('Template removido.', 'warning');
+    closeModal('deleteModal'); _deleteId = null;
+    await loadTemplates();
+  } catch(e){ toast('Erro ao remover: ' + e.message, 'error'); }
+}
+
+function editTemplate(id){
+  const t = templates.find(x => x.id === id);
+  if(!t) return;
+  let content = {};
+  try { content = typeof t.content === 'string' ? JSON.parse(t.content) : (t.content || {}); } catch(e){}
+
+  document.getElementById('editingId').value = t.id;
+  document.getElementById('tplType').value = t.type;
+  document.getElementById('tplTitle').value = t.title || '';
+  document.getElementById('tplGroup').value = t.group_name || content.group || '';
+  updateFormFields();
+  document.getElementById('formTitle').textContent = '✏️ Editando: ' + t.title;
+
+  if(t.type === 'anamnese'){
+    document.getElementById('aChief').value       = content.chief       || '';
+    document.getElementById('aHistory').value     = content.history     || '';
+    document.getElementById('aDiagnosis').value   = content.diagnosis   || '';
+    document.getElementById('aLimitations').value = content.limitations || '';
+    document.getElementById('aGoals').value       = content.goals       || '';
+    document.getElementById('aObs').value         = content.obs         || '';
+  } else if(t.type === 'evolucao'){
+    document.getElementById('eConduct').value  = content.conduct  || '';
+    document.getElementById('eGuidance').value = content.guidance || '';
+  } else {
+    document.getElementById('fField').value = content.field || 'chief';
+    document.getElementById('fText').value  = content.text  || '';
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ── UI ── */
+let currentFilter = 'all';
+
+function setFilter(type, btn){
+  currentFilter = type;
+  document.querySelectorAll('.type-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderList();
+}
+
+function renderList(){
+  const search = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+  const list = document.getElementById('tplList');
+  let items = templates;
+
+  if(currentFilter !== 'all') items = items.filter(t => t.type === currentFilter);
+  if(search) items = items.filter(t => {
+    const title = (t.title || '').toLowerCase();
+    const group = (t.group_name || '').toLowerCase();
+    const cnt   = JSON.stringify(t.content || '').toLowerCase();
+    return title.includes(search) || group.includes(search) || cnt.includes(search);
+  });
+
+  if(!items.length){
+    list.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><strong>${search ? 'Nenhum resultado encontrado' : 'Nenhum template cadastrado'}</strong><p style="margin-top:8px;font-size:.88rem;">${search ? 'Tente outros termos' : 'Crie o primeiro template usando o formulário acima'}</p></div>`;
+    return;
+  }
+
+  list.innerHTML = items.map(t => {
+    let preview = '';
+    try {
+      const c = typeof t.content === 'string' ? JSON.parse(t.content) : (t.content || {});
+      preview = c.chief || c.conduct || c.text || Object.values(c).filter(v => typeof v === 'string' && v.length > 5)[0] || '';
+    } catch(e){}
+    const typeBadge = { anamnese: 'badge-anamnese', evolucao: 'badge-evolucao', frases: 'badge-frases' }[t.type] || '';
+    const typeLabel  = { anamnese: 'Anamnese', evolucao: 'Evolução', frases: 'Frase' }[t.type] || t.type;
+    return `
+      <div class="tpl-item">
+        <div class="tpl-item-body">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px; flex-wrap:wrap;">
+            <div class="tpl-item-title">${esc(t.title)}</div>
+            <span class="type-badge ${typeBadge}">${typeLabel}</span>
+          </div>
+          ${t.group_name ? `<div class="tpl-item-group">📁 ${esc(t.group_name)}</div>` : ''}
+          ${preview ? `<div class="tpl-item-preview">${esc(preview)}</div>` : ''}
+        </div>
+        <div class="tpl-item-actions">
+          <button class="btn sm" onclick="editTemplate('${t.id}')">✏️</button>
+          <button class="btn sm danger" onclick="deleteTemplate('${t.id}')">🗑</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function updateKpis(){
+  document.getElementById('kpiTotal').textContent = templates.length;
+  const a = templates.filter(t=>t.type==='anamnese').length;
+  const e = templates.filter(t=>t.type==='evolucao').length;
+  const f = templates.filter(t=>t.type==='frases').length;
+  document.getElementById('kpiBreakdown').innerHTML =
+    `<span>📋 ${a} anamnese${a!==1?'s':''}</span>
+     <span>📝 ${e} evolução${e!==1?'ões':''}</span>
+     <span>💬 ${f} frase${f!==1?'s':''}</span>`;
+}
+
+function updateFormFields(){
+  const type = document.getElementById('tplType').value;
+  document.getElementById('fieldsAnamnese').style.display = type === 'anamnese' ? 'block' : 'none';
+  document.getElementById('fieldsEvolucao').style.display = type === 'evolucao' ? 'block' : 'none';
+  document.getElementById('fieldsFrases').style.display   = type === 'frases'   ? 'block' : 'none';
+}
+
+function resetForm(){
+  document.getElementById('editingId').value = '';
+  document.getElementById('formTitle').textContent = '✨ Novo template';
+  ['tplTitle','tplGroup','aChief','aHistory','aDiagnosis','aLimitations','aGoals','aObs','eConduct','eGuidance','fText'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.value = '';
+  });
+  document.getElementById('tplType').value = 'anamnese';
+  updateFormFields();
+}
+
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+/* ── AI GENERATION (Anthropic API) ── */
+let _aiGenerated = null;
+
+async function generateWithAI(){
+  const pathology = (document.getElementById('aiPathology').value || '').trim();
+  const type      = document.getElementById('aiType').value;
+  const detail    = (document.getElementById('aiDetail').value || '').trim();
+
+  if(!pathology){ toast('Informe a patologia ou tema', 'warning'); return; }
+
+  const btn = document.getElementById('aiBtn');
+  btn.disabled = true; btn.textContent = '⏳ Gerando…';
+  document.getElementById('aiStatus').style.display = 'flex';
+  document.getElementById('aiStatus').innerHTML = `<div class="ai-loading"><div class="ai-spinner"></div> Gerando conteúdo para <strong>${pathology}</strong>…</div>`;
+  document.getElementById('aiResult').style.display    = 'none';
+  document.getElementById('aiApplyBtns').style.display = 'none';
+  document.getElementById('clearAiBtn').style.display  = 'none';
+
+  const typeLabels = { anamnese:'anamnese fisioterapêutica', evolucao:'evolução técnica fisioterapêutica', frases:'frases prontas para registro clínico' };
+
+  let systemPrompt = `Você é fisioterapeuta especialista em trauma-ortopedia e musculoesquelético. Crie conteúdo clínico objetivo, preciso e em português do Brasil. Responda APENAS com JSON válido, sem markdown, sem explicações.`;
+
+  let userPrompt = '';
+  if(type === 'anamnese'){
+    userPrompt = `Crie uma anamnese completa para fisioterapia sobre: ${pathology}${detail ? '. Contexto: '+detail : ''}.
+Retorne EXATAMENTE este JSON (sem nada mais):
+{"chief":"...","history":"...","diagnosis":"...","limitations":"...","goals":"...","obs":"...","group":"${pathology}"}`;
+  } else if(type === 'evolucao'){
+    userPrompt = `Crie uma evolução técnica fisioterapêutica para: ${pathology}${detail ? '. Contexto: '+detail : ''}.
+Retorne EXATAMENTE este JSON (sem nada mais):
+{"conduct":"...","guidance":"...","group":"${pathology}"}`;
+  } else {
+    userPrompt = `Crie 5 frases prontas para registro clínico fisioterapêutico sobre: ${pathology}${detail ? '. Contexto: '+detail : ''}.
+Retorne EXATAMENTE este JSON (sem nada mais):
+{"frases":["frase 1","frase 2","frase 3","frase 4","frase 5"],"group":"${pathology}"}`;
+  }
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
+      })
+    });
+    if(!res.ok){ const e = await res.json(); throw new Error(e.error?.message || 'Erro na API'); }
+    const data = await res.json();
+    const raw  = data.content?.find(b => b.type === 'text')?.text || '';
+    // Parse JSON
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+    _aiGenerated = { type, parsed, pathology };
+
+    // Montar preview
+    let preview = '';
+    if(type === 'anamnese'){
+      preview = `🔵 <strong>Queixa:</strong> ${esc(parsed.chief||'')}\n🔵 <strong>Diagnóstico:</strong> ${esc(parsed.diagnosis||'')}\n🔵 <strong>Objetivos:</strong> ${esc(parsed.goals||'')}`;
+    } else if(type === 'evolucao'){
+      preview = `🟢 <strong>Conduta:</strong> ${esc(parsed.conduct||'')}\n🟢 <strong>Orientações:</strong> ${esc(parsed.guidance||'')}`;
+    } else {
+      preview = (parsed.frases||[]).map((f,i) => `${i+1}. ${esc(f)}`).join('\n');
+    }
+    document.getElementById('aiStatus').style.display = 'none';
+    document.getElementById('aiResult').innerHTML = `<div class="ai-result" style="white-space:pre-line;">${preview}</div>`;
+    document.getElementById('aiResult').style.display    = 'block';
+    document.getElementById('aiApplyBtns').style.display = 'block';
+    document.getElementById('clearAiBtn').style.display  = 'inline-flex';
+    toast('Conteúdo gerado com sucesso!', 'success');
+  } catch(e){
+    document.getElementById('aiStatus').innerHTML = `<div style="color:#ef4444; padding:8px 0;">❌ Erro: ${esc(e.message)}</div>`;
+    toast('Erro ao gerar: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '🤖 Gerar com IA';
+  }
+}
+
+function applyAIToForm(){
+  if(!_aiGenerated) return;
+  const { type, parsed, pathology } = _aiGenerated;
+
+  document.getElementById('tplType').value  = type;
+  document.getElementById('tplGroup').value = parsed.group || pathology;
+  document.getElementById('tplTitle').value = document.getElementById('tplTitle').value || pathology;
+  updateFormFields();
+
+  if(type === 'anamnese'){
+    document.getElementById('aChief').value       = parsed.chief       || '';
+    document.getElementById('aHistory').value     = parsed.history     || '';
+    document.getElementById('aDiagnosis').value   = parsed.diagnosis   || '';
+    document.getElementById('aLimitations').value = parsed.limitations || '';
+    document.getElementById('aGoals').value       = parsed.goals       || '';
+    document.getElementById('aObs').value         = parsed.obs         || '';
+  } else if(type === 'evolucao'){
+    document.getElementById('eConduct').value  = parsed.conduct  || '';
+    document.getElementById('eGuidance').value = parsed.guidance || '';
+  } else {
+    // Para frases: criar campos pre-populados com a primeira frase
+    if(parsed.frases?.length){ document.getElementById('fText').value = parsed.frases[0]; }
+  }
+  toast('Conteúdo aplicado ao formulário!', 'success');
+  window.scrollTo({ top: document.querySelector('.card').offsetTop - 20, behavior: 'smooth' });
+}
+
+function clearAIResult(){
+  _aiGenerated = null;
+  document.getElementById('aiStatus').style.display    = 'none';
+  document.getElementById('aiResult').style.display    = 'none';
+  document.getElementById('aiApplyBtns').style.display = 'none';
+  document.getElementById('clearAiBtn').style.display  = 'none';
+  document.getElementById('aiPathology').value = '';
+  document.getElementById('aiDetail').value    = '';
+}
+
+/* ── HELPERS ── */
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function toast(msg, type='info'){
+  const w = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast ' + type; el.textContent = msg;
+  w.appendChild(el);
+  setTimeout(() => el.classList.add('out'), 3200);
+  setTimeout(() => el.remove(), 3500);
+}
+
+/* ── INIT ── */
+async function initAdmin(){
+  updateFormFields();
+  await createTableIfNeeded();
+  await loadTemplates();
+}
+
+async function createTableIfNeeded(){
+  // Verificar se tabela existe fazendo uma query simples
+  const cfg = getAdminConfig();
+  if(!cfg.supabaseUrl) return;
+  try {
+    const res = await fetch(cfg.supabaseUrl.replace(/\/$/,'') + '/rest/v1/clinical_templates?select=id&limit=1', { headers: adminHeaders() });
+    if(res.status === 404 || res.status === 400){
+      toast('⚠️ Tabela clinical_templates não encontrada. Execute o SQL de criação no Supabase.', 'warning');
+    }
+  } catch(e){}
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const authed = checkAdminAuth();
+  updateFormFields();
+  if(authed) initAdmin();
+});
+</script>
+</body>
+</html>
