@@ -36,6 +36,52 @@
     }
     .phrase-chip:hover{ transform:translateY(-1px); }
 
+    /* === Gemini AI Anamnese === */
+    .gemini-card{
+      margin-top:14px; padding:16px; border-radius:20px;
+      background: linear-gradient(135deg, rgba(66,133,244,.08), rgba(52,168,83,.06));
+      border: 1.5px solid rgba(66,133,244,.22);
+      box-shadow: 0 8px 24px rgba(66,133,244,.08);
+    }
+    .gemini-card h4{
+      margin:0 0 10px; font-size:1rem;
+      background: linear-gradient(135deg, #4285f4, #34a853);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .gemini-textarea{
+      width:100%; min-height:90px; padding:12px 14px;
+      border:1px solid rgba(66,133,244,.3); border-radius:14px;
+      font:inherit; font-size:.93rem; resize:vertical;
+      background: rgba(255,255,255,.85); color:var(--text);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
+      transition:.2s;
+    }
+    .gemini-textarea:focus{
+      outline:none; border-color: #4285f4;
+      box-shadow: 0 0 0 4px rgba(66,133,244,.14);
+    }
+    html[data-theme="dark"] .gemini-textarea{
+      background: rgba(255,255,255,.04); border-color: rgba(66,133,244,.25);
+    }
+    .gemini-btn{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:11px 18px; border-radius:14px; border:none; cursor:pointer;
+      font:inherit; font-size:.92rem; font-weight:700;
+      background: linear-gradient(135deg, #4285f4, #34a853);
+      color:#fff; box-shadow: 0 10px 24px rgba(66,133,244,.22);
+      transition:.2s;
+    }
+    .gemini-btn:hover{ transform:translateY(-2px); box-shadow:0 14px 28px rgba(66,133,244,.28); }
+    .gemini-btn:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
+    .gemini-status{
+      margin-top:10px; font-size:.86rem; color:var(--muted); min-height:20px;
+    }
+    .gemini-status.loading{ color:#4285f4; }
+    .gemini-status.error{ color:var(--danger); }
+    .gemini-status.success{ color:var(--success); }
+    .gemini-hint{ font-size:.82rem; color:var(--muted); margin-top:8px; line-height:1.5; }
+
   </style>
   <style>
     :root {
@@ -1203,6 +1249,33 @@
         </div>
         <div class="field" style="margin-top:12px;"><label>Objetivos do tratamento</label><textarea id="anamneseGoals" rows="2"></textarea></div>
         <div class="field" style="margin-top:12px;"><label>Observações</label><textarea id="anamneseObs" rows="3"></textarea></div>
+
+        <!-- ✨ GEMINI AI — Assistente de preenchimento de anamnese -->
+        <div class="gemini-card" id="geminiAnamneseCard">
+          <h4>✨ Preencher anamnese com IA (Google Gemini)</h4>
+          <div class="field">
+            <label style="font-size:.88rem; color:var(--muted); margin-bottom:6px; display:block;">
+              Descreva o caso em linguagem livre — a IA preenche os campos automaticamente
+            </label>
+            <textarea
+              class="gemini-textarea"
+              id="geminiAnamneseInput"
+              placeholder="Ex.: Paciente de 45 anos, sexo feminino, com dor lombar há 3 meses, piora ao se abaixar e ao ficar sentada por muito tempo. Trabalha como professora. Tem hipertensão controlada com losartana. Nunca fez cirurgia. Quer voltar a caminhar sem dor e retomar as atividades escolares."
+            ></textarea>
+          </div>
+          <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; align-items:center;">
+            <button class="gemini-btn" id="geminiAnamneseBtn" onclick="runGeminiAnamnese()">
+              ✨ Preencher com Gemini
+            </button>
+            <button class="btn small ghost" onclick="document.getElementById('geminiAnamneseInput').value=''; document.getElementById('geminiAnamneseStatus').textContent=''; document.getElementById('geminiAnamneseStatus').className='gemini-status';">
+              Limpar
+            </button>
+          </div>
+          <div class="gemini-status" id="geminiAnamneseStatus"></div>
+          <div class="gemini-hint">
+            💡 A IA sugere um preenchimento baseado no que você descrever. Revise e edite os campos antes de salvar — você tem controle total sobre o conteúdo.
+          </div>
+        </div>
 
         <div class="assist-card">
           <h4>⚡ Modelos premium de anamnese</h4>
@@ -4921,6 +4994,122 @@ function stopClinicalVoiceDictation(){
   try{ if(femicClinicalVoiceRecognition) femicClinicalVoiceRecognition.stop(); }catch(e){}
   femicClinicalVoiceListening = false;
   setClinicalVoiceStatus('Microfone desligado.');
+}
+/* ============================================================
+   FEMIC — Assistente Gemini para Anamnese
+   Usa Google Gemini 1.5 Flash para preencher os campos da
+   anamnese a partir de uma descrição livre do fisioterapeuta.
+   A chave fica apenas em memória (não persiste em localStorage).
+============================================================ */
+const GEMINI_API_KEY = 'AIzaSyCV8f6SFtgfIgApgpniHvTitDFoTTDbo0w';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+
+async function runGeminiAnamnese() {
+  const input = (document.getElementById('geminiAnamneseInput')?.value || '').trim();
+  const statusEl = document.getElementById('geminiAnamneseStatus');
+  const btn = document.getElementById('geminiAnamneseBtn');
+
+  if (!input) {
+    if (statusEl) { statusEl.textContent = 'Descreva o caso antes de usar a IA.'; statusEl.className = 'gemini-status error'; }
+    return;
+  }
+
+  btn.disabled = true;
+  if (statusEl) { statusEl.textContent = '⏳ Aguarde, consultando Gemini...'; statusEl.className = 'gemini-status loading'; }
+
+  const prompt = `Você é um assistente especializado em fisioterapia. Com base na descrição clínica abaixo, preencha os campos de uma ficha de anamnese fisioterapêutica.
+
+Responda APENAS com um JSON válido, sem markdown, sem explicações, no formato exato abaixo:
+{
+  "chief_complaint": "...",
+  "history": "...",
+  "diagnosis": "...",
+  "limitations": "...",
+  "comorbidities": "...",
+  "medications": "...",
+  "goals": "...",
+  "obs": "..."
+}
+
+Regras:
+- Escreva em português do Brasil, linguagem clínica profissional
+- "chief_complaint": queixa principal resumida (1-2 frases)
+- "history": história da doença atual detalhada
+- "diagnosis": hipótese diagnóstica fisioterapêutica
+- "limitations": limitações funcionais do paciente
+- "comorbidities": comorbidades e histórico médico relevante
+- "medications": medicamentos em uso e histórico cirúrgico
+- "goals": objetivos do tratamento fisioterapêutico
+- "obs": observações relevantes adicionais
+- Se a informação não foi fornecida, deixe o campo com uma frase genérica adequada para o contexto
+
+Descrição do caso:
+${input}`;
+
+  try {
+    const res = await fetch(GEMINI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-goog-api-key': GEMINI_API_KEY
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 1200 }
+      })
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData?.error?.message || 'Erro na API do Gemini (status ' + res.status + ')');
+    }
+
+    const data = await res.json();
+    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    // Extrai JSON mesmo se vier com ``json ... `` ao redor
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Gemini não retornou JSON válido. Tente novamente.');
+
+    const fields = JSON.parse(jsonMatch[0]);
+
+    // Preenche os campos da anamnese
+    const map = {
+      chief_complaint: 'anamneseChief',
+      history:         'anamneseHistory',
+      diagnosis:       'anamneseDiagnosis',
+      limitations:     'anamneseLimitations',
+      comorbidities:   'anamneseComorbidities',
+      medications:     'anamneseMedications',
+      goals:           'anamneseGoals',
+      obs:             'anamneseObs'
+    };
+
+    let filled = 0;
+    for (const [key, elId] of Object.entries(map)) {
+      const el = document.getElementById(elId);
+      if (el && fields[key]) {
+        el.value = fields[key];
+        filled++;
+      }
+    }
+
+    if (statusEl) {
+      statusEl.textContent = `✅ ${filled} campos preenchidos pela IA. Revise e ajuste conforme necessário antes de salvar.`;
+      statusEl.className = 'gemini-status success';
+    }
+    toast('Anamnese preenchida com IA ✨', 'success');
+
+  } catch (e) {
+    console.error('Gemini Anamnese error:', e);
+    if (statusEl) {
+      statusEl.textContent = '❌ ' + (e.message || 'Erro ao consultar a IA. Verifique sua conexão.');
+      statusEl.className = 'gemini-status error';
+    }
+    toast('Erro ao consultar o Gemini: ' + (e.message || ''), 'error');
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 </script>
