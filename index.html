@@ -784,6 +784,16 @@
               onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
               onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
           </div>
+          <div>
+            <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">
+              Chave API Google Gemini
+              <span style="color:#94a3b8; font-size:.8rem;">(opcional — IA na anamnese)</span>
+            </label>
+            <input id="setupGeminiKey" type="text" placeholder="AIzaSy..."
+              style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px; font-size:.78rem; outline:none; box-sizing:border-box; transition:.2s; font-family:monospace;"
+              onfocus="this.style.borderColor='#34a853'; this.style.boxShadow='0 0 0 3px rgba(52,168,83,.15)'"
+              onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+          </div>
           <button onclick="femicSaveSetup()" style="
             padding:14px; background:linear-gradient(135deg,#0b3c6f,#1fb6e9); color:#fff;
             border:none; border-radius:14px; font-size:1rem; font-weight:700; cursor:pointer;
@@ -1105,6 +1115,11 @@
             <div id="supabaseConfigWrap" class="hidden" style="margin-top:16px; display:grid; gap:12px;">
               <div class="field"><label>URL do projeto</label><input id="supabaseUrlInput" placeholder="https://ljblnrqeakpbjojuenjm.supabase.co" /></div>
               <div class="field"><label>Chave anônima</label><input id="supabaseKeyInput" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqYmxucnFlYWtwYmpvanVlbmptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3ODE5ODAsImV4cCI6MjA5MjM1Nzk4MH0.MDsXiO348tgrLMt4wUglpvJCfTmS6zrnw5tjIg3QJ7I" /></div>
+              <div class="field">
+                <label>Chave API Google Gemini <span class="muted" style="font-size:.8rem;">(IA na anamnese)</span></label>
+                <input id="geminiKeyInput" type="text" placeholder="AIzaSy..." style="font-family:monospace; font-size:.85rem;" />
+                <div class="muted" style="font-size:.78rem; margin-top:5px;">A chave fica salva apenas neste navegador, nunca no GitHub.</div>
+              </div>
               <div class="toolbar">
                 <button class="btn primary" onclick="saveSupabaseConfig()">💾 Salvar</button>
                 <button class="btn" onclick="testSupabaseConnection()">🔌 Testar Conexão</button>
@@ -2704,7 +2719,7 @@
   function getClinicalEvolutionsByPatient(pid){ return getClinicalEvolutions().filter(e => e.patient_id === pid).sort((a,b) => String(b.date).localeCompare(String(a.date))); }
   function getDocumentsByPatient(pid){ return getPatientDocuments().filter(d => d.patient_id === pid).sort((a,b) => String(b.created_at).localeCompare(String(a.created_at))); }
   function getConfig(){
-    const base = { initialized:false, formsLink:'', formUrl:'', lastBackup:'', supabaseUrl:'', supabaseKey:'' };
+    const base = { initialized:false, formsLink:'', formUrl:'', lastBackup:'', supabaseUrl:'', supabaseKey:'', geminiKey:'' };
     try { return Object.assign(base, JSON.parse(localStorage.getItem('femic_config') || '{}')); } catch(e){ return base; }
   }
   function saveConfig(v){ localStorage.setItem('femic_config', JSON.stringify(v || {})); }
@@ -4655,11 +4670,20 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
     }
     const supabaseUrlInputEl = document.getElementById('supabaseUrlInput');
     const supabaseKeyInputEl = document.getElementById('supabaseKeyInput');
+    const geminiKeyInputEl   = document.getElementById('geminiKeyInput');
     if(supabaseUrlInputEl) supabaseUrlInputEl.value = cfg.supabaseUrl || '';
     if(supabaseKeyInputEl) supabaseKeyInputEl.value = cfg.supabaseKey || '';
+    if(geminiKeyInputEl)   geminiKeyInputEl.value   = cfg.geminiKey   || '';
   }
   function showSupabaseConfig(){ document.getElementById('supabaseConfigWrap').classList.remove('hidden'); }
-  function saveSupabaseConfig(){ const cfg = getConfig(); cfg.supabaseUrl = document.getElementById('supabaseUrlInput').value.trim(); cfg.supabaseKey = document.getElementById('supabaseKeyInput').value.trim(); saveConfig(cfg); toast('Configuração do Supabase salva', 'success'); }
+  function saveSupabaseConfig(){
+    const cfg = getConfig();
+    cfg.supabaseUrl = document.getElementById('supabaseUrlInput').value.trim();
+    cfg.supabaseKey = document.getElementById('supabaseKeyInput').value.trim();
+    cfg.geminiKey   = (document.getElementById('geminiKeyInput')?.value || '').trim();
+    saveConfig(cfg);
+    toast('Configurações salvas', 'success');
+  }
   function supabaseHeaders(post){
     const cfg = getConfig();
     // Usa o JWT do usuário autenticado; fallback para anon key apenas no handshake de login
@@ -4797,6 +4821,7 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
     const cfg = getConfig();
     if(cfg.supabaseUrl) document.getElementById('setupUrl').value = cfg.supabaseUrl;
     if(cfg.supabaseKey) document.getElementById('setupKey').value = cfg.supabaseKey;
+    if(cfg.geminiKey)   document.getElementById('setupGeminiKey').value = cfg.geminiKey;
   }
 
   function femicSaveSetup(){
@@ -4815,6 +4840,7 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
     const cfg = getConfig();
     cfg.supabaseUrl = url;
     cfg.supabaseKey = akey;
+    cfg.geminiKey   = (document.getElementById('setupGeminiKey')?.value || '').trim();
     saveConfig(cfg);
     const urlInp = document.getElementById('supabaseUrlInput');
     const keyInp = document.getElementById('supabaseKeyInput');
@@ -5001,13 +5027,23 @@ function stopClinicalVoiceDictation(){
    anamnese a partir de uma descrição livre do fisioterapeuta.
    A chave fica apenas em memória (não persiste em localStorage).
 ============================================================ */
-const GEMINI_API_KEY = 'AIzaSyCV8f6SFtgfIgApgpniHvTitDFoTTDbo0w';
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
 async function runGeminiAnamnese() {
+  const cfg = getConfig();
+  const apiKey = cfg.geminiKey || '';
   const input = (document.getElementById('geminiAnamneseInput')?.value || '').trim();
   const statusEl = document.getElementById('geminiAnamneseStatus');
   const btn = document.getElementById('geminiAnamneseBtn');
+
+  if (!apiKey) {
+    if (statusEl) {
+      statusEl.textContent = '⚙️ Chave do Gemini não configurada. Acesse Backup → Configurações e informe sua chave API do Google Gemini.';
+      statusEl.className = 'gemini-status error';
+    }
+    toast('Configure a chave do Gemini em Backup → Configurações', 'warning');
+    return;
+  }
 
   if (!input) {
     if (statusEl) { statusEl.textContent = 'Descreva o caso antes de usar a IA.'; statusEl.className = 'gemini-status error'; }
@@ -5051,7 +5087,7 @@ ${input}`;
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-goog-api-key': GEMINI_API_KEY
+        'X-goog-api-key': apiKey
       },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
