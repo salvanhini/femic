@@ -750,10 +750,13 @@
     position:fixed; inset:0; z-index:9999;
     background: linear-gradient(135deg, #0b3c6f 0%, #0f5c5c 60%, #1fb6e9 100%);
     display:flex; align-items:center; justify-content:center; padding:20px;
+    overflow-y: auto;
   ">
     <div style="
       background:#fff; border-radius:28px; padding:36px 32px;
       width:min(440px,100%); box-shadow:0 30px 60px rgba(0,0,0,.28);
+      max-height: calc(100vh - 40px); overflow-y: auto;
+      margin: auto;
     ">
       <div style="text-align:center; margin-bottom:24px;">
         <div style="font-size:2.4rem; font-weight:800; letter-spacing:.08em; color:#0b3c6f;">FEMIC</div>
@@ -788,11 +791,15 @@
             <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">
               Chave API Google Gemini
               <span style="color:#94a3b8; font-size:.8rem;">(opcional — IA na anamnese)</span>
+              <button type="button" onclick="const d=document.getElementById('geminiSetupField');d.style.display=d.style.display==='none'?'block':'none';" style="background:none;border:none;color:#34a853;cursor:pointer;font-size:.8rem;padding:0 4px;">mostrar/ocultar</button>
             </label>
-            <input id="setupGeminiKey" type="text" placeholder="AIzaSy..."
-              style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px; font-size:.78rem; outline:none; box-sizing:border-box; transition:.2s; font-family:monospace;"
-              onfocus="this.style.borderColor='#34a853'; this.style.boxShadow='0 0 0 3px rgba(52,168,83,.15)'"
-              onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+            <div id="geminiSetupField" style="display:none;">
+              <input id="setupGeminiKey" type="text" placeholder="AIzaSy..."
+                style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px; font-size:.78rem; outline:none; box-sizing:border-box; transition:.2s; font-family:monospace;"
+                onfocus="this.style.borderColor='#34a853'; this.style.boxShadow='0 0 0 3px rgba(52,168,83,.15)'"
+                onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+              <div style="font-size:.76rem; color:#94a3b8; margin-top:4px;">Você pode adicionar depois em Backup → Configurações.</div>
+            </div>
           </div>
           <button onclick="femicSaveSetup()" style="
             padding:14px; background:linear-gradient(135deg,#0b3c6f,#1fb6e9); color:#fff;
@@ -1348,33 +1355,6 @@
         </div>
 
         <div class="field" style="margin-top:12px;"><label>Orientações / conduta domiciliar</label><textarea id="clinicalGuidance" rows="3" placeholder="Ex.: gelo 15 min, exercícios 2x ao dia, evitar sobrecarga"></textarea></div>
-
-        <!-- ✨ GEMINI AI — Assistente de evolução técnica -->
-        <div class="gemini-card" id="geminiEvolucaoCard" style="margin-top:14px;">
-          <h4>✨ Preencher evolução com IA (Google Gemini)</h4>
-          <div class="field">
-            <label style="font-size:.88rem; color:var(--muted); margin-bottom:6px; display:block;">
-              Descreva o atendimento em linguagem livre — a IA preenche a conduta e as orientações
-            </label>
-            <textarea
-              class="gemini-textarea"
-              id="geminiEvolucaoInput"
-              placeholder="Ex.: Paciente com lombalgia, realizamos mobilização lombar grau 3, RPG em posição deitada, TENS por 20 minutos na região lombar. Boa tolerância, relatou melhora da dor de 7 para 4. Orientei caminhada leve e gelo em casa."
-            ></textarea>
-          </div>
-          <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; align-items:center;">
-            <button class="gemini-btn" id="geminiEvolucaoBtn" onclick="runGeminiEvolucao()">
-              ✨ Preencher com Gemini
-            </button>
-            <button class="btn small ghost" onclick="document.getElementById('geminiEvolucaoInput').value=''; document.getElementById('geminiEvolucaoStatus').textContent=''; document.getElementById('geminiEvolucaoStatus').className='gemini-status';">
-              Limpar
-            </button>
-          </div>
-          <div class="gemini-status" id="geminiEvolucaoStatus"></div>
-          <div class="gemini-hint">
-            💡 Descreva o que foi feito no atendimento e a IA organiza em linguagem técnica clínica. Revise antes de salvar.
-          </div>
-        </div>
 
         <div class="assist-card">
           <h4>⚡ Modelos premium de evolução técnica</h4>
@@ -5049,100 +5029,7 @@ function stopClinicalVoiceDictation(){
   setClinicalVoiceStatus('Microfone desligado.');
 }
 /* ============================================================
-   FEMIC — Assistente Gemini para Evolução Técnica
-============================================================ */
-async function runGeminiEvolucao() {
-  const cfg = getConfig();
-  const apiKey = cfg.geminiKey || '';
-  const input = (document.getElementById('geminiEvolucaoInput')?.value || '').trim();
-  const statusEl = document.getElementById('geminiEvolucaoStatus');
-  const btn = document.getElementById('geminiEvolucaoBtn');
-
-  if (!apiKey) {
-    if (statusEl) {
-      statusEl.textContent = '⚙️ Chave do Gemini não configurada. Acesse Backup → Configurações e informe sua chave API do Google Gemini.';
-      statusEl.className = 'gemini-status error';
-    }
-    toast('Configure a chave do Gemini em Backup → Configurações', 'warning');
-    return;
-  }
-
-  if (!input) {
-    if (statusEl) { statusEl.textContent = 'Descreva o atendimento antes de usar a IA.'; statusEl.className = 'gemini-status error'; }
-    return;
-  }
-
-  btn.disabled = true;
-  if (statusEl) { statusEl.textContent = '⏳ Aguarde, consultando Gemini...'; statusEl.className = 'gemini-status loading'; }
-
-  const prompt = `Você é um assistente especializado em fisioterapia. Com base na descrição do atendimento abaixo, preencha os campos de um registro de evolução técnica fisioterapêutica.
-
-Responda APENAS com um JSON válido, sem markdown, sem explicações, no formato exato abaixo:
-{
-  "conduct": "...",
-  "guidance": "..."
-}
-
-Regras:
-- Escreva em português do Brasil, linguagem clínica técnica e profissional
-- "conduct": conduta realizada durante o atendimento — técnicas, recursos, exercícios, séries, repetições, tempo, parâmetros utilizados, resposta do paciente. Seja detalhado e técnico.
-- "guidance": orientações para o paciente realizar em casa ou cuidados domiciliares — exercícios, postura, gelo, calor, restrições, frequência. Seja objetivo e claro.
-- Se a informação não foi mencionada, elabore com base no contexto clínico descrito
-
-Descrição do atendimento:
-${input}`;
-
-  try {
-    const res = await fetch(GEMINI_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 800 }
-      })
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData?.error?.message || 'Erro na API do Gemini (status ' + res.status + ')');
-    }
-
-    const data = await res.json();
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Gemini não retornou JSON válido. Tente novamente.');
-
-    const fields = JSON.parse(jsonMatch[0]);
-
-    let filled = 0;
-    if (fields.conduct) {
-      const el = document.getElementById('clinicalConduct');
-      if (el) { el.value = fields.conduct; filled++; }
-    }
-    if (fields.guidance) {
-      const el = document.getElementById('clinicalGuidance');
-      if (el) { el.value = fields.guidance; filled++; }
-    }
-
-    if (statusEl) {
-      statusEl.textContent = `✅ ${filled} campos preenchidos pela IA. Revise antes de salvar.`;
-      statusEl.className = 'gemini-status success';
-    }
-    toast('Evolução preenchida com IA ✨', 'success');
-
-  } catch (e) {
-    console.error('Gemini Evolução error:', e);
-    if (statusEl) {
-      statusEl.textContent = '❌ ' + (e.message || 'Erro ao consultar a IA. Verifique sua conexão.');
-      statusEl.className = 'gemini-status error';
-    }
-    toast('Erro ao consultar o Gemini: ' + (e.message || ''), 'error');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-
+   FEMIC — Assistente Gemini para Anamnese
    Usa Google Gemini 1.5 Flash para preencher os campos da
    anamnese a partir de uma descrição livre do fisioterapeuta.
    A chave fica apenas em memória (não persiste em localStorage).
