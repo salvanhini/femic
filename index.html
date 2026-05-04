@@ -2570,7 +2570,7 @@
     closeModal('orientationPackModalWrap');
   }
 
-
+  console.log('FEMIC booting...');
   window.statusChart = null;
   window.overviewChart = null;
   window.analysisChart = null;
@@ -2590,10 +2590,7 @@
   }
   function getPatients(){ return safeArrayParse('femic_patients').map(normalizePatientRecord).filter(p => p.id && p.name); }
   function savePatients(v){ localStorage.setItem('femic_patients', JSON.stringify((Array.isArray(v) ? v : []).map(normalizePatientRecord).filter(p => p.id && p.name))); }
-  function getSessions(){
-    if(window._sessionsCache) return window._sessionsCache;
-    return safeArrayParse('femic_sessions').map(normalizeSessionRecord).filter(s => s.id && s.patient_id && s.date);
-  }
+  function getSessions(){ return safeArrayParse('femic_sessions').map(normalizeSessionRecord).filter(s => s.id && s.patient_id && s.date); }
   function saveSessions(v){ localStorage.setItem('femic_sessions', JSON.stringify((Array.isArray(v) ? v : []).map(normalizeSessionRecord).filter(s => s.id && s.patient_id && s.date))); }
   function getAnamneses(){ return safeArrayParse('femic_anamneses').filter(x => x && x.patient_id); }
   function saveAnamneses(v){ localStorage.setItem('femic_anamneses', JSON.stringify(Array.isArray(v) ? v : [])); }
@@ -2713,7 +2710,7 @@
   }
 
   function goPage(page){
-
+    console.log('goPage', page);
     window.currentPage = page;
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.querySelector('#page-' + page).classList.add('active');
@@ -2979,8 +2976,6 @@
     const gridEl = document.getElementById('patientsGrid');
     const visibleEl = document.getElementById('visiblePatientsCount');
     if(!gridEl) return;
-    // Cache de sessões para evitar múltiplos JSON.parse durante o render
-    window._sessionsCache = safeArrayParse('femic_sessions').map(normalizeSessionRecord).filter(s => s.id && s.patient_id && s.date);
     try {
       if(!window.patientFilter) window.patientFilter = 'active';
       document.querySelectorAll('#patientTabs .tab').forEach(t => t.classList.toggle('active', t.dataset.filter===window.patientFilter));
@@ -3088,8 +3083,6 @@
       if(visibleEl) visibleEl.textContent = '0';
       gridEl.innerHTML = '<div class="card patient-empty-card"><strong>Não foi possível exibir os pacientes.</strong><p class="muted" style="margin-top:8px;">Os dados foram carregados, mas houve um problema ao montar a lista. Tente atualizar a tela.</p></div>';
       toast('Erro ao montar a lista de pacientes', 'error');
-    } finally {
-      window._sessionsCache = null; // Libera cache de render
     }
   }
   function openPatientModal(id){
@@ -4793,7 +4786,6 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
       const lbl = document.getElementById('loginUserLabel');
       if(lbl) lbl.textContent = email.split('@')[0] + ' · Sair';
       fullRefreshUI();
-      loadClinicalTemplates();
       toast('Bem-vindo, ' + email.split('@')[0] + '!', 'success');
     } catch(e){
       errEl.textContent = e.message;
@@ -4830,8 +4822,6 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
     const email = sessionStorage.getItem('femic_user') || '';
     const lbl   = document.getElementById('loginUserLabel');
     if(lbl && email) lbl.textContent = email.split('@')[0] + ' · Sair';
-    // Carregar templates dinâmicos se ainda não carregados nesta sessão
-    if(!_clinicalTemplatesLoaded) loadClinicalTemplates();
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -4860,85 +4850,7 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
     renderFormsLink();
   });
 
-/* ============================================================
-   FEMIC — Templates Clínicos Dinâmicos v1.0
-   Carrega clinical_templates do Supabase e mescla com estáticos
-   Compatível com admin: templates-admin.html
-   ============================================================ */
-  window.clinicalTemplates = [];
-  let _clinicalTemplatesLoaded = false;
-
-  async function loadClinicalTemplates(){
-    const cfg = typeof getConfig === 'function' ? getConfig() : {};
-    if(!cfg.supabaseUrl || !cfg.supabaseKey) return;
-    const jwt = sessionStorage.getItem('femic_jwt');
-    if(!jwt) return;
-    try {
-      const res = await fetch(
-        cfg.supabaseUrl.replace(/\/$/, '') +
-        '/rest/v1/clinical_templates?select=*&order=created_at.asc',
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': cfg.supabaseKey,
-            'Authorization': 'Bearer ' + jwt
-          }
-        }
-      );
-      if(!res.ok) return; // silencioso — tabela pode não existir ainda
-      const rows = await res.json();
-      if(!Array.isArray(rows)) return;
-      window.clinicalTemplates = rows;
-      _mergeDynamicTemplates(rows);
-      _clinicalTemplatesLoaded = true;
-    } catch(e) { /* silencioso — não quebrar se tabela não existir */ }
-  }
-
-  function getAnamneseTemplates(){ return (window.clinicalTemplates||[]).filter(t => t.type === 'anamnese'); }
-  function getEvolucaoTemplates(){ return (window.clinicalTemplates||[]).filter(t => t.type === 'evolucao'); }
-  function getPhraseTemplates(){   return (window.clinicalTemplates||[]).filter(t => t.type === 'frases'); }
-
-  function _mergeDynamicTemplates(rows){
-    let changedAnamnese = false, changedClinical = false;
-    for(const row of rows){
-      let content = {};
-      try { content = typeof row.content === 'string' ? JSON.parse(row.content) : (row.content || {}); } catch(e){}
-      const dynId  = 'dyn_' + String(row.id).replace(/-/g,'').slice(0,16);
-      const group  = row.group_name || content.group || '⭐ Personalizados';
-      const label  = row.title || 'Sem título';
-
-      if(row.type === 'anamnese'){
-        if(!ANAMNESE_TEMPLATES.find(t => t.id === dynId)){
-          ANAMNESE_TEMPLATES.push({
-            id: dynId, label, group,
-            values:{
-              chief:       content.chief       || '',
-              history:     content.history     || '',
-              diagnosis:   content.diagnosis   || '',
-              limitations: content.limitations || '',
-              goals:       content.goals       || '',
-              obs:         content.obs         || ''
-            }
-          });
-          changedAnamnese = true;
-        }
-      } else if(row.type === 'evolucao'){
-        if(!CLINICAL_TEMPLATES.find(t => t.id === dynId)){
-          CLINICAL_TEMPLATES.push({
-            id: dynId, label, group,
-            conduct:  content.conduct  || '',
-            guidance: content.guidance || ''
-          });
-          changedClinical = true;
-        }
-      }
-    }
-    // Re-popular selects somente se houve novos templates
-    if(changedAnamnese && typeof populateAnamneseHelpers === 'function') populateAnamneseHelpers();
-    if(changedClinical && typeof populateClinicalHelpers === 'function') populateClinicalHelpers();
-  }
-
-
+/* FEMIC v3.4.3-voz — Ditado por voz isolado na Evolução Técnica */
 let femicClinicalVoiceRecognition = null;
 let femicClinicalVoiceListening = false;
 
