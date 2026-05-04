@@ -4793,6 +4793,7 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
       const lbl = document.getElementById('loginUserLabel');
       if(lbl) lbl.textContent = email.split('@')[0] + ' · Sair';
       fullRefreshUI();
+      loadClinicalTemplates();
       toast('Bem-vindo, ' + email.split('@')[0] + '!', 'success');
     } catch(e){
       errEl.textContent = e.message;
@@ -4829,6 +4830,8 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
     const email = sessionStorage.getItem('femic_user') || '';
     const lbl   = document.getElementById('loginUserLabel');
     if(lbl && email) lbl.textContent = email.split('@')[0] + ' · Sair';
+    // Carregar templates dinâmicos se ainda não carregados nesta sessão
+    if(!_clinicalTemplatesLoaded) loadClinicalTemplates();
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -4857,7 +4860,85 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
     renderFormsLink();
   });
 
-/* FEMIC v3.4.3-voz — Ditado por voz isolado na Evolução Técnica */
+/* ============================================================
+   FEMIC — Templates Clínicos Dinâmicos v1.0
+   Carrega clinical_templates do Supabase e mescla com estáticos
+   Compatível com admin: templates-admin.html
+   ============================================================ */
+  window.clinicalTemplates = [];
+  let _clinicalTemplatesLoaded = false;
+
+  async function loadClinicalTemplates(){
+    const cfg = typeof getConfig === 'function' ? getConfig() : {};
+    if(!cfg.supabaseUrl || !cfg.supabaseKey) return;
+    const jwt = sessionStorage.getItem('femic_jwt');
+    if(!jwt) return;
+    try {
+      const res = await fetch(
+        cfg.supabaseUrl.replace(/\/$/, '') +
+        '/rest/v1/clinical_templates?select=*&order=created_at.asc',
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': cfg.supabaseKey,
+            'Authorization': 'Bearer ' + jwt
+          }
+        }
+      );
+      if(!res.ok) return; // silencioso — tabela pode não existir ainda
+      const rows = await res.json();
+      if(!Array.isArray(rows)) return;
+      window.clinicalTemplates = rows;
+      _mergeDynamicTemplates(rows);
+      _clinicalTemplatesLoaded = true;
+    } catch(e) { /* silencioso — não quebrar se tabela não existir */ }
+  }
+
+  function getAnamneseTemplates(){ return (window.clinicalTemplates||[]).filter(t => t.type === 'anamnese'); }
+  function getEvolucaoTemplates(){ return (window.clinicalTemplates||[]).filter(t => t.type === 'evolucao'); }
+  function getPhraseTemplates(){   return (window.clinicalTemplates||[]).filter(t => t.type === 'frases'); }
+
+  function _mergeDynamicTemplates(rows){
+    let changedAnamnese = false, changedClinical = false;
+    for(const row of rows){
+      let content = {};
+      try { content = typeof row.content === 'string' ? JSON.parse(row.content) : (row.content || {}); } catch(e){}
+      const dynId  = 'dyn_' + String(row.id).replace(/-/g,'').slice(0,16);
+      const group  = row.group_name || content.group || '⭐ Personalizados';
+      const label  = row.title || 'Sem título';
+
+      if(row.type === 'anamnese'){
+        if(!ANAMNESE_TEMPLATES.find(t => t.id === dynId)){
+          ANAMNESE_TEMPLATES.push({
+            id: dynId, label, group,
+            values:{
+              chief:       content.chief       || '',
+              history:     content.history     || '',
+              diagnosis:   content.diagnosis   || '',
+              limitations: content.limitations || '',
+              goals:       content.goals       || '',
+              obs:         content.obs         || ''
+            }
+          });
+          changedAnamnese = true;
+        }
+      } else if(row.type === 'evolucao'){
+        if(!CLINICAL_TEMPLATES.find(t => t.id === dynId)){
+          CLINICAL_TEMPLATES.push({
+            id: dynId, label, group,
+            conduct:  content.conduct  || '',
+            guidance: content.guidance || ''
+          });
+          changedClinical = true;
+        }
+      }
+    }
+    // Re-popular selects somente se houve novos templates
+    if(changedAnamnese && typeof populateAnamneseHelpers === 'function') populateAnamneseHelpers();
+    if(changedClinical && typeof populateClinicalHelpers === 'function') populateClinicalHelpers();
+  }
+
+
 let femicClinicalVoiceRecognition = null;
 let femicClinicalVoiceListening = false;
 
