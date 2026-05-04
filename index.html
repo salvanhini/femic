@@ -140,8 +140,9 @@
     .sidebar {
       width: 240px; position: fixed; inset: 0 auto 0 0; background: linear-gradient(180deg, rgba(11,60,111,.98), rgba(7,35,74,.98));
       color: #ecffff; padding: 22px 18px 18px; display: flex; flex-direction: column; z-index: 50; box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
+      backdrop-filter: blur(14px); overflow-y: auto; overflow-x: hidden;
     }
+    .sidebar-footer { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 12px; flex-shrink: 0; }
     .brand { display: flex; align-items: center; gap: 12px; padding: 8px 10px 18px; }
     .brand-badge {
       width: 52px; height: 52px; border-radius: 18px; position: relative; overflow: hidden; flex: 0 0 auto;
@@ -170,7 +171,6 @@
     }
     .nav-link:hover, .nav-link.active { background: rgba(255,255,255,.12); transform: translateX(2px); }
     .nav-link span.icon { width: 28px; text-align: center; font-size: 1rem; }
-    .sidebar-footer { margin-top: auto; display: grid; gap: 10px; }
     .side-btn {
       border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.08); color: #fff; padding: 12px 14px;
       border-radius: 14px; cursor: pointer; transition: .2s ease; text-align: left;
@@ -5055,11 +5055,25 @@ function stopClinicalVoiceDictation(){
   femicClinicalVoiceListening = false;
   setClinicalVoiceStatus('Microfone desligado.');
 }
+/* URL da API — declarada uma única vez antes das duas funções */
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+
+/* helper: extrai JSON da resposta do Gemini de forma robusta */
+function geminiParseJSON(rawText) {
+  if (!rawText || !rawText.trim()) throw new Error('Gemini retornou resposta vazia. Tente novamente.');
+  const text = rawText.trim();
+  // 1. direto
+  try { return JSON.parse(text); } catch(_) {}
+  // 2. remove blocos ```json … ``` ou ``` … ```
+  try { return JSON.parse(text.replace(/^```(?:json)?\s*/i,'').replace(/\s*```\s*$/,'')); } catch(_) {}
+  // 3. primeiro { … último }
+  const s = text.indexOf('{'), e = text.lastIndexOf('}');
+  if (s !== -1 && e > s) { try { return JSON.parse(text.slice(s, e+1)); } catch(_) {} }
+  throw new Error('Não foi possível interpretar a resposta da IA. Tente novamente.');
+}
+
 /* ============================================================
    FEMIC — Assistente Gemini para Evolução Técnica
-   Usa Google Gemini para preencher conduta e orientações
-   a partir de uma descrição livre do fisioterapeuta.
-   A chave fica apenas em memória (não persiste em localStorage).
 ============================================================ */
 async function runGeminiClinicalEvolution() {
   const cfg = getConfig();
@@ -5087,18 +5101,15 @@ async function runGeminiClinicalEvolution() {
 
   const prompt = `Você é um assistente especializado em fisioterapia. Com base na descrição do atendimento abaixo, preencha os dois campos de uma ficha de evolução técnica fisioterapêutica.
 
-Responda APENAS com um JSON válido, sem markdown, sem explicações, no formato exato abaixo:
-{
-  "conduct": "...",
-  "guidance": "..."
-}
+Responda APENAS com um JSON válido, sem markdown, sem explicações, no formato exato:
+{"conduct": "...", "guidance": "..."}
 
 Regras:
 - Escreva em português do Brasil, linguagem clínica profissional
-- "conduct": descreva de forma estruturada e objetiva a conduta realizada durante a sessão (técnicas, exercícios, séries, repetições, resposta do paciente, evolução da dor). Use linguagem fisioterapêutica formal.
-- "guidance": descreva as orientações domiciliares e conduta domiciliar prescritas ao paciente (exercícios em casa, aplicação de gelo/calor, restrições, cuidados posturais, etc.)
-- Se alguma informação não foi mencionada, complemente com frases clínicas adequadas ao contexto descrito
-- Não use marcadores ou listas numeradas — escreva em parágrafo corrido
+- "conduct": conduta realizada na sessão em parágrafo corrido (técnicas, exercícios, séries, repetições, resposta do paciente, evolução da dor). Linguagem fisioterapêutica formal.
+- "guidance": orientações domiciliares em parágrafo corrido (exercícios em casa, gelo/calor, restrições, cuidados posturais).
+- Se alguma informação não foi mencionada, complemente com frases clínicas adequadas ao contexto.
+- Sem marcadores, listas ou numeração — apenas parágrafos corridos.
 
 Descrição do atendimento:
 ${input}`;
@@ -5106,13 +5117,10 @@ ${input}`;
   try {
     const res = await fetch(GEMINI_API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-goog-api-key': apiKey
-      },
+      headers: { 'Content-Type': 'application/json', 'X-goog-api-key': apiKey },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 800 }
+        generationConfig: { temperature: 0.3, maxOutputTokens: 1000 }
       })
     });
 
@@ -5123,16 +5131,11 @@ ${input}`;
 
     const data = await res.json();
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Gemini não retornou JSON válido. Tente novamente.');
-
-    const fields = JSON.parse(jsonMatch[0]);
+    const fields = geminiParseJSON(rawText);
 
     let filled = 0;
     const conductEl = document.getElementById('clinicalConduct');
     const guidanceEl = document.getElementById('clinicalGuidance');
-
     if (conductEl && fields.conduct) { conductEl.value = fields.conduct; filled++; }
     if (guidanceEl && fields.guidance) { guidanceEl.value = fields.guidance; filled++; }
 
@@ -5156,11 +5159,7 @@ ${input}`;
 
 /* ============================================================
    FEMIC — Assistente Gemini para Anamnese
-   Usa Google Gemini 1.5 Flash para preencher os campos da
-   anamnese a partir de uma descrição livre do fisioterapeuta.
-   A chave fica apenas em memória (não persiste em localStorage).
 ============================================================ */
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 async function runGeminiAnamnese() {
   const cfg = getConfig();
@@ -5235,12 +5234,7 @@ ${input}`;
 
     const data = await res.json();
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    // Extrai JSON mesmo se vier com ``json ... `` ao redor
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Gemini não retornou JSON válido. Tente novamente.');
-
-    const fields = JSON.parse(jsonMatch[0]);
+    const fields = geminiParseJSON(rawText);
 
     // Preenche os campos da anamnese
     const map = {
