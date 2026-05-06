@@ -3305,8 +3305,14 @@ const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],pa
 function toast(msg,type='info'){const el=document.createElement('div');el.className='toast '+type;el.textContent=msg;$('toastWrap').appendChild(el);setTimeout(()=>el.remove(),3600)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function localIsoDate(d){const x=new Date(d);return String(x.getFullYear())+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}function todayIso(){return localIsoDate(new Date())}function isoDate(d){return localIsoDate(d)}function dateDay(dateStr){const [y,m,d]=String(dateStr).split('-').map(Number);return new Date(y,m-1,d).getDay()}function fmtDate(s){if(!s)return'';const [y,m,d]=String(s).split('-');return d+'/'+m+'/'+y}function fmtWeekday(s){if(!s)return'';const [y,m,d]=String(s).split('-').map(Number);const dias=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];return dias[new Date(y,m-1,d).getDay()]||''}function cleanPhone(v){return String(v||'').replace(/\D/g,'')}function brl(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}function normalizeTime(t){return String(t||'').slice(0,5)}function timeToMin(t){const [h,m]=normalizeTime(t).split(':').map(Number);return h*60+(m||0)}function minToTime(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}function addMinutes(t,m){return minToTime(timeToMin(t)+Number(m||0))}function base(){return ($('sbUrl').value||localStorage.femic_agenda_url||'').trim().replace(/\/$/,'')}function key(){return ($('sbKey').value||localStorage.femic_agenda_key||'').trim()}function headers(){
-  const jwt = sessionStorage.getItem('femic_jwt') || key();
-  return{apikey:key(),Authorization:'Bearer '+jwt,'Content-Type':'application/json',Prefer:'return=representation'};
+  const jwt = sessionStorage.getItem('femic_jwt');
+  const expiry = Number(sessionStorage.getItem('femic_token_expiry') || 0);
+  const tokenValid = jwt && expiry && Date.now() < expiry;
+  const authJwt = tokenValid ? jwt : key();
+  if (jwt && expiry && Date.now() > expiry && sessionStorage.getItem('femic_refresh_token')) {
+    femicRefreshToken().catch(function(){});
+  }
+  return{apikey:key(),Authorization:'Bearer '+authJwt,'Content-Type':'application/json',Prefer:'return=representation'};
 }
 async function api(path,opt={}){const res=await fetch(base()+'/rest/v1/'+path,{headers:headers(),...opt});const txt=await res.text();let data;try{data=txt?JSON.parse(txt):null}catch(e){data=txt}if(!res.ok){console.error('Supabase error',path,res.status,data);throw new Error((data&&data.message)||txt||('HTTP '+res.status))}return data}
 function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊';$('tplReminder').value=tpl;const tplForm=localStorage.femic_tpl_form_reminder||'Olá, {nome}! Tudo bem? Sua sessão de hoje foi concluída. Pode preencher rapidinho o formulário de evolução? Isso nos ajuda a acompanhar sua dor, funcionalidade e evolução. {link_formulario}';if($('tplFormReminder'))$('tplFormReminder').value=tplForm;if($('formLinkInput'))$('formLinkInput').value=localStorage.femic_form_link||''}
@@ -3427,7 +3433,18 @@ async function quickStatus(id,newStatus){
     toast('Status atualizado para '+label+'.','success');
   }catch(e){console.error(e);toast('Erro ao alterar status: '+e.message,'error')}
 }
-function renderDashboard(){const today=todayIso(),month=new Date().toISOString().slice(0,7);const t=appointments.filter(a=>a.appointment_date===today).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));const rem=t.filter(a=>['agendado','confirmado'].includes(a.status)&&!(a.appointment_reminder_sent||a.reminder_sent)).length;const low=packages.filter(p=>p.active!==false&&Number(p.remaining_sessions||0)<=3).length;const done=appointments.filter(a=>a.status==='concluido'&&String(a.appointment_date).startsWith(month));const total=done.reduce((sum,a)=>sum+Number(a.service_price_at_time||serviceById(a.service_id).price||0),0);$('dashboardKpis').innerHTML=`<div class="kpi"><div class="small muted">Atendimentos hoje</div><strong>${t.length}</strong></div><div class="kpi"><div class="small muted">Lembretes pendentes</div><strong>${rem}</strong></div><div class="kpi"><div class="small muted">Saldos baixos</div><strong>${low}</strong></div><div class="kpi"><div class="small muted">Mês concluído</div><strong>${brl(total)}</strong></div>`;$('dashToday').innerHTML=t.length?t.map(a=>`<div class="item status-${a.status}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)}–${normalizeTime(a.end_time)} — ${esc(patientName(a.patient_id))}</strong><div class="muted small">${esc(serviceName(a.service_id))} · <span class="status-chip ${a.status}">${a.status}</span></div>${saldoBadge(a.patient_id,a.service_id)}</div><div class="toolbar"><button class="btn" onclick="openPatient('${a.patient_id}')">Ficha</button><button class="btn" onclick="rescheduleAppointment('${a.id}')">Remarcar</button><button class="btn" onclick="openAppt('${a.appointment_date}','${a.id}')">Editar</button></div></div>${statusButtons(a)}</div>`).join(''):'<div class="muted">Nenhum atendimento hoje.</div>';$('dashAlerts').innerHTML=(low?packages.filter(p=>Number(p.remaining_sessions||0)<=3).map(p=>{const used=Math.max(0,Number(p.total_sessions||0)-Number(p.remaining_sessions||0));const pct=Number(p.total_sessions||0)?Math.min(100,(used/Number(p.total_sessions))*100):0;return `<div class="item package-card"><strong>${esc(patientName(p.patient_id))}</strong><div class="muted small">${esc(serviceName(p.service_id))} · <span class="used-counter">${used}/${p.total_sessions} usadas</span> · saldo ${p.remaining_sessions}</div><div class="package-progress"><span style="width:${pct}%"></span></div></div>`}).join(''):'<div class="muted">Sem alertas de saldo.</div>')}
+function renderDashboard(){const today=todayIso(),month=new Date().toISOString().slice(0,7);const t=appointments.filter(a=>a.appointment_date===today).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));const rem=t.filter(a=>['agendado','confirmado'].includes(a.status)&&!(a.appointment_reminder_sent||a.reminder_sent)).length;const low=packages.filter(p=>{
+  if(p.active===false) return false;
+  if(Number(p.remaining_sessions||0)>3) return false;
+  var pat = patientById(p.patient_id);
+  if(pat.archived===true) return false;
+  return true;
+}).length;const done=appointments.filter(a=>a.status==='concluido'&&String(a.appointment_date).startsWith(month));const total=done.reduce((sum,a)=>sum+Number(a.service_price_at_time||serviceById(a.service_id).price||0),0);$('dashboardKpis').innerHTML=`<div class="kpi"><div class="small muted">Atendimentos hoje</div><strong>${t.length}</strong></div><div class="kpi"><div class="small muted">Lembretes pendentes</div><strong>${rem}</strong></div><div class="kpi"><div class="small muted">Saldos baixos</div><strong>${low}</strong></div><div class="kpi"><div class="small muted">Mês concluído</div><strong>${brl(total)}</strong></div>`;$('dashToday').innerHTML=t.length?t.map(a=>`<div class="item status-${a.status}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)}–${normalizeTime(a.end_time)} — ${esc(patientName(a.patient_id))}</strong><div class="muted small">${esc(serviceName(a.service_id))} · <span class="status-chip ${a.status}">${a.status}</span></div>${saldoBadge(a.patient_id,a.service_id)}</div><div class="toolbar"><button class="btn" onclick="openPatient('${a.patient_id}')">Ficha</button><button class="btn" onclick="rescheduleAppointment('${a.id}')">Remarcar</button><button class="btn" onclick="openAppt('${a.appointment_date}','${a.id}')">Editar</button></div></div>${statusButtons(a)}</div>`).join(''):'<div class="muted">Nenhum atendimento hoje.</div>';$('dashAlerts').innerHTML=(low?packages.filter(p=>{
+  if(Number(p.remaining_sessions||0)>3) return false;
+  var pat = patientById(p.patient_id);
+  if(pat.archived===true) return false;
+  return true;
+}).map(p=>{const used=Math.max(0,Number(p.total_sessions||0)-Number(p.remaining_sessions||0));const pct=Number(p.total_sessions||0)?Math.min(100,(used/Number(p.total_sessions))*100):0;return `<div class="item package-card"><strong>${esc(patientName(p.patient_id))}</strong><div class="muted small">${esc(serviceName(p.service_id))} · <span class="used-counter">${used}/${p.total_sessions} usadas</span> · saldo ${p.remaining_sessions}</div><div class="package-progress"><span style="width:${pct}%"></span></div></div>`}).join(''):'<div class="muted">Sem alertas de saldo.</div>')}
 function renderReport(){const month=$('reportMonth').value||new Date().toISOString().slice(0,7);$('reportMonth').value=month;const done=appointments.filter(a=>a.status==='concluido'&&String(a.appointment_date).startsWith(month));const groups={};done.forEach(a=>{const s=serviceById(a.service_id),key=(s.health_insurance_id||'')+'|'+(s.id||'')+'|'+Number(a.service_price_at_time||s.price||0);if(!groups[key])groups[key]={payer:payerName(s.health_insurance_id),service:s.name||'Sem serviço',q:0,price:Number(a.service_price_at_time||s.price||0)};groups[key].q++});const rows=Object.values(groups),total=rows.reduce((a,r)=>a+r.q*r.price,0);$('reportKpis').innerHTML=`<div class="kpi"><div class="small muted">Concluídos</div><strong>${done.length}</strong></div><div class="kpi"><div class="small muted">Total</div><strong>${brl(total)}</strong></div><div class="kpi"><div class="small muted">Cancelados</div><strong>${appointments.filter(a=>a.status==='cancelado'&&String(a.appointment_date).startsWith(month)).length}</strong></div><div class="kpi"><div class="small muted">Agendados</div><strong>${appointments.filter(a=>['agendado','confirmado'].includes(a.status)&&String(a.appointment_date).startsWith(month)).length}</strong></div>`;$('reportBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.payer)}</td><td>${esc(r.service)}</td><td>${r.q}</td><td>${brl(r.price)}</td><td><strong>${brl(r.q*r.price)}</strong></td></tr>`).join(''):'<tr><td colspan="5" class="muted">Sem atendimentos concluídos.</td></tr>'}
 function exportCsv(){const rows=[['Pagador','Serviço','Quantidade','Valor','Total']];document.querySelectorAll('#reportBody tr').forEach(tr=>{const cells=[...tr.children].map(td=>td.innerText);if(cells.length===5)rows.push(cells)});const csv=rows.map(r=>r.map(c=>'"'+String(c).replaceAll('"','""')+'"').join(';')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='relatorio_agenda_femic.csv';a.click()}
 
@@ -4408,6 +4425,9 @@ async function femicLogin(){
     }
     const data = await res.json();
     sessionStorage.setItem('femic_jwt',  data.access_token);
+    sessionStorage.setItem('femic_refresh_token', data.refresh_token);
+    var expiresAt = Date.now() + ((data.expires_in || 3600) - 60) * 1000;
+    sessionStorage.setItem('femic_token_expiry', String(expiresAt));
     sessionStorage.setItem('femic_user', email);
     document.getElementById('femicLoginOverlay').style.display = 'none';
     const lbl = document.getElementById('loginUserLabel');
@@ -4421,9 +4441,32 @@ async function femicLogin(){
   }
 }
 
+async function femicRefreshToken(){
+  const urlVal = (localStorage.femic_agenda_url || '').trim();
+  const keyVal = (localStorage.femic_agenda_key || '').trim();
+  const refreshToken = sessionStorage.getItem('femic_refresh_token');
+  if(!urlVal || !keyVal || !refreshToken) return false;
+  try {
+    const res = await fetch(urlVal + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': keyVal },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    });
+    if(!res.ok){ sessionStorage.removeItem('femic_refresh_token'); return false; }
+    const data = await res.json();
+    sessionStorage.setItem('femic_jwt', data.access_token);
+    sessionStorage.setItem('femic_refresh_token', data.refresh_token);
+    var expiresAt = Date.now() + ((data.expires_in || 3600) - 60) * 1000;
+    sessionStorage.setItem('femic_token_expiry', String(expiresAt));
+    return true;
+  } catch(e) { return false; }
+}
+
 function femicLogout(){
   if(!confirm('Sair da sessão?')) return;
   sessionStorage.removeItem('femic_jwt');
+  sessionStorage.removeItem('femic_refresh_token');
+  sessionStorage.removeItem('femic_token_expiry');
   sessionStorage.removeItem('femic_user');
   location.reload();
 }

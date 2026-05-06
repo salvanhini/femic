@@ -4718,14 +4718,19 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
     saveConfig(cfg);
     toast('Configurações salvas', 'success');
   }
-  function supabaseHeaders(post){
+function supabaseHeaders(post){
     const cfg = getConfig();
-    // Usa o JWT do usuário autenticado; fallback para anon key apenas no handshake de login
-    const jwt = sessionStorage.getItem('femic_jwt') || cfg.supabaseKey;
-    const h = { 'Content-Type':'application/json', 'apikey': cfg.supabaseKey, 'Authorization':'Bearer ' + jwt };
+    const jwt = sessionStorage.getItem('femic_jwt');
+    const expiry = Number(sessionStorage.getItem('femic_token_expiry') || 0);
+    const tokenValid = jwt && expiry && Date.now() < expiry;
+    const authJwt = tokenValid ? jwt : cfg.supabaseKey;
+    if (jwt && expiry && Date.now() > expiry && sessionStorage.getItem('femic_refresh_token')) {
+        femicRefreshToken().catch(function(){});
+    }
+    const h = { 'Content-Type':'application/json', 'apikey': cfg.supabaseKey, 'Authorization':'Bearer ' + authJwt };
     if(post) h['Prefer'] = 'resolution=merge-duplicates';
     return h;
-  }
+}
   function serializeSymptoms(symptoms){ return symptoms && symptoms.length ? '{' + symptoms.map(s => '"' + String(s).replace(/"/g, '\\"') + '"').join(',') + '}' : '{}'; }
   function deserializeSymptoms(val){ return typeof val === 'string' ? val.replace(/[{}]/g,'').split(',').map(x => x.replace(/"/g,'').trim()).filter(Boolean) : (val || []); }
   async function testSupabaseConnection(){
@@ -4914,6 +4919,9 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
       }
       const data = await res.json();
       sessionStorage.setItem('femic_jwt',  data.access_token);
+      sessionStorage.setItem('femic_refresh_token', data.refresh_token);
+      var expiresAt = Date.now() + ((data.expires_in || 3600) - 60) * 1000;
+      sessionStorage.setItem('femic_token_expiry', String(expiresAt));
       sessionStorage.setItem('femic_user', email);
       document.getElementById('femicLoginOverlay').style.display = 'none';
       const lbl = document.getElementById('loginUserLabel');
@@ -4927,9 +4935,31 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
     }
   }
 
+  async function femicRefreshToken(){
+    const cfg = getConfig();
+    const refreshToken = sessionStorage.getItem('femic_refresh_token');
+    if(!cfg.supabaseUrl || !cfg.supabaseKey || !refreshToken) return false;
+    try {
+      const res = await fetch(cfg.supabaseUrl + '/auth/v1/token?grant_type=refresh_token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': cfg.supabaseKey },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      if(!res.ok){ sessionStorage.removeItem('femic_refresh_token'); return false; }
+      const data = await res.json();
+      sessionStorage.setItem('femic_jwt', data.access_token);
+      sessionStorage.setItem('femic_refresh_token', data.refresh_token);
+      var expiresAt = Date.now() + ((data.expires_in || 3600) - 60) * 1000;
+      sessionStorage.setItem('femic_token_expiry', String(expiresAt));
+      return true;
+    } catch(e) { return false; }
+  }
+
   function femicLogout(){
     if(!confirm('Sair da sessão?')) return;
     sessionStorage.removeItem('femic_jwt');
+    sessionStorage.removeItem('femic_refresh_token');
+    sessionStorage.removeItem('femic_token_expiry');
     sessionStorage.removeItem('femic_user');
     location.reload();
   }
