@@ -4728,7 +4728,7 @@ function supabaseHeaders(post){
         femicRefreshToken().catch(function(){});
     }
     const h = { 'Content-Type':'application/json', 'apikey': cfg.supabaseKey, 'Authorization':'Bearer ' + authJwt };
-    if(post) h['Prefer'] = 'resolution=merge-duplicates';
+    if(post) h['Prefer'] = 'resolution=merge-duplicates,return=minimal';
     return h;
 }
   function serializeSymptoms(symptoms){ return symptoms && symptoms.length ? '{' + symptoms.map(s => '"' + String(s).replace(/"/g, '\\"') + '"').join(',') + '}' : '{}'; }
@@ -4742,12 +4742,22 @@ function supabaseHeaders(post){
       toast('Conexão com Supabase OK', 'success');
     } catch(e){ console.error(e); toast('Falha ao conectar no Supabase', 'error'); }
   }
+  // Mapa de chave de conflito por tabela — necessário para o upsert funcionar corretamente no Supabase
+  const SUPABASE_CONFLICT_KEYS = {
+    patients:            'id',
+    sessions:            'id',
+    anamneses:           'patient_id',
+    clinical_evolutions: 'id',
+    patient_documents:   'id'
+  };
+
   async function supabaseBatchUpsert(baseUrl, table, rows, headers, batchSize){
     if(!rows || rows.length === 0) return { ok:true, count:0 };
+    const conflictKey = SUPABASE_CONFLICT_KEYS[table] || 'id';
     let sent = 0;
     for(let i = 0; i < rows.length; i += batchSize){
       const chunk = rows.slice(i, i + batchSize);
-      const res = await fetch(baseUrl + '/rest/v1/' + table, {
+      const res = await fetch(baseUrl + '/rest/v1/' + table + '?on_conflict=' + conflictKey, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(chunk)
