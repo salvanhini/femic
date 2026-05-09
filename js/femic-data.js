@@ -1,4 +1,4 @@
-const APP_VERSION = 'v3.4.1-ui-premium-documentos';
+const APP_VERSION = 'v3.5.0-pwa';
   // Link estável para o módulo separado de agenda.
   // No GitHub Pages, salve a agenda oficial como agenda.html na mesma pasta deste sistema principal.
   const FEMIC_AGENDA_URL = './agenda.html';

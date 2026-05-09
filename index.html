@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>FEMIC Fisioterapia — v3.4.3 Voz</title>
+  <title>FEMIC Fisioterapia — v3.5.0 PWA</title>
   <meta name="theme-color" content="#0b3c6f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <link rel="manifest" href="manifest-femic.webmanifest" />
+  <link rel="apple-touch-icon" href="logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
@@ -186,7 +190,7 @@
         <button class="side-btn" onclick="femicLogout()" style="display:flex; align-items:center; gap:8px; border-color:rgba(239,68,68,.25); color:rgba(255,120,120,.9);">
           <span>🚪</span><span id="loginUserLabel">Sair</span>
         </button>
-        <div class="muted" style="font-size:.78rem; text-align:center; padding-top:4px;">Versão <strong id="appVersionLabel">v3.4.3-voz</strong></div>
+        <div class="muted" style="font-size:.78rem; text-align:center; padding-top:4px;">Versão <strong id="appVersionLabel">v3.5.0-pwa</strong></div>
       </div>
     </aside>
 
@@ -558,18 +562,18 @@
       <div class="modal-body">
         <div class="card" style="margin-bottom:16px;">
           <strong>Sistema FEMIC Fisioterapia</strong>
-          <p class="muted" style="margin-top:6px;">Versão atual: <strong id="tutorialVersionLabel">v3.4.3-voz</strong></p>
-          <p class="muted" style="margin-top:6px;">Use este guia como fluxo rápido para cadastro, acompanhamento, análise, orientações, relatórios e backup.</p>
+          <p class="muted" style="margin-top:6px;">Versão atual: <strong id="tutorialVersionLabel">v3.5.0-pwa</strong></p>
+          <p class="muted" style="margin-top:6px;">Fluxo recomendado: cadastro, evolução, IA clínica, análise, orientações, sincronização e backup seguro.</p>
         </div>
         <div class="grid-2">
-          <div class="card"><strong>1. Dashboard clínico</strong><p class="muted">Acompanhe indicadores gerais da clínica: pacientes, registros de evolução, taxa de melhora, gráficos e alertas inteligentes.</p></div>
-          <div class="card"><strong>2. Pacientes ativos e arquivados</strong><p class="muted">Cadastre, edite e localize pacientes por nome, patologia ou WhatsApp. Pacientes finalizados podem ser arquivados sem perder histórico.</p></div>
-          <div class="card"><strong>3. Registro de evolução</strong><p class="muted">Registre dor, funcionalidade, satisfação, sintomas e observações. Esses registros alimentam gráficos, relatórios e análise individual.</p></div>
-          <div class="card"><strong>4. Anamnese e evolução técnica</strong><p class="muted">Preencha a anamnese, registre condutas técnicas, use modelos premium e frases prontas organizadas para agilizar a escrita clínica.</p></div>
-          <div class="card"><strong>5. Análise clínica</strong><p class="muted">Veja a linha do tempo individual, histórico completo, anamnese, evolução técnica e documentos do paciente em um só lugar.</p></div>
-          <div class="card"><strong>6. Orientações ao paciente</strong><p class="muted">Envie materiais educativos pelo WhatsApp. Cada patologia agora aponta para um HTML único hospedado no GitHub Pages, reunindo orientações, infográfico e espaço para áudio em uma única página.</p></div>
-          <div class="card"><strong>7. Formulário e sincronização</strong><p class="muted">Importe respostas por CSV ou sincronize pela nuvem. Respostas pendentes podem ser vinculadas manualmente a pacientes.</p></div>
-          <div class="card"><strong>8. Relatórios e backup</strong><p class="muted">Gere relatórios em PDF e faça backup em JSON ou Supabase. Antes de ações sensíveis, o sistema solicita confirmação.</p></div>
+          <div class="card"><strong>1. Dashboard clínico</strong><p class="muted">Monitore pacientes, evolução, taxa de melhora e alertas rápidos da operação clínica.</p></div>
+          <div class="card"><strong>2. Pacientes ativos e arquivados</strong><p class="muted">Cadastre e organize pacientes sem perder histórico, com filtros por status e busca por nome/patologia.</p></div>
+          <div class="card"><strong>3. Evolução de sessão</strong><p class="muted">Registre dor, funcionalidade, sintomas, satisfação e observações para alimentar análise e relatórios.</p></div>
+          <div class="card"><strong>4. Anamnese e evolução técnica com IA</strong><p class="muted">Use Gemini ou DeepSeek, com modo econômico de tokens, para preenchimento mais rápido e objetivo.</p></div>
+          <div class="card"><strong>5. Ditado por voz e produtividade</strong><p class="muted">No modal de evolução técnica, use IA e depois ditado por voz para complementar com agilidade.</p></div>
+          <div class="card"><strong>6. Orientações ao paciente</strong><p class="muted">Envie orientações por WhatsApp com links por patologia e histórico de envios por paciente.</p></div>
+          <div class="card"><strong>7. Sincronização e pendências</strong><p class="muted">Importe respostas por CSV ou Supabase, revise pendências e vincule manualmente quando necessário.</p></div>
+          <div class="card"><strong>8. Backup, PWA e segurança</strong><p class="muted">Exporte JSON, use backup em nuvem e instale como App da Web (PWA) sem comprometer sincronização.</p></div>
         </div>
       </div>
       <div class="modal-foot"><button class="btn primary" onclick="closeModal('tutorialWrap')">Entendi</button></div>
@@ -602,6 +606,10 @@
               <option value="deepseek">DeepSeek</option>
             </select>
           </div>
+          <label style="display:flex; align-items:center; gap:8px; color:var(--muted); font-size:.85rem; margin-bottom:10px;">
+            <input id="geminiAnamneseConcise" type="checkbox" checked onchange="setAiConciseMode(this.checked)" />
+            Modo econômico de tokens (resposta mais curta)
+          </label>
           <div class="field">
             <label style="font-size:.88rem; color:var(--muted); margin-bottom:6px; display:block;">
               Descreva o caso em linguagem livre — a IA preenche os campos automaticamente
@@ -660,28 +668,6 @@
         </div>
         <div class="field" style="margin-top:12px;"><label>Conduta realizada</label><textarea id="clinicalConduct" rows="3" placeholder="Ex.: mobilização, liberação, exercícios, orientações durante o atendimento"></textarea></div>
 
-        <div class="voice-evo-card">
-          <div class="voice-evo-head">
-            <div>
-              <h4>🎙️ Ditado por voz</h4>
-              <div class="muted" style="font-size:.86rem;margin-top:3px;">Fale a evolução e revise o texto antes de salvar.</div>
-            </div>
-          </div>
-          <div class="voice-evo-controls">
-            <div class="field">
-              <label>Enviar fala para</label>
-              <select id="clinicalVoiceTarget">
-                <option value="clinicalConduct">Conduta realizada</option>
-                <option value="clinicalGuidance">Orientações / conduta domiciliar</option>
-              </select>
-            </div>
-            <button class="btn primary" type="button" onclick="startClinicalVoiceDictation()">🎙️ Falar</button>
-            <button class="btn" type="button" onclick="stopClinicalVoiceDictation()">■ Parar</button>
-          </div>
-          <div id="clinicalVoiceStatus" class="voice-status">Microfone desligado.</div>
-          <div class="voice-quick-hint">Exemplo: “Paciente realizou fortalecimento de joelho direito, três séries de dez, boa tolerância, dor leve ao agachar.”</div>
-        </div>
-
         <div class="field" style="margin-top:12px;"><label>Orientações / conduta domiciliar</label><textarea id="clinicalGuidance" rows="3" placeholder="Ex.: gelo 15 min, exercícios 2x ao dia, evitar sobrecarga"></textarea></div>
 
         <!-- ✨ GEMINI AI — Assistente de preenchimento de evolução técnica -->
@@ -694,6 +680,10 @@
               <option value="deepseek">DeepSeek</option>
             </select>
           </div>
+          <label style="display:flex; align-items:center; gap:8px; color:var(--muted); font-size:.85rem; margin-bottom:10px;">
+            <input id="geminiClinicalConcise" type="checkbox" checked onchange="setAiConciseMode(this.checked)" />
+            Modo econômico de tokens (resposta mais curta)
+          </label>
           <div class="field">
             <label style="font-size:.88rem; color:var(--muted); margin-bottom:6px; display:block;">
               Descreva o atendimento em linguagem livre — a IA preenche conduta e orientações automaticamente
@@ -716,6 +706,28 @@
           <div class="gemini-hint">
             💡 A IA gera uma conduta e orientações domiciliares com base no que você descrever. Revise e edite antes de salvar — você tem controle total.
           </div>
+        </div>
+
+        <div class="voice-evo-card">
+          <div class="voice-evo-head">
+            <div>
+              <h4>🎙️ Ditado por voz</h4>
+              <div class="muted" style="font-size:.86rem;margin-top:3px;">Fale a evolução e revise o texto antes de salvar.</div>
+            </div>
+          </div>
+          <div class="voice-evo-controls">
+            <div class="field">
+              <label>Enviar fala para</label>
+              <select id="clinicalVoiceTarget">
+                <option value="clinicalConduct">Conduta realizada</option>
+                <option value="clinicalGuidance">Orientações / conduta domiciliar</option>
+              </select>
+            </div>
+            <button class="btn primary" type="button" onclick="startClinicalVoiceDictation()">🎙️ Falar</button>
+            <button class="btn" type="button" onclick="stopClinicalVoiceDictation()">■ Parar</button>
+          </div>
+          <div id="clinicalVoiceStatus" class="voice-status">Microfone desligado.</div>
+          <div class="voice-quick-hint">Exemplo: “Paciente realizou fortalecimento de joelho direito, três séries de dez, boa tolerância, dor leve ao agachar.”</div>
         </div>
 
         <details class="assist-card compact-collapsible">
@@ -866,6 +878,15 @@
     </div>
   </div>
 
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw-femic.js').catch(function (err) {
+        console.warn('SW FEMIC não registrado:', err);
+      });
+    });
+  }
+</script>
 <script src="js/femic-data.js"></script>
 <script src="js/femic-app.js"></script>
 </body>
