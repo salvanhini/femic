@@ -2102,3 +2102,57 @@ html[data-theme="dark"] .status-agendado{background:linear-gradient(180deg,#2f27
 html[data-theme="dark"] .status-confirmado{background:linear-gradient(180deg,#16243b,#131d2f)!important;}
 html[data-theme="dark"] .status-concluido{background:linear-gradient(180deg,#163124,#11261c)!important;}
 html[data-theme="dark"] .status-cancelado{background:linear-gradient(180deg,#381b1b,#2c1515)!important;}
+
+html[data-theme="dark"] .brand p,
+html[data-theme="dark"] .muted,
+html[data-theme="dark"] .small{
+  color:#9db0c5!important;
+}
+
+html[data-theme="dark"] .eyebrow,
+html[data-theme="dark"] .field label,
+html[data-theme="dark"] .weekday,
+html[data-theme="dark"] .period-help,
+html[data-theme="dark"] .pill,
+html[data-theme="dark"] .status-chip,
+html[data-theme="dark"] .service-badge,
+html[data-theme="dark"] .used-counter,
+html[data-theme="dark"] .appt-time{
+  color:#cddcf0!important;
+}
+
+html[data-theme="dark"] .appt-name,
+html[data-theme="dark"] .week-appt strong,
+html[data-theme="dark"] .femic-week-card .appt-name{
+  color:#eef5ff!important;
+}
+
+html[data-theme="dark"] .femic-week-line{ background: rgba(255,255,255,.08) !important; }
+html[data-theme="dark"] .femic-week-line.major{ background: rgba(255,255,255,.18) !important; }
+html[data-theme="dark"] .femic-week-period{ background: rgba(31,182,233,.10) !important; }
+html[data-theme="dark"] .femic-week-empty-label{
+  background: rgba(13,23,31,.92) !important;
+  border-color: rgba(255,255,255,.18) !important;
+  color: #d8e8ff !important;
+}
+
+html[data-theme="dark"] .femic-week-card{
+  box-shadow: 0 1px 3px rgba(0,0,0,.35), 0 2px 6px rgba(0,0,0,.30) !important;
+}
+html[data-theme="dark"] .femic-week-card.status-agendado{
+  background:#3b2e16!important;
+  border-left-color:#f59e0b!important;
+}
+html[data-theme="dark"] .femic-week-card.status-confirmado{
+  background:#1d2e49!important;
+  border-left-color:#5aa0ff!important;
+}
+html[data-theme="dark"] .femic-week-card.status-concluido{
+  background:#1b3a2b!important;
+  border-left-color:#43c97c!important;
+}
+html[data-theme="dark"] .femic-week-card.status-cancelado{
+  background:#472424!important;
+  border-left-color:#f07272!important;
+  opacity:.88!important;
+}

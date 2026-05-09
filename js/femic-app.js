@@ -1203,23 +1203,6 @@ function appendTextToField(fieldId, text){
     const lastPain = Number(last?.pain ?? 0);
     const delta = first && firstPain !== 0 ? Math.round(((firstPain - lastPain) / firstPain) * 100) : 0;
 
-    const timeline = [];
-    ss.forEach(s => {
-      timeline.push({
-        date: s.date,
-        kind: s.source === 'forms' ? 'Resposta do paciente' : 'Registro manual',
-        html: `<strong>Dor:</strong> ${s.pain}/10 · <strong>Funcionalidade:</strong> ${s.functionality ?? '-'} · <strong>Satisfação:</strong> ${s.satisfaction ?? '-'}<br><strong>Sintomas:</strong> ${escapeHtml((s.symptoms||[]).join(', ') || '-')}<br><strong>Observações:</strong> ${escapeHtml(s.obs || '-')}`
-      });
-    });
-    evos.forEach(e => {
-      timeline.push({
-        date: e.date,
-        kind: 'Evolução técnica',
-        html: `<strong>Conduta:</strong> ${escapeHtml(e.conduct || '-')}<br><strong>Orientações:</strong> ${escapeHtml(e.guidance || '-')}`
-      });
-    });
-    timeline.sort((a,b) => String(a.date).localeCompare(String(b.date)));
-
     const buildRows = rows => rows.map(([label,val]) => `<tr><td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;width:190px;vertical-align:top;"><strong>${label}</strong></td><td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;">${val}</td></tr>`).join('');
 
     const patientDataHtml = `
@@ -1266,21 +1249,56 @@ function appendTextToField(fieldId, text){
         </table>
       </div>` : '';
 
+    const formsOnly = ss.filter(s => s.source === 'forms').sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+    const formsWithFunction = formsOnly.filter(s => s.functionality != null);
+    const formsChartHtml = (function(){
+      if(formsOnly.length < 2){
+        return `
+      <div class="report-section">
+        <div class="report-section-title">Gráfico de evolução (respostas do formulário)</div>
+        <div style="padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; color:#64748b; background:#f8fafc;">
+          São necessárias pelo menos 2 respostas de formulário para gerar o gráfico.
+        </div>
+      </div>`;
+      }
+      const w = 760, h = 240, p = 28;
+      const x = (i, n) => n <= 1 ? p : p + (i * (w - 2*p) / (n - 1));
+      const y = v => p + ((10 - Number(v || 0)) * (h - 2*p) / 10);
+      const painPts = formsOnly.map((s,i)=>`${x(i, formsOnly.length).toFixed(1)},${y(s.pain).toFixed(1)}`).join(' ');
+      const funcPts = formsWithFunction.map(s => {
+        const i = formsOnly.findIndex(t => t.id === s.id);
+        return `${x(i, formsOnly.length).toFixed(1)},${y(s.functionality).toFixed(1)}`;
+      }).join(' ');
+      const labels = formsOnly.map((s,i)=>{
+        const xx = x(i, formsOnly.length);
+        return `<text x="${xx.toFixed(1)}" y="${h-8}" font-size="9" text-anchor="middle" fill="#64748b">${fmtDate(s.date)}</text>`;
+      }).join('');
+      return `
+      <div class="report-section">
+        <div class="report-section-title">Gráfico de evolução (respostas do formulário)</div>
+        <div style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#fff;">
+          <svg viewBox="0 0 ${w} ${h}" width="100%" height="240" role="img" aria-label="Evolução de dor e funcionalidade">
+            <rect x="0" y="0" width="${w}" height="${h}" fill="#ffffff"/>
+            <line x1="${p}" y1="${p}" x2="${p}" y2="${h-p}" stroke="#cbd5e1" stroke-width="1"/>
+            <line x1="${p}" y1="${h-p}" x2="${w-p}" y2="${h-p}" stroke="#cbd5e1" stroke-width="1"/>
+            <polyline points="${painPts}" fill="none" stroke="#ef4444" stroke-width="2.5"/>
+            ${funcPts ? `<polyline points="${funcPts}" fill="none" stroke="#10b981" stroke-width="2.5"/>` : ''}
+            ${labels}
+          </svg>
+          <div style="display:flex; gap:18px; align-items:center; margin-top:8px; font-size:12px; color:#334155;">
+            <span><span style="display:inline-block;width:10px;height:10px;background:#ef4444;border-radius:999px;margin-right:6px;"></span>Dor</span>
+            <span><span style="display:inline-block;width:10px;height:10px;background:#10b981;border-radius:999px;margin-right:6px;"></span>Funcionalidade</span>
+          </div>
+        </div>
+      </div>`;
+    })();
+
     const clinicalTableHtml = evos.length ? `
       <div class="report-section">
         <div class="report-section-title">Evolução técnica</div>
         <table class="report-table">
           <thead><tr><th>Data</th><th>Conduta</th><th>Orientações</th></tr></thead>
           <tbody>${evos.map(e=> `<tr><td>${fmtDate(e.date)}</td><td>${escapeHtml(e.conduct || '-')}</td><td>${escapeHtml(e.guidance || '-')}</td></tr>`).join('')}</tbody>
-        </table>
-      </div>` : '';
-
-    const timelineHtml = timeline.length ? `
-      <div class="report-section">
-        <div class="report-section-title">Linha do tempo clínica</div>
-        <table class="report-table">
-          <thead><tr><th style="width:110px;">Data</th><th style="width:160px;">Tipo</th><th>Registro</th></tr></thead>
-          <tbody>${timeline.map(item => `<tr><td>${fmtDate(item.date)}</td><td>${escapeHtml(item.kind)}</td><td>${item.html}</td></tr>`).join('')}</tbody>
         </table>
       </div>` : '';
 
@@ -1317,7 +1335,7 @@ function appendTextToField(fieldId, text){
 
         ${patientDataHtml}
         ${anamneseHtml}
-        ${type === 'complete' ? (formsTableHtml + clinicalTableHtml + timelineHtml) : (timelineHtml || formsTableHtml || clinicalTableHtml)}
+        ${type === 'complete' ? (formsChartHtml + formsTableHtml + clinicalTableHtml) : (formsChartHtml || formsTableHtml || clinicalTableHtml)}
 
         <div class="report-footer-note">Relatório gerado automaticamente pelo sistema FEMIC em ${new Date().toLocaleString('pt-BR')}.</div>
       </div>`;
@@ -2240,11 +2258,10 @@ $$;`;
     renderDocumentsList(pid); renderAnalysis(); toast('Documento removido', 'warning');
   }
   function renderAnalysisSidePanels(pid){
-    const aBox = document.getElementById('analysisAnamneseBox'); const cBox = document.getElementById('analysisClinicalBox'); const dBox = document.getElementById('analysisDocsBox');
-    if(!pid){ if(aBox) aBox.textContent='Selecione um paciente.'; if(cBox) cBox.textContent='Selecione um paciente.'; if(dBox) dBox.textContent='Selecione um paciente.'; return; }
-    const an = getAnamneseByPatient(pid); const evos = getClinicalEvolutionsByPatient(pid).slice(0,3); const docs = getDocumentsByPatient(pid).slice(0,3);
+    const aBox = document.getElementById('analysisAnamneseBox'); const dBox = document.getElementById('analysisDocsBox');
+    if(!pid){ if(aBox) aBox.textContent='Selecione um paciente.'; if(dBox) dBox.textContent='Selecione um paciente.'; return; }
+    const an = getAnamneseByPatient(pid); const docs = getDocumentsByPatient(pid).slice(0,3);
     if(aBox) aBox.innerHTML = an ? `<div><strong>Queixa:</strong> ${escapeHtml(an.chief_complaint || '-')}</div><div style="margin-top:8px;"><strong>Diagnóstico:</strong> ${escapeHtml(an.diagnosis || '-')}</div><div style="margin-top:8px;"><strong>Objetivos:</strong> ${escapeHtml(an.goals || '-')}</div><div style="margin-top:12px;"><button class="btn small" onclick="openAnamneseModal('${pid}')">Editar anamnese</button></div>` : `<div class="muted">Nenhuma anamnese cadastrada.</div><div style="margin-top:12px;"><button class="btn small" onclick="openAnamneseModal('${pid}')">Criar anamnese</button></div>`;
-    if(cBox) cBox.innerHTML = evos.length ? evos.map(e => `<div style="padding:10px 0; border-bottom:1px solid var(--line);"><strong>${fmtDate(e.date)}</strong><div class="muted" style="margin-top:4px;">${escapeHtml(e.conduct || 'Sem conduta')}</div></div>`).join('') + `<div style="margin-top:12px;"><button class="btn small" onclick="openClinicalEvolutionModal('${pid}')">Nova evolução</button></div>` : `<div class="muted">Nenhuma evolução técnica cadastrada.</div><div style="margin-top:12px;"><button class="btn small" onclick="openClinicalEvolutionModal('${pid}')">Registrar evolução</button></div>`;
     if(dBox) dBox.innerHTML = docs.length ? docs.map(d => `<div style="padding:10px 0; border-bottom:1px solid var(--line);"><a href="${escapeAttr(d.drive_url)}" target="_blank" rel="noopener">${escapeHtml(d.title || 'Documento')}</a><div class="muted" style="margin-top:4px;">${escapeHtml(d.category || 'Sem categoria')}</div></div>`).join('') + `<div style="margin-top:12px;"><button class="btn small" onclick="openDocumentsModal('${pid}')">Gerenciar documentos</button></div>` : `<div class="muted">Nenhum documento vinculado.</div><div style="margin-top:12px;"><button class="btn small" onclick="openDocumentsModal('${pid}')">Adicionar documento</button></div>`;
   }
   function exportJsonBackup(){

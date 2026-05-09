@@ -1167,6 +1167,8 @@ function setAgendaTheme(theme){
   const next = theme === 'dark' ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('femic_agenda_theme', next);
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+  if(themeMeta) themeMeta.setAttribute('content', next === 'dark' ? '#0b141d' : '#0b3c6f');
 }
 
 function applyAgendaTheme(){
@@ -1427,4 +1429,3 @@ function femicEnhanceWeekCapacityCounters_v1435(){
     setTimeout(femicEnhanceWeekCapacityCounters_v1435, 300);
   });
 })();
-
