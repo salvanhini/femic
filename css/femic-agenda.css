@@ -2032,3 +2032,73 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
   .femic-week-card .appt-name{ font-size: .84rem !important; }
   .femic-week-card .appt-time{ font-size: .7rem !important; }
 }
+/* === Dark Mode (Agenda) === */
+html[data-theme="dark"]{
+  --bg:#0d171f;
+  --card:#121c25;
+  --text:#e6eef8;
+  --muted:#9db0c5;
+  --line:rgba(255,255,255,.10);
+  --shadow:0 18px 42px rgba(0,0,0,.35);
+}
+
+html[data-theme="dark"] body{
+  background:radial-gradient(circle at 0 0,rgba(31,182,233,.18),transparent 28%),radial-gradient(circle at 100% 0,rgba(11,60,111,.18),transparent 26%),linear-gradient(180deg,#0b141d,#0f1924 55%,#0b141d);
+}
+
+html[data-theme="dark"] .topbar{background:rgba(13,23,31,.88);}
+html[data-theme="dark"] .brand h1,
+html[data-theme="dark"] .section-title h3,
+html[data-theme="dark"] .kpi strong,
+html[data-theme="dark"] .day-num,
+html[data-theme="dark"] th{color:#d9e7f7;}
+html[data-theme="dark"] .btn,
+html[data-theme="dark"] .tab,
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .item,
+html[data-theme="dark"] .week-cell,
+html[data-theme="dark"] .week-board,
+html[data-theme="dark"] .modal,
+html[data-theme="dark"] .table-wrap,
+html[data-theme="dark"] .day,
+html[data-theme="dark"] .week-slot,
+html[data-theme="dark"] .week-time,
+html[data-theme="dark"] .kpi,
+html[data-theme="dark"] .pill,
+html[data-theme="dark"] .legend,
+html[data-theme="dark"] .service-badge,
+html[data-theme="dark"] .status-chip,
+html[data-theme="dark"] .soft-panel,
+html[data-theme="dark"] .timeline-item,
+html[data-theme="dark"] .rec-day-card,
+html[data-theme="dark"] .day-check,
+html[data-theme="dark"] .period-help,
+html[data-theme="dark"] .quick-note,
+html[data-theme="dark"] .week-slot:not(.closed):hover,
+html[data-theme="dark"] .week-cell.head,
+html[data-theme="dark"] .week-time,
+html[data-theme="dark"] .week-appt,
+html[data-theme="dark"] .appt,
+html[data-theme="dark"] .mini-action,
+html[data-theme="dark"] .month-summary span,
+html[data-theme="dark"] .sqlbox,
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea{
+  background:var(--card)!important;
+  color:var(--text)!important;
+  border-color:var(--line)!important;
+}
+
+html[data-theme="dark"] .tab.active,
+html[data-theme="dark"] .btn.primary,
+html[data-theme="dark"] .btn.success,
+html[data-theme="dark"] .btn.warning,
+html[data-theme="dark"] .btn.danger{
+  color:#fff!important;
+}
+
+html[data-theme="dark"] .status-agendado{background:linear-gradient(180deg,#2f2715,#241d10)!important;}
+html[data-theme="dark"] .status-confirmado{background:linear-gradient(180deg,#16243b,#131d2f)!important;}
+html[data-theme="dark"] .status-concluido{background:linear-gradient(180deg,#163124,#11261c)!important;}
+html[data-theme="dark"] .status-cancelado{background:linear-gradient(180deg,#381b1b,#2c1515)!important;}

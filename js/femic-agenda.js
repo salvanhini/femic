@@ -1158,6 +1158,27 @@ if(typeof weekdayShort !== 'function'){
   }
 }
 
+
+function getAgendaTheme(){
+  return localStorage.getItem('femic_agenda_theme') || 'light';
+}
+
+function setAgendaTheme(theme){
+  const next = theme === 'dark' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('femic_agenda_theme', next);
+}
+
+function applyAgendaTheme(){
+  setAgendaTheme(getAgendaTheme());
+}
+
+function toggleAgendaTheme(){
+  const next = getAgendaTheme() === 'light' ? 'dark' : 'light';
+  setAgendaTheme(next);
+  toast('Tema ' + (next === 'dark' ? 'escuro' : 'claro') + ' ativado.', 'info');
+}
+
 if(typeof getNextStatuses !== 'function'){
   function getNextStatuses(current){
     const all = [
@@ -1321,7 +1342,7 @@ function checkFemicAuth(){
   if(lbl && email) lbl.textContent = email.split('@')[0] + ' · Sair';
 }
 
-renderWorkDays();renderAll();if(base()&&key()&&sessionStorage.getItem('femic_jwt'))loadAll(true);
+applyAgendaTheme();renderWorkDays();renderAll();if(base()&&key()&&sessionStorage.getItem('femic_jwt'))loadAll(true);
 function hasOpenModal(){
   return !!document.querySelector('.modal-backdrop.show');
 }
