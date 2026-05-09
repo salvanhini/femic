@@ -121,6 +121,17 @@ input, select, textarea, .toast, .dropzone {
     .gemini-status.error{ color:var(--danger); }
     .gemini-status.success{ color:var(--success); }
     .gemini-hint{ font-size:.82rem; color:var(--muted); margin-top:8px; line-height:1.5; }
+    .compact-collapsible > summary{
+      cursor:pointer; list-style:none; font-weight:700; color:var(--primary);
+      padding:2px 0 6px; user-select:none;
+    }
+    .compact-collapsible > summary::-webkit-details-marker{ display:none; }
+    .compact-collapsible:not([open]){
+      padding-top:10px !important;
+      padding-bottom:10px !important;
+    }
+    .compact-collapsible:not([open]) > :not(summary){ display:none; }
+    .compact-collapsible[open] > h4{ display:none; }
 :root {
       --primary: #0b3c6f;
       --primary-2: #1fb6e9;
