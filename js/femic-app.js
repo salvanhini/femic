@@ -2831,51 +2831,81 @@ function getSelectedAiProvider(scope) {
 
 async function fetchAiJson(provider, prompt, maxOutputTokens) {
   const cfg = getConfig();
+  async function parseWithRetry(rawText, retryRequest, providerLabel) {
+    try {
+      return geminiParseJSON(rawText);
+    } catch (firstErr) {
+      const retried = await retryRequest();
+      try {
+        return geminiParseJSON(retried);
+      } catch (_) {
+        throw new Error(
+          'A resposta da IA veio incompleta no modo econômico. Tente novamente ou desative o modo econômico.'
+        );
+      }
+    }
+  }
   if (provider === 'deepseek') {
     const apiKey = cfg.deepseekKey || '';
     if (!apiKey) throw new Error('Chave do DeepSeek não configurada. Acesse Backup → Configurações.');
-    const res = await fetch(DEEPSEEK_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey
-      },
-      body: JSON.stringify({
-        model: 'deepseek-v4-flash',
-        messages: [
-          { role: 'system', content: 'Você é um assistente especializado em fisioterapia e deve responder apenas JSON válido.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: maxOutputTokens
-      })
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData?.error?.message || 'Erro na API do DeepSeek (status ' + res.status + ')');
-    }
-    const data = await res.json();
-    const rawText = data?.choices?.[0]?.message?.content || '';
-    return geminiParseJSON(rawText);
+    const runDeepseek = async function(tokens) {
+      const res = await fetch(DEEPSEEK_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + apiKey
+        },
+        body: JSON.stringify({
+          model: 'deepseek-v4-flash',
+          messages: [
+            { role: 'system', content: 'Você é um assistente especializado em fisioterapia e deve responder apenas JSON válido.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.3,
+          max_tokens: tokens
+        })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error?.message || 'Erro na API do DeepSeek (status ' + res.status + ')');
+      }
+      const data = await res.json();
+      return data?.choices?.[0]?.message?.content || '';
+    };
+
+    const rawText = await runDeepseek(maxOutputTokens);
+    return parseWithRetry(
+      rawText,
+      async function() { return runDeepseek(Math.max(maxOutputTokens + 500, Math.round(maxOutputTokens * 1.8))); },
+      'DeepSeek'
+    );
   }
 
   const apiKey = cfg.geminiKey || '';
   if (!apiKey) throw new Error('Chave do Gemini não configurada. Acesse Backup → Configurações.');
-  const res = await fetch(GEMINI_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-goog-api-key': apiKey },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: maxOutputTokens }
-    })
-  });
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData?.error?.message || 'Erro na API do Gemini (status ' + res.status + ')');
-  }
-  const data = await res.json();
-  const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  return geminiParseJSON(rawText);
+  const runGemini = async function(tokens) {
+    const res = await fetch(GEMINI_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-goog-api-key': apiKey },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: tokens }
+      })
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData?.error?.message || 'Erro na API do Gemini (status ' + res.status + ')');
+    }
+    const data = await res.json();
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  };
+
+  const rawText = await runGemini(maxOutputTokens);
+  return parseWithRetry(
+    rawText,
+    async function() { return runGemini(Math.max(maxOutputTokens + 500, Math.round(maxOutputTokens * 1.8))); },
+    'Gemini'
+  );
 }
 
 /* ============================================================
