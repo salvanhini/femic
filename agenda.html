@@ -3,8 +3,12 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>FEMIC Agenda v1.4.43 - Grade Semanal Equilibrada</title>
+<title>FEMIC Agenda v1.4.44 - PWA Conservador</title>
 <meta name="theme-color" content="#0b3c6f" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<link rel="manifest" href="manifest-agenda.webmanifest" />
+<link rel="apple-touch-icon" href="logo.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
@@ -102,7 +106,7 @@
 </div>
 
 <div class="toast-wrap" id="toastWrap"></div>
-<div class="topbar"><div class="topbar-inner"><div class="brand"><div class="logo"></div><div><h1>FEMIC Agenda v1.4.43</h1><p>Grade semanal equilibrada · desktop completo · mobile preservado</p></div></div><div class="toolbar"><button class="btn primary" onclick="openAppt()">+ Agendar</button><button class="btn" onclick="loadAll()">↻ Atualizar</button><button class="btn ghost" onclick="goToday()">Hoje</button><button class="btn" onclick="femicLogout()" style="border-color:rgba(239,68,68,.25); color:#b91c1c; background:#fff7f7;">🚪 <span id="loginUserLabel">Sair</span></button></div></div></div>
+<div class="topbar"><div class="topbar-inner"><div class="brand"><div class="logo"></div><div><h1>FEMIC Agenda v1.4.44</h1><p>Grade semanal equilibrada · PWA conservador · sincronização segura</p></div></div><div class="toolbar"><button class="btn primary" onclick="openAppt()">+ Agendar</button><button class="btn" onclick="loadAll()">↻ Atualizar</button><button class="btn ghost" onclick="goToday()">Hoje</button><button class="btn" onclick="femicLogout()" style="border-color:rgba(239,68,68,.25); color:#b91c1c; background:#fff7f7;">🚪 <span id="loginUserLabel">Sair</span></button></div></div></div>
 <div class="wrap">
   <div class="tabs">
     <button class="tab active" data-panel="dashboard" onclick="showPanel('dashboard')">📊 Dashboard</button>
@@ -402,6 +406,15 @@
   </div>
 </div>
 
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw-agenda.js').catch(function (err) {
+      console.warn('SW Agenda não registrado:', err);
+    });
+  });
+}
+</script>
 <script src="js/femic-agenda.js"></script>
 </body>
 </html>

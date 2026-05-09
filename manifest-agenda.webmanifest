@@ -1,0 +1,17 @@
+{
+  "name": "FEMIC Agenda",
+  "short_name": "Agenda FEMIC",
+  "start_url": "./agenda.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f8f8",
+  "theme_color": "#0b3c6f",
+  "icons": [
+    {
+      "src": "./logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

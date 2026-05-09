@@ -2805,7 +2805,7 @@ function syncAiProviderSelectors() {
     const el = document.getElementById(id);
     if (el) el.value = provider;
   });
-  ['aiConciseInput', 'setupAiConcise'].forEach(function(id){
+  ['aiConciseInput', 'setupAiConcise', 'geminiAnamneseConcise', 'geminiClinicalConcise'].forEach(function(id){
     const el = document.getElementById(id);
     if (el) el.checked = cfg.aiConcise !== false;
   });
@@ -2813,6 +2813,13 @@ function syncAiProviderSelectors() {
 
 function isAiConciseMode() {
   return getConfig().aiConcise !== false;
+}
+
+function setAiConciseMode(enabled) {
+  const cfg = getConfig();
+  cfg.aiConcise = !!enabled;
+  saveConfig(cfg);
+  syncAiProviderSelectors();
 }
 
 function getSelectedAiProvider(scope) {
@@ -2834,7 +2841,7 @@ async function fetchAiJson(provider, prompt, maxOutputTokens) {
         'Authorization': 'Bearer ' + apiKey
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: 'deepseek-v4-flash',
         messages: [
           { role: 'system', content: 'Você é um assistente especializado em fisioterapia e deve responder apenas JSON válido.' },
           { role: 'user', content: prompt }
