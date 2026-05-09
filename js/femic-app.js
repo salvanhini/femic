@@ -420,7 +420,7 @@ function appendTextToField(fieldId, text){
   function getClinicalEvolutionsByPatient(pid){ return getClinicalEvolutions().filter(e => e.patient_id === pid).sort((a,b) => String(b.date).localeCompare(String(a.date))); }
   function getDocumentsByPatient(pid){ return getPatientDocuments().filter(d => d.patient_id === pid).sort((a,b) => String(b.created_at).localeCompare(String(a.created_at))); }
   function getConfig(){
-    const base = { initialized:false, formsLink:'', formUrl:'', lastBackup:'', supabaseUrl:'', supabaseKey:'', geminiKey:'' };
+    const base = { initialized:false, formsLink:'', formUrl:'', lastBackup:'', supabaseUrl:'', supabaseKey:'', geminiKey:'', deepseekKey:'', aiProvider:'gemini' };
     try { return Object.assign(base, JSON.parse(localStorage.getItem('femic_config') || '{}')); } catch(e){ return base; }
   }
   function saveConfig(v){ localStorage.setItem('femic_config', JSON.stringify(v || {})); }
@@ -2372,9 +2372,13 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
     const supabaseUrlInputEl = document.getElementById('supabaseUrlInput');
     const supabaseKeyInputEl = document.getElementById('supabaseKeyInput');
     const geminiKeyInputEl   = document.getElementById('geminiKeyInput');
+    const deepseekKeyInputEl = document.getElementById('deepseekKeyInput');
+    const aiProviderInputEl  = document.getElementById('aiProviderInput');
     if(supabaseUrlInputEl) supabaseUrlInputEl.value = cfg.supabaseUrl || '';
     if(supabaseKeyInputEl) supabaseKeyInputEl.value = cfg.supabaseKey || '';
     if(geminiKeyInputEl)   geminiKeyInputEl.value   = cfg.geminiKey   || '';
+    if(deepseekKeyInputEl) deepseekKeyInputEl.value = cfg.deepseekKey || '';
+    if(aiProviderInputEl)  aiProviderInputEl.value  = cfg.aiProvider || 'gemini';
   }
   function showSupabaseConfig(){ document.getElementById('supabaseConfigWrap').classList.remove('hidden'); }
   function saveSupabaseConfig(){
@@ -2382,7 +2386,10 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
     cfg.supabaseUrl = document.getElementById('supabaseUrlInput').value.trim();
     cfg.supabaseKey = document.getElementById('supabaseKeyInput').value.trim();
     cfg.geminiKey   = (document.getElementById('geminiKeyInput')?.value || '').trim();
+    cfg.deepseekKey = (document.getElementById('deepseekKeyInput')?.value || '').trim();
+    cfg.aiProvider  = (document.getElementById('aiProviderInput')?.value || 'gemini').trim();
     saveConfig(cfg);
+    syncAiProviderSelectors();
     toast('Configurações salvas', 'success');
   }
 function supabaseHeaders(post){
@@ -2538,6 +2545,8 @@ function supabaseHeaders(post){
     if(cfg.supabaseUrl) document.getElementById('setupUrl').value = cfg.supabaseUrl;
     if(cfg.supabaseKey) document.getElementById('setupKey').value = cfg.supabaseKey;
     if(cfg.geminiKey)   document.getElementById('setupGeminiKey').value = cfg.geminiKey;
+    if(cfg.deepseekKey) document.getElementById('setupDeepseekKey').value = cfg.deepseekKey;
+    if(document.getElementById('setupAiProvider')) document.getElementById('setupAiProvider').value = cfg.aiProvider || 'gemini';
   }
 
   function femicSaveSetup(){
@@ -2557,7 +2566,10 @@ function supabaseHeaders(post){
     cfg.supabaseUrl = url;
     cfg.supabaseKey = akey;
     cfg.geminiKey   = (document.getElementById('setupGeminiKey')?.value || '').trim();
+    cfg.deepseekKey = (document.getElementById('setupDeepseekKey')?.value || '').trim();
+    cfg.aiProvider  = (document.getElementById('setupAiProvider')?.value || 'gemini').trim();
     saveConfig(cfg);
+    syncAiProviderSelectors();
     const urlInp = document.getElementById('supabaseUrlInput');
     const keyInp = document.getElementById('supabaseKeyInput');
     if(urlInp) urlInp.value = url;
@@ -2676,6 +2688,7 @@ function supabaseHeaders(post){
     const _vl = document.getElementById('appVersionLabel'); if(_vl) _vl.textContent = APP_VERSION; const _tvl = document.getElementById('tutorialVersionLabel'); if(_tvl) _tvl.textContent = APP_VERSION;
     renderFormsLink();
     const cfg = getConfig();
+    syncAiProviderSelectors();
     if (!cfg.initialized) {
       cfg.initialized = true;
       saveConfig(cfg);
@@ -2764,6 +2777,7 @@ function stopClinicalVoiceDictation(){
 }
 /* URL da API — declarada uma única vez antes das duas funções */
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
 
 /* helper: extrai JSON da resposta do Gemini de forma robusta */
 function geminiParseJSON(rawText) {
@@ -2779,24 +2793,79 @@ function geminiParseJSON(rawText) {
   throw new Error('Não foi possível interpretar a resposta da IA. Tente novamente.');
 }
 
+function syncAiProviderSelectors() {
+  const cfg = getConfig();
+  const provider = cfg.aiProvider || 'gemini';
+  ['geminiClinicalProvider', 'geminiAnamneseProvider', 'aiProviderInput', 'setupAiProvider'].forEach(function(id){
+    const el = document.getElementById(id);
+    if (el) el.value = provider;
+  });
+}
+
+function getSelectedAiProvider(scope) {
+  const cfg = getConfig();
+  const inputId = scope === 'clinical' ? 'geminiClinicalProvider' : 'geminiAnamneseProvider';
+  const selected = document.getElementById(inputId)?.value || cfg.aiProvider || 'gemini';
+  return String(selected).toLowerCase();
+}
+
+async function fetchAiJson(provider, prompt, maxOutputTokens) {
+  const cfg = getConfig();
+  if (provider === 'deepseek') {
+    const apiKey = cfg.deepseekKey || '';
+    if (!apiKey) throw new Error('Chave do DeepSeek não configurada. Acesse Backup → Configurações.');
+    const res = await fetch(DEEPSEEK_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: 'Você é um assistente especializado em fisioterapia e deve responder apenas JSON válido.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.3,
+        max_tokens: maxOutputTokens
+      })
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData?.error?.message || 'Erro na API do DeepSeek (status ' + res.status + ')');
+    }
+    const data = await res.json();
+    const rawText = data?.choices?.[0]?.message?.content || '';
+    return geminiParseJSON(rawText);
+  }
+
+  const apiKey = cfg.geminiKey || '';
+  if (!apiKey) throw new Error('Chave do Gemini não configurada. Acesse Backup → Configurações.');
+  const res = await fetch(GEMINI_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-goog-api-key': apiKey },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.3, maxOutputTokens: maxOutputTokens }
+    })
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData?.error?.message || 'Erro na API do Gemini (status ' + res.status + ')');
+  }
+  const data = await res.json();
+  const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  return geminiParseJSON(rawText);
+}
+
 /* ============================================================
    FEMIC — Assistente Gemini para Evolução Técnica
 ============================================================ */
 async function runGeminiClinicalEvolution() {
-  const cfg = getConfig();
-  const apiKey = cfg.geminiKey || '';
+  const provider = getSelectedAiProvider('clinical');
   const input = (document.getElementById('geminiClinicalInput')?.value || '').trim();
   const statusEl = document.getElementById('geminiClinicalStatus');
   const btn = document.getElementById('geminiClinicalBtn');
-
-  if (!apiKey) {
-    if (statusEl) {
-      statusEl.textContent = '⚙️ Chave do Gemini não configurada. Acesse Backup → Configurações e informe sua chave API do Google Gemini.';
-      statusEl.className = 'gemini-status error';
-    }
-    toast('Configure a chave do Gemini em Backup → Configurações', 'warning');
-    return;
-  }
 
   if (!input) {
     if (statusEl) { statusEl.textContent = 'Descreva o atendimento antes de usar a IA.'; statusEl.className = 'gemini-status error'; }
@@ -2804,7 +2873,7 @@ async function runGeminiClinicalEvolution() {
   }
 
   btn.disabled = true;
-  if (statusEl) { statusEl.textContent = '⏳ Aguarde, consultando Gemini...'; statusEl.className = 'gemini-status loading'; }
+  if (statusEl) { statusEl.textContent = '⏳ Aguarde, consultando IA...'; statusEl.className = 'gemini-status loading'; }
 
   const prompt = `Você é um assistente especializado em fisioterapia. Com base na descrição do atendimento abaixo, preencha os dois campos de uma ficha de evolução técnica fisioterapêutica.
 
@@ -2822,23 +2891,7 @@ Descrição do atendimento:
 ${input}`;
 
   try {
-    const res = await fetch(GEMINI_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 1000 }
-      })
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData?.error?.message || 'Erro na API do Gemini (status ' + res.status + ')');
-    }
-
-    const data = await res.json();
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const fields = geminiParseJSON(rawText);
+    const fields = await fetchAiJson(provider, prompt, 1000);
 
     let filled = 0;
     const conductEl = document.getElementById('clinicalConduct');
@@ -2853,12 +2906,12 @@ ${input}`;
     toast('Evolução técnica preenchida com IA ✨', 'success');
 
   } catch (e) {
-    console.error('Gemini ClinicalEvolution error:', e);
+    console.error('AI ClinicalEvolution error:', e);
     if (statusEl) {
       statusEl.textContent = '❌ ' + (e.message || 'Erro ao consultar a IA. Verifique sua conexão.');
       statusEl.className = 'gemini-status error';
     }
-    toast('Erro ao consultar o Gemini: ' + (e.message || ''), 'error');
+    toast('Erro ao consultar IA: ' + (e.message || ''), 'error');
   } finally {
     btn.disabled = false;
   }
@@ -2869,20 +2922,10 @@ ${input}`;
 ============================================================ */
 
 async function runGeminiAnamnese() {
-  const cfg = getConfig();
-  const apiKey = cfg.geminiKey || '';
+  const provider = getSelectedAiProvider('anamnese');
   const input = (document.getElementById('geminiAnamneseInput')?.value || '').trim();
   const statusEl = document.getElementById('geminiAnamneseStatus');
   const btn = document.getElementById('geminiAnamneseBtn');
-
-  if (!apiKey) {
-    if (statusEl) {
-      statusEl.textContent = '⚙️ Chave do Gemini não configurada. Acesse Backup → Configurações e informe sua chave API do Google Gemini.';
-      statusEl.className = 'gemini-status error';
-    }
-    toast('Configure a chave do Gemini em Backup → Configurações', 'warning');
-    return;
-  }
 
   if (!input) {
     if (statusEl) { statusEl.textContent = 'Descreva o caso antes de usar a IA.'; statusEl.className = 'gemini-status error'; }
@@ -2890,7 +2933,7 @@ async function runGeminiAnamnese() {
   }
 
   btn.disabled = true;
-  if (statusEl) { statusEl.textContent = '⏳ Aguarde, consultando Gemini...'; statusEl.className = 'gemini-status loading'; }
+  if (statusEl) { statusEl.textContent = '⏳ Aguarde, consultando IA...'; statusEl.className = 'gemini-status loading'; }
 
   const prompt = `Você é um assistente especializado em fisioterapia. Com base na descrição clínica abaixo, preencha os campos de uma ficha de anamnese fisioterapêutica.
 
@@ -2922,26 +2965,7 @@ Descrição do caso:
 ${input}`;
 
   try {
-    const res = await fetch(GEMINI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-goog-api-key': apiKey
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 1200 }
-      })
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData?.error?.message || 'Erro na API do Gemini (status ' + res.status + ')');
-    }
-
-    const data = await res.json();
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const fields = geminiParseJSON(rawText);
+    const fields = await fetchAiJson(provider, prompt, 1200);
 
     // Preenche os campos da anamnese
     const map = {
@@ -2971,12 +2995,12 @@ ${input}`;
     toast('Anamnese preenchida com IA ✨', 'success');
 
   } catch (e) {
-    console.error('Gemini Anamnese error:', e);
+    console.error('AI Anamnese error:', e);
     if (statusEl) {
       statusEl.textContent = '❌ ' + (e.message || 'Erro ao consultar a IA. Verifique sua conexão.');
       statusEl.className = 'gemini-status error';
     }
-    toast('Erro ao consultar o Gemini: ' + (e.message || ''), 'error');
+    toast('Erro ao consultar IA: ' + (e.message || ''), 'error');
   } finally {
     btn.disabled = false;
   }

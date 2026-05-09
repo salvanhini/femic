@@ -20,7 +20,7 @@
 <body>
   <div class="mobile-topbar">
     <button class="btn-icon" onclick="toggleSidebar()">☰</button>
-    <div class="mobile-brand"><span class="mobile-brand-badge" aria-hidden="true"></span><strong>FEMIC</strong></div>
+    <div class="mobile-brand"><img src="logo.png" alt="FEMIC" class="mobile-brand-logo" /><strong>FEMIC</strong></div>
     <button class="btn-icon" onclick="toggleTheme()">🌓</button>
   </div>
   <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
@@ -68,9 +68,19 @@
               onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
           </div>
           <div>
+            <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">IA padrão para preenchimento clínico</label>
+            <select id="setupAiProvider"
+              style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px; font-size:.95rem; outline:none; box-sizing:border-box; transition:.2s;"
+              onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
+              onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+              <option value="gemini">Google Gemini</option>
+              <option value="deepseek">DeepSeek</option>
+            </select>
+          </div>
+          <div>
             <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">
               Chave API Google Gemini
-              <span style="color:#94a3b8; font-size:.8rem;">(opcional — IA na anamnese)</span>
+              <span style="color:#94a3b8; font-size:.8rem;">(opcional)</span>
               <button type="button" onclick="const d=document.getElementById('geminiSetupField');d.style.display=d.style.display==='none'?'block':'none';" style="background:none;border:none;color:#34a853;cursor:pointer;font-size:.8rem;padding:0 4px;">mostrar/ocultar</button>
             </label>
             <div id="geminiSetupField" style="display:none;">
@@ -79,6 +89,19 @@
                 onfocus="this.style.borderColor='#34a853'; this.style.boxShadow='0 0 0 3px rgba(52,168,83,.15)'"
                 onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
               <div style="font-size:.76rem; color:#94a3b8; margin-top:4px;">Você pode adicionar depois em Backup → Configurações.</div>
+            </div>
+          </div>
+          <div>
+            <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">
+              Chave API DeepSeek
+              <span style="color:#94a3b8; font-size:.8rem;">(opcional)</span>
+              <button type="button" onclick="const d=document.getElementById('deepseekSetupField');d.style.display=d.style.display==='none'?'block':'none';" style="background:none;border:none;color:#0b3c6f;cursor:pointer;font-size:.8rem;padding:0 4px;">mostrar/ocultar</button>
+            </label>
+            <div id="deepseekSetupField" style="display:none;">
+              <input id="setupDeepseekKey" type="text" placeholder="sk-..."
+                style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px; font-size:.78rem; outline:none; box-sizing:border-box; transition:.2s; font-family:monospace;"
+                onfocus="this.style.borderColor='#0b3c6f'; this.style.boxShadow='0 0 0 3px rgba(11,60,111,.15)'"
+                onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
             </div>
           </div>
           <button onclick="femicSaveSetup()" style="
@@ -135,7 +158,7 @@
   <div class="app-shell">
     <aside class="sidebar" id="sidebar">
       <div class="brand">
-        <div class="brand-badge" aria-hidden="true"></div>
+        <img src="logo.png" alt="Logo FEMIC" class="brand-logo" />
         <div class="brand-text">
           <div class="wordmark"><span class="femic-navy">FEM</span><span class="femic-cyan">IC</span></div>
           <small>Gestão clínica · Araraquara, SP</small>
@@ -403,9 +426,20 @@
               <div class="field"><label>URL do projeto</label><input id="supabaseUrlInput" placeholder="https://ljblnrqeakpbjojuenjm.supabase.co" /></div>
               <div class="field"><label>Chave anônima</label><input id="supabaseKeyInput" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqYmxucnFlYWtwYmpvanVlbmptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3ODE5ODAsImV4cCI6MjA5MjM1Nzk4MH0.MDsXiO348tgrLMt4wUglpvJCfTmS6zrnw5tjIg3QJ7I" /></div>
               <div class="field">
+                <label>IA padrão para preenchimento clínico</label>
+                <select id="aiProviderInput">
+                  <option value="gemini">Google Gemini</option>
+                  <option value="deepseek">DeepSeek</option>
+                </select>
+              </div>
+              <div class="field">
                 <label>Chave API Google Gemini <span class="muted" style="font-size:.8rem;">(IA na anamnese)</span></label>
                 <input id="geminiKeyInput" type="text" placeholder="AIzaSy..." style="font-family:monospace; font-size:.85rem;" />
                 <div class="muted" style="font-size:.78rem; margin-top:5px;">A chave fica salva apenas neste navegador, nunca no GitHub.</div>
+              </div>
+              <div class="field">
+                <label>Chave API DeepSeek <span class="muted" style="font-size:.8rem;">(IA na anamnese e evolução)</span></label>
+                <input id="deepseekKeyInput" type="text" placeholder="sk-..." style="font-family:monospace; font-size:.85rem;" />
               </div>
               <div class="toolbar">
                 <button class="btn primary" onclick="saveSupabaseConfig()">💾 Salvar</button>
@@ -552,7 +586,14 @@
 
         <!-- ✨ GEMINI AI — Assistente de preenchimento de anamnese -->
         <div class="gemini-card" id="geminiAnamneseCard">
-          <h4>✨ Preencher anamnese com IA (Google Gemini)</h4>
+          <h4>✨ Preencher anamnese com IA</h4>
+          <div class="field" style="margin-bottom:10px;">
+            <label>Modelo de IA</label>
+            <select id="geminiAnamneseProvider">
+              <option value="gemini">Google Gemini</option>
+              <option value="deepseek">DeepSeek</option>
+            </select>
+          </div>
           <div class="field">
             <label style="font-size:.88rem; color:var(--muted); margin-bottom:6px; display:block;">
               Descreva o caso em linguagem livre — a IA preenche os campos automaticamente
@@ -565,7 +606,7 @@
           </div>
           <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; align-items:center;">
             <button class="gemini-btn" id="geminiAnamneseBtn" onclick="runGeminiAnamnese()">
-              ✨ Preencher com Gemini
+              ✨ Preencher com IA
             </button>
             <button class="btn small ghost" onclick="document.getElementById('geminiAnamneseInput').value=''; document.getElementById('geminiAnamneseStatus').textContent=''; document.getElementById('geminiAnamneseStatus').className='gemini-status';">
               Limpar
@@ -636,7 +677,14 @@
 
         <!-- ✨ GEMINI AI — Assistente de preenchimento de evolução técnica -->
         <div class="gemini-card" id="geminiClinicalCard" style="margin-top:14px;">
-          <h4>✨ Preencher evolução com IA (Google Gemini)</h4>
+          <h4>✨ Preencher evolução com IA</h4>
+          <div class="field" style="margin-bottom:10px;">
+            <label>Modelo de IA</label>
+            <select id="geminiClinicalProvider">
+              <option value="gemini">Google Gemini</option>
+              <option value="deepseek">DeepSeek</option>
+            </select>
+          </div>
           <div class="field">
             <label style="font-size:.88rem; color:var(--muted); margin-bottom:6px; display:block;">
               Descreva o atendimento em linguagem livre — a IA preenche conduta e orientações automaticamente
@@ -649,7 +697,7 @@
           </div>
           <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; align-items:center;">
             <button class="gemini-btn" id="geminiClinicalBtn" onclick="runGeminiClinicalEvolution()">
-              ✨ Preencher com Gemini
+              ✨ Preencher com IA
             </button>
             <button class="btn small ghost" onclick="document.getElementById('geminiClinicalInput').value=''; document.getElementById('geminiClinicalStatus').textContent=''; document.getElementById('geminiClinicalStatus').className='gemini-status';">
               Limpar
