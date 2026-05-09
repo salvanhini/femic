@@ -79,45 +79,45 @@ input, select, textarea, .toast, .dropzone {
     /* === Gemini AI Anamnese === */
     .gemini-card{
       margin-top:14px; padding:16px; border-radius:20px;
-      background: linear-gradient(135deg, rgba(66,133,244,.08), rgba(52,168,83,.06));
-      border: 1.5px solid rgba(66,133,244,.22);
-      box-shadow: 0 8px 24px rgba(66,133,244,.08);
+      background: linear-gradient(135deg, rgba(11,60,111,.08), rgba(31,182,233,.06));
+      border: 1.5px solid rgba(11,60,111,.22);
+      box-shadow: 0 8px 24px rgba(11,60,111,.08);
     }
     .gemini-card h4{
       margin:0 0 10px; font-size:1rem;
-      background: linear-gradient(135deg, #4285f4, #34a853);
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       background-clip: text;
     }
     .gemini-textarea{
       width:100%; min-height:90px; padding:12px 14px;
-      border:1px solid rgba(66,133,244,.3); border-radius:14px;
+      border:1px solid rgba(11,60,111,.28); border-radius:14px;
       font:inherit; font-size:.93rem; resize:vertical;
       background: rgba(255,255,255,.85); color:var(--text);
       box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
       transition:.2s;
     }
     .gemini-textarea:focus{
-      outline:none; border-color: #4285f4;
-      box-shadow: 0 0 0 4px rgba(66,133,244,.14);
+      outline:none; border-color: var(--primary-2);
+      box-shadow: 0 0 0 4px rgba(31,182,233,.14);
     }
     html[data-theme="dark"] .gemini-textarea{
-      background: rgba(255,255,255,.04); border-color: rgba(66,133,244,.25);
+      background: rgba(255,255,255,.04); border-color: rgba(31,182,233,.25);
     }
     .gemini-btn{
       display:inline-flex; align-items:center; gap:8px;
       padding:11px 18px; border-radius:14px; border:none; cursor:pointer;
       font:inherit; font-size:.92rem; font-weight:700;
-      background: linear-gradient(135deg, #4285f4, #34a853);
-      color:#fff; box-shadow: 0 10px 24px rgba(66,133,244,.22);
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      color:#fff; box-shadow: 0 10px 24px rgba(11,60,111,.22);
       transition:.2s;
     }
-    .gemini-btn:hover{ transform:translateY(-2px); box-shadow:0 14px 28px rgba(66,133,244,.28); }
+    .gemini-btn:hover{ transform:translateY(-2px); box-shadow:0 14px 28px rgba(11,60,111,.28); }
     .gemini-btn:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
     .gemini-status{
       margin-top:10px; font-size:.86rem; color:var(--muted); min-height:20px;
     }
-    .gemini-status.loading{ color:#4285f4; }
+    .gemini-status.loading{ color:var(--primary-2); }
     .gemini-status.error{ color:var(--danger); }
     .gemini-status.success{ color:var(--success); }
     .gemini-hint{ font-size:.82rem; color:var(--muted); margin-top:8px; line-height:1.5; }
@@ -181,21 +181,10 @@ input, select, textarea, .toast, .dropzone {
     }
     .sidebar-footer { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 12px; flex-shrink: 0; }
     .brand { display: flex; align-items: center; gap: 12px; padding: 8px 10px 18px; }
-    .brand-badge {
-      width: 52px; height: 52px; border-radius: 18px; position: relative; overflow: hidden; flex: 0 0 auto;
-      background: linear-gradient(145deg, #21b6e6, #0b3c6f); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 10px 24px rgba(0,0,0,.18);
-    }
-    .brand-badge::before, .brand-badge::after {
-      content:''; position:absolute; border-radius:999px; background: rgba(255,255,255,.94);
-    }
-    .brand-badge::before {
-      width: 12px; height: 12px; top: 8px; left: 9px;
-      box-shadow: 15px 7px 0 rgba(255,255,255,.94), 3px 22px 0 rgba(255,255,255,.94), 18px 28px 0 rgba(255,255,255,.94);
-      opacity: .92;
-    }
-    .brand-badge::after {
-      width: 60px; height: 22px; right: -8px; bottom: 9px; transform: rotate(-28deg);
-      background: rgba(255,255,255,.2);
+    .brand-logo {
+      width: 52px; height: 52px; border-radius: 18px; object-fit: cover; flex: 0 0 auto;
+      background:#fff; border:1px solid rgba(255,255,255,.24);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 10px 24px rgba(0,0,0,.18);
     }
     .brand-text h1 { font-family: 'DM Serif Display', serif; font-size: 1.46rem; letter-spacing: .2px; margin:0; }
     .brand-text .wordmark { font-family: 'DM Sans', sans-serif; font-size: 1.5rem; font-weight: 800; letter-spacing: .08em; margin:0; line-height:1; }
@@ -218,10 +207,10 @@ input, select, textarea, .toast, .dropzone {
     }
     .mobile-topbar, .overlay { display:none; }
     .mobile-brand { display:flex; align-items:center; gap:10px; }
-    .mobile-brand-badge { width:34px; height:34px; border-radius:12px; position:relative; overflow:hidden; background: linear-gradient(145deg, #21b6e6, #0b3c6f); box-shadow: 0 8px 18px rgba(11,60,111,.18); }
-    .mobile-brand-badge::before, .mobile-brand-badge::after { content:''; position:absolute; border-radius:999px; background: rgba(255,255,255,.92); }
-    .mobile-brand-badge::before { width:8px; height:8px; top:6px; left:6px; box-shadow: 10px 5px 0 rgba(255,255,255,.92), 2px 15px 0 rgba(255,255,255,.92); }
-    .mobile-brand-badge::after { width:40px; height:14px; right:-8px; bottom:7px; transform: rotate(-28deg); background: rgba(255,255,255,.2); }
+    .mobile-brand-logo {
+      width:34px; height:34px; border-radius:12px; object-fit:cover;
+      background:#fff; border:1px solid rgba(11,60,111,.18); box-shadow: 0 8px 18px rgba(11,60,111,.18);
+    }
     .page { display:none; animation: fadeIn .22s ease; }
     .page.active { display:block; }
     @keyframes fadeIn { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform:none;} }
@@ -467,11 +456,8 @@ input, select, textarea, .toast, .dropzone {
       margin-bottom: 6px;
       border-bottom:1px solid rgba(255,255,255,.08);
     }
-    .brand-badge,
-    .mobile-brand-badge{
-      background:
-        radial-gradient(circle at 30% 22%, rgba(255,255,255,.18), transparent 22%),
-        linear-gradient(145deg, #24c3ef, #0b64b7 55%, #0b3c6f);
+    .brand-logo,
+    .mobile-brand-logo{
       box-shadow:
         inset 0 1px 0 rgba(255,255,255,.28),
         0 12px 30px rgba(0,0,0,.24);
@@ -712,7 +698,7 @@ input, select, textarea, .toast, .dropzone {
       .mobile-topbar .btn-icon{ width:38px;height:38px;padding:0;border-radius:12px; }
       .sidebar{ width:82vw; }
       .brand{ padding:10px 10px 16px; }
-      .brand-badge{ width:44px;height:44px;border-radius:15px; }
+      .brand-logo{ width:44px;height:44px;border-radius:15px; }
       .brand-text .wordmark{ font-size:1.34rem; }
       .brand-text small{ font-size:.62rem; }
       .nav-link{ padding:10px 12px;border-radius:13px;margin:3px 0; }
