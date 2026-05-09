@@ -77,6 +77,10 @@
               <option value="deepseek">DeepSeek</option>
             </select>
           </div>
+          <label style="display:flex; align-items:center; gap:8px; color:#466; font-size:.86rem;">
+            <input id="setupAiConcise" type="checkbox" checked />
+            Modo econômico de tokens (resposta mais concisa)
+          </label>
           <div>
             <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">
               Chave API Google Gemini
@@ -432,6 +436,10 @@
                   <option value="deepseek">DeepSeek</option>
                 </select>
               </div>
+              <label style="display:flex; align-items:center; gap:8px; color:var(--muted); font-size:.88rem;">
+                <input id="aiConciseInput" type="checkbox" checked />
+                Modo econômico de tokens (resposta mais concisa)
+              </label>
               <div class="field">
                 <label>Chave API Google Gemini <span class="muted" style="font-size:.8rem;">(IA na anamnese)</span></label>
                 <input id="geminiKeyInput" type="text" placeholder="AIzaSy..." style="font-family:monospace; font-size:.85rem;" />
@@ -618,7 +626,8 @@
           </div>
         </div>
 
-        <div class="assist-card">
+        <details class="assist-card compact-collapsible">
+          <summary>⚡ Modelos premium de anamnese</summary>
           <h4>⚡ Modelos premium de anamnese</h4>
           <div class="assist-grid">
             <div class="field">
@@ -634,7 +643,7 @@
           </div>
           <div class="phrase-bank" id="anamnesePhraseBank"></div>
           <div class="assist-note">Os modelos e frases só ajudam a preencher mais rápido. Você pode editar tudo normalmente.</div>
-        </div>
+        </details>
       </div>
       <div class="modal-foot"><button class="btn" onclick="closeModal('anamneseModalWrap')">Cancelar</button><button class="btn primary" onclick="saveAnamnese()">💾 Salvar anamnese</button></div>
     </div>
@@ -709,7 +718,8 @@
           </div>
         </div>
 
-        <div class="assist-card">
+        <details class="assist-card compact-collapsible">
+          <summary>⚡ Modelos premium de evolução técnica</summary>
           <h4>⚡ Modelos premium de evolução técnica</h4>
           <div class="assist-grid">
             <div class="field">
@@ -725,12 +735,13 @@
           </div>
           <div class="phrase-bank" id="clinicalPhraseBank"></div>
           <div class="assist-note">Use os modelos para acelerar o preenchimento de exercícios, séries, repetições e orientações domiciliares.</div>
-        </div>
+        </details>
 
-        <div class="card" style="margin-top:16px; padding:14px;">
+        <details class="card compact-collapsible" style="margin-top:16px; padding:14px;">
+          <summary>🕘 Registros recentes</summary>
           <div class="card-title"><h3>Registros recentes</h3><small>Últimas evoluções</small></div>
           <div id="clinicalEvolutionList" class="muted">Nenhum registro ainda.</div>
-        </div>
+        </details>
       </div>
       <div class="modal-foot"><button class="btn" onclick="closeModal('clinicalEvolutionModalWrap')">Fechar</button><button class="btn primary" onclick="saveClinicalEvolution()">💾 Salvar evolução</button></div>
     </div>

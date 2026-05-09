@@ -420,7 +420,7 @@ function appendTextToField(fieldId, text){
   function getClinicalEvolutionsByPatient(pid){ return getClinicalEvolutions().filter(e => e.patient_id === pid).sort((a,b) => String(b.date).localeCompare(String(a.date))); }
   function getDocumentsByPatient(pid){ return getPatientDocuments().filter(d => d.patient_id === pid).sort((a,b) => String(b.created_at).localeCompare(String(a.created_at))); }
   function getConfig(){
-    const base = { initialized:false, formsLink:'', formUrl:'', lastBackup:'', supabaseUrl:'', supabaseKey:'', geminiKey:'', deepseekKey:'', aiProvider:'gemini' };
+    const base = { initialized:false, formsLink:'', formUrl:'', lastBackup:'', supabaseUrl:'', supabaseKey:'', geminiKey:'', deepseekKey:'', aiProvider:'gemini', aiConcise:true };
     try { return Object.assign(base, JSON.parse(localStorage.getItem('femic_config') || '{}')); } catch(e){ return base; }
   }
   function saveConfig(v){ localStorage.setItem('femic_config', JSON.stringify(v || {})); }
@@ -2374,11 +2374,13 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
     const geminiKeyInputEl   = document.getElementById('geminiKeyInput');
     const deepseekKeyInputEl = document.getElementById('deepseekKeyInput');
     const aiProviderInputEl  = document.getElementById('aiProviderInput');
+    const aiConciseInputEl   = document.getElementById('aiConciseInput');
     if(supabaseUrlInputEl) supabaseUrlInputEl.value = cfg.supabaseUrl || '';
     if(supabaseKeyInputEl) supabaseKeyInputEl.value = cfg.supabaseKey || '';
     if(geminiKeyInputEl)   geminiKeyInputEl.value   = cfg.geminiKey   || '';
     if(deepseekKeyInputEl) deepseekKeyInputEl.value = cfg.deepseekKey || '';
     if(aiProviderInputEl)  aiProviderInputEl.value  = cfg.aiProvider || 'gemini';
+    if(aiConciseInputEl)   aiConciseInputEl.checked = cfg.aiConcise !== false;
   }
   function showSupabaseConfig(){ document.getElementById('supabaseConfigWrap').classList.remove('hidden'); }
   function saveSupabaseConfig(){
@@ -2388,6 +2390,7 @@ CREATE POLICY "Public access" ON patient_documents FOR ALL USING (true);`;
     cfg.geminiKey   = (document.getElementById('geminiKeyInput')?.value || '').trim();
     cfg.deepseekKey = (document.getElementById('deepseekKeyInput')?.value || '').trim();
     cfg.aiProvider  = (document.getElementById('aiProviderInput')?.value || 'gemini').trim();
+    cfg.aiConcise   = !!document.getElementById('aiConciseInput')?.checked;
     saveConfig(cfg);
     syncAiProviderSelectors();
     toast('Configurações salvas', 'success');
@@ -2547,6 +2550,7 @@ function supabaseHeaders(post){
     if(cfg.geminiKey)   document.getElementById('setupGeminiKey').value = cfg.geminiKey;
     if(cfg.deepseekKey) document.getElementById('setupDeepseekKey').value = cfg.deepseekKey;
     if(document.getElementById('setupAiProvider')) document.getElementById('setupAiProvider').value = cfg.aiProvider || 'gemini';
+    if(document.getElementById('setupAiConcise')) document.getElementById('setupAiConcise').checked = cfg.aiConcise !== false;
   }
 
   function femicSaveSetup(){
@@ -2568,6 +2572,7 @@ function supabaseHeaders(post){
     cfg.geminiKey   = (document.getElementById('setupGeminiKey')?.value || '').trim();
     cfg.deepseekKey = (document.getElementById('setupDeepseekKey')?.value || '').trim();
     cfg.aiProvider  = (document.getElementById('setupAiProvider')?.value || 'gemini').trim();
+    cfg.aiConcise   = !!document.getElementById('setupAiConcise')?.checked;
     saveConfig(cfg);
     syncAiProviderSelectors();
     const urlInp = document.getElementById('supabaseUrlInput');
@@ -2800,6 +2805,14 @@ function syncAiProviderSelectors() {
     const el = document.getElementById(id);
     if (el) el.value = provider;
   });
+  ['aiConciseInput', 'setupAiConcise'].forEach(function(id){
+    const el = document.getElementById(id);
+    if (el) el.checked = cfg.aiConcise !== false;
+  });
+}
+
+function isAiConciseMode() {
+  return getConfig().aiConcise !== false;
 }
 
 function getSelectedAiProvider(scope) {
@@ -2886,12 +2899,13 @@ Regras:
 - "guidance": orientações domiciliares em parágrafo corrido (exercícios em casa, gelo/calor, restrições, cuidados posturais).
 - Se alguma informação não foi mencionada, complemente com frases clínicas adequadas ao contexto.
 - Sem marcadores, listas ou numeração — apenas parágrafos corridos.
+- Seja objetivo e direto, evitando redundância e texto longo desnecessário.
 
 Descrição do atendimento:
 ${input}`;
 
   try {
-    const fields = await fetchAiJson(provider, prompt, 1000);
+    const fields = await fetchAiJson(provider, prompt, isAiConciseMode() ? 420 : 1000);
 
     let filled = 0;
     const conductEl = document.getElementById('clinicalConduct');
@@ -2960,12 +2974,13 @@ Regras:
 - "goals": objetivos do tratamento fisioterapêutico
 - "obs": observações relevantes adicionais
 - Se a informação não foi fornecida, deixe o campo com uma frase genérica adequada para o contexto
+- Seja objetivo e direto, evitando redundância e texto longo desnecessário.
 
 Descrição do caso:
 ${input}`;
 
   try {
-    const fields = await fetchAiJson(provider, prompt, 1200);
+    const fields = await fetchAiJson(provider, prompt, isAiConciseMode() ? 680 : 1200);
 
     // Preenche os campos da anamnese
     const map = {
