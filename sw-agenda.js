@@ -1,4 +1,4 @@
-const CACHE_NAME = 'femic-agenda-shell-v1';
+const CACHE_NAME = 'femic-agenda-shell-v5';
 const ASSETS = [
   './',
   './agenda.html',

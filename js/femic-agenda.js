@@ -143,7 +143,7 @@ function localIsoDate(d){const x=new Date(d);return String(x.getFullYear())+'-'+
   return{apikey:key(),Authorization:'Bearer '+authJwt,'Content-Type':'application/json',Prefer:'return=representation'};
 }
 async function api(path,opt={}){const res=await fetch(base()+'/rest/v1/'+path,{headers:headers(),...opt});const txt=await res.text();let data;try{data=txt?JSON.parse(txt):null}catch(e){data=txt}if(!res.ok){console.error('Supabase error',path,res.status,data);throw new Error((data&&data.message)||txt||('HTTP '+res.status))}return data}
-function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊';$('tplReminder').value=tpl;const tplForm=localStorage.femic_tpl_form_reminder||'Olá, {nome}! Tudo bem? Sua sessão de hoje foi concluída. Pode preencher rapidinho o formulário de evolução? Isso nos ajuda a acompanhar sua dor, funcionalidade e evolução. {link_formulario}';if($('tplFormReminder'))$('tplFormReminder').value=tplForm;if($('formLinkInput'))$('formLinkInput').value=localStorage.femic_form_link||''}
+function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊';$('tplReminder').value=tpl;const tplForm=localStorage.femic_tpl_form_reminder||'Olá, {nome}! Tudo bem? Sua sessão de hoje foi concluída. Pode preencher rapidinho o formulário de evolução? Isso nos ajuda a acompanhar sua dor, funcionalidade e evolução. {link_formulario}';if($('tplFormReminder'))$('tplFormReminder').value=tplForm;if($('formLinkInput'))$('formLinkInput').value=localStorage.femic_form_link||'';if($('whatsappProvider'))$('whatsappProvider').value=localStorage.femic_whatsapp_provider||'wa_me';if($('whatsappEndpoint'))$('whatsappEndpoint').value=localStorage.femic_whatsapp_endpoint||'';if($('whatsappTplAppointment'))$('whatsappTplAppointment').value=localStorage.femic_whatsapp_tpl_appointment||'lembrete_sessao';if($('whatsappTplForm'))$('whatsappTplForm').value=localStorage.femic_whatsapp_tpl_form||'formulario_pos_sessao';renderWhatsappProviderBadge()}
 async function testConnection(){try{await api('patients?select=id&limit=1');toast('Conexão e carregamento funcionando.','success')}catch(e){toast('Erro real: '+e.message,'error')}}
 async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const [pa,hi,sv,pk,ap,mv,st]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api('appointments?select=*&order=appointment_date.asc,start_time.asc'),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1')]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];movements=mv||[];settings=Object.assign(settings,(st&&st[0])||{});syncForms();renderAll();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);toast('Erro ao carregar: '+e.message,'error')}}
 function showPanel(name){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.panel===name));$('panel-'+name).classList.add('active');renderAll()}
@@ -172,6 +172,7 @@ function syncForms(){
   $('setEnd').value=settings.end_time||'20:00';
   if($('setPeriods')) $('setPeriods').value=settings.working_periods||((settings.start_time||'08:00')+'-'+(settings.end_time||'20:00'));
   $('setInterval').value=String(settings.slot_interval_minutes||30);
+  populateAgendaFilters();
   renderWorkDays()
 }
 function renderWorkDays(){const names=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];const active=String(settings.working_days||'1,2,3,4,5').split(',');$('workDays').innerHTML=names.map((n,i)=>`<label class="day-check"><input type="checkbox" class="wd" value="${i}" ${active.includes(String(i))?'checked':''}>${n}</label>`).join('');$('recDays').innerHTML=names.map((n,i)=>`<div class="rec-day-card" id="recCard${i}"><label class="rec-title"><input type="checkbox" class="recDay" value="${i}" onchange="toggleRecDayCard(${i})">${n}</label><input type="time" class="recTime" id="recTime${i}" onchange="previewRecurringEnd(${i})"><div class="muted small" id="recEnd${i}">Fim calculado pelo serviço</div></div>`).join('')}
@@ -181,9 +182,9 @@ function slots(){const set=new Set(),step=Number(settings.slot_interval_minutes|
 function isInsideWorkingTime(dateStr,start,end){if(!isTodayDate(dateStr)&&!isWorking(dateStr)) return false;const s=timeToMin(start),e=timeToMin(end);return parsePeriods().some(p=>s>=timeToMin(p.start)&&e<=timeToMin(p.end));}
 function prevPeriod(){if($('viewMode').value==='month')currentDate.setMonth(currentDate.getMonth()-1);else currentDate.setDate(currentDate.getDate()-7);renderAgenda()}function nextPeriod(){if($('viewMode').value==='month')currentDate.setMonth(currentDate.getMonth()+1);else currentDate.setDate(currentDate.getDate()+7);renderAgenda()}function goToday(){currentDate=new Date();$('dayDate').value=todayIso();$('reminderDate').value=isoDate(new Date(Date.now()+86400000));renderAll()}
 function agendaFiltered(list){const st=$('agendaStatusFilter')?.value||'all';const sv=$('agendaServiceFilter')?.value||'all';return list.filter(a=>(st==='all'||a.status===st)&&(sv==='all'||String(a.service_id)===String(sv)))}
-function populateAgendaFilters(){const sel=$('agendaServiceFilter');if(!sel)return;const current=sel.value||'all';sel.innerHTML='<option value="all">Todos os serviços</option>'+services.filter(s=>s.active!==false).map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');sel.value=[...sel.options].some(o=>o.value===current)?current:'all'}
+function populateAgendaFilters(){const sel=$('agendaServiceFilter');if(!sel)return;const current=sel.value||'all';sel.innerHTML='<option value="all">Todos os serviços</option>'+services.filter(s=>s.active!==false).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');sel.value=[...sel.options].some(o=>o.value===current)?current:'all'}
 function clearAgendaFilters(){if($('agendaStatusFilter'))$('agendaStatusFilter').value='all';if($('agendaServiceFilter'))$('agendaServiceFilter').value='all';renderAgenda()}
-function renderAgenda(){if($('viewMode').value==='month')renderMonth();else renderWeek()}function renderMonth(){$('monthView').classList.remove('hidden');$('weekView').classList.add('hidden');const names=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];$('monthHead').innerHTML=names.map(n=>`<div class="weekday">${n}</div>`).join('');const y=currentDate.getFullYear(),m=currentDate.getMonth();$('periodLabel').textContent=currentDate.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});const first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate();let html='';for(let i=0;i<first;i++)html+='<div></div>';for(let d=1;d<=days;d++){const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const list=appointments.filter(a=>a.appointment_date===ds);const off=isClosedForView(ds);html+=`<div class="day ${ds===todayIso()?'today':''} ${off?'off':''}" onclick="${off?'':'openAppt(\''+ds+'\')'}"><div class="day-num"><span>${d}</span><span class="pill">${ds===todayIso()?'Hoje · ':''}${off?'Fechado':list.length+' at.'}</span></div>`;list.slice(0,4).forEach(a=>html+=apptCard(a,'appt'));if(list.length>4)html+=`<div class="muted small">+${list.length-4} outros</div>`;html+='</div>'}$('monthCalendar').innerHTML=html}
+function renderAgenda(){populateAgendaFilters();if($('viewMode').value==='month')renderMonth();else renderWeek()}function renderMonth(){$('monthView').classList.remove('hidden');$('weekView').classList.add('hidden');const names=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];$('monthHead').innerHTML=names.map(n=>`<div class="weekday">${n}</div>`).join('');const y=currentDate.getFullYear(),m=currentDate.getMonth();$('periodLabel').textContent=currentDate.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});const first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate();let html='';for(let i=0;i<first;i++)html+='<div></div>';for(let d=1;d<=days;d++){const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const list=agendaFiltered(appointments.filter(a=>a.appointment_date===ds)).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));const off=isClosedForView(ds);html+=`<div class="day ${ds===todayIso()?'today':''} ${off?'off':''}" onclick="${off?'':'openAppt(\''+ds+'\')'}"><div class="day-num"><span>${d}</span><span class="pill">${ds===todayIso()?'Hoje · ':''}${off?'Fechado':list.length+' at.'}</span></div>`;list.slice(0,4).forEach(a=>html+=apptCard(a,'appt'));if(list.length>4)html+=`<div class="muted small">+${list.length-4} outros</div>`;html+='</div>'}$('monthCalendar').innerHTML=html}
 function renderWeek(){$('monthView').classList.add('hidden');$('weekView').classList.remove('hidden');const start=weekStart(currentDate);const days=[0,1,2,3,4,5,6].map(i=>{const d=new Date(start);d.setDate(start.getDate()+i);return d});$('periodLabel').textContent=`Semana de ${fmtDate(isoDate(days[0]))} a ${fmtDate(isoDate(days[6]))}`;let html='<div class="week-cell head week-time">Hora</div>';days.forEach(d=>{const ds=isoDate(d);html+=`<div class="week-cell head ${ds===todayIso()?'today-head':''}">${d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})}</div>`});slots().forEach(slot=>{html+=`<div class="week-cell week-time">${slot}</div>`;days.forEach(d=>{const ds=isoDate(d),off=isClosedForView(ds);const base=agendaFiltered(appointments.filter(a=>a.appointment_date===ds));const atSlot=base.filter(a=>normalizeTime(a.start_time)===slot);const overlapping=base.filter(a=>a.status!=='cancelado' && timeToMin(normalizeTime(a.start_time))<timeToMin(addMinutes(slot,Number(settings.slot_interval_minutes||30))) && timeToMin(normalizeTime(a.end_time))>timeToMin(slot));html+=`<div class="week-cell week-slot ${ds===todayIso()?'today-slot':''} ${off?'closed':''}" onclick="${off?'':'openAppt(\''+ds+'\',null,\''+slot+'\')'}">`;if(!off)html+=`<div class="capacity ${overlapping.length>=Number(settings.max_patients_per_slot||4)?'full':''}">${overlapping.length}/${settings.max_patients_per_slot||4}</div>`;atSlot.forEach(a=>html+=apptCard(a,'week-appt'));html+='</div>'})});$('weekBoard').innerHTML=html}
 function apptCard(a,cls){const p=patientById(a.patient_id),s=serviceById(a.service_id);const label={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;return `<div class="${cls} status-${a.status}" onclick="event.stopPropagation();openAppt('${a.appointment_date}','${a.id}')"><div class="appt-time">${normalizeTime(a.start_time)}–${normalizeTime(a.end_time)}</div><strong class="appt-name" title="${esc(p.name||'Paciente')}">${esc(p.name||'Paciente')}</strong><div class="appt-meta"><span class="status-chip ${a.status}">${label}</span></div><div class="small" style="margin-top:3px;color:var(--muted);font-size:.7rem">${esc(s.name||'Sem serviço')}</div>${saldoBadge(a.patient_id,a.service_id)}<div class="appt-actions"><button class="mini-action" onclick="event.stopPropagation();openPatient('${a.patient_id}')">👤 Ficha</button><button class="mini-action" onclick="event.stopPropagation();rescheduleAppointment('${a.id}')">📅 Remarcar</button><button class="mini-action" onclick="event.stopPropagation();sendWhatsapp('${a.id}',false,'appointment')">💬 WhatsApp</button></div></div>`}
 function saldoBadge(pid,sid){const pk=packages.find(p=>String(p.patient_id)===String(pid)&&String(p.service_id)===String(sid)&&p.active!==false);if(!pk)return '<div class="small muted">Sem pacote</div>';const total=Number(pk.total_sessions||0),r=Number(pk.remaining_sessions||0),used=Math.max(0,total-r);return `<div class="small ${r===0?'saldo-zero':r<=3?'saldo-low':'muted'}"><span class="used-counter">${used}/${total} sessões usadas</span> · saldo ${r}</div>`}
@@ -197,7 +198,7 @@ function previewRecurringEnd(i){const inp=$('recTime'+i),out=$('recEnd'+i),s=ser
 function showSaldoInfo(){const pid=$('apptPatient').value,sid=$('apptService').value;if(!pid&&!sid){$('saldoInfo').innerHTML='Selecione paciente e serviço para visualizar pacote e saldo.';return}if(!pid){$('saldoInfo').innerHTML='Selecione o paciente para visualizar pacote e saldo.';return}if(!sid){$('saldoInfo').innerHTML='Selecione o serviço para visualizar pacote e saldo.';return}const pk=packages.find(p=>String(p.patient_id)===String(pid)&&String(p.service_id)===String(sid)&&p.active!==false);const future=appointments.filter(a=>a.patient_id===pid&&a.service_id===sid&&a.status==='agendado'&&a.appointment_date>=todayIso()).length;if(!pk)$('saldoInfo').innerHTML='Sem pacote ativo para este paciente/serviço.';else $('saldoInfo').innerHTML=`Pacote: ${pk.total_sessions} sessões · saldo ${pk.remaining_sessions} · futuras agendadas ${future} · disponível aproximado ${Number(pk.remaining_sessions||0)-future}`}
 function hasConflict(candidate,ignoreId=null){const sNew=serviceById(candidate.service_id);const n1=timeToMin(candidate.start_time),n2=timeToMin(candidate.end_time);const sameDay=appointments.filter(a=>a.appointment_date===candidate.appointment_date&&a.status!=='cancelado'&&String(a.id)!==String(ignoreId));const overlaps=sameDay.filter(a=>timeToMin(normalizeTime(a.start_time))<n2 && timeToMin(normalizeTime(a.end_time))>n1);if(!overlaps.length)return null;if((sNew.appointment_mode||'grupo')==='individual')return 'Serviço individual exige horário exclusivo.';if(overlaps.some(a=>(serviceById(a.service_id).appointment_mode||'grupo')==='individual'))return 'Já existe atendimento individual neste intervalo.';const max=Number(sNew.max_patients||settings.max_patients_per_slot||4);if(overlaps.length>=max)return 'Limite de pacientes simultâneos atingido.';return null}
 async function persistAppointment(id,payload){try{return id?(await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify(payload)}))[0]:(await api('appointments',{method:'POST',body:JSON.stringify(payload)}))[0]}catch(e){if(String(e.message||'').includes('service_price_at_time')){const clone={...payload};delete clone.service_price_at_time;toast('Campo service_price_at_time ausente no banco. Salvando sem ele. Rode o patch SQL v1.4.28 depois.','warning');return id?(await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify(clone)}))[0]:(await api('appointments',{method:'POST',body:JSON.stringify(clone)}))[0]}throw e}}
-async function saveAppointment(){try{const id=$('apptId').value;if(!$('apptPatient').value){toast('Selecione o paciente antes de salvar.','warning');$('apptPatient').focus();return}if(!$('apptService').value){toast('Selecione o serviço antes de salvar.','warning');$('apptService').focus();return}const s=serviceById($('apptService').value);const agreedPrice=Number(String($('apptPrice')?.value||'0').replace(',','.'))||0;const basePayload={patient_id:$('apptPatient').value,service_id:$('apptService').value,appointment_date:$('apptDate').value,start_time:$('apptStart').value,end_time:$('apptEnd').value,duration_minutes:Number(s.duration_minutes||45),status:$('apptStatus').value,service_price_at_time:agreedPrice};if(!isTodayDate(basePayload.appointment_date)&&!isWorking(basePayload.appointment_date)){toast('Dia fora do expediente.','warning');return}if(!isInsideWorkingTime(basePayload.appointment_date,basePayload.start_time,basePayload.end_time)){toast('Horário fora dos períodos de expediente configurados.','warning');return}if($('recurring').checked&&!id){await saveRecurring(basePayload);return}const msg=hasConflict(basePayload,id);if(msg){toast(msg,'warning');return}let old=id?appointments.find(a=>String(a.id)===String(id)):null;let saved=await persistAppointment(id,basePayload);await handlePackageMovement(old,saved);if(!id&&$('rescheduleOriginId').value){await finalizeReschedule($('rescheduleOriginId').value,$('rescheduleCancelOriginal').value==='true')}closeModal('apptModal');await loadAll(true);toast('Agendamento salvo.','success')}catch(e){toast('Erro ao salvar: '+e.message,'error')}}
+async function saveAppointment(){const saveBtn=$('saveApptBtn');try{if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Salvando...'}const id=$('apptId').value;if(!$('apptPatient').value){toast('Selecione o paciente antes de salvar.','warning');$('apptPatient').focus();return}if(!$('apptService').value){toast('Selecione o serviço antes de salvar.','warning');$('apptService').focus();return}if(!$('apptDate').value){toast('Informe a data do atendimento.','warning');$('apptDate').focus();return}if(!$('apptStart').value){toast('Informe o horário inicial.','warning');$('apptStart').focus();return}const s=serviceById($('apptService').value);if(!$('apptEnd').value) $('apptEnd').value=addMinutes($('apptStart').value,Number(s.duration_minutes||45));const agreedPrice=Number(String($('apptPrice')?.value||'0').replace(',','.'));if(!Number.isFinite(agreedPrice)||agreedPrice<0){toast('Informe um valor válido para a sessão.','warning');$('apptPrice')?.focus();return}const basePayload={patient_id:$('apptPatient').value,service_id:$('apptService').value,appointment_date:$('apptDate').value,start_time:$('apptStart').value,end_time:$('apptEnd').value,duration_minutes:Number(s.duration_minutes||45),status:$('apptStatus').value,service_price_at_time:agreedPrice};if(timeToMin(basePayload.end_time)<=timeToMin(basePayload.start_time)){toast('O horário final precisa ser maior que o inicial.','warning');return}if(!isTodayDate(basePayload.appointment_date)&&!isWorking(basePayload.appointment_date)){toast('Dia fora do expediente.','warning');return}if(!isInsideWorkingTime(basePayload.appointment_date,basePayload.start_time,basePayload.end_time)){toast('Horário fora dos períodos de expediente configurados.','warning');return}if($('recurring').checked&&!id){await saveRecurring(basePayload);return}const msg=hasConflict(basePayload,id);if(msg){toast(msg,'warning');return}let old=id?appointments.find(a=>String(a.id)===String(id)):null;let saved=await persistAppointment(id,basePayload);await handlePackageMovement(old,saved);if(!id&&$('rescheduleOriginId').value){await finalizeReschedule($('rescheduleOriginId').value,$('rescheduleCancelOriginal').value==='true')}closeModal('apptModal');await loadAll(true);toast('Agendamento salvo.','success')}catch(e){toast('Erro ao salvar: '+e.message,'error')}finally{if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='Salvar agendamento'}}}
 async function saveRecurring(payload){const selected=[...document.querySelectorAll('.recDay:checked')].map(x=>Number(x.value));const count=Number($('recCount').value||1);if(!selected.length){toast('Selecione ao menos um dia da semana.','warning');return}const s=serviceById(payload.service_id);const dayTimes={};selected.forEach(d=>{dayTimes[d]=($('recTime'+d)?.value||payload.start_time||'08:00')});let created=0,conflicts=0,date=new Date(payload.appointment_date+'T00:00:00'),tries=0;while(created<count&&tries<370){const ds=isoDate(date),dow=date.getDay();if(selected.includes(dow)&&(isTodayDate(ds)||isWorking(ds))){const st=dayTimes[dow]||payload.start_time;const cand={...payload,appointment_date:ds,start_time:st,end_time:addMinutes(st,Number(s.duration_minutes||payload.duration_minutes||45)),duration_minutes:Number(s.duration_minutes||payload.duration_minutes||45)};const msg=hasConflict(cand);if(msg||!isInsideWorkingTime(cand.appointment_date,cand.start_time,cand.end_time))conflicts++;else{await persistAppointment(null,cand);created++}}date.setDate(date.getDate()+1);tries++}closeModal('apptModal');await loadAll(true);toast(`${created} agendamentos criados. ${conflicts} conflitos ignorados.`,'success')}
 async function handlePackageMovement(oldA,newA){if(!newA)return;if(oldA&&oldA.status==='concluido'&&oldA.package_consumed&&newA.status!=='concluido'){await refundPackage(oldA);return}if(newA.status==='concluido'&&!newA.package_consumed){await consumePackage(newA)}}
 async function consumePackage(a){const pk=packages.find(p=>String(p.patient_id)===String(a.patient_id)&&String(p.service_id)===String(a.service_id)&&p.active!==false);if(!pk){toast('Concluído, mas sem pacote para consumir.','warning');return}if(Number(pk.remaining_sessions||0)<=0){toast('Concluído, mas pacote sem saldo.','warning');return}await api('session_packages?id=eq.'+pk.id,{method:'PATCH',body:JSON.stringify({remaining_sessions:Number(pk.remaining_sessions)-1})});await api('appointments?id=eq.'+a.id,{method:'PATCH',body:JSON.stringify({package_consumed:true,session_package_id:pk.id})});await api('session_movements',{method:'POST',body:JSON.stringify({patient_id:a.patient_id,appointment_id:a.id,session_package_id:pk.id,type:'consumo',quantity:-1})})}
@@ -237,8 +238,142 @@ function renderDay(){
   }).join(''):'<div class="muted">Nenhum agendamento.</div>';
 }
 function reminderFlag(a,kind){return kind==='form'?!!a.form_reminder_sent:!!(a.appointment_reminder_sent||a.reminder_sent)}
-function renderReminders(){const kind=$('reminderType')?$('reminderType').value:'appointment';const date=$('reminderDate').value|| (kind==='appointment'?isoDate(new Date(Date.now()+86400000)):todayIso());$('reminderDate').value=date;let list=[];if(kind==='form'){list=appointments.filter(a=>a.appointment_date===date&&a.status==='concluido').sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));$('reminderTitle').textContent='Formulários pós-atendimento';}else{list=appointments.filter(a=>a.appointment_date===date&&['agendado','confirmado'].includes(a.status)).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));$('reminderTitle').textContent='Lembretes de sessão';}const pending=list.filter(a=>!reminderFlag(a,kind)&&cleanPhone(patientById(a.patient_id).whatsapp).length>=10),sent=list.filter(a=>reminderFlag(a,kind)),no=list.filter(a=>cleanPhone(patientById(a.patient_id).whatsapp).length<10);$('reminderKpis').innerHTML=`<div class="kpi"><div class="small muted">Pendentes</div><strong>${pending.length}</strong></div><div class="kpi"><div class="small muted">Enviados</div><strong>${sent.length}</strong></div><div class="kpi"><div class="small muted">Sem WhatsApp</div><strong>${no.length}</strong></div>`;$('reminderList').innerHTML=list.length?list.map(a=>{const p=patientById(a.patient_id),sentFlag=reminderFlag(a,kind),cls=sentFlag?'reminder-enviado':cleanPhone(p.whatsapp).length<10?'reminder-semwhats':'reminder-pendente';return `<div class="item ${cls}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)} — ${esc(p.name||'Paciente')}</strong><div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(serviceName(a.service_id))} · <span class="status-chip ${a.status}">${a.status}</span></div></div><div class="toolbar"><button class="btn primary" onclick="sendWhatsapp('${a.id}',true,'${kind}')">Enviar</button>${!sentFlag?`<button class="btn" onclick="markReminder('${a.id}','${kind}')">Marcar enviado</button>`:''}</div></div></div>`}).join(''):'<div class="muted">Nenhum lembrete nesta data.</div>'}
-async function markReminder(id,kind='appointment'){const body=kind==='form'?{form_reminder_sent:true,form_reminder_sent_at:new Date().toISOString()}:{appointment_reminder_sent:true,appointment_reminder_sent_at:new Date().toISOString(),reminder_sent:true,reminder_sent_at:new Date().toISOString()};await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});await loadAll(true);toast('Lembrete marcado como enviado.','success')}function sendWhatsapp(id,mark=false,kind='appointment'){const a=appointments.find(x=>String(x.id)===String(id));if(!a)return;const p=patientById(a.patient_id);const phone='55'+cleanPhone(p.whatsapp);if(phone.length<12){toast('Paciente sem WhatsApp válido.','warning');return}const tpl=(kind==='form'?(localStorage.femic_tpl_form_reminder||$('tplFormReminder')?.value):(localStorage.femic_tpl_reminder||$('tplReminder').value))||'';const link=localStorage.femic_form_link||$('formLinkInput')?.value||'';const msg=tpl.replaceAll('{nome}',p.name||'').replaceAll('{data}',fmtDate(a.appointment_date)).replaceAll('{hora}',normalizeTime(a.start_time)).replaceAll('{servico}',serviceName(a.service_id)).replaceAll('{link_formulario}',link);window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');if(mark)markReminder(id,kind)}function sendNextReminder(){const kind=$('reminderType')?$('reminderType').value:'appointment';const date=$('reminderDate').value;const list=kind==='form'?appointments.filter(a=>a.appointment_date===date&&a.status==='concluido'&&!reminderFlag(a,kind)&&cleanPhone(patientById(a.patient_id).whatsapp).length>=10):appointments.filter(a=>a.appointment_date===date&&['agendado','confirmado'].includes(a.status)&&!reminderFlag(a,kind)&&cleanPhone(patientById(a.patient_id).whatsapp).length>=10);const next=list.sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)))[0];if(!next)toast('Nenhum lembrete pendente.','info');else sendWhatsapp(next.id,true,kind)}
+function appointmentDateTime(a,field='start_time'){
+  const date=String(a.appointment_date||'');
+  const time=normalizeTime(a[field]||a.start_time||'00:00');
+  const d=new Date(date+'T'+time+':00');
+  return Number.isNaN(d.getTime())?null:d;
+}
+function reminderDueAt(a,kind){
+  const base=appointmentDateTime(a,kind==='form'?'end_time':'start_time');
+  if(!base) return null;
+  return new Date(base.getTime()+(kind==='form'?5*60*60*1000:-12*60*60*1000));
+}
+function isReminderCandidate(a,kind){
+  if(kind==='form') return a.status==='concluido';
+  return ['agendado','confirmado'].includes(a.status);
+}
+function reminderPhoneOk(a){return cleanPhone(patientById(a.patient_id).whatsapp).length>=10}
+function reminderDueLabel(a,kind){
+  const due=reminderDueAt(a,kind);
+  if(!due) return 'Sem horário válido';
+  const diff=due.getTime()-Date.now();
+  if(diff<=0) return 'Vencido para envio';
+  const mins=Math.ceil(diff/60000);
+  if(mins<60) return 'Vence em '+mins+' min';
+  const hours=Math.floor(mins/60), rest=mins%60;
+  return 'Vence em '+hours+'h'+(rest?String(rest).padStart(2,'0'):'');
+}
+function getReminderMode(){return localStorage.getItem('femic_reminder_mode')==='auto'?'auto':'manual'}
+function setReminderMode(mode){
+  localStorage.setItem('femic_reminder_mode',mode==='auto'?'auto':'manual');
+  renderReminderAutomationStatus();
+  renderReminders();
+  if(mode==='auto'){
+    toast('Envio automático ativado. Mantenha a agenda aberta para disparar os WhatsApps.','info');
+    processAutomaticReminders();
+  }else{
+    toast('Envio manual ativado.','info');
+  }
+}
+function renderReminderAutomationStatus(){
+  const mode=getReminderMode();
+  const badge=$('reminderModeBadge'),status=$('reminderAutoStatus'),manual=$('manualModeBtn'),auto=$('autoModeBtn');
+  if(badge){badge.className='mode-badge '+mode;badge.textContent=mode==='auto'?'Automático':'Manual'}
+  if(status) status.textContent=mode==='auto'?'Automático ativo: verifica vencidos a cada minuto e abre o WhatsApp quando chegar a hora.':'Manual: você escolhe quando enviar.';
+  if(manual) manual.classList.toggle('primary',mode==='manual');
+  if(auto) auto.classList.toggle('primary',mode==='auto');
+}
+function reminderListFor(kind,date){
+  return appointments
+    .filter(a=>a.appointment_date===date&&isReminderCandidate(a,kind))
+    .sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));
+}
+function dueAutomaticReminders(){
+  const now=Date.now();
+  return ['appointment','form'].flatMap(kind=>appointments
+    .filter(a=>isReminderCandidate(a,kind)&&!reminderFlag(a,kind)&&reminderPhoneOk(a))
+    .map(a=>({a,kind,due:reminderDueAt(a,kind)}))
+    .filter(x=>{
+      if(!x.due||x.due.getTime()>now) return false;
+      const start=appointmentDateTime(x.a,'start_time');
+      const end=appointmentDateTime(x.a,'end_time')||start;
+      if(x.kind==='appointment') return start&&now<=start.getTime();
+      return end&&now<=x.due.getTime()+(48*60*60*1000);
+    })
+  ).sort((x,y)=>x.due-y.due);
+}
+function renderReminders(){
+  const kind=$('reminderType')?$('reminderType').value:'appointment';
+  const date=$('reminderDate').value|| (kind==='appointment'?isoDate(new Date(Date.now()+86400000)):todayIso());
+  $('reminderDate').value=date;
+  renderReminderAutomationStatus();
+  const list=reminderListFor(kind,date);
+  $('reminderTitle').textContent=kind==='form'?'Formulários pós-atendimento':'Lembretes de sessão';
+  const pending=list.filter(a=>!reminderFlag(a,kind)&&reminderPhoneOk(a));
+  const sent=list.filter(a=>reminderFlag(a,kind));
+  const no=list.filter(a=>!reminderPhoneOk(a));
+  const due=pending.filter(a=>{const d=reminderDueAt(a,kind);return d&&d.getTime()<=Date.now();});
+  $('reminderKpis').innerHTML=`<div class="kpi"><div class="small muted">Pendentes</div><strong>${pending.length}</strong></div><div class="kpi"><div class="small muted">Vencidos agora</div><strong>${due.length}</strong></div><div class="kpi"><div class="small muted">Enviados</div><strong>${sent.length}</strong></div><div class="kpi"><div class="small muted">Sem WhatsApp</div><strong>${no.length}</strong></div>`;
+  $('reminderList').innerHTML=list.length?list.map(a=>{
+    const p=patientById(a.patient_id),sentFlag=reminderFlag(a,kind),phoneOk=reminderPhoneOk(a),dueText=sentFlag?'Enviado':reminderDueLabel(a,kind),cls=sentFlag?'reminder-enviado':phoneOk?'reminder-pendente':'reminder-semwhats';
+    return `<div class="item ${cls}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)} — ${esc(p.name||'Paciente')}</strong><div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(serviceName(a.service_id))} · <span class="status-chip ${a.status}">${a.status}</span> · ${esc(dueText)}</div></div><div class="toolbar"><button class="btn primary" onclick="sendWhatsapp('${a.id}',true,'${kind}')">Enviar</button>${!sentFlag?`<button class="btn" onclick="markReminder('${a.id}','${kind}')">Marcar enviado</button>`:''}</div></div></div>`;
+  }).join(''):'<div class="muted">Nenhum lembrete nesta data.</div>';
+}
+async function markReminder(id,kind='appointment'){
+  const body=kind==='form'?{form_reminder_sent:true,form_reminder_sent_at:new Date().toISOString()}:{appointment_reminder_sent:true,appointment_reminder_sent_at:new Date().toISOString(),reminder_sent:true,reminder_sent_at:new Date().toISOString()};
+  await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});
+  await loadAll(true);
+  toast('Lembrete marcado como enviado.','success');
+}
+async function sendWhatsapp(id,mark=false,kind='appointment'){
+  const a=appointments.find(x=>String(x.id)===String(id));if(!a)return false;
+  if((localStorage.femic_whatsapp_provider||'wa_me')==='api'){
+    toast('API preparada, mas envio real ainda usa link seguro até a Edge Function estar implementada.','info');
+  }
+  const p=patientById(a.patient_id);const phone='55'+cleanPhone(p.whatsapp);
+  if(phone.length<12){toast('Paciente sem WhatsApp válido.','warning');return false}
+  const tpl=(kind==='form'?(localStorage.femic_tpl_form_reminder||$('tplFormReminder')?.value):(localStorage.femic_tpl_reminder||$('tplReminder').value))||'';
+  const link=localStorage.femic_form_link||$('formLinkInput')?.value||'';
+  const msg=tpl.replaceAll('{nome}',p.name||'').replaceAll('{data}',fmtDate(a.appointment_date)).replaceAll('{hora}',normalizeTime(a.start_time)).replaceAll('{servico}',serviceName(a.service_id)).replaceAll('{link_formulario}',link);
+  const opened=window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');
+  if(!opened){toast('O navegador bloqueou a janela do WhatsApp. Use o modo manual ou libere pop-ups para a agenda.','warning');return false}
+  if(mark) await markReminder(id,kind);
+  return true;
+}
+function sendNextReminder(){
+  const kind=$('reminderType')?$('reminderType').value:'appointment';
+  const date=$('reminderDate').value;
+  const next=reminderListFor(kind,date).filter(a=>!reminderFlag(a,kind)&&reminderPhoneOk(a)).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)))[0];
+  if(!next)toast('Nenhum lembrete pendente.','info');else sendWhatsapp(next.id,true,kind);
+}
+function renderWhatsappProviderBadge(){
+  const provider=$('whatsappProvider')?.value||localStorage.femic_whatsapp_provider||'wa_me';
+  const badge=$('whatsappProviderBadge');
+  if(!badge) return;
+  badge.className='mode-badge '+(provider==='api'?'auto':'manual');
+  badge.textContent=provider==='api'?'API preparada':'wa.me';
+}
+function saveWhatsappApiConfig(){
+  const provider=$('whatsappProvider')?.value||'wa_me';
+  localStorage.femic_whatsapp_provider=provider;
+  localStorage.femic_whatsapp_endpoint=($('whatsappEndpoint')?.value||'').trim();
+  localStorage.femic_whatsapp_tpl_appointment=($('whatsappTplAppointment')?.value||'lembrete_sessao').trim()||'lembrete_sessao';
+  localStorage.femic_whatsapp_tpl_form=($('whatsappTplForm')?.value||'formulario_pos_sessao').trim()||'formulario_pos_sessao';
+  renderWhatsappProviderBadge();
+  if(provider==='api') toast('Configuração salva. O envio pela API fica preparado, mas o sistema mantém fallback seguro por link até a Edge Function ser implementada.','info');
+  else toast('WhatsApp por link seguro ativado.','success');
+}
+function testWhatsappApiConfig(){
+  const provider=$('whatsappProvider')?.value||'wa_me';
+  const endpoint=($('whatsappEndpoint')?.value||'').trim();
+  if(provider==='wa_me'){toast('Configuração atual usa link WhatsApp seguro.','success');return}
+  if(!endpoint||!/^https:\/\/[a-z0-9-]+\.functions\.supabase\.co\/[a-z0-9-_/]+$/i.test(endpoint)){
+    toast('Informe uma URL de Supabase Edge Function válida.','warning');
+    return;
+  }
+  toast('Formato local aprovado. Próximo passo: criar a Edge Function com o token da Meta no Supabase.','success');
+}
 function statusButtons(a){
   const id=String(a.id);
   return `<div class="status-actions">
@@ -1093,7 +1228,7 @@ function femicLayoutAppointmentsV1434(list,bounds){
 function femicWeekCardV1434(a,style){
   const p=patientById(a.patient_id),s=serviceById(a.service_id);
   const label={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;
-  return `<div class="femic-week-card status-${a.status}" style="${style}" onclick="event.stopPropagation();openAppt('${a.appointment_date}','${a.id}')"><div class="appt-time">${normalizeTime(a.start_time)}–${normalizeTime(a.end_time)}</div><strong class="appt-name" title="${esc(p.name||'Paciente')}">${esc(p.name||'Paciente')}</strong><div class="appt-meta"><span class="status-chip ${a.status}">${label}</span></div><div class="small" style="color:var(--muted)">${esc(s.name||'Sem serviço')}</div>${saldoBadge(a.patient_id,a.service_id)}<div class="appt-actions"><button class="mini-action" onclick="event.stopPropagation();openPatient('${a.patient_id}')">👤 Ficha</button><button class="mini-action" onclick="event.stopPropagation();rescheduleAppointment('${a.id}')">📅 Remarcar</button><button class="mini-action" onclick="event.stopPropagation();sendWhatsapp('${a.id}',false,'appointment')">💬 WhatsApp</button></div></div>`;
+  return `<div class="femic-week-card status-${a.status}" style="${style}" onclick="event.stopPropagation();openAppt('${a.appointment_date}','${a.id}')"><div class="week-card-main"><div class="appt-time">${normalizeTime(a.start_time)}–${normalizeTime(a.end_time)}</div><strong class="appt-name" title="${esc(p.name||'Paciente')}">${esc(p.name||'Paciente')}</strong><div class="week-card-service">${esc(s.name||'Sem serviço')}</div></div><div class="appt-meta"><span class="status-chip ${a.status}">${label}</span></div>${saldoBadge(a.patient_id,a.service_id)}<div class="appt-actions"><button class="mini-action" onclick="event.stopPropagation();openPatient('${a.patient_id}')">👤 Ficha</button><button class="mini-action" onclick="event.stopPropagation();rescheduleAppointment('${a.id}')">📅 Remarcar</button><button class="mini-action" onclick="event.stopPropagation();sendWhatsapp('${a.id}',false,'appointment')">💬 WhatsApp</button></div></div>`;
 }
 function femicWeekClickV1434(ev,ds,bounds,pxPerMin){
   if(ev.target.closest('.femic-week-card')) return;
@@ -1119,8 +1254,12 @@ function renderWeek(){
   const hourMarks=[]; for(let m=bounds.start;m<=bounds.end;m+=60) hourMarks.push(m);
   const slotLines=slots().map(timeToMin).filter(m=>m>=bounds.start&&m<=bounds.end);
   let html=`<div class="femic-week-board" style="grid-template-rows:44px ${bodyH}px">`;
-  html+='<div class="femic-week-head">Hora</div>';
-  days.forEach(d=>{const ds=isoDate(d);html+=`<div class="femic-week-head ${ds===todayIso()?'today':''}">${d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})}</div>`;});
+  html+='<div class="femic-week-head femic-week-corner">Hora</div>';
+  days.forEach(d=>{
+    const ds=isoDate(d);
+    const week=d.toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','');
+    html+=`<div class="femic-week-head ${ds===todayIso()?'today':''}"><span class="week-head-day">${week}</span><span class="week-head-date">${String(d.getDate()).padStart(2,'0')}</span></div>`;
+  });
   html+=`<div class="femic-week-axis" style="height:${bodyH}px">`;
   hourMarks.forEach(m=>{const top=(m-bounds.start)*pxPerMin;html+=`<div class="femic-week-hour" style="top:${top}px">${minToTime(m)}</div>`;});
   html+='</div>';
@@ -1131,6 +1270,13 @@ function renderWeek(){
     html+=`<div class="femic-week-day ${ds===todayIso()?'today':''} ${off?'closed':''}" style="height:${bodyH}px" onclick="femicWeekClickV1434(event,'${ds}',{start:${bounds.start},end:${bounds.end},total:${bounds.total}},${pxPerMin})">`;
     slotLines.forEach(m=>{const top=(m-bounds.start)*pxPerMin;const major=(m%60===0);html+=`<span class="femic-week-line ${major?'major':''}" style="top:${top}px"></span>`;});
     parsePeriods().forEach(p=>{let st=femicClamp(timeToMin(p.start),bounds.start,bounds.end);let en=femicClamp(timeToMin(p.end),bounds.start,bounds.end);if(en>st){html+=`<span class="femic-week-period" style="top:${(st-bounds.start)*pxPerMin}px;height:${(en-st)*pxPerMin}px"></span>`;}});
+    if(ds===todayIso()){
+      const now=new Date();
+      const nowMin=now.getHours()*60+now.getMinutes();
+      if(nowMin>=bounds.start&&nowMin<=bounds.end){
+        html+=`<span class="femic-now-line" style="top:${(nowMin-bounds.start)*pxPerMin}px"></span>`;
+      }
+    }
     if(off){html+='<div class="femic-week-empty-label closed">Fechado</div>';}
     else{const active=dayList.filter(a=>a.status!=='cancelado').length;html+=`<div class="femic-week-empty-label">${active} at.</div>`;}
     layout.forEach(it=>{
@@ -1166,13 +1312,24 @@ function getAgendaTheme(){
 function setAgendaTheme(theme){
   const next = theme === 'dark' ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', next);
+  document.body?.setAttribute('data-theme', next);
+  document.body?.classList.toggle('theme-dark', next === 'dark');
   localStorage.setItem('femic_agenda_theme', next);
   const themeMeta = document.querySelector('meta[name="theme-color"]');
   if(themeMeta) themeMeta.setAttribute('content', next === 'dark' ? '#0b141d' : '#0b3c6f');
+  ensureAgendaThemeStyle();
 }
 
 function applyAgendaTheme(){
   setAgendaTheme(getAgendaTheme());
+}
+
+function ensureAgendaThemeStyle(){
+  if(document.getElementById('agendaThemeRuntimeStyle')) return;
+  const style=document.createElement('style');
+  style.id='agendaThemeRuntimeStyle';
+  style.textContent='html[data-theme="dark"], html[data-theme="dark"] body, body.theme-dark{color-scheme:dark;}';
+  document.head.appendChild(style);
 }
 
 function toggleAgendaTheme(){
@@ -1344,12 +1501,27 @@ function checkFemicAuth(){
   if(lbl && email) lbl.textContent = email.split('@')[0] + ' · Sair';
 }
 
-applyAgendaTheme();renderWorkDays();renderAll();if(base()&&key()&&sessionStorage.getItem('femic_jwt'))loadAll(true);
+function processAutomaticReminders(){
+  if(getReminderMode()!=='auto') return;
+  if(!base()||!key()||!sessionStorage.getItem('femic_jwt')||hasOpenModal()) return;
+  const next=dueAutomaticReminders()[0];
+  if(!next) return;
+  const stamp=next.kind+':'+String(next.a.id);
+  const last=localStorage.getItem('femic_auto_reminder_last')||'';
+  const lastAt=Number(localStorage.getItem('femic_auto_reminder_last_at')||0);
+  if(last===stamp && Date.now()-lastAt<10*60*1000) return;
+  localStorage.setItem('femic_auto_reminder_last',stamp);
+  localStorage.setItem('femic_auto_reminder_last_at',String(Date.now()));
+  sendWhatsapp(next.a.id,true,next.kind);
+}
+
+applyAgendaTheme();renderWorkDays();renderReminderAutomationStatus();renderAll();if(base()&&key()&&sessionStorage.getItem('femic_jwt'))loadAll(true);
 function hasOpenModal(){
   return !!document.querySelector('.modal-backdrop.show');
 }
 setInterval(()=>{
   if(base()&&key()&&sessionStorage.getItem('femic_jwt')&&!hasOpenModal()) loadAll(true);
+  processAutomaticReminders();
 },60000);
 
 /* FEMIC v1.4.32 — fallback seguro para status rápidos */

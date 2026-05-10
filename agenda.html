@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>FEMIC Agenda v1.4.44 - PWA Conservador</title>
+<title>FEMIC Agenda v1.4.44</title>
 <meta name="theme-color" content="#0b3c6f" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -166,7 +166,7 @@
     </div>
   </section>
 
-  <section class="panel" id="panel-reminders"><div class="card"><div class="section-title"><div><div class="eyebrow">Lembretes</div><h3>Fila de WhatsApp</h3></div></div><div class="toolbar"><select id="reminderType" onchange="renderReminders()" style="max-width:260px"><option value="appointment">Lembrete de sessão</option><option value="form">Formulário pós-atendimento</option></select><input type="date" id="reminderDate" onchange="renderReminders()" style="max-width:190px"><button class="btn primary" onclick="sendNextReminder()">Enviar próximo pendente</button><button class="btn" onclick="renderReminders()">Atualizar</button></div><div class="quick-note small" style="margin-top:12px">Sessão: enviada antes do atendimento para pedir confirmação/cancelamento por resposta no WhatsApp. Formulário: enviado após marcar a sessão como concluída.</div></div><div class="grid grid-3" id="reminderKpis" style="margin-top:16px"></div><div class="card" style="margin-top:16px"><div class="eyebrow" id="reminderTitle">Lembretes</div><div class="list" id="reminderList"></div></div></section>
+  <section class="panel" id="panel-reminders"><div class="card"><div class="section-title"><div><div class="eyebrow">Lembretes</div><h3>Fila de WhatsApp</h3></div><div id="reminderModeBadge" class="mode-badge manual">Manual</div></div><div class="toolbar"><select id="reminderType" onchange="renderReminders()" style="max-width:260px"><option value="appointment">Lembrete de sessão</option><option value="form">Formulário pós-atendimento</option></select><input type="date" id="reminderDate" onchange="renderReminders()" style="max-width:190px"><button class="btn primary" onclick="sendNextReminder()">Enviar próximo pendente</button><button class="btn" onclick="renderReminders()">Atualizar</button></div><div class="reminder-mode-panel" style="margin-top:12px"><div><strong>Modo de envio</strong><div class="muted small" id="reminderAutoStatus">Manual: você escolhe quando enviar.</div></div><div class="toolbar"><button class="btn primary" id="manualModeBtn" onclick="setReminderMode('manual')">Manual</button><button class="btn" id="autoModeBtn" onclick="setReminderMode('auto')">Automático</button></div></div><div class="quick-note small" style="margin-top:12px">Sessão: automático 12 horas antes do atendimento. Formulário: automático 5 horas depois da sessão concluída. O navegador precisa estar aberto para disparar os envios pelo WhatsApp.</div></div><div class="grid grid-4" id="reminderKpis" style="margin-top:16px"></div><div class="card" style="margin-top:16px"><div class="eyebrow" id="reminderTitle">Lembretes</div><div class="list" id="reminderList"></div></div></section>
 
   <section class="panel" id="panel-report"><div class="card"><div class="toolbar"><input type="month" id="reportMonth" onchange="renderReport()" style="max-width:190px"><button class="btn" onclick="exportCsv()">Exportar CSV</button><button class="btn" onclick="window.print()">Imprimir/PDF</button></div></div><div class="grid grid-4" id="reportKpis" style="margin-top:16px"></div><div class="card" id="reportPrintArea" style="margin-top:16px"><div class="eyebrow">Relatório mensal</div><div class="table-wrap"><table><thead><tr><th>Pagador</th><th>Serviço</th><th>Qtd.</th><th>Valor</th><th>Total</th></tr></thead><tbody id="reportBody"></tbody></table></div></div></section>
 
@@ -201,6 +201,7 @@
     <div class="grid grid-2" style="margin-top:16px"><div class="card"><div class="section-title"><div><div class="eyebrow">Pagadores</div><h3>Convênios e particulares</h3></div></div><div class="toolbar"><input id="payerName" placeholder="Nome do pagador" style="max-width:260px"><button class="btn primary" onclick="savePayer()">Adicionar</button></div><div class="list" id="payerList" style="margin-top:12px"></div></div><div class="card"><div class="section-title"><div><div class="eyebrow">Serviços</div><h3>Valores, duração e modo</h3></div></div><div class="grid grid-2"><input id="svcName" placeholder="Nome do serviço"><select id="svcPayer"></select><input id="svcPrice" type="number" placeholder="Valor"><select id="svcDur"><option>30</option><option selected>45</option><option>60</option><option>90</option></select><select id="svcMode"><option value="grupo">Grupo</option><option value="individual">Individual</option></select><input id="svcMax" type="number" value="4" placeholder="Limite"></div><button class="btn primary" style="margin-top:12px" onclick="saveService()">Adicionar serviço</button><div class="list" id="serviceList" style="margin-top:12px"></div></div></div>
     
     <div class="card" style="margin-top:16px"><div class="eyebrow">Modelos WhatsApp</div><div class="grid grid-2"><div class="field"><label>Lembrete de sessão</label><textarea id="tplReminder" rows="5"></textarea></div><div class="field"><label>Formulário pós-atendimento</label><textarea id="tplFormReminder" rows="5"></textarea></div></div><div class="field" style="margin-top:12px"><label>Link do formulário de respostas</label><input id="formLinkInput" placeholder="https://... formulário do paciente"></div><button class="btn primary" style="margin-top:12px" onclick="saveTemplates()">Salvar modelos</button></div>
+    <div class="card" style="margin-top:16px"><div class="section-title"><div><div class="eyebrow">WhatsApp API</div><h3>Preparação segura para Meta Cloud API</h3></div><span class="mode-badge manual" id="whatsappProviderBadge">wa.me</span></div><p class="muted small" style="margin-top:0">Deixe em link manual enquanto a API não estiver pronta. Para usar a Meta Cloud API, configure uma Supabase Edge Function e cole aqui apenas a URL pública da função. O token da Meta nunca deve ficar neste navegador.</p><div class="grid grid-2"><div class="field"><label>Provedor de envio</label><select id="whatsappProvider" onchange="renderWhatsappProviderBadge()"><option value="wa_me">Link WhatsApp seguro</option><option value="api">API via Supabase Edge Function</option></select></div><div class="field"><label>Endpoint da Edge Function</label><input id="whatsappEndpoint" placeholder="https://SEU-PROJETO.functions.supabase.co/send-whatsapp-reminder"></div><div class="field"><label>Template Meta: sessão</label><input id="whatsappTplAppointment" placeholder="lembrete_sessao"></div><div class="field"><label>Template Meta: formulário</label><input id="whatsappTplForm" placeholder="formulario_pos_sessao"></div></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" onclick="saveWhatsappApiConfig()">Salvar WhatsApp API</button><button class="btn" onclick="testWhatsappApiConfig()">Testar configuração local</button></div></div>
   </section>
 
 
@@ -370,7 +371,7 @@
     <div class="modal-foot appt-foot-refined">
       <button class="btn" onclick="closeModal('apptModal')">Cancelar</button>
       <button class="btn danger" id="deleteApptBtn" onclick="deleteAppointment()">Remover</button>
-      <button class="btn primary" onclick="saveAppointment()">Salvar agendamento</button>
+      <button class="btn primary" id="saveApptBtn" onclick="saveAppointment()">Salvar agendamento</button>
     </div>
   </div>
 </div>
@@ -418,4 +419,3 @@ if ('serviceWorker' in navigator) {
 <script src="js/femic-agenda.js"></script>
 </body>
 </html>
-
