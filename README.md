@@ -49,6 +49,158 @@ Sistema clínico da FEMIC Fisioterapia com:
 - Backup manual em nuvem via Supabase
 - Restauração de dados via Supabase
 
+## WhatsApp: lembretes e preparação para Meta Cloud API
+
+### Estado atual seguro
+- A agenda envia lembretes pelo WhatsApp usando link `wa.me`, com a mensagem já preenchida.
+- O envio manual continua funcionando como antes.
+- A aba **Lembretes** permite alternar entre modo manual e modo automático local.
+- O modo automático local verifica:
+  - lembrete de sessão: 12 horas antes do horário marcado;
+  - formulário pós-atendimento: 5 horas depois da sessão concluída.
+- O navegador precisa estar aberto para o modo automático local abrir o WhatsApp.
+- O sistema está preparado para uma futura integração com API, mas não coloca token da Meta no HTML, JS ou `localStorage`.
+
+### Por que não colocar token da Meta no navegador
+O token da Meta WhatsApp Cloud API permite enviar mensagens em nome do negócio. Se ele ficar no `agenda.html`, em JavaScript público ou em `localStorage`, qualquer pessoa com acesso ao navegador ou ao código consegue copiar esse token. Por isso, a arquitetura segura é:
+
+```text
+agenda.html/js -> Supabase Edge Function -> Meta WhatsApp Cloud API
+```
+
+Na agenda ficam apenas:
+- provedor desejado: `wa.me` ou API preparada;
+- URL da Supabase Edge Function;
+- nomes dos templates aprovados na Meta.
+
+No Supabase ficam os segredos:
+- `WHATSAPP_TOKEN`
+- `WHATSAPP_PHONE_NUMBER_ID`
+- `WHATSAPP_WABA_ID`
+
+### Configuração no sistema FEMIC
+Na agenda, acesse:
+
+```text
+Configurações -> WhatsApp API
+```
+
+Campos disponíveis:
+- **Provedor de envio**
+  - `Link WhatsApp seguro`: usa `wa.me`, recomendado enquanto a API não estiver pronta.
+  - `API via Supabase Edge Function`: deixa a integração preparada.
+- **Endpoint da Edge Function**
+  - Exemplo: `https://SEU-PROJETO.functions.supabase.co/send-whatsapp-reminder`
+- **Template Meta: sessão**
+  - Sugestão: `lembrete_sessao`
+- **Template Meta: formulário**
+  - Sugestão: `formulario_pos_sessao`
+
+Importante: nesta versão, o envio real pela API deve ser implementado na Edge Function antes de substituir o fallback `wa.me`. Isso evita quebrar o sistema em produção.
+
+### Configuração no site da Meta
+1. Acesse o Meta for Developers e crie um app do tipo Business.
+2. Adicione o produto **WhatsApp** ao app.
+3. No WhatsApp Manager, conecte ou crie:
+   - Business Portfolio;
+   - WhatsApp Business Account, também chamado WABA;
+   - número de telefone comercial.
+4. Guarde os IDs:
+   - `WABA_ID`;
+   - `PHONE_NUMBER_ID`.
+5. Crie um token permanente pelo Business Manager/System User com permissões:
+   - `whatsapp_business_messaging`;
+   - `whatsapp_business_management`.
+6. Registre o número da Cloud API, se a Meta solicitar PIN/código.
+7. Crie templates de mensagem em português do Brasil (`pt_BR`), categoria Utility:
+   - `lembrete_sessao`
+   - `formulario_pos_sessao`
+8. Aguarde aprovação dos templates pela Meta.
+9. Teste um envio no painel da Meta ou com Postman antes de ligar no sistema.
+
+Referências oficiais:
+- Cloud API overview: https://developers.facebook.com/docs/whatsapp/cloud-api/overview
+- Mensagens e templates: https://developers.facebook.com/docs/whatsapp/cloud-api/guides/send-message-templates
+- Webhooks: https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks
+- Coleção Postman da Meta: https://www.postman.com/meta/whatsapp-business-platform/overview
+
+### Supabase Edge Function sugerida
+Crie uma função chamada:
+
+```text
+send-whatsapp-reminder
+```
+
+Segredos no Supabase:
+
+```bash
+supabase secrets set WHATSAPP_TOKEN="TOKEN_DA_META"
+supabase secrets set WHATSAPP_PHONE_NUMBER_ID="PHONE_NUMBER_ID"
+supabase secrets set WHATSAPP_WABA_ID="WABA_ID"
+```
+
+Contrato recomendado do corpo enviado pela agenda:
+
+```json
+{
+  "kind": "appointment",
+  "appointment_id": "uuid",
+  "patient_id": "p123",
+  "patient_name": "Nome do paciente",
+  "patient_whatsapp": "16999999999",
+  "appointment_date": "2026-05-10",
+  "start_time": "08:00",
+  "end_time": "08:45",
+  "service_name": "Fisioterapia",
+  "form_link": "https://...",
+  "template_name": "lembrete_sessao"
+}
+```
+
+Regras recomendadas para a Edge Function:
+- validar o JWT do usuário logado no Supabase;
+- aceitar apenas origem/domínio do sistema FEMIC;
+- normalizar telefone para formato E.164 com DDI 55;
+- enviar somente templates aprovados;
+- retornar JSON com `ok`, `message_id` e `error`;
+- gravar log em uma tabela separada antes de marcar lembrete como enviado.
+
+### Tabela opcional para fila/log de WhatsApp
+Para não mexer na tabela `appointments`, use uma tabela separada:
+
+```sql
+create table if not exists whatsapp_outbox (
+  id uuid primary key default gen_random_uuid(),
+  appointment_id uuid references appointments(id) on delete set null,
+  patient_id text references patients(id) on delete set null,
+  kind text not null,
+  provider text default 'meta_cloud_api',
+  template_name text,
+  phone text,
+  status text default 'pending',
+  message_id text,
+  error text,
+  payload jsonb,
+  created_at timestamptz default now(),
+  sent_at timestamptz
+);
+
+alter table whatsapp_outbox enable row level security;
+
+create policy "Authenticated read whatsapp outbox"
+on whatsapp_outbox
+for select
+to authenticated
+using (true);
+```
+
+### Estratégia para não quebrar o sistema
+1. Manter `wa.me` como fallback.
+2. Criar a Edge Function e testar fora da agenda.
+3. Criar `whatsapp_outbox` para logs.
+4. Só depois ligar o provedor API na agenda.
+5. Se a API falhar, manter envio por `wa.me`.
+
 ## Configuração SQL completa (Supabase)
 
 ### 1) Sistema principal (`index.html`)

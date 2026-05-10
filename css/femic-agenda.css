@@ -2156,3 +2156,1496 @@ html[data-theme="dark"] .femic-week-card.status-cancelado{
   border-left-color:#f07272!important;
   opacity:.88!important;
 }
+
+/* FEMIC Agenda — lembretes manual/automático */
+.reminder-mode-panel{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:linear-gradient(180deg,rgba(255,255,255,.88),rgba(248,252,255,.82));
+  padding:12px 14px;
+}
+.mode-badge{
+  display:inline-flex;
+  width:max-content;
+  align-items:center;
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:6px 10px;
+  font-size:.76rem;
+  font-weight:900;
+}
+.mode-badge.manual{background:#eef6fb;color:var(--primary)}
+.mode-badge.auto{background:#e9fbf3;color:#047857;border-color:rgba(16,185,129,.22)}
+
+/* FEMIC Agenda — dark mode de alta prioridade para os blocos recentes */
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --surface:rgba(18,28,37,.88);
+  --surface-strong:#121c25;
+  --soft-blue:#16283a;
+}
+html[data-theme="dark"] .tabs{
+  background:rgba(13,23,31,.88)!important;
+  border-color:var(--line)!important;
+}
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .item,
+html[data-theme="dark"] .modal,
+html[data-theme="dark"] .reminder-mode-panel{
+  background:linear-gradient(180deg,rgba(18,28,37,.98),rgba(15,25,36,.94))!important;
+}
+html[data-theme="dark"] .btn.ghost,
+html[data-theme="dark"] .mini-action,
+html[data-theme="dark"] .day-check{
+  background:#172637!important;
+  color:#dbeafe!important;
+}
+html[data-theme="dark"] .topbar .btn[onclick="femicLogout()"]{
+  background:#2b1719!important;
+  color:#fecaca!important;
+  border-color:rgba(248,113,113,.35)!important;
+}
+html[data-theme="dark"] .femic-week-board,
+html[data-theme="dark"] .femic-week-head,
+html[data-theme="dark"] .femic-week-axis,
+html[data-theme="dark"] .femic-week-day{
+  background:#111b26!important;
+  border-color:var(--line)!important;
+  color:var(--text)!important;
+}
+html[data-theme="dark"] .femic-week-head.today,
+html[data-theme="dark"] .femic-week-day.today{
+  background:#132b3a!important;
+}
+html[data-theme="dark"] .femic-week-day.closed{
+  background:repeating-linear-gradient(135deg,#16202c,#16202c 10px,#111923 10px,#111923 20px)!important;
+}
+html[data-theme="dark"] .day.off,
+html[data-theme="dark"] .week-slot.closed{
+  background:repeating-linear-gradient(135deg,#16202c,#16202c 10px,#111923 10px,#111923 20px)!important;
+}
+html[data-theme="dark"] .day.today,
+html[data-theme="dark"] .day.today.off,
+html[data-theme="dark"] .week-slot.today-slot{
+  background:#132b3a!important;
+}
+html[data-theme="dark"] .package-progress,
+html[data-theme="dark"] .capacity::after{
+  background:#1d2d3d!important;
+  border-color:var(--line)!important;
+}
+html[data-theme="dark"] .mode-badge.manual{
+  background:#172637!important;
+  color:#dbeafe!important;
+}
+html[data-theme="dark"] .mode-badge.auto{
+  background:#133426!important;
+  color:#bbf7d0!important;
+  border-color:rgba(74,222,128,.28)!important;
+}
+html[data-theme="dark"] ::placeholder{
+  color:#7f93aa!important;
+}
+
+/* =========================================================
+   FEMIC Agenda — modernização visual segura
+   Camada final: visual somente, preserva IDs, eventos e dados.
+   ========================================================= */
+:root{
+  --primary:#0a3f68;
+  --primary2:#16a7d7;
+  --accent:#14b8a6;
+  --bg:#eef5f8;
+  --card:#ffffff;
+  --text:#142b3f;
+  --muted:#64798b;
+  --line:rgba(20,43,63,.12);
+  --shadow:0 18px 46px rgba(20,43,63,.10);
+  --radius:18px;
+}
+body{
+  min-height:100vh;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.76),rgba(255,255,255,0) 220px),
+    radial-gradient(circle at 12% 0,rgba(22,167,215,.18),transparent 32%),
+    radial-gradient(circle at 88% 4%,rgba(20,184,166,.13),transparent 30%),
+    linear-gradient(180deg,#eef7fb,#f7fbfd 54%,#edf5f8)!important;
+}
+.topbar{
+  background:rgba(250,253,255,.86)!important;
+  border-bottom:1px solid rgba(20,43,63,.10)!important;
+  box-shadow:0 10px 30px rgba(20,43,63,.08)!important;
+}
+.brand h1{letter-spacing:0;color:#083b63!important}
+.brand p{font-weight:700}
+.logo{
+  border-radius:14px!important;
+  background:linear-gradient(145deg,#073b63,#0a6ea7 58%,#16a7d7)!important;
+  box-shadow:0 14px 30px rgba(10,63,104,.22)!important;
+}
+.wrap{max-width:1480px}
+.tabs{
+  background:rgba(247,251,253,.82)!important;
+  border-bottom:1px solid rgba(20,43,63,.08)!important;
+  border-radius:0 0 18px 18px;
+}
+.tab,.btn{
+  border-radius:12px!important;
+  border-color:rgba(20,43,63,.12)!important;
+  background:rgba(255,255,255,.92)!important;
+  color:#17324a!important;
+  box-shadow:0 8px 20px rgba(20,43,63,.06);
+}
+.tab:hover,.btn:hover{box-shadow:0 14px 30px rgba(20,43,63,.12)!important}
+.tab.active,.btn.primary{
+  background:linear-gradient(135deg,#0a3f68,#0877ad,#16a7d7)!important;
+  color:#fff!important;
+  border-color:transparent!important;
+}
+.btn.success{background:linear-gradient(135deg,#059669,#10b981)!important;color:#fff!important;border-color:transparent!important}
+.btn.warning{background:linear-gradient(135deg,#d97706,#f59e0b)!important;color:#fff!important;border-color:transparent!important}
+.btn.danger{background:linear-gradient(135deg,#dc2626,#ef4444)!important;color:#fff!important;border-color:transparent!important}
+.btn.ghost{background:#e8f3f8!important;color:#0a3f68!important}
+.card,.item,.modal,.kpi,.table-wrap{
+  border-radius:18px!important;
+  border:1px solid rgba(20,43,63,.10)!important;
+  background:rgba(255,255,255,.92)!important;
+  box-shadow:var(--shadow)!important;
+}
+.card{padding:18px}
+.section-title h3,.kpi strong,.package-card strong,.used-counter,.day-num{color:#0a3f68!important}
+.eyebrow{
+  color:#0f766e!important;
+  letter-spacing:.09em;
+}
+input,select,textarea{
+  border-radius:12px!important;
+  border-color:rgba(20,43,63,.13)!important;
+  background:#fff!important;
+  color:#142b3f!important;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:rgba(22,167,215,.78)!important;
+  box-shadow:0 0 0 4px rgba(22,167,215,.15)!important;
+}
+.quick-note,.period-help,.reminder-mode-panel{
+  border-radius:14px!important;
+  background:linear-gradient(180deg,#eef9fb,#f7fcfd)!important;
+  border:1px solid rgba(22,167,215,.16)!important;
+  color:#0a3f68!important;
+}
+.femic-week-board{
+  border-radius:22px!important;
+  border:1px solid rgba(20,43,63,.12)!important;
+  background:#fff!important;
+  box-shadow:0 18px 46px rgba(20,43,63,.10)!important;
+  overflow:hidden!important;
+}
+.femic-week-head{
+  background:#eef6fa!important;
+  color:#0a3f68!important;
+  border-color:rgba(20,43,63,.10)!important;
+}
+.femic-week-axis,.femic-week-day{
+  background:#fff!important;
+  border-color:rgba(20,43,63,.09)!important;
+}
+.femic-week-day.today,.femic-week-head.today{
+  background:#e9f8fd!important;
+}
+.femic-week-card{
+  border-radius:12px!important;
+  border:1px solid rgba(20,43,63,.12)!important;
+  box-shadow:0 8px 20px rgba(20,43,63,.12)!important;
+}
+.femic-week-card:hover{
+  box-shadow:0 18px 34px rgba(20,43,63,.18)!important;
+}
+.day{
+  border-radius:16px!important;
+  background:#fff!important;
+  border-color:rgba(20,43,63,.11)!important;
+  box-shadow:0 10px 26px rgba(20,43,63,.07)!important;
+}
+.day.today{
+  background:#edfaff!important;
+  border-color:rgba(22,167,215,.72)!important;
+}
+.pill,.legend,.status-chip,.service-badge,.mode-badge{
+  border-radius:999px!important;
+  border-color:rgba(20,43,63,.12)!important;
+}
+.status-agendado{background:linear-gradient(180deg,#fff8e8,#fff)!important}
+.status-confirmado{background:linear-gradient(180deg,#edf6ff,#fff)!important}
+.status-concluido{background:linear-gradient(180deg,#ecfdf5,#fff)!important}
+.status-cancelado{background:linear-gradient(180deg,#fff1f2,#fff)!important}
+
+html[data-theme="dark"]{
+  --bg:#08131d;
+  --card:#111c27;
+  --text:#e8f1fb;
+  --muted:#9fb2c7;
+  --line:rgba(255,255,255,.12);
+  --shadow:0 18px 46px rgba(0,0,0,.34);
+}
+html[data-theme="dark"] body{
+  background:
+    radial-gradient(circle at 10% 0,rgba(22,167,215,.18),transparent 32%),
+    radial-gradient(circle at 88% 4%,rgba(20,184,166,.10),transparent 30%),
+    linear-gradient(180deg,#08131d,#0d1722 54%,#08131d)!important;
+}
+html[data-theme="dark"] .topbar,
+html[data-theme="dark"] .tabs{
+  background:rgba(9,19,29,.88)!important;
+  border-color:rgba(255,255,255,.10)!important;
+}
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .item,
+html[data-theme="dark"] .modal,
+html[data-theme="dark"] .kpi,
+html[data-theme="dark"] .table-wrap,
+html[data-theme="dark"] .day,
+html[data-theme="dark"] .femic-week-board,
+html[data-theme="dark"] .femic-week-axis,
+html[data-theme="dark"] .femic-week-day{
+  background:#111c27!important;
+  color:#e8f1fb!important;
+  border-color:rgba(255,255,255,.12)!important;
+  box-shadow:var(--shadow)!important;
+}
+html[data-theme="dark"] .tab,
+html[data-theme="dark"] .btn,
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] .pill,
+html[data-theme="dark"] .legend,
+html[data-theme="dark"] .status-chip,
+html[data-theme="dark"] .service-badge,
+html[data-theme="dark"] .mini-action{
+  background:#172638!important;
+  color:#e8f1fb!important;
+  border-color:rgba(255,255,255,.12)!important;
+}
+html[data-theme="dark"] .femic-week-head,
+html[data-theme="dark"] th{
+  background:#162536!important;
+  color:#dcecff!important;
+  border-color:rgba(255,255,255,.12)!important;
+}
+html[data-theme="dark"] .quick-note,
+html[data-theme="dark"] .period-help,
+html[data-theme="dark"] .reminder-mode-panel{
+  background:#132233!important;
+  color:#dcecff!important;
+  border-color:rgba(22,167,215,.24)!important;
+}
+html[data-theme="dark"] .brand h1,
+html[data-theme="dark"] .section-title h3,
+html[data-theme="dark"] .kpi strong,
+html[data-theme="dark"] .package-card strong,
+html[data-theme="dark"] .used-counter,
+html[data-theme="dark"] .day-num,
+html[data-theme="dark"] strong{
+  color:#f2f7ff!important;
+}
+html[data-theme="dark"] .muted,
+html[data-theme="dark"] .small,
+html[data-theme="dark"] .brand p{
+  color:#9fb2c7!important;
+}
+html[data-theme="dark"] .eyebrow,
+html[data-theme="dark"] .field label,
+html[data-theme="dark"] .weekday{
+  color:#7dd3fc!important;
+}
+html[data-theme="dark"] .femic-week-day.today,
+html[data-theme="dark"] .femic-week-head.today,
+html[data-theme="dark"] .day.today{
+  background:#123047!important;
+}
+html[data-theme="dark"] .status-agendado{background:#302714!important}
+html[data-theme="dark"] .status-confirmado{background:#172946!important}
+html[data-theme="dark"] .status-concluido{background:#143424!important}
+html[data-theme="dark"] .status-cancelado{background:#3a1c1c!important}
+
+/* =========================================================
+   FEMIC Agenda — Semana estilo Google Calendar, refinada
+   Esta camada vence as anteriores e mantém a lógica existente.
+   ========================================================= */
+#panel-agenda > .card:first-child{
+  border-radius:16px!important;
+  padding:12px!important;
+  background:rgba(255,255,255,.94)!important;
+}
+#panel-agenda .toolbar{
+  align-items:center;
+}
+#panel-agenda #periodLabel{
+  color:#1f2937!important;
+  font-size:.98rem;
+  font-weight:900;
+  min-width:220px;
+}
+.agenda-filterbar{
+  padding-top:10px;
+  border-top:1px solid rgba(15,23,42,.08);
+}
+#weekView{
+  margin-top:14px;
+  border-radius:16px;
+  background:#fff!important;
+  border:1px solid rgba(15,23,42,.10);
+  box-shadow:0 10px 30px rgba(15,23,42,.08);
+  overflow:auto!important;
+}
+#weekBoard.week-board{
+  background:transparent!important;
+}
+.femic-week-board{
+  --time-col:68px!important;
+  --day-min:132px!important;
+  width:100%!important;
+  min-width:980px!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  background:#fff!important;
+}
+.femic-week-head{
+  position:sticky!important;
+  top:0!important;
+  z-index:12!important;
+  height:64px!important;
+  min-height:64px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:5px!important;
+  background:#fff!important;
+  border-right:1px solid rgba(15,23,42,.08)!important;
+  border-bottom:1px solid rgba(15,23,42,.12)!important;
+  color:#667085!important;
+  font-weight:800!important;
+  text-transform:none!important;
+}
+.femic-week-corner{
+  font-size:.72rem!important;
+  color:#94a3b8!important;
+}
+.week-head-day{
+  font-size:.72rem;
+  line-height:1;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.week-head-date{
+  width:30px;
+  height:30px;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  font-size:.92rem;
+  line-height:1;
+  color:#334155;
+}
+.femic-week-head.today{
+  background:#fff!important;
+  color:#0a3f68!important;
+  box-shadow:none!important;
+  border-bottom-color:rgba(22,167,215,.35)!important;
+}
+.femic-week-head.today .week-head-date{
+  background:#0a3f68;
+  color:#fff;
+  box-shadow:0 8px 18px rgba(10,63,104,.24);
+}
+.femic-week-axis{
+  background:#fff!important;
+  border-right:1px solid rgba(15,23,42,.10)!important;
+}
+.femic-week-hour{
+  right:10px!important;
+  transform:translateY(-8px)!important;
+  color:#94a3b8!important;
+  font-size:.70rem!important;
+  font-weight:700!important;
+}
+.femic-week-day{
+  background:#fff!important;
+  border-right:1px solid rgba(15,23,42,.08)!important;
+  overflow:hidden!important;
+}
+.femic-week-day:hover{
+  background:#fbfdff!important;
+}
+.femic-week-day.today{
+  background:#f8fcff!important;
+}
+.femic-week-day.closed{
+  background:repeating-linear-gradient(135deg,#f8fafc,#f8fafc 8px,#f1f5f9 8px,#f1f5f9 16px)!important;
+  opacity:.74!important;
+}
+.femic-week-line{
+  background:rgba(15,23,42,.055)!important;
+  z-index:1!important;
+}
+.femic-week-line.major{
+  background:rgba(15,23,42,.12)!important;
+}
+.femic-week-period{
+  background:rgba(14,165,233,.026)!important;
+  border-color:rgba(14,165,233,.07)!important;
+}
+.femic-now-line{
+  position:absolute;
+  left:0;
+  right:0;
+  z-index:8;
+  height:2px;
+  background:#ef4444;
+  box-shadow:0 0 0 1px rgba(239,68,68,.10);
+  pointer-events:none;
+}
+.femic-now-line::before{
+  content:'';
+  position:absolute;
+  left:-5px;
+  top:50%;
+  width:10px;
+  height:10px;
+  transform:translateY(-50%);
+  border-radius:999px;
+  background:#ef4444;
+}
+.femic-week-empty-label{
+  top:6px!important;
+  right:6px!important;
+  padding:2px 6px!important;
+  border:0!important;
+  background:rgba(248,250,252,.84)!important;
+  color:#64748b!important;
+  font-size:.58rem!important;
+  font-weight:800!important;
+  box-shadow:none!important;
+}
+.femic-week-card{
+  padding:5px 7px!important;
+  border-radius:7px!important;
+  border:0!important;
+  border-left:4px solid #64748b!important;
+  box-shadow:0 1px 2px rgba(15,23,42,.18)!important;
+  gap:1px!important;
+  min-height:22px!important;
+  overflow:hidden!important;
+  transition:box-shadow .14s ease,filter .14s ease,transform .14s ease!important;
+}
+.femic-week-card:hover,
+.femic-week-card:focus-within{
+  z-index:80!important;
+  min-height:max-content!important;
+  width:min(260px,max(178px,100%))!important;
+  overflow:visible!important;
+  transform:translateY(-1px)!important;
+  box-shadow:0 12px 30px rgba(15,23,42,.18),0 2px 8px rgba(15,23,42,.10)!important;
+}
+.femic-week-card.status-agendado{
+  background:#fff7db!important;
+  border-left-color:#f59e0b!important;
+}
+.femic-week-card.status-confirmado{
+  background:#e8f1ff!important;
+  border-left-color:#2563eb!important;
+}
+.femic-week-card.status-concluido{
+  background:#e7f8ed!important;
+  border-left-color:#16a34a!important;
+}
+.femic-week-card.status-cancelado{
+  background:#fee8e7!important;
+  border-left-color:#dc2626!important;
+  opacity:.72!important;
+}
+.week-card-main{
+  min-width:0;
+}
+.femic-week-card .appt-time{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  padding:0!important;
+  margin:0!important;
+  border:0!important;
+  background:transparent!important;
+  color:#475569!important;
+  font-size:.64rem!important;
+  font-weight:800!important;
+  line-height:1.1!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.femic-week-card .appt-name{
+  color:#111827!important;
+  font-size:.78rem!important;
+  font-weight:900!important;
+  line-height:1.16!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  margin:1px 0 0!important;
+}
+.week-card-service{
+  display:none;
+  color:#64748b;
+  font-size:.68rem;
+  font-weight:700;
+  line-height:1.2;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  margin-top:2px;
+}
+.femic-week-card:hover .week-card-service,
+.femic-week-card:focus-within .week-card-service{
+  display:block;
+}
+.femic-week-card .appt-meta,
+.femic-week-card .small,
+.femic-week-card .service-badge,
+.femic-week-card .appt-actions{
+  display:none!important;
+}
+.femic-week-card:hover .appt-meta,
+.femic-week-card:focus-within .appt-meta{
+  display:flex!important;
+  gap:4px!important;
+  flex-wrap:wrap!important;
+  margin-top:5px!important;
+}
+.femic-week-card:hover .small,
+.femic-week-card:focus-within .small{
+  display:block!important;
+  color:#64748b!important;
+  font-size:.66rem!important;
+  line-height:1.2!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  margin-top:3px!important;
+}
+.femic-week-card:hover .appt-actions,
+.femic-week-card:focus-within .appt-actions{
+  display:flex!important;
+  gap:5px!important;
+  flex-wrap:wrap!important;
+  margin-top:6px!important;
+  padding-top:6px!important;
+  border-top:1px solid rgba(15,23,42,.10)!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.femic-week-card .status-chip{
+  font-size:.58rem!important;
+  padding:2px 6px!important;
+  line-height:1.1!important;
+  background:rgba(255,255,255,.72)!important;
+}
+.femic-week-card .mini-action{
+  min-height:24px!important;
+  border-radius:7px!important;
+  padding:4px 6px!important;
+  font-size:.62rem!important;
+  background:rgba(255,255,255,.78)!important;
+}
+
+html[data-theme="dark"] #panel-agenda > .card:first-child,
+html[data-theme="dark"] #weekView,
+html[data-theme="dark"] .femic-week-board,
+html[data-theme="dark"] .femic-week-head,
+html[data-theme="dark"] .femic-week-axis,
+html[data-theme="dark"] .femic-week-day{
+  background:#0f1a26!important;
+  border-color:rgba(226,232,240,.12)!important;
+  box-shadow:none!important;
+}
+html[data-theme="dark"] #panel-agenda #periodLabel{
+  color:#e2e8f0!important;
+}
+html[data-theme="dark"] .agenda-filterbar{
+  border-top-color:rgba(226,232,240,.10);
+}
+html[data-theme="dark"] .femic-week-head{
+  color:#94a3b8!important;
+}
+html[data-theme="dark"] .week-head-date{
+  color:#cbd5e1;
+}
+html[data-theme="dark"] .femic-week-head.today .week-head-date{
+  background:#38bdf8;
+  color:#082f49;
+}
+html[data-theme="dark"] .femic-week-day.today{
+  background:#102438!important;
+}
+html[data-theme="dark"] .femic-week-day.closed{
+  background:repeating-linear-gradient(135deg,#111827,#111827 8px,#0b121b 8px,#0b121b 16px)!important;
+}
+html[data-theme="dark"] .femic-week-line{
+  background:rgba(226,232,240,.07)!important;
+}
+html[data-theme="dark"] .femic-week-line.major{
+  background:rgba(226,232,240,.14)!important;
+}
+html[data-theme="dark"] .femic-week-period{
+  background:rgba(56,189,248,.05)!important;
+  border-color:rgba(56,189,248,.08)!important;
+}
+html[data-theme="dark"] .femic-week-empty-label{
+  background:rgba(15,23,42,.72)!important;
+  color:#94a3b8!important;
+}
+html[data-theme="dark"] .femic-week-card{
+  box-shadow:0 1px 2px rgba(0,0,0,.38)!important;
+}
+html[data-theme="dark"] .femic-week-card.status-agendado{
+  background:#3a2d12!important;
+  border-left-color:#fbbf24!important;
+}
+html[data-theme="dark"] .femic-week-card.status-confirmado{
+  background:#172b4d!important;
+  border-left-color:#60a5fa!important;
+}
+html[data-theme="dark"] .femic-week-card.status-concluido{
+  background:#143421!important;
+  border-left-color:#4ade80!important;
+}
+html[data-theme="dark"] .femic-week-card.status-cancelado{
+  background:#3b1d1d!important;
+  border-left-color:#f87171!important;
+}
+html[data-theme="dark"] .femic-week-card .appt-time,
+html[data-theme="dark"] .week-card-service,
+html[data-theme="dark"] .femic-week-card:hover .small{
+  color:#cbd5e1!important;
+}
+html[data-theme="dark"] .femic-week-card .appt-name{
+  color:#f8fafc!important;
+}
+html[data-theme="dark"] .femic-week-card .status-chip,
+html[data-theme="dark"] .femic-week-card .mini-action{
+  background:rgba(15,23,42,.72)!important;
+  color:#e2e8f0!important;
+  border-color:rgba(226,232,240,.12)!important;
+}
+
+@media(max-width:768px){
+  #weekView{
+    border-radius:14px;
+  }
+  .femic-week-board{
+    --time-col:54px!important;
+    --day-min:118px!important;
+    min-width:880px!important;
+  }
+  .femic-week-head{
+    height:54px!important;
+    min-height:54px!important;
+    gap:4px!important;
+  }
+  .week-head-day{
+    font-size:.62rem;
+  }
+  .week-head-date{
+    width:26px;
+    height:26px;
+    font-size:.8rem;
+  }
+  .femic-week-hour{
+    right:6px!important;
+    font-size:.58rem!important;
+  }
+  .femic-week-empty-label{
+    display:none!important;
+  }
+  .femic-week-card{
+    padding:4px 5px!important;
+    border-radius:6px!important;
+  }
+  .femic-week-card .appt-time{
+    font-size:.54rem!important;
+  }
+  .femic-week-card .appt-name{
+    font-size:.64rem!important;
+  }
+  .femic-week-card:hover .appt-actions{
+    display:none!important;
+  }
+}
+
+/* =========================================================
+   FEMIC Agenda — sistema unificado de cards
+   Padroniza cards gerais, listas, KPIs, pacientes, pacotes e modais.
+   ========================================================= */
+:root{
+  --ui-bg:#f3f7fa;
+  --ui-surface:#ffffff;
+  --ui-surface-2:#f8fbfd;
+  --ui-text:#172233;
+  --ui-muted:#667085;
+  --ui-border:rgba(15,23,42,.10);
+  --ui-border-strong:rgba(15,23,42,.16);
+  --ui-shadow-sm:0 1px 2px rgba(15,23,42,.05);
+  --ui-shadow-md:0 8px 24px rgba(15,23,42,.08);
+  --ui-shadow-lg:0 18px 42px rgba(15,23,42,.12);
+  --ui-radius:16px;
+}
+.wrap{
+  padding-top:16px!important;
+}
+.grid{
+  gap:14px!important;
+}
+.card{
+  position:relative;
+  border-radius:var(--ui-radius)!important;
+  border:1px solid var(--ui-border)!important;
+  background:var(--ui-surface)!important;
+  box-shadow:var(--ui-shadow-md)!important;
+  padding:16px!important;
+  overflow:hidden;
+}
+.card:hover{
+  box-shadow:var(--ui-shadow-md)!important;
+}
+.section-title{
+  margin-bottom:14px!important;
+  align-items:center!important;
+}
+.section-title h3,
+.card h3{
+  font-size:1rem!important;
+  line-height:1.2!important;
+  color:var(--ui-text)!important;
+  letter-spacing:0!important;
+}
+.eyebrow{
+  display:inline-flex;
+  align-items:center;
+  width:max-content;
+  max-width:100%;
+  margin-bottom:8px!important;
+  padding:4px 8px;
+  border-radius:999px;
+  background:#eaf6f8;
+  color:#087083!important;
+  font-size:.66rem!important;
+  font-weight:900!important;
+  letter-spacing:.08em!important;
+}
+.muted{
+  color:var(--ui-muted)!important;
+}
+.small{
+  font-size:.82rem!important;
+}
+.list{
+  gap:10px!important;
+}
+.item{
+  position:relative;
+  border-radius:14px!important;
+  border:1px solid var(--ui-border)!important;
+  background:var(--ui-surface)!important;
+  box-shadow:var(--ui-shadow-sm)!important;
+  padding:13px!important;
+  overflow:hidden;
+}
+.item:hover{
+  box-shadow:0 8px 20px rgba(15,23,42,.08)!important;
+}
+.item-top{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+}
+.item strong{
+  color:var(--ui-text)!important;
+  font-size:.92rem!important;
+  line-height:1.2!important;
+}
+.item .toolbar{
+  gap:6px!important;
+}
+.kpi{
+  position:relative;
+  min-height:92px;
+  border-radius:15px!important;
+  border:1px solid var(--ui-border)!important;
+  background:
+    linear-gradient(180deg,#ffffff,#f8fbfd)!important;
+  box-shadow:var(--ui-shadow-sm)!important;
+  padding:14px 14px 13px!important;
+  overflow:hidden;
+}
+.kpi::before{
+  content:'';
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:4px;
+  background:linear-gradient(180deg,#0a3f68,#16a7d7);
+}
+.kpi .small,
+.kpi .muted{
+  display:block;
+  color:#667085!important;
+  font-size:.72rem!important;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.kpi strong{
+  margin-top:8px;
+  color:#111827!important;
+  font-size:1.58rem!important;
+  line-height:1!important;
+  letter-spacing:-.02em;
+}
+#dashboardKpis .kpi:nth-child(2)::before,
+#reminderKpis .kpi:nth-child(2)::before{
+  background:linear-gradient(180deg,#f59e0b,#fbbf24);
+}
+#dashboardKpis .kpi:nth-child(3)::before,
+#reminderKpis .kpi:nth-child(3)::before{
+  background:linear-gradient(180deg,#10b981,#34d399);
+}
+#dashboardKpis .kpi:nth-child(4)::before,
+#reminderKpis .kpi:nth-child(4)::before{
+  background:linear-gradient(180deg,#6366f1,#38bdf8);
+}
+.btn,
+.tab{
+  border-radius:11px!important;
+  min-height:38px!important;
+  padding:9px 12px!important;
+  box-shadow:none!important;
+  font-size:.82rem!important;
+}
+.btn:hover,
+.tab:hover{
+  transform:none!important;
+  box-shadow:0 6px 16px rgba(15,23,42,.08)!important;
+}
+input,select,textarea{
+  border-radius:11px!important;
+  border-color:var(--ui-border)!important;
+  background:#fff!important;
+  min-height:40px!important;
+  color:var(--ui-text)!important;
+}
+.status-chip,
+.service-badge,
+.pill,
+.legend,
+.mode-badge{
+  border-radius:999px!important;
+  border:1px solid var(--ui-border)!important;
+  background:#f8fafc!important;
+  color:#475569!important;
+  font-weight:900!important;
+}
+.status-chip.agendado{background:#fff7df!important;color:#92400e!important;border-color:rgba(245,158,11,.24)!important}
+.status-chip.confirmado{background:#eaf2ff!important;color:#1d4ed8!important;border-color:rgba(37,99,235,.20)!important}
+.status-chip.concluido{background:#e9f9ef!important;color:#047857!important;border-color:rgba(16,185,129,.22)!important}
+.status-chip.cancelado{background:#feecec!important;color:#b91c1c!important;border-color:rgba(239,68,68,.22)!important}
+.status-agendado,
+.item.status-agendado,
+.timeline-item.status-agendado,
+.appt.status-agendado{
+  background:#fffaf0!important;
+  border-left:5px solid #f59e0b!important;
+}
+.status-confirmado,
+.item.status-confirmado,
+.timeline-item.status-confirmado,
+.appt.status-confirmado{
+  background:#f0f6ff!important;
+  border-left:5px solid #2563eb!important;
+}
+.status-concluido,
+.item.status-concluido,
+.timeline-item.status-concluido,
+.appt.status-concluido{
+  background:#f0fbf4!important;
+  border-left:5px solid #16a34a!important;
+}
+.status-cancelado,
+.item.status-cancelado,
+.timeline-item.status-cancelado,
+.appt.status-cancelado{
+  background:#fff1f1!important;
+  border-left:5px solid #dc2626!important;
+}
+.patient-card,
+.package-card{
+  padding:14px!important;
+}
+.patient-card::before,
+.package-card::before{
+  content:'';
+  position:absolute;
+  inset:0 auto 0 0;
+  width:4px;
+  background:#16a7d7;
+}
+.patient-card.archived,
+.package-card.inactive,
+.inactive{
+  opacity:.72!important;
+  background:#f8fafc!important;
+}
+.patient-card .item-top,
+.package-card .item-top{
+  align-items:center!important;
+}
+.patient-card .toolbar,
+.package-actions{
+  display:flex!important;
+  gap:6px!important;
+  flex-wrap:wrap!important;
+  justify-content:flex-end!important;
+}
+.package-progress{
+  height:8px!important;
+  border-radius:999px!important;
+  border:0!important;
+  background:#e5edf3!important;
+  margin-top:10px!important;
+}
+.package-progress>span{
+  background:linear-gradient(90deg,#0a3f68,#16a7d7)!important;
+}
+.used-counter{
+  color:#0a3f68!important;
+  font-weight:900!important;
+}
+#patientFicha .patient-summary{
+  gap:10px!important;
+}
+#patientFicha > .card{
+  box-shadow:var(--ui-shadow-sm)!important;
+}
+.timeline-item{
+  border-radius:13px!important;
+  box-shadow:var(--ui-shadow-sm)!important;
+}
+.modal{
+  border-radius:20px!important;
+  background:var(--ui-surface)!important;
+  box-shadow:0 24px 70px rgba(15,23,42,.24)!important;
+}
+.modal-head,
+.modal-foot{
+  background:#fbfdff!important;
+  border-color:var(--ui-border)!important;
+}
+.modal-head h3{
+  color:var(--ui-text)!important;
+  font-size:1.02rem!important;
+}
+.modal-body{
+  background:var(--ui-surface)!important;
+}
+.appt-section,
+.soft-panel,
+.rec-day-card,
+.reminder-mode-panel,
+.quick-note,
+.period-help{
+  border-radius:14px!important;
+  border:1px solid var(--ui-border)!important;
+  background:var(--ui-surface-2)!important;
+  box-shadow:none!important;
+}
+.appt-section-title span{
+  background:#0a3f68!important;
+  color:#fff!important;
+}
+.table-wrap{
+  box-shadow:var(--ui-shadow-sm)!important;
+}
+th{
+  background:#f8fafc!important;
+  color:#334155!important;
+  font-size:.78rem;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+td{
+  color:#334155;
+}
+
+html[data-theme="dark"]{
+  --ui-bg:#08131d;
+  --ui-surface:#101b28;
+  --ui-surface-2:#142235;
+  --ui-text:#eef5ff;
+  --ui-muted:#9fb2c7;
+  --ui-border:rgba(226,232,240,.12);
+  --ui-border-strong:rgba(226,232,240,.20);
+  --ui-shadow-sm:0 1px 2px rgba(0,0,0,.24);
+  --ui-shadow-md:0 8px 24px rgba(0,0,0,.28);
+  --ui-shadow-lg:0 18px 42px rgba(0,0,0,.34);
+}
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .item,
+html[data-theme="dark"] .kpi,
+html[data-theme="dark"] .modal,
+html[data-theme="dark"] .table-wrap{
+  background:var(--ui-surface)!important;
+  border-color:var(--ui-border)!important;
+  box-shadow:var(--ui-shadow-md)!important;
+  color:var(--ui-text)!important;
+}
+html[data-theme="dark"] .card h3,
+html[data-theme="dark"] .section-title h3,
+html[data-theme="dark"] .item strong,
+html[data-theme="dark"] .kpi strong,
+html[data-theme="dark"] .modal-head h3{
+  color:var(--ui-text)!important;
+}
+html[data-theme="dark"] .eyebrow{
+  background:#123047!important;
+  color:#7dd3fc!important;
+}
+html[data-theme="dark"] .kpi{
+  background:linear-gradient(180deg,#101b28,#0f1926)!important;
+}
+html[data-theme="dark"] .kpi .small,
+html[data-theme="dark"] .kpi .muted,
+html[data-theme="dark"] .muted{
+  color:var(--ui-muted)!important;
+}
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] .btn,
+html[data-theme="dark"] .tab,
+html[data-theme="dark"] .status-chip,
+html[data-theme="dark"] .service-badge,
+html[data-theme="dark"] .pill,
+html[data-theme="dark"] .legend,
+html[data-theme="dark"] .mode-badge{
+  background:#142235!important;
+  color:var(--ui-text)!important;
+  border-color:var(--ui-border)!important;
+}
+html[data-theme="dark"] .tab.active,
+html[data-theme="dark"] .btn.primary{
+  background:linear-gradient(135deg,#0a3f68,#0877ad,#16a7d7)!important;
+  color:#fff!important;
+  border-color:transparent!important;
+}
+html[data-theme="dark"] .modal-head,
+html[data-theme="dark"] .modal-foot{
+  background:#0d1722!important;
+  border-color:var(--ui-border)!important;
+}
+html[data-theme="dark"] .modal-body,
+html[data-theme="dark"] .appt-section,
+html[data-theme="dark"] .soft-panel,
+html[data-theme="dark"] .rec-day-card,
+html[data-theme="dark"] .reminder-mode-panel,
+html[data-theme="dark"] .quick-note,
+html[data-theme="dark"] .period-help{
+  background:var(--ui-surface-2)!important;
+  border-color:var(--ui-border)!important;
+}
+html[data-theme="dark"] .status-agendado,
+html[data-theme="dark"] .item.status-agendado,
+html[data-theme="dark"] .timeline-item.status-agendado,
+html[data-theme="dark"] .appt.status-agendado{
+  background:#332712!important;
+}
+html[data-theme="dark"] .status-confirmado,
+html[data-theme="dark"] .item.status-confirmado,
+html[data-theme="dark"] .timeline-item.status-confirmado,
+html[data-theme="dark"] .appt.status-confirmado{
+  background:#142744!important;
+}
+html[data-theme="dark"] .status-concluido,
+html[data-theme="dark"] .item.status-concluido,
+html[data-theme="dark"] .timeline-item.status-concluido,
+html[data-theme="dark"] .appt.status-concluido{
+  background:#12311f!important;
+}
+html[data-theme="dark"] .status-cancelado,
+html[data-theme="dark"] .item.status-cancelado,
+html[data-theme="dark"] .timeline-item.status-cancelado,
+html[data-theme="dark"] .appt.status-cancelado{
+  background:#351b1b!important;
+}
+html[data-theme="dark"] .package-progress{
+  background:#263548!important;
+}
+html[data-theme="dark"] th{
+  background:#142235!important;
+  color:#cbd5e1!important;
+}
+html[data-theme="dark"] td{
+  color:#dbe7f5!important;
+}
+
+@media(max-width:768px){
+  .card{
+    padding:13px!important;
+    border-radius:15px!important;
+  }
+  .kpi{
+    min-height:78px;
+    padding:12px!important;
+  }
+  .kpi strong{
+    font-size:1.24rem!important;
+  }
+  .item{
+    padding:11px!important;
+    border-radius:13px!important;
+  }
+  .item-top{
+    flex-direction:column!important;
+    align-items:stretch!important;
+    gap:8px!important;
+  }
+  .patient-card .toolbar,
+  .package-actions,
+  .item .toolbar{
+    justify-content:flex-start!important;
+  }
+}
+
+/* =========================================================
+   FEMIC Agenda v1.4.44 - camada final de estabilidade visual
+   ========================================================= */
+:root{
+  --ui-focus:0 0 0 4px rgba(31,182,233,.16);
+  --ui-danger-soft:#fff4f4;
+}
+html{
+  scroll-behavior:smooth;
+}
+body{
+  min-width:320px;
+  overflow-x:hidden;
+}
+button,
+select,
+input,
+textarea{
+  max-width:100%;
+}
+button:disabled,
+.btn[disabled]{
+  cursor:not-allowed!important;
+  opacity:.58!important;
+  transform:none!important;
+  box-shadow:none!important;
+}
+.btn:focus-visible,
+.tab:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible{
+  outline:0!important;
+  box-shadow:var(--ui-focus)!important;
+}
+.topbar{
+  isolation:isolate;
+}
+.topbar .toolbar{
+  align-items:center;
+}
+.brand{
+  min-width:0;
+}
+.brand h1,
+.brand p{
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.tabs{
+  align-items:center;
+}
+.tab{
+  justify-content:center;
+}
+.card,
+.item,
+.kpi,
+.modal,
+.day,
+.femic-week-card{
+  contain:layout paint;
+}
+.section-title{
+  min-width:0;
+}
+.section-title>*{
+  min-width:0;
+}
+.toolbar select,
+.toolbar input{
+  width:auto;
+  min-width:150px;
+}
+.agenda-filterbar{
+  align-items:center;
+}
+.agenda-filterbar select{
+  min-width:180px;
+}
+#periodLabel{
+  min-height:32px;
+  display:inline-flex;
+  align-items:center;
+  line-height:1.2;
+}
+.calendar{
+  align-items:stretch;
+}
+.day{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.day .appt{
+  width:100%;
+}
+.day.off{
+  border-style:dashed!important;
+}
+.day.off .appt,
+.day.off .femic-week-card{
+  pointer-events:auto;
+}
+#weekView{
+  overflow-x:auto;
+  padding-bottom:6px;
+  scrollbar-width:thin;
+}
+.femic-week-board{
+  width:max(100%,1180px)!important;
+  min-width:1180px!important;
+}
+.femic-week-head,
+.femic-week-axis{
+  background-clip:padding-box!important;
+}
+.femic-week-day{
+  min-width:0;
+}
+.femic-week-card{
+  word-break:normal!important;
+}
+.femic-week-card .week-card-main,
+.femic-week-card .appt-name,
+.femic-week-card .week-card-service,
+.appt .appt-name,
+.week-appt .appt-name{
+  min-width:0;
+}
+.femic-week-card .week-card-service{
+  color:var(--ui-muted,var(--muted))!important;
+  font-size:.64rem!important;
+  line-height:1.14!important;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.femic-week-card:hover,
+.femic-week-card:focus-within{
+  contain:none;
+}
+.appt-actions{
+  position:relative;
+  z-index:2;
+}
+.mini-action{
+  line-height:1!important;
+}
+.status-chip{
+  white-space:nowrap;
+}
+.item-top{
+  min-width:0;
+}
+.item-top>div{
+  min-width:0;
+}
+.patient-card .toolbar .btn,
+.package-actions .btn,
+.status-actions .btn{
+  flex:0 0 auto;
+}
+.list:empty::after{
+  content:"Nenhum registro.";
+  color:var(--muted);
+}
+.modal-backdrop{
+  overscroll-behavior:contain;
+}
+.modal{
+  width:min(920px,calc(100vw - 28px))!important;
+}
+.modal.sm{
+  width:min(540px,calc(100vw - 28px))!important;
+}
+.modal-appt-refined{
+  width:min(980px,calc(100vw - 28px))!important;
+}
+.modal-body{
+  max-width:100%;
+}
+.modal-foot .btn{
+  min-width:120px;
+}
+.appt-grid-main,
+.appt-grid-time{
+  align-items:start;
+}
+.saldo-info-refined{
+  line-height:1.35;
+}
+.rec-total-top input{
+  min-width:96px;
+}
+.toast-wrap{
+  pointer-events:none;
+}
+.toast{
+  pointer-events:auto;
+}
+#femicLoginOverlay{
+  padding:max(18px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))!important;
+}
+#femicLoginOverlay>div{
+  border:1px solid rgba(255,255,255,.68)!important;
+  box-shadow:0 28px 80px rgba(2,6,23,.28)!important;
+}
+#loginError,
+#setupError{
+  line-height:1.35;
+}
+html[data-theme="dark"] #femicLoginOverlay>div{
+  background:#101b28!important;
+  color:var(--ui-text)!important;
+  border-color:var(--ui-border)!important;
+}
+html[data-theme="dark"] #femicLoginOverlay label,
+html[data-theme="dark"] #femicLoginOverlay strong{
+  color:var(--ui-text)!important;
+}
+html[data-theme="dark"] #femicLoginOverlay input{
+  background:#142235!important;
+  color:var(--ui-text)!important;
+  border-color:var(--ui-border)!important;
+}
+html[data-theme="dark"] .sqlbox{
+  background:#050b12!important;
+}
+@media(max-width:980px){
+  .toolbar select,
+  .toolbar input,
+  .agenda-filterbar select{
+    width:100%;
+    min-width:0;
+  }
+  .calendar,
+  .calendar-head{
+    grid-template-columns:repeat(7,minmax(112px,1fr))!important;
+    overflow-x:auto;
+  }
+  #monthView{
+    overflow-x:auto;
+    padding-bottom:6px;
+  }
+  #monthCalendar,
+  #monthHead{
+    min-width:820px;
+  }
+}
+@media(max-width:768px){
+  .topbar .toolbar{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .topbar .toolbar .btn{
+    min-width:0;
+  }
+  .toolbar{
+    width:100%;
+  }
+  .toolbar .btn,
+  .agenda-filterbar .btn{
+    justify-content:center;
+  }
+  .card>.toolbar{
+    align-items:stretch;
+  }
+  .card>.toolbar>*{
+    flex:1 1 150px;
+  }
+  .femic-week-board{
+    width:865px!important;
+    min-width:865px!important;
+  }
+  .modal,
+  .modal.sm,
+  .modal-appt-refined{
+    width:100%!important;
+    max-height:94vh!important;
+  }
+  .modal-foot{
+    position:sticky;
+    bottom:0;
+    z-index:3;
+  }
+  .modal-foot .btn{
+    min-width:0;
+  }
+  .appt-grid-main,
+  .appt-grid-time{
+    grid-template-columns:1fr!important;
+  }
+  #femicLoginOverlay>div{
+    border-radius:22px!important;
+    padding:26px 20px!important;
+  }
+}
+@media(max-width:430px){
+  .topbar .toolbar{
+    grid-template-columns:1fr!important;
+  }
+  .brand h1{
+    font-size:1rem!important;
+  }
+  .btn,
+  .tab{
+    white-space:normal;
+  }
+  #monthCalendar,
+  #monthHead{
+    min-width:760px;
+  }
+  .femic-week-board{
+    width:808px!important;
+    min-width:808px!important;
+  }
+}
