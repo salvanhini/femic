@@ -359,7 +359,6 @@ function appendTextToField(fieldId, text){
     closeModal('orientationPackModalWrap');
   }
 
-  console.log('FEMIC booting...');
   window.statusChart = null;
   window.overviewChart = null;
   window.analysisChart = null;
@@ -387,12 +386,16 @@ function appendTextToField(fieldId, text){
   function saveClinicalEvolutions(v){ localStorage.setItem('femic_clinical_evolutions', JSON.stringify(Array.isArray(v) ? v : [])); }
   function getPatientDocuments(){ return safeArrayParse('femic_documents').filter(x => x && x.patient_id); }
   function savePatientDocuments(v){ localStorage.setItem('femic_documents', JSON.stringify(Array.isArray(v) ? v : [])); }
+  function generateId(prefix='id'){
+    if(window.crypto && typeof window.crypto.randomUUID === 'function') return prefix + window.crypto.randomUUID();
+    return prefix + Date.now() + Math.random().toString(36).slice(2, 10);
+  }
 
   function normalizePatientRecord(p){
     const raw = p || {};
     const archived = raw.archived === true || raw.status === 'inativo' || raw.status === 'arquivado';
     return {
-      id: String(raw.id || crypto.randomUUID()),
+      id: String(raw.id || generateId('p')),
       name: String(raw.name || raw.patient_name || raw.nome || '').trim(),
       pathology: String(raw.pathology || raw.patient_pathology || raw.patologia || '').trim(),
       whatsapp: String(raw.whatsapp || raw.patient_whatsapp || raw.telefone || raw.phone || '').trim(),
@@ -404,7 +407,7 @@ function appendTextToField(fieldId, text){
   function normalizeSessionRecord(s){
     const raw = s || {};
     return {
-      id: String(raw.id || crypto.randomUUID()),
+      id: String(raw.id || generateId('s')),
       patient_id: String(raw.patient_id || raw.linked_patient_id || ''),
       date: String(raw.date || raw.response_date || '').slice(0,10),
       pain: raw.pain == null || raw.pain === '' ? null : Number(raw.pain),
@@ -454,7 +457,7 @@ function appendTextToField(fieldId, text){
       pathology: p.pathology || '',
       whatsapp: formatWhatsapp(p.whatsapp || ''),
       archived: !!p.archived,
-      archived_at: p.archived_at || '',
+      archived_at: p.archived_at || null,
       created_at: p.created_at || new Date().toISOString()
     };
   }
@@ -499,7 +502,6 @@ function appendTextToField(fieldId, text){
   }
 
   function goPage(page){
-    console.log('goPage', page);
     window.currentPage = page;
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.querySelector('#page-' + page).classList.add('active');
@@ -639,7 +641,9 @@ function appendTextToField(fieldId, text){
     };
   }
   function getDashboardStats(){
-    const patients = getPatients(); const sessions = getSessions();
+    const patients = getPatients().filter(p => !p.archived);
+    const activeIds = new Set(patients.map(p => String(p.id)));
+    const sessions = getSessions().filter(s => activeIds.has(String(s.patient_id)));
     const withSessions = patients.filter(p => getPatientSessions(p.id).length).length;
     const evolved = patients.filter(p => getPatientSessions(p.id).length >= 2);
     const improved = evolved.filter(p => getEvolution(p.id)==='improved').length;
@@ -651,7 +655,6 @@ function appendTextToField(fieldId, text){
     return { patients, sessions, withSessions, improved, worsened, stable, newOnes, formsCount, taxa, evolved: evolved.length };
   }
   function refreshDashboard(){
-    console.log('refreshDashboard');
     const s = getDashboardStats();
     document.getElementById('statsGrid').innerHTML = [
       {label:'Total de pacientes', value:s.patients.length, sub:`${s.withSessions} com sessões`},
@@ -669,7 +672,7 @@ function appendTextToField(fieldId, text){
         data: { labels:['Melhoraram','Pioraram','Estáveis','Iniciando'], datasets:[{ data:[s.improved,s.worsened,s.stable,s.newOnes], backgroundColor:[colors.success, colors.danger, colors.warning, colors.info], borderWidth:0, hoverOffset:6 }]},
         options: { maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:colors.text, usePointStyle:true, boxWidth:10 } } } }
       });
-      const last15 = getSessions().slice().sort((a,b)=> String(a.date).localeCompare(String(b.date))).slice(-15);
+      const last15 = s.sessions.slice().sort((a,b)=> String(a.date).localeCompare(String(b.date))).slice(-15);
       window.overviewChart = new Chart(document.getElementById('overviewChart'), {
         type:'line',
         data:{
@@ -695,7 +698,7 @@ function appendTextToField(fieldId, text){
     renderBackupPage();
   }
   function renderPathologyRanking(){
-    const patients = getPatients();
+    const patients = getPatients().filter(p => !p.archived);
     const grouped = {};
     patients.forEach(p => {
       const key = (p.pathology || 'Não informado').trim();
@@ -712,7 +715,9 @@ function appendTextToField(fieldId, text){
       </div>`).join('') : '<div class="muted">Nenhuma patologia cadastrada ainda.</div>';
   }
   function renderQuickKpis(){
-    const patients = getPatients(); const sessions = getSessions();
+    const patients = getPatients().filter(p => !p.archived);
+    const activeIds = new Set(patients.map(p => String(p.id)));
+    const sessions = getSessions().filter(s => activeIds.has(String(s.patient_id)));
     const avgPain = sessions.length ? (sessions.reduce((a,b)=> a + Number(b.pain || 0), 0) / sessions.length).toFixed(1) : '0.0';
     const avgFuncVals = sessions.filter(s => s.functionality != null);
     const avgFunc = avgFuncVals.length ? (avgFuncVals.reduce((a,b)=> a + Number(b.functionality || 0), 0) / avgFuncVals.length).toFixed(1) : '0.0';
@@ -732,7 +737,7 @@ function appendTextToField(fieldId, text){
     return Math.floor((new Date(todayISO() + 'T00:00:00') - dt) / 86400000);
   }
   function getDashboardAlertsData(){
-    return getPatients().map(p => {
+    return getPatients().filter(p => !p.archived).map(p => {
       const ss = getPatientSessions(p.id);
       const recent = ss[ss.length - 1] || null;
       const forms = ss.filter(s => s.source === 'forms');
@@ -780,7 +785,7 @@ function appendTextToField(fieldId, text){
         let matchFilter = true;
         if(window.patientFilter === 'active') matchFilter = !archived;
         else if(window.patientFilter === 'archived') matchFilter = archived;
-        else if(window.patientFilter === 'all') matchFilter = !archived;
+        else if(window.patientFilter === 'all') matchFilter = true;
         else matchFilter = !archived && evo === window.patientFilter;
         return matchTerm && matchFilter;
       }).sort((a,b)=> String(a?.name || '').localeCompare(String(b?.name || ''), 'pt-BR'));
@@ -975,6 +980,8 @@ function appendTextToField(fieldId, text){
     saveAnamneses(getAnamneses().filter(a=>a.patient_id!==pid));
     saveClinicalEvolutions(getClinicalEvolutions().filter(e=>e.patient_id!==pid));
     savePatientDocuments(getPatientDocuments().filter(d=>d.patient_id!==pid));
+    saveGuias(getGuias().filter(g=>String(g.patient_id)!==String(pid)));
+    saveOrientationHistory(getOrientationHistory().filter(h=>String(h.patient_id)!==String(pid)));
     closeModal('deleteModalWrap');
     toast('Paciente removido', 'warning');
     fullRefreshUI();
@@ -1581,7 +1588,6 @@ function appendTextToField(fieldId, text){
     document.getElementById('csvFileInput').value = '';
   }
   function readCsvFile(file){
-    console.log('readCsvFile', file && file.name);
     resetCsvState();
     const reader = new FileReader();
     reader.onload = () => {
@@ -2266,7 +2272,17 @@ $$;`;
   }
   function exportJsonBackup(){
     const cfg = getConfig();
-    const payload = { patients:getPatients(), sessions:getSessions(), anamneses:getAnamneses(), clinical_evolutions:getClinicalEvolutions(), documents:getPatientDocuments(), exported_at:new Date().toISOString(), version:'2.1' };
+    const payload = {
+      patients:getPatients(),
+      sessions:getSessions(),
+      anamneses:getAnamneses(),
+      clinical_evolutions:getClinicalEvolutions(),
+      documents:getPatientDocuments(),
+      guias:getGuias(),
+      orientation_history:getOrientationHistory(),
+      exported_at:new Date().toISOString(),
+      version:'3.5-final'
+    };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `FEMIC_backup_${todayISO()}.json`; a.click(); URL.revokeObjectURL(a.href);
     cfg.lastBackup = new Date().toISOString(); saveConfig(cfg); renderBackupPage(); toast('Backup JSON exportado', 'success');
@@ -2283,6 +2299,8 @@ $$;`;
         saveAnamneses(Array.isArray(data.anamneses) ? data.anamneses : []);
         saveClinicalEvolutions(Array.isArray(data.clinical_evolutions) ? data.clinical_evolutions : []);
         savePatientDocuments(Array.isArray(data.documents) ? data.documents : []);
+        saveGuias(Array.isArray(data.guias) ? data.guias : []);
+        saveOrientationHistory(Array.isArray(data.orientation_history) ? data.orientation_history : []);
         toast('Backup restaurado', 'success');
         window.patientFilter = 'all';
         const patientSearch = document.getElementById('patientSearch'); if(patientSearch) patientSearch.value = '';
@@ -2300,7 +2318,7 @@ $$;`;
     try { renderAnalysis(); } catch(e){ console.error('renderAnalysis', e); }
     try { renderReportPreview(); } catch(e){ console.error('renderReportPreview', e); }
     try { renderFormsLink(); } catch(e){ console.error('renderFormsLink', e); }
-    try { if (typeof loadPendingResponses === 'function') loadPendingResponses(); } catch(e){ console.error('loadPendingResponses', e); }
+    try { if (window.currentPage === 'import' && typeof loadPendingResponses === 'function') loadPendingResponses(); } catch(e){ console.error('loadPendingResponses', e); }
     try { renderBackupPage(); } catch(e){ console.error('renderBackupPage', e); }
     if(!keepPage && window.currentPage){
       try { goPage(window.currentPage); } catch(e){ console.error('goPage refresh', e); }
@@ -2323,8 +2341,13 @@ CREATE TABLE IF NOT EXISTS patients (
   name TEXT NOT NULL,
   pathology TEXT,
   whatsapp TEXT,
+  archived BOOLEAN DEFAULT FALSE,
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE;
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
@@ -2475,7 +2498,7 @@ function supabaseHeaders(post){
     const headers = supabaseHeaders(true);
     const BATCH = 50; // lotes de 50 registros — evita limite de payload
     try {
-      const patients = getPatients();
+      const patients = getPatients().map(buildPatientPayloadForSupabase);
       const sessions = getSessions().map(s => Object.assign({}, s, { symptoms: serializeSymptoms(s.symptoms || []) }));
       const anamneses = getAnamneses();
       const evolutions = getClinicalEvolutions();
@@ -2513,7 +2536,7 @@ function supabaseHeaders(post){
     toast('Baixando dados da nuvem...', 'info');
     try {
       const [r1, r2, r3, r4, r5] = await Promise.all([
-        fetch(cfg.supabaseUrl + '/rest/v1/patients?select=*&archived=neq.true&order=name.asc', { headers:supabaseHeaders(false) }),
+        fetch(cfg.supabaseUrl + '/rest/v1/patients?select=*&order=name.asc', { headers:supabaseHeaders(false) }),
         fetch(cfg.supabaseUrl + '/rest/v1/sessions?select=*', { headers:supabaseHeaders(false) }),
         fetch(cfg.supabaseUrl + '/rest/v1/anamneses?select=*', { headers:supabaseHeaders(false) }),
         fetch(cfg.supabaseUrl + '/rest/v1/clinical_evolutions?select=*', { headers:supabaseHeaders(false) }),
@@ -2522,14 +2545,17 @@ function supabaseHeaders(post){
       if(!r1.ok) throw new Error(await r1.text()); if(!r2.ok) throw new Error(await r2.text()); if(!r3.ok) throw new Error(await r3.text()); if(!r4.ok) throw new Error(await r4.text()); if(!r5.ok) throw new Error(await r5.text());
       const patients = (await r1.json()).map(normalizePatientRecord).filter(p => p.id && p.name);
       const sessions = (await r2.json()).map(normalizeSessionRecord).filter(s => s.id && s.patient_id && s.date);
-      const anamneses = await r3.json();
-      const evolutions = await r4.json();
-      const documents = await r5.json();
+      const anamnesesRaw = await r3.json();
+      const evolutionsRaw = await r4.json();
+      const documentsRaw = await r5.json();
+      const anamneses = Array.isArray(anamnesesRaw) ? anamnesesRaw : [];
+      const evolutions = Array.isArray(evolutionsRaw) ? evolutionsRaw : [];
+      const documents = Array.isArray(documentsRaw) ? documentsRaw : [];
       savePatients(patients);
       saveSessions(sessions);
-      saveAnamneses(Array.isArray(anamneses) ? anamneses : []);
-      saveClinicalEvolutions(Array.isArray(evolutions) ? evolutions : []);
-      savePatientDocuments(Array.isArray(documents) ? documents : []);
+      saveAnamneses(anamneses);
+      saveClinicalEvolutions(evolutions);
+      savePatientDocuments(documents);
       toast(`Restauração concluída: ${patients.length} pacientes, ${sessions.length} sessões, ${anamneses.length} anamneses, ${evolutions.length} evoluções e ${documents.length} documentos`, 'success');
       window.patientFilter = 'all';
       const patientSearch = document.getElementById('patientSearch'); if(patientSearch) patientSearch.value = '';
@@ -2544,11 +2570,13 @@ function supabaseHeaders(post){
     saveAnamneses([]);
     saveClinicalEvolutions([]);
     savePatientDocuments([]);
+    saveGuias([]);
+    saveOrientationHistory([]);
     const cfg = getConfig();
     cfg.initialized = true; // mantém — nunca reinjectar exemplos
     saveConfig(cfg);
-    refreshDashboard();
-    renderPatients();
+    window.patientFilter = 'all';
+    fullRefreshUI();
     toast('Dados removidos', 'warning');
   }
   function showTutorial(){ openModal('tutorialWrap'); }
@@ -2700,7 +2728,6 @@ function supabaseHeaders(post){
 
   document.addEventListener('DOMContentLoaded', () => {
     checkFemicAuth(); // Verificar autenticação antes de qualquer coisa
-    console.log('DOMContentLoaded init');
     setTheme(getTheme());
   populateAnamneseHelpers();
   populateClinicalHelpers();
