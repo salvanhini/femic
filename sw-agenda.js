@@ -1,9 +1,11 @@
-const CACHE_NAME = 'femic-agenda-shell-v5';
+const CACHE_NAME = 'femic-agenda-shell-v7';
 const ASSETS = [
   './',
   './agenda.html',
   './css/femic-agenda.css',
+  './css/femic-agenda.css?v=theme-refactor-1',
   './js/femic-agenda.js',
+  './js/femic-agenda.js?v=theme-refactor-1',
   './logo.png',
   './manifest-agenda.webmanifest'
 ];
@@ -28,6 +30,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
   if (url.pathname.includes('/rest/v1/') || url.pathname.includes('/auth/v1/')) return;
+  const isCoreAsset = url.pathname.endsWith('.css') || url.pathname.endsWith('.js') || url.pathname.endsWith('.html');
 
   if (req.mode === 'navigate') {
     event.respondWith(
@@ -36,6 +39,17 @@ self.addEventListener('fetch', (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
         return res;
       }).catch(() => caches.match(req).then((r) => r || caches.match('./agenda.html')))
+    );
+    return;
+  }
+
+  if (isCoreAsset) {
+    event.respondWith(
+      fetch(req).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+        return res;
+      }).catch(() => caches.match(req))
     );
     return;
   }

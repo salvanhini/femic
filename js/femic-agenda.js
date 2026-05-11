@@ -146,7 +146,28 @@ async function api(path,opt={}){const res=await fetch(base()+'/rest/v1/'+path,{h
 function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊';$('tplReminder').value=tpl;const tplForm=localStorage.femic_tpl_form_reminder||'Olá, {nome}! Tudo bem? Sua sessão de hoje foi concluída. Pode preencher rapidinho o formulário de evolução? Isso nos ajuda a acompanhar sua dor, funcionalidade e evolução. {link_formulario}';if($('tplFormReminder'))$('tplFormReminder').value=tplForm;if($('formLinkInput'))$('formLinkInput').value=localStorage.femic_form_link||'';if($('whatsappProvider'))$('whatsappProvider').value=localStorage.femic_whatsapp_provider||'wa_me';if($('whatsappEndpoint'))$('whatsappEndpoint').value=localStorage.femic_whatsapp_endpoint||'';if($('whatsappTplAppointment'))$('whatsappTplAppointment').value=localStorage.femic_whatsapp_tpl_appointment||'lembrete_sessao';if($('whatsappTplForm'))$('whatsappTplForm').value=localStorage.femic_whatsapp_tpl_form||'formulario_pos_sessao';renderWhatsappProviderBadge()}
 async function testConnection(){try{await api('patients?select=id&limit=1');toast('Conexão e carregamento funcionando.','success')}catch(e){toast('Erro real: '+e.message,'error')}}
 async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const [pa,hi,sv,pk,ap,mv,st]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api('appointments?select=*&order=appointment_date.asc,start_time.asc'),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1')]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];movements=mv||[];settings=Object.assign(settings,(st&&st[0])||{});syncForms();renderAll();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);toast('Erro ao carregar: '+e.message,'error')}}
-function showPanel(name){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.panel===name));$('panel-'+name).classList.add('active');renderAll()}
+function toggleSidebar(){
+  $('sidebar')?.classList.toggle('show');
+  $('overlay')?.classList.toggle('show');
+}
+
+function closeSidebar(){
+  $('sidebar')?.classList.remove('show');
+  $('overlay')?.classList.remove('show');
+}
+
+function syncAgendaNavState(name){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.panel===name));
+  document.querySelectorAll('.nav-link[data-panel]').forEach(b=>b.classList.toggle('active',b.dataset.panel===name));
+}
+
+function showPanel(name){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  syncAgendaNavState(name);
+  $('panel-'+name).classList.add('active');
+  closeSidebar();
+  renderAll();
+}
 function renderAll(){renderAgenda();renderDay();renderReminders();renderDashboard();renderReport();renderLists();renderBackupPanel()}function patientById(id){return patients.find(p=>String(p.id)===String(id))||{}}function serviceById(id){return services.find(s=>String(s.id)===String(id))||{}}function payerName(id){return (payers.find(p=>String(p.id)===String(id))||{}).name||'Particular'}function patientName(id){return patientById(id).name||'Paciente'}function serviceName(id){return serviceById(id).name||'Sem serviço'}
 function syncForms(){
   const patientOpts = patients
@@ -1306,36 +1327,31 @@ if(typeof weekdayShort !== 'function'){
 
 
 function getAgendaTheme(){
-  return localStorage.getItem('femic_agenda_theme') || 'light';
+  return localStorage.getItem('femic_agenda_theme') || localStorage.getItem('femic_theme') || 'light';
 }
 
 function setAgendaTheme(theme){
   const next = theme === 'dark' ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', next);
-  document.body?.setAttribute('data-theme', next);
-  document.body?.classList.toggle('theme-dark', next === 'dark');
+  document.documentElement.style.colorScheme = next;
   localStorage.setItem('femic_agenda_theme', next);
+  localStorage.setItem('femic_theme', next);
   const themeMeta = document.querySelector('meta[name="theme-color"]');
-  if(themeMeta) themeMeta.setAttribute('content', next === 'dark' ? '#0b141d' : '#0b3c6f');
-  ensureAgendaThemeStyle();
+  if(themeMeta) themeMeta.setAttribute('content', next === 'dark' ? '#0d1717' : '#0b3c6f');
 }
 
 function applyAgendaTheme(){
   setAgendaTheme(getAgendaTheme());
 }
 
-function ensureAgendaThemeStyle(){
-  if(document.getElementById('agendaThemeRuntimeStyle')) return;
-  const style=document.createElement('style');
-  style.id='agendaThemeRuntimeStyle';
-  style.textContent='html[data-theme="dark"], html[data-theme="dark"] body, body.theme-dark{color-scheme:dark;}';
-  document.head.appendChild(style);
-}
-
 function toggleAgendaTheme(){
   const next = getAgendaTheme() === 'light' ? 'dark' : 'light';
   setAgendaTheme(next);
   toast('Tema ' + (next === 'dark' ? 'escuro' : 'claro') + ' ativado.', 'info');
+}
+
+function toggleTheme(){
+  toggleAgendaTheme();
 }
 
 if(typeof getNextStatuses !== 'function'){
@@ -1515,7 +1531,7 @@ function processAutomaticReminders(){
   sendWhatsapp(next.a.id,true,next.kind);
 }
 
-applyAgendaTheme();renderWorkDays();renderReminderAutomationStatus();renderAll();if(base()&&key()&&sessionStorage.getItem('femic_jwt'))loadAll(true);
+applyAgendaTheme();renderWorkDays();renderReminderAutomationStatus();syncAgendaNavState('dashboard');renderAll();if(base()&&key()&&sessionStorage.getItem('femic_jwt'))loadAll(true);
 function hasOpenModal(){
   return !!document.querySelector('.modal-backdrop.show');
 }
