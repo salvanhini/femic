@@ -12,9 +12,18 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/femic-agenda.css">
+<link rel="stylesheet" href="css/femic-agenda.css?v=theme-refactor-1">
 </head>
 <body>
+<div class="mobile-topbar">
+  <button class="btn-icon" onclick="toggleSidebar()">☰</button>
+  <div class="mobile-brand">
+    <img src="logo.png" alt="FEMIC" class="mobile-brand-logo" />
+    <strong>FEMIC Agenda</strong>
+  </div>
+  <button class="btn-icon" onclick="toggleTheme()">🌓</button>
+</div>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 <!-- ===== FEMIC LOGIN OVERLAY ===== -->
 <div id="femicLoginOverlay" style="
   position:fixed; inset:0; z-index:9999;
@@ -106,20 +115,56 @@
 </div>
 
 <div class="toast-wrap" id="toastWrap"></div>
-<div class="topbar"><div class="topbar-inner"><div class="brand"><div class="logo"></div><div><h1>FEMIC Agenda v1.4.44</h1><p>Grade semanal equilibrada · PWA conservador · sincronização segura</p></div></div><div class="toolbar"><button class="btn" onclick="toggleAgendaTheme()">🌓 Tema</button><button class="btn primary" onclick="openAppt()">+ Agendar</button><button class="btn" onclick="loadAll()">↻ Atualizar</button><button class="btn ghost" onclick="goToday()">Hoje</button><button class="btn" onclick="femicLogout()" style="border-color:rgba(239,68,68,.25); color:#b91c1c; background:#fff7f7;">🚪 <span id="loginUserLabel">Sair</span></button></div></div></div>
-<div class="wrap">
-  <div class="tabs">
-    <button class="tab active" data-panel="dashboard" onclick="showPanel('dashboard')">📊 Dashboard</button>
-    <button class="tab" data-panel="agenda" onclick="showPanel('agenda')">📅 Agenda</button>
-    <button class="tab" data-panel="day" onclick="showPanel('day')">📋 Dia</button>
-    <button class="tab" data-panel="patients" onclick="showPanel('patients')">👥 Pacientes</button>
-    <button class="tab" data-panel="packages" onclick="showPanel('packages')">🎟️ Pacotes</button>
-    <button class="tab" data-panel="reminders" onclick="showPanel('reminders')">📲 Lembretes</button>
-    <button class="tab" data-panel="report" onclick="showPanel('report')">💰 Relatório</button>
-    <button class="tab" data-panel="settings" onclick="showPanel('settings')">⚙️ Configurações</button>
-    <button class="tab" data-panel="backup" onclick="showPanel('backup')">☁️ Backup</button>
-    <button class="tab" data-panel="sql" onclick="showPanel('sql')">🧱 SQL</button>
-  </div>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand sidebar-brand">
+      <img src="logo.png" alt="Logo FEMIC" class="brand-logo" />
+      <div class="brand-text">
+        <div class="wordmark"><span class="femic-navy">FEM</span><span class="femic-cyan">IC</span></div>
+        <small>Agenda clínica · Araraquara, SP</small>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-link active" data-panel="dashboard" onclick="showPanel('dashboard')"><span class="icon">📊</span><span>Dashboard</span></div>
+      <div class="nav-link" data-panel="agenda" onclick="showPanel('agenda')"><span class="icon">📅</span><span>Agenda</span></div>
+      <div class="nav-link" data-panel="day" onclick="showPanel('day')"><span class="icon">📋</span><span>Dia</span></div>
+      <div class="nav-link" data-panel="patients" onclick="showPanel('patients')"><span class="icon">👥</span><span>Pacientes</span></div>
+      <div class="nav-link" data-panel="packages" onclick="showPanel('packages')"><span class="icon">🎟️</span><span>Pacotes</span></div>
+      <div class="nav-link" data-panel="reminders" onclick="showPanel('reminders')"><span class="icon">📲</span><span>Lembretes</span></div>
+      <div class="nav-link" data-panel="report" onclick="showPanel('report')"><span class="icon">💰</span><span>Relatório</span></div>
+      <div class="nav-link" data-panel="settings" onclick="showPanel('settings')"><span class="icon">⚙️</span><span>Configurações</span></div>
+      <div class="nav-link" data-panel="backup" onclick="showPanel('backup')"><span class="icon">☁️</span><span>Backup</span></div>
+      <div class="nav-link" data-panel="sql" onclick="showPanel('sql')"><span class="icon">🧱</span><span>SQL</span></div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="side-btn" onclick="toggleTheme()">🌓 Alternar tema</button>
+      <button class="side-btn" onclick="openAppt()">+ Novo agendamento</button>
+      <button class="side-btn" onclick="goToday(); showPanel('agenda')">📅 Ir para hoje</button>
+      <button class="side-btn" onclick="loadAll()">↻ Atualizar dados</button>
+      <button class="side-btn" onclick="window.location.href='index.html'">🏠 Sistema principal</button>
+      <button class="side-btn" onclick="femicLogout()" style="border-color:rgba(239,68,68,.25); color:rgba(255,120,120,.94);">🚪 <span id="loginUserLabel">Sair</span></button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <div class="logo"></div>
+          <div>
+            <h1>FEMIC Agenda v1.4.44</h1>
+            <p>Grade semanal equilibrada · navegação lateral · sincronização segura</p>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button class="btn primary" onclick="openAppt()">+ Agendar</button>
+          <button class="btn" onclick="loadAll()">↻ Atualizar</button>
+          <button class="btn ghost" onclick="goToday()">Hoje</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="wrap">
 
   <section class="panel active" id="panel-dashboard">
     <div class="grid grid-4" id="dashboardKpis"></div>
@@ -253,8 +298,9 @@
     </div>
   </section>
 
-
   <section class="panel" id="panel-sql"><div class="card"><div class="eyebrow">SQL limpo para Supabase</div><button class="btn primary" onclick="copySql()">Copiar SQL</button><pre class="sqlbox" id="sqlBox"></pre></div></section>
+    </div>
+  </main>
 </div>
 
 <div class="modal-backdrop" id="apptModal">
@@ -416,6 +462,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
-<script src="js/femic-agenda.js"></script>
+<script src="js/femic-agenda.js?v=theme-refactor-1"></script>
 </body>
 </html>
