@@ -1,7 +1,7 @@
 {
-  "name": "FEMIC Agenda",
-  "short_name": "Agenda FEMIC",
-  "start_url": "./agenda.html",
+  "name": "FEMIC Unificado",
+  "short_name": "FEMIC",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f4f8f8",

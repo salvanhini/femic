@@ -2,8 +2,12 @@
 <html lang="pt-BR" data-theme="light">
 <head>
 <meta charset="UTF-8" />
+<meta http-equiv="refresh" content="0; url=index.html" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>FEMIC Agenda v1.4.44</title>
+<script>
+window.location.replace('index.html');
+</script>
 <meta name="theme-color" content="#0b3c6f" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -12,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/femic-agenda.css?v=theme-refactor-1">
+<link rel="stylesheet" href="css/femic-agenda.css?v=theme-refactor-3">
 </head>
 <body>
 <div class="mobile-topbar">
@@ -125,8 +129,7 @@
       </div>
     </div>
     <nav>
-      <div class="nav-link active" data-panel="dashboard" onclick="showPanel('dashboard')"><span class="icon">📊</span><span>Dashboard</span></div>
-      <div class="nav-link" data-panel="agenda" onclick="showPanel('agenda')"><span class="icon">📅</span><span>Agenda</span></div>
+      <div class="nav-link active" data-panel="agenda" onclick="showPanel('agenda')"><span class="icon">📅</span><span>Agenda</span></div>
       <div class="nav-link" data-panel="day" onclick="showPanel('day')"><span class="icon">📋</span><span>Dia</span></div>
       <div class="nav-link" data-panel="patients" onclick="showPanel('patients')"><span class="icon">👥</span><span>Pacientes</span></div>
       <div class="nav-link" data-panel="packages" onclick="showPanel('packages')"><span class="icon">🎟️</span><span>Pacotes</span></div>
@@ -166,19 +169,14 @@
 
     <div class="wrap">
 
-  <section class="panel active" id="panel-dashboard">
-    <div class="grid grid-4" id="dashboardKpis"></div>
-    <div class="grid grid-2" style="margin-top:16px"><div class="card"><div class="eyebrow">Hoje</div><div class="list" id="dashToday"></div></div><div class="card"><div class="eyebrow">Alertas</div><div class="list" id="dashAlerts"></div></div></div>
-  </section>
-
-  <section class="panel" id="panel-agenda">
+  <section class="panel active" id="panel-agenda">
     <div class="card" style="margin-bottom:16px"><div class="toolbar"><button class="btn" onclick="prevPeriod()">◀</button><button class="btn ghost" onclick="goToday()">Hoje</button><button class="btn" onclick="nextPeriod()">▶</button><select id="viewMode" onchange="renderAgenda()" style="max-width:180px"><option value="week">Semana</option><option value="month">Mês</option></select><strong id="periodLabel" style="align-self:center;color:var(--primary)"></strong><div class="legend-row"><span class="legend"><i class="legend-dot" style="background:#f59e0b"></i>Agendado</span><span class="legend"><i class="legend-dot" style="background:#2563eb"></i>Confirmado</span><span class="legend"><i class="legend-dot" style="background:#10b981"></i>Concluído</span><span class="legend"><i class="legend-dot" style="background:#ef4444"></i>Cancelado</span></div></div><div class="agenda-filterbar"><select id="agendaStatusFilter" onchange="renderAgenda()"><option value="all">Todos os status</option><option value="agendado">Agendado</option><option value="confirmado">Confirmado</option><option value="concluido">Concluído</option><option value="cancelado">Cancelado</option></select><select id="agendaServiceFilter" onchange="renderAgenda()"><option value="all">Todos os serviços</option></select><button class="btn ghost" onclick="clearAgendaFilters()">Limpar filtros</button></div></div>
-    <div id="monthView"><div class="calendar-head" id="monthHead"></div><div class="calendar" id="monthCalendar"></div></div>
+    <div id="monthView"><div class="calendar-head" id="monthHead"></div><div id="monthCalendar"></div></div>
     <div id="weekView" class="hidden"><div class="week-board" id="weekBoard"></div></div>
   </section>
 
   <section class="panel" id="panel-day">
-    <div class="card"><div class="section-title"><div><div class="eyebrow">Dia operacional</div><h3>Atendimentos do dia</h3></div><div class="toolbar"><input type="date" id="dayDate" onchange="renderDay()" style="max-width:190px"><button class="btn" onclick="goToday();showPanel('day')">Hoje</button><button class="btn" onclick="renderDay()">Atualizar</button></div></div><div class="quick-note small">Use esta tela para mudar status rapidamente sem abrir toda a agenda.</div></div>
+    <div class="card day-panel-shell"><div class="section-title day-panel-header"><div class="day-panel-copy"><div class="eyebrow">Dia operacional</div><h3>Atendimentos do dia</h3></div><div class="toolbar day-panel-controls"><input class="day-panel-date" type="date" id="dayDate" onchange="renderDay()"><button class="btn" onclick="goToday();showPanel('day')">Hoje</button><button class="btn" onclick="renderDay()">Atualizar</button></div></div><div class="quick-note small day-panel-note">Use esta tela para mudar status rapidamente sem abrir toda a agenda.</div></div>
     <div class="grid grid-4" id="dayKpis" style="margin-top:16px"></div>
     <div class="card" style="margin-top:16px"><div class="section-title"><h3>Lista do dia</h3><span class="muted small">Concluir, cancelar, WhatsApp e ficha em poucos cliques</span></div><div class="list" id="dayList"></div></div>
   </section>
@@ -245,8 +243,69 @@
     <div class="grid grid-2"><div class="card"><div class="section-title"><div><div class="eyebrow">Supabase</div><h3>Conexão</h3></div></div><div class="grid grid-2"><div class="field"><label>URL</label><input id="sbUrl" placeholder="https://xxxx.supabase.co"></div><div class="field"><label>Anon key</label><input id="sbKey" placeholder="anon key"></div></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" onclick="saveConfig();loadAll()">Salvar e carregar</button><button class="btn" onclick="testConnection()">Testar conexão</button></div></div><div class="card"><div class="section-title"><div><div class="eyebrow">Expediente</div><h3>Horários da clínica</h3></div></div><div class="grid grid-3"><div class="field"><label>Início geral</label><input id="setStart" type="time" value="08:00"></div><div class="field"><label>Fim geral</label><input id="setEnd" type="time" value="20:00"></div><div class="field"><label>Intervalo grade</label><select id="setInterval"><option>15</option><option selected>30</option><option>45</option><option>60</option></select></div></div><div class="field" style="margin-top:12px"><label>Períodos de atendimento</label><input id="setPeriods" placeholder="08:00-12:00,16:00-20:00" value="08:00-12:00,16:00-20:00"><div class="period-help small">Use vírgula para separar períodos. A agenda só mostrará horários dentro dessas janelas.</div></div><div class="toolbar" id="workDays" style="margin-top:12px"></div><button class="btn primary" style="margin-top:12px" onclick="saveSettings()">Salvar expediente</button></div></div>
     <div class="grid grid-2" style="margin-top:16px"><div class="card"><div class="section-title"><div><div class="eyebrow">Pagadores</div><h3>Convênios e particulares</h3></div></div><div class="toolbar"><input id="payerName" placeholder="Nome do pagador" style="max-width:260px"><button class="btn primary" onclick="savePayer()">Adicionar</button></div><div class="list" id="payerList" style="margin-top:12px"></div></div><div class="card"><div class="section-title"><div><div class="eyebrow">Serviços</div><h3>Valores, duração e modo</h3></div></div><div class="grid grid-2"><input id="svcName" placeholder="Nome do serviço"><select id="svcPayer"></select><input id="svcPrice" type="number" placeholder="Valor"><select id="svcDur"><option>30</option><option selected>45</option><option>60</option><option>90</option></select><select id="svcMode"><option value="grupo">Grupo</option><option value="individual">Individual</option></select><input id="svcMax" type="number" value="4" placeholder="Limite"></div><button class="btn primary" style="margin-top:12px" onclick="saveService()">Adicionar serviço</button><div class="list" id="serviceList" style="margin-top:12px"></div></div></div>
     
+    <div class="card" style="margin-top:16px" id="clinicRulesCard">
+      <div class="section-title">
+        <div><div class="eyebrow">Regras da clínica</div><h3>Políticas complementares do assistente</h3></div>
+        <span class="muted small" id="clinicRulesStatus">Carregando…</span>
+      </div>
+      <p class="muted small" style="margin-top:0">Essas regras não substituem as validações duras da agenda. Elas complementam as respostas e futuras ações do assistente.</p>
+      <div id="clinicRulesEditor" class="clinic-rules-grid"></div>
+      <div class="toolbar" style="margin-top:12px">
+        <button class="btn primary" onclick="saveClinicRules()">Salvar regras da clínica</button>
+        <button class="btn" onclick="resetClinicRulesToDefaults()">Restaurar defaults</button>
+      </div>
+    </div>
     <div class="card" style="margin-top:16px"><div class="eyebrow">Modelos WhatsApp</div><div class="grid grid-2"><div class="field"><label>Lembrete de sessão</label><textarea id="tplReminder" rows="5"></textarea></div><div class="field"><label>Formulário pós-atendimento</label><textarea id="tplFormReminder" rows="5"></textarea></div></div><div class="field" style="margin-top:12px"><label>Link do formulário de respostas</label><input id="formLinkInput" placeholder="https://... formulário do paciente"></div><button class="btn primary" style="margin-top:12px" onclick="saveTemplates()">Salvar modelos</button></div>
     <div class="card" style="margin-top:16px"><div class="section-title"><div><div class="eyebrow">WhatsApp API</div><h3>Preparação segura para Meta Cloud API</h3></div><span class="mode-badge manual" id="whatsappProviderBadge">wa.me</span></div><p class="muted small" style="margin-top:0">Deixe em link manual enquanto a API não estiver pronta. Para usar a Meta Cloud API, configure uma Supabase Edge Function e cole aqui apenas a URL pública da função. O token da Meta nunca deve ficar neste navegador.</p><div class="grid grid-2"><div class="field"><label>Provedor de envio</label><select id="whatsappProvider" onchange="renderWhatsappProviderBadge()"><option value="wa_me">Link WhatsApp seguro</option><option value="api">API via Supabase Edge Function</option></select></div><div class="field"><label>Endpoint da Edge Function</label><input id="whatsappEndpoint" placeholder="https://SEU-PROJETO.functions.supabase.co/send-whatsapp-reminder"></div><div class="field"><label>Template Meta: sessão</label><input id="whatsappTplAppointment" placeholder="lembrete_sessao"></div><div class="field"><label>Template Meta: formulário</label><input id="whatsappTplForm" placeholder="formulario_pos_sessao"></div></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" onclick="saveWhatsappApiConfig()">Salvar WhatsApp API</button><button class="btn" onclick="testWhatsappApiConfig()">Testar configuração local</button></div></div>
+    <div class="card" style="margin-top:16px" id="assistantAiConfigCard">
+      <div class="section-title">
+        <div><div class="eyebrow">IA do assistente</div><h3>Modelos e APIs externas</h3></div>
+        <span class="mode-badge manual" id="assistantAiProviderBadge">gemini</span>
+      </div>
+      <p class="muted small" style="margin-top:0">Use esta configuração para perguntas externas do chat flutuante. As consultas internas da agenda continuam sem custo de IA.</p>
+      <div class="grid grid-2">
+        <div class="field">
+          <label>Provedor padrão</label>
+          <select id="assistantAiProvider" onchange="renderAssistantAiProviderBadge()">
+            <option value="gemini">Google Gemini</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="groq">Groq</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <input id="assistantAiStatusInput" value="Consultas internas sempre usam os dados da agenda." readonly>
+        </div>
+        <div class="field">
+          <label>Modelo Gemini</label>
+          <input id="assistantGeminiModel" placeholder="gemini-2.5-flash">
+        </div>
+        <div class="field">
+          <label>Chave Gemini</label>
+          <input id="assistantGeminiKey" type="password" placeholder="AIzaSy...">
+        </div>
+        <div class="field">
+          <label>Modelo DeepSeek</label>
+          <input id="assistantDeepseekModel" placeholder="deepseek-chat">
+        </div>
+        <div class="field">
+          <label>Chave DeepSeek</label>
+          <input id="assistantDeepseekKey" type="password" placeholder="sk-...">
+        </div>
+        <div class="field">
+          <label>Modelo Groq</label>
+          <input id="assistantGroqModel" placeholder="llama-3.3-70b-versatile">
+        </div>
+        <div class="field">
+          <label>Chave Groq</label>
+          <input id="assistantGroqKey" type="password" placeholder="gsk_...">
+        </div>
+      </div>
+      <div class="toolbar" style="margin-top:12px">
+        <button class="btn primary" onclick="saveAssistantAiConfig()">Salvar IA do assistente</button>
+        <button class="btn" onclick="testAssistantAiConfig()">Testar configuração</button>
+      </div>
+    </div>
   </section>
 
 
@@ -294,6 +353,7 @@
         <div class="kpi"><div class="small muted">Movimentos / histórico</div><strong id="bkMovements">0</strong></div>
         <div class="kpi"><div class="small muted">Serviços</div><strong id="bkServices">0</strong></div>
         <div class="kpi"><div class="small muted">Pagadores</div><strong id="bkPayers">0</strong></div>
+        <div class="kpi"><div class="small muted">Regras da clínica</div><strong id="bkClinicRules">0</strong></div>
       </div>
     </div>
   </section>
@@ -453,15 +513,64 @@
   </div>
 </div>
 
+<button class="assistant-fab" id="assistantFab" type="button" onclick="toggleAssistantPanel()" aria-label="Abrir assistente FEMIC">
+  <span>Assistente</span>
+  <strong>FEMIC</strong>
+</button>
+
+<section class="assistant-panel hidden" id="assistantPanel" aria-live="polite">
+  <div class="assistant-panel-head">
+    <div>
+      <div class="eyebrow">Assistente FEMIC</div>
+      <h3>Consulta da agenda</h3>
+      <div class="muted small" id="assistantBuildLabel">build assistant-live-4</div>
+    </div>
+    <button class="btn" type="button" onclick="toggleAssistantPanel(false)">✕</button>
+  </div>
+  <div class="assistant-panel-body">
+    <div class="assistant-suggestions" id="assistantSuggestions"></div>
+    <div class="assistant-chat-title">Respostas do assistente</div>
+    <div class="assistant-chat" id="assistantMessages"></div>
+    <div class="assistant-debug muted small" id="assistantDebug">Assistente iniciando…</div>
+  </div>
+  <form class="assistant-panel-foot">
+    <textarea id="assistantInput" rows="3" placeholder="Pergunte sobre horários, saldo de sessões, conflitos ou algo externo. Enter envia. Shift+Enter quebra linha."></textarea>
+    <div class="assistant-panel-actions">
+      <span class="muted small" id="assistantStatus">Consultas internas priorizam os dados da agenda. Enter envia.</span>
+      <button class="btn primary" id="assistantSendBtn" type="submit">Perguntar</button>
+    </div>
+  </form>
+</section>
+
 <script>
+window.FEMIC_ASSISTANT_BUILD = 'assistant-live-4';
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('./sw-agenda.js').catch(function (err) {
-      console.warn('SW Agenda não registrado:', err);
+    navigator.serviceWorker.getRegistrations().then(function (registrations) {
+      return Promise.all((registrations || []).map(function (registration) {
+        return registration.unregister();
+      }));
+    }).catch(function (err) {
+      console.warn('Falha ao remover service workers:', err);
+    });
+  });
+}
+if ('caches' in window) {
+  window.addEventListener('load', function () {
+    caches.keys().then(function (keys) {
+      return Promise.all((keys || []).filter(function (key) {
+        return String(key).indexOf('femic-agenda') !== -1;
+      }).map(function (key) {
+        return caches.delete(key);
+      }));
+    }).catch(function (err) {
+      console.warn('Falha ao limpar caches da agenda:', err);
     });
   });
 }
 </script>
-<script src="js/femic-agenda.js?v=theme-refactor-1"></script>
+<script src="js/femic-agenda.js?v=theme-refactor-4"></script>
+<script src="js/femic-assistant-rules.js?v=assistant-rules-4"></script>
+<script src="js/femic-assistant.js?v=assistant-ui-5"></script>
 </body>
 </html>

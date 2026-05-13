@@ -4,6 +4,7 @@ const SQL_SCHEMA = `-- FEMIC Agenda v1.4.36 - Ficha com dia da semana FINAL LIMP
 DROP TABLE IF EXISTS session_movements CASCADE;
 DROP TABLE IF EXISTS session_packages CASCADE;
 DROP TABLE IF EXISTS appointments CASCADE;
+DROP TABLE IF EXISTS clinic_rules CASCADE;
 DROP TABLE IF EXISTS services CASCADE;
 DROP TABLE IF EXISTS health_insurances CASCADE;
 DROP TABLE IF EXISTS schedule_settings CASCADE;
@@ -88,6 +89,20 @@ CREATE TABLE session_movements (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+-- REGRAS COMPLEMENTARES DA CLÍNICA
+CREATE TABLE clinic_rules (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  rule_key TEXT NOT NULL UNIQUE,
+  rule_category TEXT DEFAULT 'assistant',
+  title TEXT NOT NULL,
+  description TEXT,
+  rule_value_json JSONB DEFAULT '{}'::jsonb,
+  active BOOLEAN DEFAULT TRUE,
+  priority INTEGER DEFAULT 100,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
 -- CONFIGURAÇÕES DA AGENDA
 CREATE TABLE schedule_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -126,10 +141,12 @@ ALTER TABLE schedule_settings DISABLE ROW LEVEL SECURITY;
 ALTER TABLE session_packages DISABLE ROW LEVEL SECURITY;
 ALTER TABLE appointments DISABLE ROW LEVEL SECURITY;
 ALTER TABLE session_movements DISABLE ROW LEVEL SECURITY;
+ALTER TABLE clinic_rules DISABLE ROW LEVEL SECURITY;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 NOTIFY pgrst, 'reload schema';`;
-const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],movements=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();
+const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],movements=[],clinicRules=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();
+const CLINIC_RULES_STORAGE_KEY='femic_agenda_clinic_rules';
 function toast(msg,type='info'){const el=document.createElement('div');el.className='toast '+type;el.textContent=msg;$('toastWrap').appendChild(el);setTimeout(()=>el.remove(),3600)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function localIsoDate(d){const x=new Date(d);return String(x.getFullYear())+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}function todayIso(){return localIsoDate(new Date())}function isoDate(d){return localIsoDate(d)}function dateDay(dateStr){const [y,m,d]=String(dateStr).split('-').map(Number);return new Date(y,m-1,d).getDay()}function fmtDate(s){if(!s)return'';const [y,m,d]=String(s).split('-');return d+'/'+m+'/'+y}function fmtWeekday(s){if(!s)return'';const [y,m,d]=String(s).split('-').map(Number);const dias=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];return dias[new Date(y,m-1,d).getDay()]||''}function cleanPhone(v){return String(v||'').replace(/\D/g,'')}function brl(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}function normalizeTime(t){return String(t||'').slice(0,5)}function timeToMin(t){const [h,m]=normalizeTime(t).split(':').map(Number);return h*60+(m||0)}function minToTime(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}function addMinutes(t,m){return minToTime(timeToMin(t)+Number(m||0))}function base(){return ($('sbUrl').value||localStorage.femic_agenda_url||'').trim().replace(/\/$/,'')}function key(){return ($('sbKey').value||localStorage.femic_agenda_key||'').trim()}function headers(){
@@ -143,9 +160,14 @@ function localIsoDate(d){const x=new Date(d);return String(x.getFullYear())+'-'+
   return{apikey:key(),Authorization:'Bearer '+authJwt,'Content-Type':'application/json',Prefer:'return=representation'};
 }
 async function api(path,opt={}){const res=await fetch(base()+'/rest/v1/'+path,{headers:headers(),...opt});const txt=await res.text();let data;try{data=txt?JSON.parse(txt):null}catch(e){data=txt}if(!res.ok){console.error('Supabase error',path,res.status,data);throw new Error((data&&data.message)||txt||('HTTP '+res.status))}return data}
-function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊';$('tplReminder').value=tpl;const tplForm=localStorage.femic_tpl_form_reminder||'Olá, {nome}! Tudo bem? Sua sessão de hoje foi concluída. Pode preencher rapidinho o formulário de evolução? Isso nos ajuda a acompanhar sua dor, funcionalidade e evolução. {link_formulario}';if($('tplFormReminder'))$('tplFormReminder').value=tplForm;if($('formLinkInput'))$('formLinkInput').value=localStorage.femic_form_link||'';if($('whatsappProvider'))$('whatsappProvider').value=localStorage.femic_whatsapp_provider||'wa_me';if($('whatsappEndpoint'))$('whatsappEndpoint').value=localStorage.femic_whatsapp_endpoint||'';if($('whatsappTplAppointment'))$('whatsappTplAppointment').value=localStorage.femic_whatsapp_tpl_appointment||'lembrete_sessao';if($('whatsappTplForm'))$('whatsappTplForm').value=localStorage.femic_whatsapp_tpl_form||'formulario_pos_sessao';renderWhatsappProviderBadge()}
+function readClinicRulesCache(){try{const raw=JSON.parse(localStorage.getItem(CLINIC_RULES_STORAGE_KEY)||'[]');return Array.isArray(raw)?raw:[]}catch(e){return[]}}
+function writeClinicRulesCache(list){localStorage.setItem(CLINIC_RULES_STORAGE_KEY,JSON.stringify(Array.isArray(list)?list:[]))}
+function isMissingClinicRulesTableError(err){return /clinic_rules|relation .* does not exist|Could not find the table/i.test(String(err&&err.message||err||''))}
+async function loadClinicRulesCollection(){try{const rows=await api('clinic_rules?select=*&order=priority.asc,created_at.asc');writeClinicRulesCache(rows||[]);return rows||[]}catch(e){if(isMissingClinicRulesTableError(e))return readClinicRulesCache();throw e}}
+clinicRules=readClinicRulesCache();
+function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊';$('tplReminder').value=tpl;if($('whatsappProvider'))$('whatsappProvider').value=localStorage.femic_whatsapp_provider||'wa_me';if($('whatsappEndpoint'))$('whatsappEndpoint').value=localStorage.femic_whatsapp_endpoint||'';if($('whatsappTplAppointment'))$('whatsappTplAppointment').value=localStorage.femic_whatsapp_tpl_appointment||'lembrete_sessao';renderWhatsappProviderBadge()}
 async function testConnection(){try{await api('patients?select=id&limit=1');toast('Conexão e carregamento funcionando.','success')}catch(e){toast('Erro real: '+e.message,'error')}}
-async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const [pa,hi,sv,pk,ap,mv,st]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api('appointments?select=*&order=appointment_date.asc,start_time.asc'),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1')]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];movements=mv||[];settings=Object.assign(settings,(st&&st[0])||{});syncForms();renderAll();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);toast('Erro ao carregar: '+e.message,'error')}}
+async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const [pa,hi,sv,pk,ap,mv,st,cr]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api('appointments?select=*&order=appointment_date.asc,start_time.asc'),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});syncForms();renderAll();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);toast('Erro ao carregar: '+e.message,'error')}}
 function toggleSidebar(){
   $('sidebar')?.classList.toggle('show');
   $('overlay')?.classList.toggle('show');
@@ -168,7 +190,15 @@ function showPanel(name){
   closeSidebar();
   renderAll();
 }
-function renderAll(){renderAgenda();renderDay();renderReminders();renderDashboard();renderReport();renderLists();renderBackupPanel()}function patientById(id){return patients.find(p=>String(p.id)===String(id))||{}}function serviceById(id){return services.find(s=>String(s.id)===String(id))||{}}function payerName(id){return (payers.find(p=>String(p.id)===String(id))||{}).name||'Particular'}function patientName(id){return patientById(id).name||'Paciente'}function serviceName(id){return serviceById(id).name||'Sem serviço'}
+function renderAll(){renderAgenda();renderDay();renderReminders();renderReport();renderLists();renderBackupPanel()}function patientById(id){return patients.find(p=>String(p.id)===String(id))||{}}function serviceById(id){return services.find(s=>String(s.id)===String(id))||{}}function payerName(id){return (payers.find(p=>String(p.id)===String(id))||{}).name||'Particular'}function patientName(id){return patientById(id).name||'Paciente'}function serviceName(id){return serviceById(id).name||'Sem serviço'}
+window.FEMICAgendaRuntime={
+  getState:function(){return{patients:[...patients],payers:[...payers],services:[...services],packages:[...packages],appointments:[...appointments],movements:[...movements],clinicRules:[...clinicRules],settings:Object.assign({},settings)}},
+  setClinicRules:function(list){clinicRules=Array.isArray(list)?list:[];writeClinicRulesCache(clinicRules);renderBackupPanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));return clinicRules},
+  readClinicRulesCache:readClinicRulesCache,
+  writeClinicRulesCache:writeClinicRulesCache,
+  loadClinicRulesCollection:loadClinicRulesCollection,
+  isMissingClinicRulesTableError:isMissingClinicRulesTableError
+};
 function syncForms(){
   const patientOpts = patients
     .filter(p=>p.archived!==true)
@@ -205,9 +235,56 @@ function prevPeriod(){if($('viewMode').value==='month')currentDate.setMonth(curr
 function agendaFiltered(list){const st=$('agendaStatusFilter')?.value||'all';const sv=$('agendaServiceFilter')?.value||'all';return list.filter(a=>(st==='all'||a.status===st)&&(sv==='all'||String(a.service_id)===String(sv)))}
 function populateAgendaFilters(){const sel=$('agendaServiceFilter');if(!sel)return;const current=sel.value||'all';sel.innerHTML='<option value="all">Todos os serviços</option>'+services.filter(s=>s.active!==false).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');sel.value=[...sel.options].some(o=>o.value===current)?current:'all'}
 function clearAgendaFilters(){if($('agendaStatusFilter'))$('agendaStatusFilter').value='all';if($('agendaServiceFilter'))$('agendaServiceFilter').value='all';renderAgenda()}
-function renderAgenda(){populateAgendaFilters();if($('viewMode').value==='month')renderMonth();else renderWeek()}function renderMonth(){$('monthView').classList.remove('hidden');$('weekView').classList.add('hidden');const names=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];$('monthHead').innerHTML=names.map(n=>`<div class="weekday">${n}</div>`).join('');const y=currentDate.getFullYear(),m=currentDate.getMonth();$('periodLabel').textContent=currentDate.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});const first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate();let html='';for(let i=0;i<first;i++)html+='<div></div>';for(let d=1;d<=days;d++){const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const list=agendaFiltered(appointments.filter(a=>a.appointment_date===ds)).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));const off=isClosedForView(ds);html+=`<div class="day ${ds===todayIso()?'today':''} ${off?'off':''}" onclick="${off?'':'openAppt(\''+ds+'\')'}"><div class="day-num"><span>${d}</span><span class="pill">${ds===todayIso()?'Hoje · ':''}${off?'Fechado':list.length+' at.'}</span></div>`;list.slice(0,4).forEach(a=>html+=apptCard(a,'appt'));if(list.length>4)html+=`<div class="muted small">+${list.length-4} outros</div>`;html+='</div>'}$('monthCalendar').innerHTML=html}
-function renderWeek(){$('monthView').classList.add('hidden');$('weekView').classList.remove('hidden');const start=weekStart(currentDate);const days=[0,1,2,3,4,5,6].map(i=>{const d=new Date(start);d.setDate(start.getDate()+i);return d});$('periodLabel').textContent=`Semana de ${fmtDate(isoDate(days[0]))} a ${fmtDate(isoDate(days[6]))}`;let html='<div class="week-cell head week-time">Hora</div>';days.forEach(d=>{const ds=isoDate(d);html+=`<div class="week-cell head ${ds===todayIso()?'today-head':''}">${d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})}</div>`});slots().forEach(slot=>{html+=`<div class="week-cell week-time">${slot}</div>`;days.forEach(d=>{const ds=isoDate(d),off=isClosedForView(ds);const base=agendaFiltered(appointments.filter(a=>a.appointment_date===ds));const atSlot=base.filter(a=>normalizeTime(a.start_time)===slot);const overlapping=base.filter(a=>a.status!=='cancelado' && timeToMin(normalizeTime(a.start_time))<timeToMin(addMinutes(slot,Number(settings.slot_interval_minutes||30))) && timeToMin(normalizeTime(a.end_time))>timeToMin(slot));html+=`<div class="week-cell week-slot ${ds===todayIso()?'today-slot':''} ${off?'closed':''}" onclick="${off?'':'openAppt(\''+ds+'\',null,\''+slot+'\')'}">`;if(!off)html+=`<div class="capacity ${overlapping.length>=Number(settings.max_patients_per_slot||4)?'full':''}">${overlapping.length}/${settings.max_patients_per_slot||4}</div>`;atSlot.forEach(a=>html+=apptCard(a,'week-appt'));html+='</div>'})});$('weekBoard').innerHTML=html}
-function apptCard(a,cls){const p=patientById(a.patient_id),s=serviceById(a.service_id);const label={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;return `<div class="${cls} status-${a.status}" onclick="event.stopPropagation();openAppt('${a.appointment_date}','${a.id}')"><div class="appt-time">${normalizeTime(a.start_time)}–${normalizeTime(a.end_time)}</div><strong class="appt-name" title="${esc(p.name||'Paciente')}">${esc(p.name||'Paciente')}</strong><div class="appt-meta"><span class="status-chip ${a.status}">${label}</span></div><div class="small" style="margin-top:3px;color:var(--muted);font-size:.7rem">${esc(s.name||'Sem serviço')}</div>${saldoBadge(a.patient_id,a.service_id)}<div class="appt-actions"><button class="mini-action" onclick="event.stopPropagation();openPatient('${a.patient_id}')">👤 Ficha</button><button class="mini-action" onclick="event.stopPropagation();rescheduleAppointment('${a.id}')">📅 Remarcar</button><button class="mini-action" onclick="event.stopPropagation();sendWhatsapp('${a.id}',false,'appointment')">💬 WhatsApp</button></div></div>`}
+function updateAgendaViewToggle(){const mode=$('viewMode')?.value||'week';document.querySelectorAll('.view-chip').forEach(btn=>btn.classList.remove('active'));if(mode==='month')$('viewMonthBtn')?.classList.add('active');else $('viewWeekBtn')?.classList.add('active')}
+function setAgendaViewMode(mode){if(!$('viewMode'))return;$('viewMode').value=mode;updateAgendaViewToggle();if(mode==='day'){showPanel('day');return}if(mode==='agenda')showPanel('agenda');renderAgenda()}
+function renderAgenda(){populateAgendaFilters();updateAgendaViewToggle();if($('viewMode').value==='month')renderMonth();else renderWeek()}
+function shouldShowEmptyMonthDays(){return localStorage.getItem('femic_month_show_empty_days')==='true'}
+function toggleMonthEmptyDays(){localStorage.setItem('femic_month_show_empty_days',shouldShowEmptyMonthDays()?'false':'true');renderMonth()}
+function renderMonth(){
+  $('monthView').classList.remove('hidden');
+  $('weekView').classList.add('hidden');
+  const names=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const y=currentDate.getFullYear(),m=currentDate.getMonth();
+  const showEmpty=shouldShowEmptyMonthDays();
+  $('periodLabel').textContent=currentDate.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  $('monthHead').innerHTML=`<div class="month-list-head"><div><div class="eyebrow">Agenda do mês</div><h3>${currentDate.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</h3></div><div class="month-list-tools"><button class="btn ghost" type="button" onclick="toggleMonthEmptyDays()">${showEmpty?'Ocultar dias vazios':'Mostrar dias vazios'}</button><span class="muted small">Lista mensal oficial da FEMIC</span></div></div>`;
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  let html='<div class="month-agenda-list">';
+  let rendered=0,totalAppointments=0,totalConfirmed=0,totalDone=0;
+  for(let day=1;day<=daysInMonth;day++){
+    const d=new Date(y,m,day);
+    const ds=isoDate(d);
+    const list=agendaFiltered(appointments.filter(a=>a.appointment_date===ds)).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));
+    if(!showEmpty && !list.length && ds!==todayIso()) continue;
+    rendered++;
+    totalAppointments+=list.length;
+    const counts={
+      agendado:list.filter(a=>a.status==='agendado').length,
+      confirmado:list.filter(a=>a.status==='confirmado').length,
+      concluido:list.filter(a=>a.status==='concluido').length
+    };
+    totalConfirmed+=counts.confirmado;
+    totalDone+=counts.concluido;
+    const peak=slots().reduce((max,slot)=>{
+      const slotStart=timeToMin(slot);
+      const slotEnd=timeToMin(addMinutes(slot,Number(settings.slot_interval_minutes||30)));
+      const count=list.filter(a=>a.status!=='cancelado'&&timeToMin(normalizeTime(a.start_time))<slotEnd&&timeToMin(normalizeTime(a.end_time))>slotStart).length;
+      return Math.max(max,count);
+    },0);
+    html+=`<section class="month-agenda-day ${ds===todayIso()?'today':''} ${isClosedForView(ds)?'off':''}">`;
+    html+=`<div class="month-agenda-day-head"><div><div class="month-agenda-date">${names[d.getDay()]}, ${fmtDate(ds)}</div><div class="muted small">${list.length?`${list.length} atendimento(s) no dia`:'Dia livre'}</div></div><div class="month-agenda-summary"><span>${counts.agendado} ag.</span><span>${counts.confirmado} conf.</span><span>${counts.concluido} concl.</span><span>Pico ${peak}/${Number(settings.max_patients_per_slot||4)}</span><button class="btn" type="button" onclick="openAppt('${ds}')">+ Agendar</button></div></div>`;
+    html+=list.length?`<div class="month-agenda-items">`+list.map(a=>{
+      const patient=patientName(a.patient_id);
+      const service=serviceName(a.service_id);
+      const statusLabel={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;
+      return `<button class="month-agenda-item status-${a.status}" type="button" onclick="openAppt('${a.appointment_date}','${a.id}')"><span class="month-agenda-time"><strong>${normalizeTime(a.start_time)}</strong><small>${normalizeTime(a.end_time)}</small></span><span class="month-agenda-main"><strong>${esc(patient)}</strong><small>${esc(service)}</small></span><span class="status-chip ${a.status}">${esc(statusLabel)}</span></button>`;
+    }).join('')+`</div>`:`<div class="month-agenda-empty"><span>Sem atendimentos neste dia.</span><button class="btn ghost" type="button" onclick="openAppt('${ds}')">Criar atendimento</button></div>`;
+    html+=`</section>`;
+  }
+  if(!rendered) html+=`<div class="month-agenda-empty-state"><strong>Nenhum atendimento encontrado neste mês com os filtros atuais.</strong><span>Use "Mostrar dias vazios" para criar encaixes ou limpe os filtros da agenda.</span></div>`;
+  html+='</div>';
+  $('monthCalendar').innerHTML=`<div class="month-agenda-kpis"><div><span>Total no mês</span><strong>${totalAppointments}</strong></div><div><span>Confirmados</span><strong>${totalConfirmed}</strong></div><div><span>Concluídos</span><strong>${totalDone}</strong></div><div><span>Dias exibidos</span><strong>${rendered}</strong></div></div>`+html;
+}
 function saldoBadge(pid,sid){const pk=packages.find(p=>String(p.patient_id)===String(pid)&&String(p.service_id)===String(sid)&&p.active!==false);if(!pk)return '<div class="small muted">Sem pacote</div>';const total=Number(pk.total_sessions||0),r=Number(pk.remaining_sessions||0),used=Math.max(0,total-r);return `<div class="small ${r===0?'saldo-zero':r<=3?'saldo-low':'muted'}"><span class="used-counter">${used}/${total} sessões usadas</span> · saldo ${r}</div>`}
 function getServiceDefaultPrice(sid){const s=serviceById(sid);return Number(s.price||0)}
 function setAppointmentPriceFromService(force=false){const input=$('apptPrice');if(!input)return;const current=String(input.value||'').trim();if(force||!current){input.value=String(getServiceDefaultPrice($('apptService').value)||0)}}
@@ -230,7 +307,14 @@ async function deleteAppointment(){const id=$('apptId').value;if(!id||!confirm('
 function renderDay(){
   const date=$('dayDate').value||todayIso();$('dayDate').value=date;
   const list=appointments.filter(a=>a.appointment_date===date).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));
-  $('dayKpis').innerHTML=['agendado','confirmado','concluido','cancelado'].map(st=>`<div class="kpi"><div class="small muted">${st}</div><strong>${list.filter(a=>a.status===st).length}</strong></div>`).join('')+`<div class="kpi"><div class="small muted">Total</div><strong>${list.length}</strong></div>`;
+  const dayStatusLabels={agendado:'Agendados',confirmado:'Confirmados',concluido:'Concluídos',cancelado:'Cancelados'};
+  const peak=slots().reduce((max,slot)=>{
+    const slotStart=timeToMin(slot);
+    const slotEnd=timeToMin(addMinutes(slot,Number(settings.slot_interval_minutes||30)));
+    const count=list.filter(a=>a.status!=='cancelado'&&timeToMin(normalizeTime(a.start_time))<slotEnd&&timeToMin(normalizeTime(a.end_time))>slotStart).length;
+    return Math.max(max,count);
+  },0);
+  $('dayKpis').innerHTML=`<div class="day-operational-strip"><div class="day-operational-copy"><strong>${fmtWeekday(date)}, ${fmtDate(date)}</strong><span>${list.length} atendimento(s) · pico ${peak}/${Number(settings.max_patients_per_slot||4)}</span></div><div class="day-status-row">`+['agendado','confirmado','concluido','cancelado'].map(st=>`<div class="day-status-pill ${st}"><span>${dayStatusLabels[st]}</span><strong>${list.filter(a=>a.status===st).length}</strong></div>`).join('')+`</div></div>`;
   $('dayList').innerHTML=list.length?list.map(a=>{
     const label={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;
     const nextStatuses=getNextStatuses(a.status);
@@ -258,7 +342,7 @@ function renderDay(){
     </div>`;
   }).join(''):'<div class="muted">Nenhum agendamento.</div>';
 }
-function reminderFlag(a,kind){return kind==='form'?!!a.form_reminder_sent:!!(a.appointment_reminder_sent||a.reminder_sent)}
+function reminderFlag(a,kind){return !!(a.appointment_reminder_sent||a.reminder_sent)}
 function appointmentDateTime(a,field='start_time'){
   const date=String(a.appointment_date||'');
   const time=normalizeTime(a[field]||a.start_time||'00:00');
@@ -266,12 +350,11 @@ function appointmentDateTime(a,field='start_time'){
   return Number.isNaN(d.getTime())?null:d;
 }
 function reminderDueAt(a,kind){
-  const base=appointmentDateTime(a,kind==='form'?'end_time':'start_time');
+  const base=appointmentDateTime(a,'start_time');
   if(!base) return null;
-  return new Date(base.getTime()+(kind==='form'?5*60*60*1000:-12*60*60*1000));
+  return new Date(base.getTime()-(12*60*60*1000));
 }
 function isReminderCandidate(a,kind){
-  if(kind==='form') return a.status==='concluido';
   return ['agendado','confirmado'].includes(a.status);
 }
 function reminderPhoneOk(a){return cleanPhone(patientById(a.patient_id).whatsapp).length>=10}
@@ -312,25 +395,23 @@ function reminderListFor(kind,date){
 }
 function dueAutomaticReminders(){
   const now=Date.now();
-  return ['appointment','form'].flatMap(kind=>appointments
+  return ['appointment'].flatMap(kind=>appointments
     .filter(a=>isReminderCandidate(a,kind)&&!reminderFlag(a,kind)&&reminderPhoneOk(a))
     .map(a=>({a,kind,due:reminderDueAt(a,kind)}))
     .filter(x=>{
       if(!x.due||x.due.getTime()>now) return false;
       const start=appointmentDateTime(x.a,'start_time');
-      const end=appointmentDateTime(x.a,'end_time')||start;
-      if(x.kind==='appointment') return start&&now<=start.getTime();
-      return end&&now<=x.due.getTime()+(48*60*60*1000);
+      return start&&now<=start.getTime();
     })
   ).sort((x,y)=>x.due-y.due);
 }
 function renderReminders(){
-  const kind=$('reminderType')?$('reminderType').value:'appointment';
-  const date=$('reminderDate').value|| (kind==='appointment'?isoDate(new Date(Date.now()+86400000)):todayIso());
+  const kind='appointment';
+  const date=$('reminderDate').value||isoDate(new Date(Date.now()+86400000));
   $('reminderDate').value=date;
   renderReminderAutomationStatus();
   const list=reminderListFor(kind,date);
-  $('reminderTitle').textContent=kind==='form'?'Formulários pós-atendimento':'Lembretes de sessão';
+  $('reminderTitle').textContent='Lembretes de sessão';
   const pending=list.filter(a=>!reminderFlag(a,kind)&&reminderPhoneOk(a));
   const sent=list.filter(a=>reminderFlag(a,kind));
   const no=list.filter(a=>!reminderPhoneOk(a));
@@ -342,7 +423,7 @@ function renderReminders(){
   }).join(''):'<div class="muted">Nenhum lembrete nesta data.</div>';
 }
 async function markReminder(id,kind='appointment'){
-  const body=kind==='form'?{form_reminder_sent:true,form_reminder_sent_at:new Date().toISOString()}:{appointment_reminder_sent:true,appointment_reminder_sent_at:new Date().toISOString(),reminder_sent:true,reminder_sent_at:new Date().toISOString()};
+  const body={appointment_reminder_sent:true,appointment_reminder_sent_at:new Date().toISOString(),reminder_sent:true,reminder_sent_at:new Date().toISOString()};
   await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});
   await loadAll(true);
   toast('Lembrete marcado como enviado.','success');
@@ -354,9 +435,8 @@ async function sendWhatsapp(id,mark=false,kind='appointment'){
   }
   const p=patientById(a.patient_id);const phone='55'+cleanPhone(p.whatsapp);
   if(phone.length<12){toast('Paciente sem WhatsApp válido.','warning');return false}
-  const tpl=(kind==='form'?(localStorage.femic_tpl_form_reminder||$('tplFormReminder')?.value):(localStorage.femic_tpl_reminder||$('tplReminder').value))||'';
-  const link=localStorage.femic_form_link||$('formLinkInput')?.value||'';
-  const msg=tpl.replaceAll('{nome}',p.name||'').replaceAll('{data}',fmtDate(a.appointment_date)).replaceAll('{hora}',normalizeTime(a.start_time)).replaceAll('{servico}',serviceName(a.service_id)).replaceAll('{link_formulario}',link);
+  const tpl=(localStorage.femic_tpl_reminder||$('tplReminder').value)||'';
+  const msg=tpl.replaceAll('{nome}',p.name||'').replaceAll('{data}',fmtDate(a.appointment_date)).replaceAll('{hora}',normalizeTime(a.start_time)).replaceAll('{servico}',serviceName(a.service_id));
   const opened=window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');
   if(!opened){toast('O navegador bloqueou a janela do WhatsApp. Use o modo manual ou libere pop-ups para a agenda.','warning');return false}
   if(mark) await markReminder(id,kind);
@@ -380,7 +460,6 @@ function saveWhatsappApiConfig(){
   localStorage.femic_whatsapp_provider=provider;
   localStorage.femic_whatsapp_endpoint=($('whatsappEndpoint')?.value||'').trim();
   localStorage.femic_whatsapp_tpl_appointment=($('whatsappTplAppointment')?.value||'lembrete_sessao').trim()||'lembrete_sessao';
-  localStorage.femic_whatsapp_tpl_form=($('whatsappTplForm')?.value||'formulario_pos_sessao').trim()||'formulario_pos_sessao';
   renderWhatsappProviderBadge();
   if(provider==='api') toast('Configuração salva. O envio pela API fica preparado, mas o sistema mantém fallback seguro por link até a Edge Function ser implementada.','info');
   else toast('WhatsApp por link seguro ativado.','success');
@@ -417,18 +496,6 @@ async function quickStatus(id,newStatus){
     toast('Status atualizado para '+label+'.','success');
   }catch(e){console.error(e);toast('Erro ao alterar status: '+e.message,'error')}
 }
-function renderDashboard(){const today=todayIso(),month=new Date().toISOString().slice(0,7);const t=appointments.filter(a=>a.appointment_date===today).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));const rem=t.filter(a=>['agendado','confirmado'].includes(a.status)&&!(a.appointment_reminder_sent||a.reminder_sent)).length;const low=packages.filter(p=>{
-  if(p.active===false) return false;
-  if(Number(p.remaining_sessions||0)>3) return false;
-  var pat = patientById(p.patient_id);
-  if(pat.archived===true) return false;
-  return true;
-}).length;const done=appointments.filter(a=>a.status==='concluido'&&String(a.appointment_date).startsWith(month));const total=done.reduce((sum,a)=>sum+Number(a.service_price_at_time||serviceById(a.service_id).price||0),0);$('dashboardKpis').innerHTML=`<div class="kpi"><div class="small muted">Atendimentos hoje</div><strong>${t.length}</strong></div><div class="kpi"><div class="small muted">Lembretes pendentes</div><strong>${rem}</strong></div><div class="kpi"><div class="small muted">Saldos baixos</div><strong>${low}</strong></div><div class="kpi"><div class="small muted">Mês concluído</div><strong>${brl(total)}</strong></div>`;$('dashToday').innerHTML=t.length?t.map(a=>`<div class="item status-${a.status}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)}–${normalizeTime(a.end_time)} — ${esc(patientName(a.patient_id))}</strong><div class="muted small">${esc(serviceName(a.service_id))} · <span class="status-chip ${a.status}">${a.status}</span></div>${saldoBadge(a.patient_id,a.service_id)}</div><div class="toolbar"><button class="btn" onclick="openPatient('${a.patient_id}')">Ficha</button><button class="btn" onclick="rescheduleAppointment('${a.id}')">Remarcar</button><button class="btn" onclick="openAppt('${a.appointment_date}','${a.id}')">Editar</button></div></div>${statusButtons(a)}</div>`).join(''):'<div class="muted">Nenhum atendimento hoje.</div>';$('dashAlerts').innerHTML=(low?packages.filter(p=>{
-  if(Number(p.remaining_sessions||0)>3) return false;
-  var pat = patientById(p.patient_id);
-  if(pat.archived===true) return false;
-  return true;
-}).map(p=>{const used=Math.max(0,Number(p.total_sessions||0)-Number(p.remaining_sessions||0));const pct=Number(p.total_sessions||0)?Math.min(100,(used/Number(p.total_sessions))*100):0;return `<div class="item package-card"><strong>${esc(patientName(p.patient_id))}</strong><div class="muted small">${esc(serviceName(p.service_id))} · <span class="used-counter">${used}/${p.total_sessions} usadas</span> · saldo ${p.remaining_sessions}</div><div class="package-progress"><span style="width:${pct}%"></span></div></div>`}).join(''):'<div class="muted">Sem alertas de saldo.</div>')}
 function renderReport(){const month=$('reportMonth').value||new Date().toISOString().slice(0,7);$('reportMonth').value=month;const done=appointments.filter(a=>a.status==='concluido'&&String(a.appointment_date).startsWith(month));const groups={};done.forEach(a=>{const s=serviceById(a.service_id),key=(s.health_insurance_id||'')+'|'+(s.id||'')+'|'+Number(a.service_price_at_time||s.price||0);if(!groups[key])groups[key]={payer:payerName(s.health_insurance_id),service:s.name||'Sem serviço',q:0,price:Number(a.service_price_at_time||s.price||0)};groups[key].q++});const rows=Object.values(groups),total=rows.reduce((a,r)=>a+r.q*r.price,0);$('reportKpis').innerHTML=`<div class="kpi"><div class="small muted">Concluídos</div><strong>${done.length}</strong></div><div class="kpi"><div class="small muted">Total</div><strong>${brl(total)}</strong></div><div class="kpi"><div class="small muted">Cancelados</div><strong>${appointments.filter(a=>a.status==='cancelado'&&String(a.appointment_date).startsWith(month)).length}</strong></div><div class="kpi"><div class="small muted">Agendados</div><strong>${appointments.filter(a=>['agendado','confirmado'].includes(a.status)&&String(a.appointment_date).startsWith(month)).length}</strong></div>`;$('reportBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.payer)}</td><td>${esc(r.service)}</td><td>${r.q}</td><td>${brl(r.price)}</td><td><strong>${brl(r.q*r.price)}</strong></td></tr>`).join(''):'<tr><td colspan="5" class="muted">Sem atendimentos concluídos.</td></tr>'}
 function exportCsv(){const rows=[['Pagador','Serviço','Quantidade','Valor','Total']];document.querySelectorAll('#reportBody tr').forEach(tr=>{const cells=[...tr.children].map(td=>td.innerText);if(cells.length===5)rows.push(cells)});const csv=rows.map(r=>r.map(c=>'"'+String(c).replaceAll('"','""')+'"').join(';')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='relatorio_agenda_femic.csv';a.click()}
 
@@ -473,7 +540,6 @@ function packagePatternSummary(p){
     return `<div class="package-pattern"><div class="package-pattern-title">🗓️ Padrão de agendamento</div><div class="package-pattern-list">${chips}</div>${extra}<div class="package-pattern-note">${note}</div></div>`;
   }catch(e){return '';}
 }
-function packageCard(p){const total=Number(p.total_sessions||0),remain=Number(p.remaining_sessions||0),used=Math.max(0,total-remain),pct=total?Math.min(100,(used/total)*100):0;const cls=remain<=0?'saldo-zero':(remain<=3?'saldo-low':'');const inactive=p.active===false;return `<div class="item package-card ${inactive?'inactive':''}"><div class="item-top"><div><strong>${esc(patientName(p.patient_id))}</strong>${inactive?' <span class="muted small">(inativo)</span>':''}<div class="muted small">${esc(serviceName(p.service_id))}</div></div><button class="btn danger" onclick="removePackage('${p.id}')">Remover</button></div><div class="small"><span class="used-counter">${used}/${total} sessões usadas</span> · <span class="${cls}">saldo ${remain}</span></div><div class="package-progress"><span style="width:${pct}%"></span></div></div>`}
 function patientCard(p){const linked=appointments.some(a=>String(a.patient_id)===String(p.id))||packages.some(pk=>String(pk.patient_id)===String(p.id))||movements.some(m=>String(m.patient_id)===String(p.id));const archived=p.archived===true;return `<div class="item patient-card ${archived?'archived':''}"><div class="item-top"><div><strong>${esc(p.name||'Sem nome')}</strong>${archived?' <span class="muted small">(inativo)</span>':''}<div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(p.pathology||'Sem patologia')}</div></div><div class="toolbar"><button class="btn" onclick="openPatient('${p.id}')">Ficha</button><button class="btn ghost" onclick="openEditPatient('${p.id}')">✏️ Editar</button>${archived?`<button class="btn success" onclick="reactivatePatient('${p.id}')">Reativar</button>`:`<button class="btn warning" onclick="archivePatient('${p.id}')">Inativar</button>`}<button class="btn danger" onclick="deletePatientSafe('${p.id}')">Apagar</button></div></div>${linked?'<div class="muted small" style="margin-top:8px">Possui vínculo: apagar será bloqueado; use inativar.</div>':''}</div>`}
 function renderLists(){$('payerList').innerHTML=payers.map(p=>`<div class="item"><div class="item-top"><strong>${esc(p.name)}</strong><button class="btn danger" onclick="removePayer('${p.id}')">Remover</button></div></div>`).join('')||'<div class="muted">Nenhum pagador.</div>';$('serviceList').innerHTML=services.map(s=>`<div class="item"><div class="item-top"><div><strong>${esc(s.name)}</strong><div class="muted small">${payerName(s.health_insurance_id)} · ${brl(s.price)} · ${s.duration_minutes}min · ${s.appointment_mode}</div></div><button class="btn danger" onclick="removeService('${s.id}')">Remover</button></div></div>`).join('')||'<div class="muted">Nenhum serviço.</div>';const activePk=packages.filter(p=>p.active!==false),inactivePk=packages.filter(p=>p.active===false);if($('packageListActive')){$('packagesActiveCount').textContent=activePk.length+' ativo(s)';$('packagesInactiveCount').textContent=inactivePk.length+' inativo(s)';$('packageListActive').innerHTML=activePk.length?activePk.map(packageCard).join(''):'<div class="muted">Nenhum pacote ativo.</div>';$('packageListInactive').innerHTML=inactivePk.length?inactivePk.map(packageCard).join(''):'<div class="muted">Nenhum pacote inativo.</div>'}else if($('packageList')){$('packageList').innerHTML=packages.length?packages.map(packageCard).join(''):'<div class="muted">Nenhum pacote.</div>'}const activePatients=patients.filter(p=>p.archived!==true),archivedPatients=patients.filter(p=>p.archived===true);if($('patientListActive')){$('patientsActiveCount').textContent=activePatients.length+' ativo(s)';$('patientsArchivedCount').textContent=archivedPatients.length+' inativo(s)';$('patientListActive').innerHTML=activePatients.length?activePatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente ativo.</div>';$('patientListArchived').innerHTML=archivedPatients.length?archivedPatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente inativo.</div>'}}
 function formatWhatsappInput(input){let v=input.value.replace(/\D/g,'').slice(0,11);if(v.length>6)input.value=`(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;else if(v.length>2)input.value=`(${v.slice(0,2)}) ${v.slice(2)}`;else if(v.length>0)input.value=`(${v}`;}
@@ -529,7 +595,6 @@ async function savePayer(){const name=$('payerName').value.trim();if(!name)retur
     toast('Erro: '+e.message,'error');
   }
 }async function saveSettings(){const working=[...document.querySelectorAll('.wd:checked')].map(x=>x.value).join(',')||'1,2,3,4,5,6';const payload={start_time:$('setStart').value,end_time:$('setEnd').value,working_periods:$('setPeriods').value.trim()||(($('setStart').value||'08:00')+'-'+($('setEnd').value||'20:00')),slot_interval_minutes:Number($('setInterval').value),working_days:working,max_patients_per_slot:Number(settings.max_patients_per_slot||4)};try{if(settings.id)await api('schedule_settings?id=eq.'+settings.id,{method:'PATCH',body:JSON.stringify(payload)});else await api('schedule_settings',{method:'POST',body:JSON.stringify(payload)});await loadAll(true);toast('Expediente salvo.','success')}catch(e){toast('Erro: '+e.message,'error')}}async function removePackage(id){const p=packages.find(x=>String(x.id)===String(id));if(!p)return;const used=Number(p.total_sessions||0)-Number(p.remaining_sessions||0);const linked=appointments.some(a=>String(a.session_package_id)===String(id))||movements.some(m=>String(m.session_package_id)===String(id));if(used>0||linked){if(confirm('Este pacote já tem uso ou vínculo no histórico. Para preservar os dados, ele será inativado em vez de apagado. Continuar?')){await api('session_packages?id=eq.'+id,{method:'PATCH',body:JSON.stringify({active:false})});await loadAll(true);toast('Pacote inativado.','success')}return}if(confirm('Remover este pacote definitivamente?')){await api('session_packages?id=eq.'+id,{method:'DELETE'});await loadAll(true);toast('Pacote removido.','success')}}async function removeService(id){if(appointments.some(a=>String(a.service_id)===String(id))||packages.some(p=>String(p.service_id)===String(id))){toast('Serviço em uso. Não removi para preservar histórico.','warning');return}if(confirm('Remover serviço?')){await api('services?id=eq.'+id,{method:'DELETE'});await loadAll(true)}}async function removePayer(id){if(services.some(s=>String(s.health_insurance_id)===String(id))){toast('Pagador vinculado a serviço. Remova/inative serviços primeiro.','warning');return}if(confirm('Remover pagador?')){await api('health_insurances?id=eq.'+id,{method:'DELETE'});await loadAll(true)}}
-function openPatient(pid){const p=patientById(pid);const ap=appointments.filter(a=>String(a.patient_id)===String(pid)).sort((a,b)=>(a.appointment_date+a.start_time).localeCompare(b.appointment_date+b.start_time));const pk=packages.filter(x=>String(x.patient_id)===String(pid));$('patientFicha').innerHTML=`<div class="patient-summary"><div class="kpi"><div class="small muted">Paciente</div><strong style="font-size:1rem">${esc(p.name)}</strong></div><div class="kpi"><div class="small muted">WhatsApp</div><strong style="font-size:1rem">${esc(p.whatsapp||'-')}</strong></div><div class="kpi"><div class="small muted">Futuras</div><strong>${ap.filter(a=>['agendado','confirmado'].includes(a.status)).length}</strong></div><div class="kpi"><div class="small muted">Concluídas</div><strong>${ap.filter(a=>a.status==='concluido').length}</strong></div></div><div class="card" style="margin-top:14px"><div class="eyebrow">Pacotes</div>${pk.map(packageCard).join('')||'<div class="muted">Sem pacote.</div>'}</div><div class="card" style="margin-top:14px"><div class="eyebrow">Agendamentos</div><div class="timeline-list">${ap.map(a=>`<div class="timeline-item status-${a.status}"><div class="item-top"><div><strong>${fmtWeekday(a.appointment_date)} · ${fmtDate(a.appointment_date)} ${normalizeTime(a.start_time)} — ${esc(serviceName(a.service_id))}</strong><div class="muted small"><span class="status-chip ${a.status}">${a.status}</span></div></div><div class="toolbar"><button class="btn" onclick="rescheduleAppointment('${a.id}')">Remarcar</button><button class="btn" onclick="openAppt('${a.appointment_date}','${a.id}')">Editar</button></div></div>${statusButtons(a)}</div>`).join('')||'<div class="muted">Sem agendamentos.</div>'}</div></div>`;$('patientModal').classList.add('show')}
 
 function renderBackupPanel(){
   if($('bkPatients')) $('bkPatients').textContent = patients.length;
@@ -538,6 +603,7 @@ function renderBackupPanel(){
   if($('bkMovements')) $('bkMovements').textContent = movements.length;
   if($('bkServices')) $('bkServices').textContent = services.length;
   if($('bkPayers')) $('bkPayers').textContent = payers.length;
+  if($('bkClinicRules')) $('bkClinicRules').textContent = clinicRules.length;
 }
 
 function downloadJsonFile(filename, payload){
@@ -567,12 +633,13 @@ async function exportAgendaBackup(){
       app: 'FEMIC Agenda',
       version: 'v1.4.28-valor-editavel-confiavel',
       exported_at: new Date().toISOString(),
-      note: 'Backup completo da agenda FEMIC. Contém pacientes, agenda, pacotes, histórico, serviços, pagadores e configurações.',
+      note: 'Backup completo da agenda FEMIC. Contém pacientes, agenda, pacotes, histórico, serviços, pagadores, configurações e regras da clínica.',
       tables: {
         patients: await fetchTableForBackup('patients'),
         health_insurances: await fetchTableForBackup('health_insurances'),
         services: await fetchTableForBackup('services'),
         schedule_settings: await fetchTableForBackup('schedule_settings'),
+        clinic_rules: await loadClinicRulesCollection(),
         session_packages: await fetchTableForBackup('session_packages'),
         appointments: await fetchTableForBackup('appointments'),
         session_movements: await fetchTableForBackup('session_movements')
@@ -643,12 +710,19 @@ async function restoreAgendaBackup(event){
     await deleteAllRows('services');
     await deleteAllRows('health_insurances');
     await deleteAllRows('schedule_settings');
+    try{await deleteAllRows('clinic_rules')}catch(e){if(!isMissingClinicRulesTableError(e))throw e}
 
     // Pacientes: upsert seguro, sem apagar pacientes externos.
     await upsertRows('patients', tables.patients);
     await upsertRows('health_insurances', tables.health_insurances);
     await upsertRows('services', tables.services);
     await upsertRows('schedule_settings', tables.schedule_settings);
+    if(Array.isArray(tables.clinic_rules)){
+      writeClinicRulesCache(tables.clinic_rules);
+      try{await upsertRows('clinic_rules', tables.clinic_rules)}catch(e){if(!isMissingClinicRulesTableError(e))throw e}
+    }else{
+      writeClinicRulesCache([]);
+    }
     await upsertRows('session_packages', tables.session_packages);
     await upsertRows('appointments', tables.appointments);
     await upsertRows('session_movements', tables.session_movements);
@@ -663,7 +737,7 @@ async function restoreAgendaBackup(event){
   }
 }
 
-function saveTemplates(){localStorage.femic_tpl_reminder=$('tplReminder').value;if($('tplFormReminder'))localStorage.femic_tpl_form_reminder=$('tplFormReminder').value;if($('formLinkInput'))localStorage.femic_form_link=$('formLinkInput').value.trim();toast('Modelos salvos.','success')}async function copySql(){await navigator.clipboard.writeText(SQL_SCHEMA);toast('SQL copiado.','success')}
+function saveTemplates(){localStorage.femic_tpl_reminder=$('tplReminder').value;toast('Modelos salvos.','success')}async function copySql(){await navigator.clipboard.writeText(SQL_SCHEMA);toast('SQL copiado.','success')}
 $('sqlBox').textContent=SQL_SCHEMA;loadConfig();checkFemicAuth();$('dayDate').value=todayIso();$('reminderDate').value=isoDate(new Date(Date.now()+86400000));$('reportMonth').value=new Date().toISOString().slice(0,7);
 /* =========================================================
    FEMIC Agenda v1.4.36 - Ficha com dia da semana — Correção robusta de consumo de pacote
@@ -891,67 +965,6 @@ async function saveEditPatient(){
 /* =========================================================
    FEMIC Agenda v1.4.36 - Ficha com dia da semana — Correção de layout semanal + busca + edição de pacotes
    ========================================================= */
-
-function slotEnd(slot){
-  return addMinutes(slot, Number(settings.slot_interval_minutes || 30));
-}
-
-function startsInsideSlot(a, slot){
-  const st = timeToMin(normalizeTime(a.start_time));
-  const s = timeToMin(slot);
-  const e = timeToMin(slotEnd(slot));
-  return st >= s && st < e;
-}
-
-function renderWeek(){
-  $('monthView').classList.add('hidden');
-  $('weekView').classList.remove('hidden');
-
-  const start=weekStart(currentDate);
-  const days=[0,1,2,3,4,5,6].map(i=>{
-    const d=new Date(start);
-    d.setDate(start.getDate()+i);
-    return d;
-  });
-
-  $('periodLabel').textContent=`Semana de ${fmtDate(isoDate(days[0]))} a ${fmtDate(isoDate(days[6]))}`;
-
-  let html='<div class="week-cell head week-time">Hora</div>';
-  days.forEach(d=>{
-    const ds=isoDate(d);
-    html+=`<div class="week-cell head ${ds===todayIso()?'today-head':''}">${d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})}</div>`;
-  });
-
-  slots().forEach(slot=>{
-    html+=`<div class="week-cell week-time">${slot}</div>`;
-    days.forEach(d=>{
-      const ds=isoDate(d);
-      const off=isClosedForView(ds);
-      const base=agendaFiltered(appointments.filter(a=>a.appointment_date===ds));
-
-      // Mostra todos que começam dentro do intervalo da linha.
-      // Isso corrige o caso 08:45 contado no bloco 08:30, mas não exibido.
-      const atSlot=base
-        .filter(a=>startsInsideSlot(a,slot))
-        .sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));
-
-      const overlapping=base.filter(a=>
-        a.status!=='cancelado' &&
-        timeToMin(normalizeTime(a.start_time)) < timeToMin(slotEnd(slot)) &&
-        timeToMin(normalizeTime(a.end_time)) > timeToMin(slot)
-      );
-
-      const minHeight = atSlot.length > 0 ? Math.max(120, 40 + (atSlot.length * 75)) : 120;
-      html+=`<div class="week-cell week-slot ${ds===todayIso()?'today-slot':''} ${off?'closed':''}" style="min-height:${minHeight}px" onclick="${off?'':'openAppt(\''+ds+'\',null,\''+slot+'\')'}">`;
-      if(!off) html+=`<div class="capacity ${overlapping.length>=Number(settings.max_patients_per_slot||4)?'full':''}">${overlapping.length}/${settings.max_patients_per_slot||4}</div>`;
-
-      atSlot.forEach(a=>html+=apptCard(a,'week-appt'));
-      html+='</div>';
-    });
-  });
-
-  $('weekBoard').innerHTML=html;
-}
 
 function packageCard(p){
   const total=Number(p.total_sessions||0);
@@ -1249,7 +1262,7 @@ function femicLayoutAppointmentsV1434(list,bounds){
 function femicWeekCardV1434(a,style){
   const p=patientById(a.patient_id),s=serviceById(a.service_id);
   const label={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;
-  return `<div class="femic-week-card status-${a.status}" style="${style}" onclick="event.stopPropagation();openAppt('${a.appointment_date}','${a.id}')"><div class="week-card-main"><div class="appt-time">${normalizeTime(a.start_time)}–${normalizeTime(a.end_time)}</div><strong class="appt-name" title="${esc(p.name||'Paciente')}">${esc(p.name||'Paciente')}</strong><div class="week-card-service">${esc(s.name||'Sem serviço')}</div></div><div class="appt-meta"><span class="status-chip ${a.status}">${label}</span></div>${saldoBadge(a.patient_id,a.service_id)}<div class="appt-actions"><button class="mini-action" onclick="event.stopPropagation();openPatient('${a.patient_id}')">👤 Ficha</button><button class="mini-action" onclick="event.stopPropagation();rescheduleAppointment('${a.id}')">📅 Remarcar</button><button class="mini-action" onclick="event.stopPropagation();sendWhatsapp('${a.id}',false,'appointment')">💬 WhatsApp</button></div></div>`;
+  return `<div class="femic-week-card status-${a.status}" style="${style}" onclick="event.stopPropagation();openAppt('${a.appointment_date}','${a.id}')"><div class="week-card-main"><div class="appt-time">${normalizeTime(a.start_time)}–${normalizeTime(a.end_time)}</div><strong class="appt-name" title="${esc(p.name||'Paciente')}">${esc(p.name||'Paciente')}</strong><div class="week-card-service">${esc(s.name||'Sem serviço')}</div></div><div class="appt-meta"><span class="status-chip ${a.status}">${label}</span></div>${saldoBadge(a.patient_id,a.service_id)}</div>`;
 }
 function femicWeekClickV1434(ev,ds,bounds,pxPerMin){
   if(ev.target.closest('.femic-week-card')) return;
@@ -1266,51 +1279,44 @@ function renderWeek(){
   $('monthView').classList.add('hidden');
   $('weekView').classList.remove('hidden');
   const start=weekStart(currentDate);
-  const days=[0,1,2,3,4,5,6].map(i=>{const d=new Date(start);d.setDate(start.getDate()+i);return d});
-  $('periodLabel').textContent=`Semana de ${fmtDate(isoDate(days[0]))} a ${fmtDate(isoDate(days[6]))}`;
+  const allDays=[0,1,2,3,4,5,6].map(i=>{const d=new Date(start);d.setDate(start.getDate()+i);return d});
+  const days=allDays.filter(d=>isWorking(isoDate(d)));
+  const visibleDays=days.length?days:allDays;
+  $('periodLabel').textContent=`Semana de ${fmtDate(isoDate(visibleDays[0]))} a ${fmtDate(isoDate(visibleDays[visibleDays.length-1]))}`;
   const bounds=femicWeekBoundsV1434();
-  const mobile=window.matchMedia&&window.matchMedia('(max-width:768px)').matches;
-  const pxPerMin=mobile?1.03:2.0;
-  const bodyH=Math.max(mobile?520:680,Math.round(bounds.total*pxPerMin));
-  const hourMarks=[]; for(let m=bounds.start;m<=bounds.end;m+=60) hourMarks.push(m);
-  const slotLines=slots().map(timeToMin).filter(m=>m>=bounds.start&&m<=bounds.end);
-  let html=`<div class="femic-week-board" style="grid-template-rows:44px ${bodyH}px">`;
-  html+='<div class="femic-week-head femic-week-corner">Hora</div>';
-  days.forEach(d=>{
+  const pxPerMin=1.22;
+  const hourHeight=Math.round(60*pxPerMin);
+  const timelineHeight=Math.round(bounds.total*pxPerMin);
+  const slotList=slots();
+  const timeMarks=[];
+  for(let m=bounds.start;m<=bounds.end;m+=60) timeMarks.push(m);
+  let html=`<div class="gcal-week-shell"><div class="gcal-week-board" style="grid-template-columns:84px repeat(${visibleDays.length}, minmax(180px,1fr));">`;
+  html+=`<div class="gcal-week-corner"></div>`;
+  visibleDays.forEach(d=>{
     const ds=isoDate(d);
-    const week=d.toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','');
-    html+=`<div class="femic-week-head ${ds===todayIso()?'today':''}"><span class="week-head-day">${week}</span><span class="week-head-date">${String(d.getDate()).padStart(2,'0')}</span></div>`;
+    const openCount=agendaFiltered(appointments.filter(a=>a.appointment_date===ds&&a.status!=='cancelado')).length;
+    const weekLabel=d.toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','');
+    html+=`<div class="gcal-week-head ${ds===todayIso()?'today':''}"><span class="gcal-week-head-day">${weekLabel}</span><strong>${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}</strong><span class="gcal-week-head-meta">${openCount} ag.</span></div>`;
   });
-  html+=`<div class="femic-week-axis" style="height:${bodyH}px">`;
-  hourMarks.forEach(m=>{const top=(m-bounds.start)*pxPerMin;html+=`<div class="femic-week-hour" style="top:${top}px">${minToTime(m)}</div>`;});
-  html+='</div>';
-  days.forEach(d=>{
-    const ds=isoDate(d),off=isClosedForView(ds);
-    const dayList=agendaFiltered(appointments.filter(a=>a.appointment_date===ds)).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));
-    const layout=femicLayoutAppointmentsV1434(dayList,bounds);
-    html+=`<div class="femic-week-day ${ds===todayIso()?'today':''} ${off?'closed':''}" style="height:${bodyH}px" onclick="femicWeekClickV1434(event,'${ds}',{start:${bounds.start},end:${bounds.end},total:${bounds.total}},${pxPerMin})">`;
-    slotLines.forEach(m=>{const top=(m-bounds.start)*pxPerMin;const major=(m%60===0);html+=`<span class="femic-week-line ${major?'major':''}" style="top:${top}px"></span>`;});
-    parsePeriods().forEach(p=>{let st=femicClamp(timeToMin(p.start),bounds.start,bounds.end);let en=femicClamp(timeToMin(p.end),bounds.start,bounds.end);if(en>st){html+=`<span class="femic-week-period" style="top:${(st-bounds.start)*pxPerMin}px;height:${(en-st)*pxPerMin}px"></span>`;}});
-    if(ds===todayIso()){
-      const now=new Date();
-      const nowMin=now.getHours()*60+now.getMinutes();
-      if(nowMin>=bounds.start&&nowMin<=bounds.end){
-        html+=`<span class="femic-now-line" style="top:${(nowMin-bounds.start)*pxPerMin}px"></span>`;
-      }
-    }
-    if(off){html+='<div class="femic-week-empty-label closed">Fechado</div>';}
-    else{const active=dayList.filter(a=>a.status!=='cancelado').length;html+=`<div class="femic-week-empty-label">${active} at.</div>`;}
-    layout.forEach(it=>{
-      const top=(it.start-bounds.start)*pxPerMin;
-      const h=Math.max(24,(it.end-it.start)*pxPerMin-3);
-      const gap=3;
-      const width=`calc(${100/it.cols}% - ${gap*2}px)`;
-      const left=`calc(${(it.col*100)/it.cols}% + ${gap}px)`;
-      html+=femicWeekCardV1434(it.a,`top:${top}px;height:${h}px;left:${left};width:${width};`);
+  html+=`<div class="gcal-week-axis" style="height:${timelineHeight}px;--hour-height:${hourHeight}px">`;
+  timeMarks.forEach(min=>{ html+=`<div class="gcal-week-axis-label" style="top:${Math.round((min-bounds.start)*pxPerMin)}px">${minToTime(min)}</div>`; });
+  html+=`</div>`;
+  visibleDays.forEach(d=>{
+    const ds=isoDate(d);
+    const off=isClosedForView(ds);
+    const dayItems=femicLayoutAppointmentsV1434(agendaFiltered(appointments.filter(a=>a.appointment_date===ds)),bounds);
+    html+=`<div class="gcal-week-day ${ds===todayIso()?'today':''} ${off?'closed':''}" style="height:${timelineHeight}px;--hour-height:${hourHeight}px" onclick="femicWeekClickV1434(event,'${ds}',{start:${bounds.start},end:${bounds.end}},${pxPerMin})">`;
+    dayItems.forEach(it=>{
+      const top=Math.round((it.start-bounds.start)*pxPerMin);
+      const height=Math.max(26,Math.round((it.end-it.start)*pxPerMin));
+      const laneWidth=100/Math.max(it.cols,1);
+      const left=(laneWidth*it.col);
+      const widthStyle=`calc(${laneWidth}% - 8px)`;
+      html+=`<button class="gcal-week-event status-${it.a.status}" style="top:${top}px;height:${height}px;left:calc(${left}% + 4px);width:${widthStyle}" onclick="event.stopPropagation();openAppt('${it.a.appointment_date}','${it.a.id}')"><span class="gcal-week-event-time">${normalizeTime(it.a.start_time)}-${normalizeTime(it.a.end_time)}</span><strong>${esc(patientName(it.a.patient_id))}</strong><span class="gcal-week-event-service">${esc(serviceName(it.a.service_id))}</span></button>`;
     });
-    html+='</div>';
+    html+=`</div>`;
   });
-  html+='</div>';
+  html+=`</div></div>`;
   $('weekBoard').innerHTML=html;
 }
 
@@ -1531,7 +1537,7 @@ function processAutomaticReminders(){
   sendWhatsapp(next.a.id,true,next.kind);
 }
 
-applyAgendaTheme();renderWorkDays();renderReminderAutomationStatus();syncAgendaNavState('dashboard');renderAll();if(base()&&key()&&sessionStorage.getItem('femic_jwt'))loadAll(true);
+applyAgendaTheme();renderWorkDays();renderReminderAutomationStatus();syncAgendaNavState('agenda');renderAll();if(base()&&key()&&sessionStorage.getItem('femic_jwt'))loadAll(true);
 function hasOpenModal(){
   return !!document.querySelector('.modal-backdrop.show');
 }
@@ -1552,68 +1558,3 @@ if(typeof getNextStatuses !== 'function'){
     return all.filter(s => s.value !== current);
   }
 }
-
-
-/* FEMIC v1.4.36 — reforço visual não invasivo dos contadores de horário */
-function femicSlotCapacityLimit_v1435(slotEl){
-  try{
-    const attr = slotEl.getAttribute('data-capacity') || slotEl.getAttribute('data-max') || '';
-    if(attr) return Number(attr) || 0;
-    if(typeof getSlotCapacity === 'function'){
-      const date = slotEl.getAttribute('data-date') || slotEl.dataset.date;
-      const time = slotEl.getAttribute('data-time') || slotEl.dataset.time;
-      return Number(getSlotCapacity(date, time)) || 0;
-    }
-    if(typeof settings !== 'undefined' && settings && settings.slot_capacity) return Number(settings.slot_capacity) || 0;
-    if(typeof config !== 'undefined' && config && config.slot_capacity) return Number(config.slot_capacity) || 0;
-  }catch(e){}
-  return 0;
-}
-
-function femicEnhanceWeekCapacityCounters_v1435(){
-  try{
-    document.querySelectorAll('.week-slot').forEach(slot => {
-      const appts = slot.querySelectorAll('.week-appt, .appt-card, .appointment-card').length;
-      let cap = femicSlotCapacityLimit_v1435(slot);
-
-      let counter = slot.querySelector('.capacity, .slot-capacity');
-      if(!counter){
-        counter = document.createElement('div');
-        counter.className = 'capacity';
-        slot.prepend(counter);
-      }
-
-      if(cap > 0){
-        counter.textContent = `${appts}/${cap}`;
-        counter.title = appts >= cap ? 'Horário cheio' : 'Vagas no horário';
-        counter.classList.toggle('full', appts >= cap);
-        counter.classList.toggle('almost', appts > 0 && appts === cap - 1);
-        slot.classList.toggle('slot-full', appts >= cap);
-        slot.classList.toggle('almost-full', appts > 0 && appts === cap - 1);
-      }else{
-        // Se não houver limite configurado, ainda mostra quantos pacientes estão no horário.
-        counter.textContent = `${appts}`;
-        counter.title = 'Pacientes neste horário';
-        counter.classList.remove('full','almost');
-        slot.classList.remove('slot-full','almost-full');
-      }
-    });
-  }catch(e){
-    console.warn('Contadores de capacidade ignorados:', e);
-  }
-}
-
-(function(){
-  const originalRenderWeek = window.renderWeek;
-  if(typeof originalRenderWeek === 'function' && !window.__femicCapacityPatch1435){
-    window.__femicCapacityPatch1435 = true;
-    window.renderWeek = function(){
-      const r = originalRenderWeek.apply(this, arguments);
-      setTimeout(femicEnhanceWeekCapacityCounters_v1435, 50);
-      return r;
-    };
-  }
-  document.addEventListener('DOMContentLoaded', function(){
-    setTimeout(femicEnhanceWeekCapacityCounters_v1435, 300);
-  });
-})();
