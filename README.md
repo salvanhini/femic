@@ -3,46 +3,31 @@
 Sistema clínico da FEMIC Fisioterapia com:
 - gestão de pacientes
 - evolução clínica e técnica
-- anamnese com IA (Gemini/DeepSeek)
+- anamnese e evolução com IA (Gemini/Groq/DeepSeek)
 - sincronização com Supabase
-- módulo de agenda
-- suporte a App da Web (PWA) em modo conservador
+- agenda unificada
 
 ## Versões atuais
-- Sistema principal (`index.html`): `v3.5.0-pwa`
-- Agenda (`agenda.html`): `v1.4.44`
+- Sistema unificado (`index.html`)
 
 ## Estrutura principal
-- `index.html`: app clínico principal
-- `agenda.html`: módulo de agenda
-- `js/femic-app.js`: lógica clínica, IA, backup e sincronização
+- `index.html`: app clínico, agenda, documentos, histórico e IA
 - `js/femic-agenda.js`: lógica da agenda
-- `css/femic.css`: estilo do sistema principal
-- `css/femic-agenda.css`: estilo da agenda
+- `js/femic-unified.js`: prontuário, documentos, ficha, exportação clínica e histórico
+- `js/femic-ai-center.js`: Central IA e apoio clínico
+- `css/femic-agenda.css`: estilo principal do sistema unificado
+- `css/femic-unified.css`: complementos do módulo unificado
 - `logo.png`: identidade visual
 
 ## IA clínica (anamnese e evolução técnica)
-- Provedores suportados: Google Gemini e DeepSeek
-- Configurável por:
-  - setup inicial
-  - página de Backup/Configurações
-  - seletor dentro dos cards de IA
-- Modo econômico de tokens:
-  - reduz tamanho das respostas
-  - prioriza escrita mais objetiva
-  - pode ser ligado/desligado nos cards de IA
+- Provedores suportados: Google Gemini, Groq e DeepSeek
+- Configurável na aba IA e em Configurações
+- Consultas internas de agenda/sessões/pacotes funcionam sem API externa
+- Anamnese e evolução são preenchidas como rascunho revisável, sem salvamento automático
 
-## PWA (App da Web) — implementação conservadora
-- Manifestos:
-  - `manifest-femic.webmanifest`
-  - `manifest-agenda.webmanifest`
-- Service workers:
-  - `sw-femic.js`
-  - `sw-agenda.js`
-- Estratégia de segurança:
-  - cache apenas de shell/arquivos estáticos
-  - **não cacheia** rotas de API do Supabase (`/rest/v1/` e `/auth/v1/`)
-  - sincronização permanece em rede
+## PWA
+- Manifesto ativo: `manifest-agenda.webmanifest`
+- O sistema unificado remove service workers antigos ao carregar para evitar cache obsoleto durante a refatoração.
 
 ## Backup e sincronização
 - Backup local em JSON (export/import)
@@ -439,7 +424,7 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 NOTIFY pgrst, 'reload schema';
 ```
 
-### 4) Histórico de documentos na nuvem (`documentos.html`)
+### 4) Histórico de documentos na nuvem
 ```sql
 create table if not exists public.femic_generated_documents (
   id uuid primary key default gen_random_uuid(),
@@ -483,8 +468,8 @@ create policy "Authenticated update"
   with check (auth.role() = 'authenticated');
 ```
 
-### 5) Templates clínicos (`templates-admin.html`)
-SQL recomendado para a tabela usada pela tela administrativa:
+### 5) Templates clínicos
+SQL recomendado para templates clínicos, caso o recurso seja reativado:
 
 ```sql
 create extension if not exists "pgcrypto";
@@ -516,10 +501,7 @@ create policy "Authenticated CRUD clinical templates"
 ```
 
 ### 6) Variáveis de conexão usadas no front
-- Sistema principal (`index.html`): `supabaseUrl` e `supabaseKey` (armazenadas no navegador)
-- Agenda (`agenda.html`): `femic_agenda_url` e `femic_agenda_key` (localStorage)
-- Documentos (`documentos.html`): usa URL/chave salvas nas configurações da própria tela
-- Templates admin (`templates-admin.html`): usa URL/chave do Supabase + login por e-mail/senha (JWT em sessão)
+- Sistema unificado (`index.html`): `femic_agenda_url` e `femic_agenda_key` (localStorage)
 
 ## Configuração de RLS e usuário (Supabase)
 
@@ -527,13 +509,13 @@ create policy "Authenticated CRUD clinical templates"
 - Sistema principal: RLS `ENABLE` + policy pública (`USING (true)`) nas tabelas clínicas.
 - Formulário de paciente: RLS `ENABLE` + policy pública de leitura/escrita.
 - Agenda: RLS `DISABLE` nas tabelas da agenda (modo operacional simples).
-- Documentos em nuvem: RLS `ENABLE` + policies apenas para `authenticated`.
-- Templates clínicos: RLS `ENABLE` + policy de CRUD para `authenticated`.
+- Documentos em nuvem: RLS `ENABLE` + policies apenas para `authenticated`, se a tabela for usada.
+- Templates clínicos: RLS `ENABLE` + policy de CRUD para `authenticated`, se o recurso for reativado.
 
 ### Criar usuário administrativo (Auth)
 No Supabase Studio:
 1. `Authentication` > `Users` > `Add user`
-2. Criar usuário com e-mail e senha para uso no `templates-admin.html`
+2. Criar usuário com e-mail e senha para uso administrativo, se necessário
 3. Confirmar e-mail manualmente no painel (se necessário)
 
 Opcional via SQL (perfil complementar em tabela própria):

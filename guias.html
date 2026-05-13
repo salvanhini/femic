@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guias para Pacientes | FEMIC</title>
+<link rel="stylesheet" href="css/femic-pacientes.css">
+<style>
+.hub-header{min-height:60vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:80px 24px 48px}.hub-header h1{font-size:clamp(40px,7vw,68px);margin:0;line-height:1.05}.hub-header p{max-width:640px;margin:16px auto 0;font-size:clamp(17px,2.2vw,21px);opacity:.9}.hub-search{max-width:520px;width:100%;margin:28px auto 0;position:relative}.hub-search input{width:100%;padding:16px 22px;border-radius:999px;border:none;font-size:16px;outline:none;background:rgba(255,255,255,.2);color:#fff;backdrop-filter:blur(8px);transition:.25s}.hub-search input::placeholder{color:rgba(255,255,255,.55)}.hub-search input:focus{background:rgba(255,255,255,.28);box-shadow:0 0 0 3px rgba(255,255,255,.15)}.hub-search .search-icon{position:absolute;right:20px;top:50%;transform:translateY(-50%);font-size:18px;opacity:.6;transition:.25s}.hub-search .result-count{position:absolute;right:52px;top:50%;transform:translateY(-50%);font-size:12px;color:rgba(255,255,255,.6);background:rgba(255,255,255,.12);padding:2px 10px;border-radius:999px;white-space:nowrap;transition:.25s;pointer-events:none;opacity:0}.hub-search .result-count.show{opacity:1}.hub-hero-deco{position:absolute;inset:0;overflow:hidden;pointer-events:none}.hub-hero-deco div{position:absolute;border-radius:50%;border:2px solid rgba(255,255,255,.06)}.hub-hero-deco div:nth-child(1){width:480px;height:480px;top:-240px;left:-120px;border-color:rgba(255,255,255,.08)}.hub-hero-deco div:nth-child(2){width:320px;height:320px;bottom:-160px;right:-80px;border-color:rgba(255,255,255,.06)}.hub-hero-deco div:nth-child(3){width:200px;height:200px;top:30%;right:10%;background:radial-gradient(circle,rgba(255,255,255,.06),transparent 70%);border:none}.hub-nav{position:sticky;top:0;z-index:50;background:rgba(244,251,253,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(6,43,82,.08);padding:0 24px;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;justify-content:center}.hub-nav::-webkit-scrollbar{display:none}.hub-nav a{display:inline-flex;align-items:center;gap:8px;padding:16px 18px;text-decoration:none;color:var(--cinza);font-weight:600;font-size:14px;white-space:nowrap;border-bottom:3px solid transparent;transition:color .2s,border-color .2s,background .2s;border-radius:4px 4px 0 0}.hub-nav a:hover{color:var(--azul-escuro);background:rgba(0,127,163,.04)}.hub-nav a.active{color:var(--azul-escuro);border-bottom-color:var(--turquesa);background:rgba(0,183,216,.06)}.hub-nav a .nav-icon{font-size:16px}.hub-section{padding:40px 24px 20px;scroll-margin-top:70px}.hub-section+.hub-section{border-top:1px solid rgba(6,43,82,.06)}.hub-section h2{font-size:clamp(24px,3vw,30px);color:var(--azul-escuro);margin:0 0 4px;display:flex;align-items:center;gap:10px}.hub-section .subtitle{color:var(--cinza);font-size:15px;margin:0 0 24px}.hub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}.hub-card{background:#fff;border-radius:20px;padding:22px;border:1px solid rgba(0,127,163,.1);box-shadow:0 4px 16px rgba(6,43,82,.04);transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .3s;cursor:pointer;text-decoration:none;color:inherit;display:block;opacity:0;transform:translateY(20px)}.hub-card.visible{opacity:1;transform:none}.hub-card:hover{transform:translateY(-4px) scale(1.01);box-shadow:0 20px 48px rgba(6,43,82,.1)}.hub-card .card-icon{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--azul-escuro),var(--turquesa));color:#fff;font-size:20px;margin-bottom:14px;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}.hub-card:hover .card-icon{transform:scale(1.08) rotate(-4deg)}.hub-card h3{font-size:17px;color:var(--azul-escuro);margin:0 0 6px;line-height:1.25}.hub-card p{font-size:13.5px;color:var(--cinza);margin:0;line-height:1.45}.hub-card .tag{display:inline-block;margin-top:12px;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;background:var(--turquesa-claro);color:var(--azul);letter-spacing:.02em;transition:background .2s}.hub-card:hover .tag{background:rgba(0,183,216,.18)}.hub-footer{text-align:center;padding:48px 24px 52px;color:#5b6c75;font-size:13px;border-top:1px solid rgba(6,43,82,.06)}.hub-footer strong{color:var(--azul-escuro)}.hub-empty{display:none;text-align:center;padding:60px 24px;color:var(--cinza)}.hub-empty.show{display:block}.hub-empty h3{font-size:20px;color:var(--azul-escuro);margin:0 0 8px}.back-link{display:inline-flex;align-items:center;gap:6px;margin-bottom:14px;color:#fff;text-decoration:none;font-weight:600;font-size:14px;background:rgba(255,255,255,.12);padding:6px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.25);transition:.18s;position:relative;z-index:1}.back-link:hover{background:rgba(255,255,255,.22)}.hero-tagline{display:inline-flex;align-items:center;gap:8px;margin-top:20px;padding:6px 16px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);font-size:13px;color:rgba(255,255,255,.8)}.hero-tagline span{opacity:.5}@media(max-width:700px){.hub-header{padding:60px 18px 36px;min-height:50vh}.hub-grid{grid-template-columns:1fr}.hub-section{padding:32px 16px 16px}.hub-nav{padding:0 12px;justify-content:flex-start}.hub-nav a{padding:14px 12px;font-size:13px}.hub-nav a .nav-label{display:none}.hub-nav a .nav-icon{font-size:18px}}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<header class="hero hub-header">
+  <div class="hub-hero-deco"><div></div><div></div><div></div></div>
+  <div class="brand" style="animation:scaleIn .5s ease"><span class="brand-icon">F</span> FEMIC &bull; GUIAS PARA PACIENTES</div>
+  <h1 style="animation:fadeUp .6s .15s both">Informação que acolhe</h1>
+  <p style="animation:fadeUp .6s .3s both">Guias criados com linguagem clara e base em evidências para ajudar você a entender sua condição e participar do seu tratamento.</p>
+  <div class="hub-search" style="animation:fadeUp .6s .45s both">
+    <input type="text" id="searchInput" placeholder="Buscar condição ou região…" oninput="filterCards()">
+    <span class="result-count" id="resultCount"></span>
+    <span class="search-icon">🔍</span>
+  </div>
+  <div class="hero-tagline" style="animation:fadeUp .6s .6s both">19 guias <span>·</span> atualizado abril 2026</div>
+</header>
+
+<nav class="hub-nav" id="hubNav">
+  <a href="#coluna" class="active"><span class="nav-icon">🦴</span><span class="nav-label">Coluna</span></a>
+  <a href="#ombro"><span class="nav-icon">💪</span><span class="nav-label">Ombro e Braço</span></a>
+  <a href="#joelho"><span class="nav-icon">🦵</span><span class="nav-label">Joelho e Perna</span></a>
+  <a href="#pe"><span class="nav-icon">🦶</span><span class="nav-label">Pé e Tornozelo</span></a>
+  <a href="#geral"><span class="nav-icon">📋</span><span class="nav-label">Geral</span></a>
+</nav>
+
+<main>
+
+<div class="hub-empty" id="hubEmpty">
+  <h3>Nenhum guia encontrado</h3>
+  <p>Tente buscar por outra palavra ou região.</p>
+</div>
+
+<section class="hub-section" id="coluna" data-category>
+  <h2>🦴 Coluna e Pescoço</h2>
+  <p class="subtitle">Condições que afetam a região cervical, torácica e lombar da coluna vertebral.</p>
+  <div class="hub-grid">
+    <a class="hub-card" href="lombalgia.html" data-search="lombalgia dor lombar costas coluna"><div class="card-icon">🔵</div><h3>Dor Lombar</h3><p>Guia para entender a dor na parte baixa das costas, reconhecer sinais de alerta e cuidar da coluna com segurança.</p><span class="tag">Coluna lombar</span></a>
+    <a class="hub-card" href="femic_cervicalgia.html" data-search="cervicalgia pescoco dor cervical coluna"><div class="card-icon">🔵</div><h3>Cervicalgia</h3><p>Orientações sobre a dor na cervical, sintomas comuns e cuidados práticos para o dia a dia.</p><span class="tag">Coluna cervical</span></a>
+    <a class="hub-card" href="cervicobraquialgia.html" data-search="cervicobraquialgia braco coluna cervical dor irradiada"><div class="card-icon">🔵</div><h3>Cervicobraquialgia</h3><p>Entenda a dor que se origina no pescoço e irradia para o braço, e como a fisioterapia pode ajudar.</p><span class="tag">Coluna cervical</span></a>
+    <a class="hub-card" href="ciatalgia.html" data-search="ciatalgia nervo ciatico dor perna coluna"><div class="card-icon">🔵</div><h3>Ciatalgia</h3><p>Guia sobre a dor do nervo ciático, sintomas, causas e opções de tratamento conservador.</p><span class="tag">Coluna lombar</span></a>
+    <a class="hub-card" href="cefaleia-tensional.html" data-search="cefaleia tensional cabeca estresse"><div class="card-icon">🔵</div><h3>Cefaleia Tensional</h3><p>Orientações para identificar e lidar com a cefaleia tensional, a mais comum entre as dores de cabeça.</p><span class="tag">Cabeça e pescoço</span></a>
+  </div>
+</section>
+
+<section class="hub-section" id="ombro" data-category>
+  <h2>💪 Ombro e Braço</h2>
+  <p class="subtitle">Condições que afetam o ombro, o cotovelo, o punho e a mão.</p>
+  <div class="hub-grid">
+    <a class="hub-card" href="manguito-rotador.html" data-search="manguito rotador ombro dor tendao"><div class="card-icon">💪</div><h3>Manguito Rotador</h3><p>Entenda as lesões do manguito rotador, os sintomas e como a reabilitação pode restaurar a função do ombro.</p><span class="tag">Ombro</span></a>
+    <a class="hub-card" href="capsulite-adesiva.html" data-search="capsulite adesiva ombro congelado"><div class="card-icon">💪</div><h3>Capsulite Adesiva</h3><p>Guia sobre o ombro congelado, suas fases e o papel da fisioterapia na recuperação da mobilidade.</p><span class="tag">Ombro</span></a>
+    <a class="hub-card" href="epicondilite.html" data-search="epicondilite cotovelo tendao dor"><div class="card-icon">💪</div><h3>Epicondilite</h3><p>Orientações sobre a dor no cotovelo, conhecida como "cotovelo de tenista", e estratégias de tratamento.</p><span class="tag">Cotovelo</span></a>
+    <a class="hub-card" href="tunel-carpo.html" data-search="tunel carpo punho mao dormencia"><div class="card-icon">💪</div><h3>Túnel do Carpo</h3><p>Entenda a compressão do nervo mediano no punho, os sintomas e as opções de tratamento conservador.</p><span class="tag">Punho e mão</span></a>
+  </div>
+</section>
+
+<section class="hub-section" id="joelho" data-category>
+  <h2>🦵 Joelho e Perna</h2>
+  <p class="subtitle">Condições que afetam o joelho, a perna e as estruturas ao redor.</p>
+  <div class="hub-grid">
+    <a class="hub-card" href="femoropatelar.html" data-search="femoropatelar joelho patela dor frontal"><div class="card-icon">🦵</div><h3>Dor Femoropatelar</h3><p>Guia sobre a dor na frente do joelho, relacionada à articulação entre o fêmur e a patela.</p><span class="tag">Joelho</span></a>
+    <a class="hub-card" href="lca.html" data-search="lca ligamento cruzado anterior joelho lesao"><div class="card-icon">🦵</div><h3>LCA — Ligamento Cruzado Anterior</h3><p>Orientações sobre a lesão do LCA, tratamento conservador, cirúrgico e reabilitação.</p><span class="tag">Joelho</span></a>
+    <a class="hub-card" href="menisco.html" data-search="menisco joelho lesao cartilagem"><div class="card-icon">🦵</div><h3>Lesão do Menisco</h3><p>Entenda a lesão meniscal, os sintomas e as abordagens de tratamento e reabilitação.</p><span class="tag">Joelho</span></a>
+    <a class="hub-card" href="osteoartrite-joelho.html" data-search="osteoartrite joelho artrose desgaste"><div class="card-icon">🦵</div><h3>Osteoartrite do Joelho</h3><p>Guia sobre o desgaste articular do joelho, manejo da dor e estratégias para manter a função.</p><span class="tag">Joelho</span></a>
+  </div>
+</section>
+
+<section class="hub-section" id="pe" data-category>
+  <h2>🦶 Pé e Tornozelo</h2>
+  <p class="subtitle">Condições que afetam o pé, o tornozelo e as estruturas de suporte.</p>
+  <div class="hub-grid">
+    <a class="hub-card" href="entorse-tornozelo.html" data-search="entorse tornozelo torcao lesao"><div class="card-icon">🦶</div><h3>Entorse de Tornozelo</h3><p>Orientações sobre a torção do tornozelo, cuidados imediatos e reabilitação para prevenir recidivas.</p><span class="tag">Tornozelo</span></a>
+    <a class="hub-card" href="fascite-plantar.html" data-search="fascite plantar pe sola dor"><div class="card-icon">🦶</div><h3>Fascite Plantar</h3><p>Guia sobre a dor na sola do pé, causas e estratégias para alívio e prevenção.</p><span class="tag">Pé</span></a>
+  </div>
+</section>
+
+<section class="hub-section" id="geral" data-category>
+  <h2>📋 Geral</h2>
+  <p class="subtitle">Condições e orientações gerais em fisioterapia musculoesquelética.</p>
+  <div class="hub-grid">
+    <a class="hub-card" href="dor-cronica.html" data-search="dor cronica persistente"><div class="card-icon">📋</div><h3>Dor Crônica</h3><p>Entenda os mecanismos da dor persistente e as abordagens para o manejo a longo prazo.</p><span class="tag">Geral</span></a>
+    <a class="hub-card" href="fraturas.html" data-search="fratura osso lesao"><div class="card-icon">📋</div><h3>Fraturas</h3><p>Orientações sobre o processo de consolidação óssea e o papel da fisioterapia na recuperação.</p><span class="tag">Geral</span></a>
+    <a class="hub-card" href="calor-gelo.html" data-search="calor gelo terapia recursos terapeuticos"><div class="card-icon">📋</div><h3>Calor e Gelo</h3><p>Guia prático sobre quando usar calor ou gelo em lesões musculoesqueléticas.</p><span class="tag">Geral</span></a>
+    <a class="hub-card" href="orientacoes.html" data-search="orientacoes gerais fisioterapia"><div class="card-icon">📋</div><h3>Orientações Gerais</h3><p>Recomendações amplas para pacientes em fisioterapia musculoesquelética.</p><span class="tag">Geral</span></a>
+  </div>
+</section>
+
+<section class="cta" style="margin:0 24px 24px">
+  <h2>💙 FEMIC</h2>
+  <p>Informação em saúde com linguagem clara, acolhedora e baseada em evidências. Nosso compromisso é ajudar você a entender sua condição e participar ativamente do seu tratamento.</p>
+  <div class="button-row">
+    <a class="btn primary" href="#top" onclick="window.scrollTo({top:0,behavior:'smooth'}); return false;">Voltar ao topo</a>
+    <a class="btn secondary" href="javascript:window.print()">Imprimir guias</a>
+  </div>
+</section>
+
+</main>
+
+<footer class="hub-footer">
+  <strong>FEMIC</strong> &bull; Fisioterapia Musculoesquelética &bull; Informação baseada em evidências<br>
+  <span style="font-size:12px;margin-top:6px;display:inline-block;opacity:.7">Este conteúdo não substitui avaliação profissional individualizada.</span>
+</footer>
+
+</div>
+
+<script>
+(function(){
+  var c = document.querySelector('.hub-card');
+  if (!c) return;
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.08 });
+  document.querySelectorAll('.hub-card').forEach(function(card, i) {
+    card.style.transitionDelay = (i % 5) * 60 + 'ms';
+    observer.observe(card);
+  });
+})();
+
+function filterCards() {
+  var q = document.getElementById('searchInput').value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  var total = 0, cards = document.querySelectorAll('.hub-card');
+  cards.forEach(function(c) {
+    var match = c.getAttribute('data-search').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').indexOf(q) !== -1 ||
+                c.querySelector('h3').textContent.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').indexOf(q) !== -1;
+    c.style.display = match || !q ? 'block' : 'none';
+    if (match) total++;
+  });
+  document.querySelectorAll('.hub-section[data-category]').forEach(function(s) {
+    var visible = Array.from(s.querySelectorAll('.hub-card')).some(function(x) { return x.style.display !== 'none'; });
+    s.style.display = visible || !q ? 'block' : 'none';
+  });
+  var rc = document.getElementById('resultCount');
+  if (q) { rc.textContent = total + ' resultado' + (total !== 1 ? 's' : ''); rc.classList.add('show'); }
+  else { rc.classList.remove('show'); }
+  document.getElementById('hubEmpty').classList.toggle('show', q && total === 0);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        document.querySelectorAll('.hub-nav a').forEach(function(a) {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + entry.target.id);
+        });
+      }
+    });
+  }, { threshold: 0.25, rootMargin: '-80px 0px 0px 0px' });
+  document.querySelectorAll('.hub-section[data-category]').forEach(function(s) { observer.observe(s); });
+  document.querySelectorAll('.hub-nav a').forEach(function(a) {
+    a.addEventListener('click', function(e) {
+      e.preventDefault();
+      var target = document.getElementById(a.getAttribute('href').slice(1));
+      if (target) {
+        document.querySelectorAll('.hub-nav a').forEach(function(x) { x.classList.remove('active'); });
+        a.classList.add('active');
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+});
+</script>
+<style>
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+</style>
+</body>
+</html>

@@ -1436,657 +1436,6 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.topba
 @media(max-width:768px){.package-pattern{padding:8px 9px;border-radius:13px}.package-pattern-title{font-size:.72rem}.package-pattern-chip{font-size:.66rem;padding:4px 7px}.package-pattern-note{font-size:.66rem}}
 
 
-/* =========================================================
-   FEMIC Agenda v1.4.38 — Refino visual seguro da grade semanal
-   Tipo: visual. Não altera JS, Supabase, dados, pacotes ou regras.
-   Objetivo: melhorar alinhamento, leitura e consistência dos cards.
-   ========================================================= */
-#weekView{
-  border-radius:24px;
-/* =========================================================
-   FEMIC Agenda v1.4.39 — Refino Aba DIA mobile + desktop safe
-   Alteração visual somente: não altera JS, Supabase, dados ou regras.
-   ========================================================= */
-#panel-day .card:first-child{border-radius:20px!important}
-#panel-day .quick-note{margin-top:10px!important;border-radius:14px!important}
-#panel-day #dayKpis{gap:10px!important}
-#panel-day #dayKpis .kpi{border-radius:16px!important;background:linear-gradient(180deg,#ffffff,#f7fbff)!important}
-#panel-day #dayList{gap:10px!important}
-#panel-day #dayList .item{padding:13px 14px!important;border-radius:18px!important;box-shadow:0 8px 22px rgba(11,60,111,.075)!important;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease!important;overflow:hidden!important}
-#panel-day #dayList .item>div{gap:9px!important}
-#panel-day #dayList .appt-weekday{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-width:38px!important;height:24px!important;padding:3px 7px!important;border-radius:999px!important;background:rgba(31,182,233,.12)!important;border:1px solid rgba(31,182,233,.25)!important;color:var(--primary)!important;font-size:.68rem!important;font-weight:900!important;line-height:1!important}
-#panel-day #dayList .item strong{font-size:.95rem!important;color:var(--primary)!important;line-height:1.18!important;letter-spacing:-.01em!important}
-#panel-day #dayList .item .status-chip{font-size:.68rem!important;padding:3px 7px!important;border-radius:999px!important}
-#panel-day #dayList .item span[style*="font-size:.82rem"]{font-size:.86rem!important;font-weight:800!important;color:var(--text)!important}
-#panel-day #dayList .item .muted{font-size:.74rem!important;line-height:1.25!important}
-#panel-day #dayList .item div[style*="border-top"]{display:flex!important;align-items:center!important;gap:7px!important;border-top:1px solid rgba(11,60,111,.10)!important;padding-top:9px!important}
-#panel-day #dayList .item .btn,#panel-day #dayList .item select{min-height:32px!important;padding:7px 10px!important;font-size:.72rem!important;border-radius:11px!important}
-#panel-day #dayList .item select{width:auto!important;min-width:104px!important;background:#fff!important}
-@media(min-width:769px){#panel-day #dayList .item:hover{transform:translateY(-2px)!important;box-shadow:0 14px 30px rgba(11,60,111,.13)!important;border-color:rgba(31,182,233,.28)!important}}
-@media(max-width:768px){#panel-day .section-title{gap:10px!important}#panel-day .section-title .toolbar{width:100%!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important}#panel-day .section-title .toolbar input[type="date"]{grid-column:1/-1!important;max-width:none!important}#panel-day #dayKpis{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}#panel-day #dayKpis .kpi{padding:10px!important}#panel-day #dayKpis .kpi strong{font-size:1.12rem!important}#panel-day #dayList{gap:9px!important}#panel-day #dayList .item{padding:11px!important;border-radius:16px!important}#panel-day #dayList .item>div{gap:8px!important}#panel-day #dayList .item>div>div:nth-child(1),#panel-day #dayList .item>div>div:nth-child(2){align-items:flex-start!important;gap:6px!important}#panel-day #dayList .appt-weekday{min-width:34px!important;height:22px!important;font-size:.62rem!important;padding:3px 6px!important}#panel-day #dayList .item strong{font-size:.86rem!important}#panel-day #dayList .item .status-chip{font-size:.62rem!important;padding:3px 6px!important}#panel-day #dayList .item span[style*="font-size:.82rem"]{width:100%!important;font-size:.82rem!important}#panel-day #dayList .item .muted{font-size:.7rem!important}#panel-day #dayList .item div[style*="border-top"]{display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important;padding-top:8px!important}#panel-day #dayList .item .btn,#panel-day #dayList .item select{width:100%!important;min-width:0!important;min-height:34px!important;justify-content:center!important;text-align:center!important;font-size:.68rem!important;padding:7px 6px!important}}
-@media(max-width:430px){#panel-day #dayKpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}#panel-day #dayList .item div[style*="border-top"]{grid-template-columns:1fr!important}#panel-day #dayList .item .btn,#panel-day #dayList .item select{min-height:36px!important}}
-
-
-/* =========================================================
-   FEMIC Agenda v1.4.40 — Refino Ficha do Paciente
-   Apenas visual/UX. Não altera lógica, Supabase, pacotes ou dados.
-   ========================================================= */
-
-/* Modal da ficha mais confortável em desktop */
-#patientModal .modal{
-  width:min(980px,100%) !important;
-  border-radius:30px;
-  overflow:hidden;
-}
-
-#patientModal .modal-head{
-  background:
-    radial-gradient(circle at 0 0, rgba(31,182,233,.12), transparent 34%),
-    linear-gradient(180deg,#fff,#f8fbff);
-  align-items:flex-start;
-}
-
-#patientModal .modal-head h3{
-  color:var(--primary);
-  font-size:1.24rem;
-  line-height:1.15;
-}
-
-#patientFicha{
-  display:grid;
-  gap:14px;
-}
-
-/* Resumo superior da ficha */
-#patientFicha .patient-summary{
-  grid-template-columns:1.35fr 1fr .7fr .7fr;
-  gap:10px;
-}
-
-#patientFicha .patient-summary .kpi{
-  border-radius:18px;
-  background:linear-gradient(180deg,#ffffff,#f8fbff);
-  box-shadow:0 8px 18px rgba(11,60,111,.055);
-  min-height:82px;
-}
-
-#patientFicha .patient-summary .kpi .small{
-  font-size:.72rem;
-  text-transform:uppercase;
-  letter-spacing:.05em;
-  font-weight:900;
-}
-
-#patientFicha .patient-summary .kpi strong{
-  line-height:1.15;
-  word-break:break-word;
-}
-
-/* Blocos internos da ficha */
-#patientFicha > .card{
-  margin-top:0 !important;
-  border-radius:22px;
-  box-shadow:0 10px 24px rgba(11,60,111,.07);
-}
-
-#patientFicha > .card > .eyebrow{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  padding:5px 9px;
-  border-radius:999px;
-  background:rgba(31,182,233,.10);
-  border:1px solid rgba(31,182,233,.18);
-  color:var(--primary);
-  margin-bottom:12px;
-}
-
-/* Pacotes dentro da ficha */
-#patientFicha .package-card,
-#patientFicha .item.package-card{
-  border-radius:18px;
-  padding:13px;
-  background:linear-gradient(180deg,#fff,#fbfdff);
-}
-
-#patientFicha .package-progress{
-  height:11px;
-  margin-top:10px;
-}
-
-#patientFicha .package-actions{
-  margin-top:10px;
-}
-
-#patientFicha .package-actions .btn{
-  min-height:34px;
-  border-radius:12px;
-  padding:7px 10px;
-  font-size:.76rem;
-}
-
-/* Padrão de agendamento do pacote — leitura mais clara */
-#patientFicha .package-pattern,
-#patientFicha .pkg-pattern,
-#patientFicha .package-schedule-pattern,
-#patientFicha .femic-package-pattern{
-  margin-top:10px !important;
-  border-radius:16px !important;
-  background:linear-gradient(180deg,#f4fbff,#fff) !important;
-  border:1px solid rgba(31,182,233,.18) !important;
-  padding:10px 11px !important;
-}
-
-#patientFicha .package-pattern-title,
-#patientFicha .pkg-pattern-title,
-#patientFicha .femic-package-pattern-title{
-  color:var(--primary) !important;
-  font-size:.78rem !important;
-  font-weight:900 !important;
-  text-transform:uppercase;
-  letter-spacing:.04em;
-  margin-bottom:6px !important;
-}
-
-/* Timeline de agendamentos */
-#patientFicha .timeline-list{
-  display:grid;
-  gap:9px;
-  max-height:44vh !important;
-  padding-right:5px;
-}
-
-#patientFicha .timeline-item{
-  border-radius:17px;
-  padding:12px;
-  background:linear-gradient(180deg,#fff,#fbfdff);
-  box-shadow:0 7px 16px rgba(11,60,111,.055);
-}
-
-#patientFicha .timeline-item .item-top{
-  align-items:flex-start;
-  gap:10px;
-}
-
-#patientFicha .timeline-item strong{
-  display:block;
-  color:var(--primary);
-  font-size:.9rem;
-  line-height:1.25;
-}
-
-#patientFicha .timeline-item .muted.small{
-  margin-top:5px;
-}
-
-#patientFicha .timeline-item .toolbar{
-  justify-content:flex-end;
-  gap:6px;
-  flex-wrap:wrap;
-}
-
-#patientFicha .timeline-item .toolbar .btn,
-#patientFicha .timeline-item .status-actions .btn{
-  min-height:32px;
-  padding:6px 9px;
-  border-radius:11px;
-  font-size:.72rem;
-}
-
-#patientFicha .timeline-item .status-actions{
-  margin-top:8px;
-  padding-top:8px;
-  border-top:1px solid rgba(11,60,111,.10);
-}
-
-/* Scroll discreto na ficha */
-#patientFicha .timeline-list::-webkit-scrollbar{
-  width:6px;
-}
-#patientFicha .timeline-list::-webkit-scrollbar-track{
-  background:rgba(11,60,111,.04);
-  border-radius:999px;
-}
-#patientFicha .timeline-list::-webkit-scrollbar-thumb{
-  background:rgba(11,60,111,.18);
-  border-radius:999px;
-}
-
-/* Mobile: ficha em cartões mais tocáveis e sem apertar botões */
-@media(max-width:768px){
-  #patientModal .modal,
-  #patientModal .modal.sm{
-    width:100% !important;
-    border-radius:22px 22px 0 0 !important;
-  }
-
-  #patientModal .modal-head{
-    padding:13px 14px;
-  }
-
-  #patientModal .modal-head h3{
-    font-size:1.06rem;
-  }
-
-  #patientFicha{
-    gap:10px;
-  }
-
-  #patientFicha .patient-summary{
-    grid-template-columns:1fr 1fr !important;
-    gap:8px;
-  }
-
-  #patientFicha .patient-summary .kpi{
-    min-height:70px;
-    padding:10px;
-    border-radius:15px;
-  }
-
-  #patientFicha .patient-summary .kpi .small{
-    font-size:.62rem;
-  }
-
-  #patientFicha .patient-summary .kpi strong,
-  #patientFicha .patient-summary .kpi strong[style]{
-    font-size:.86rem !important;
-  }
-
-  #patientFicha > .card{
-    border-radius:18px;
-    padding:12px;
-  }
-
-  #patientFicha > .card > .eyebrow{
-    font-size:.62rem;
-    padding:4px 7px;
-    margin-bottom:9px;
-  }
-
-  #patientFicha .package-card,
-  #patientFicha .item.package-card{
-    padding:10px;
-    border-radius:15px;
-  }
-
-  #patientFicha .package-actions{
-    justify-content:flex-start;
-  }
-
-  #patientFicha .package-actions .btn{
-    flex:1 1 auto;
-    justify-content:center;
-    font-size:.68rem;
-    padding:6px 7px;
-  }
-
-  #patientFicha .timeline-list{
-    max-height:36dvh !important;
-    gap:8px;
-  }
-
-  #patientFicha .timeline-item{
-    padding:10px;
-    border-radius:15px;
-  }
-
-  #patientFicha .timeline-item .item-top{
-    flex-direction:column;
-    gap:7px;
-  }
-
-  #patientFicha .timeline-item strong{
-    font-size:.8rem;
-  }
-
-  #patientFicha .timeline-item .muted.small{
-    font-size:.7rem;
-  }
-
-  #patientFicha .timeline-item .toolbar{
-    width:100%;
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:6px;
-  }
-
-  #patientFicha .timeline-item .toolbar .btn{
-    width:100%;
-    justify-content:center;
-    font-size:.68rem;
-    padding:6px 7px;
-  }
-
-  #patientFicha .timeline-item .status-actions{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:5px;
-  }
-
-  #patientFicha .timeline-item .status-actions .btn{
-    justify-content:center;
-    font-size:.66rem;
-    padding:6px 6px;
-  }
-}
-
-@media(max-width:430px){
-  #patientFicha .patient-summary{
-    grid-template-columns:1fr !important;
-  }
-
-  #patientFicha .timeline-item .toolbar,
-  #patientFicha .timeline-item .status-actions{
-    grid-template-columns:1fr;
-  }
-}
-
-
-/* =========================================================
-   FEMIC — Grade Semanal (femic-week-* base, restaurado)
-   Essencial para mobile + desktop
-   ========================================================= */
-#weekView{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}
-#weekBoard.week-board{display:block!important;overflow:visible!important;border:0!important;box-shadow:none!important;background:transparent!important;border-radius:0!important}
-.femic-week-board{--time-col:74px;--day-min:154px;--hour-h:72px;display:grid;grid-template-columns:var(--time-col) repeat(7,minmax(var(--day-min),1fr));grid-template-rows:44px auto;min-width:1180px;border:1px solid var(--line);border-radius:24px;overflow:hidden;background:#fff;box-shadow:var(--shadow)}
-.femic-week-head{position:sticky;top:0;z-index:6;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px 6px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:linear-gradient(180deg,#f7fbff,#eef6fb);font-weight:900;color:var(--primary);font-size:.82rem;line-height:1.15}
-.femic-week-head.today{background:linear-gradient(135deg,#dff7ff,#f4fbff);box-shadow:inset 0 -3px 0 rgba(31,182,233,.34)}
-.femic-week-axis{position:relative;grid-column:1;grid-row:2;background:linear-gradient(180deg,#f8fbfd,#f2f7fb);border-right:1px solid var(--line)}
-.femic-week-hour{position:absolute;right:8px;transform:translateY(-50%);font-size:.72rem;font-weight:900;color:var(--muted);white-space:nowrap}
-.femic-week-day{position:relative;grid-row:2;background:#fff;border-right:1px solid var(--line);overflow:hidden;cursor:pointer}
-.femic-week-day:hover{background:#fbfdff}
-.femic-week-day.today{background:linear-gradient(180deg,#f0fbff,#fff)}
-.femic-week-day.closed{background:repeating-linear-gradient(135deg,#f1f5f9,#f1f5f9 8px,#e9eef5 8px,#e9eef5 16px);opacity:.78;cursor:not-allowed}
-.femic-week-line{position:absolute;left:0;right:0;height:1px;background:rgba(11,60,111,.08);z-index:1}
-.femic-week-line.major{background:rgba(11,60,111,.16)}
-.femic-week-period{position:absolute;left:0;right:0;background:rgba(31,182,233,.045);border-top:1px solid rgba(31,182,233,.11);border-bottom:1px solid rgba(31,182,233,.08);z-index:0}
-.femic-week-empty-label{position:absolute;top:8px;right:8px;z-index:2;font-size:.62rem;font-weight:900;color:var(--primary);background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:999px;padding:3px 7px;pointer-events:none}
-.femic-week-empty-label.closed{color:var(--muted)}
-.femic-week-card{position:absolute!important;z-index:4;margin:0!important;display:flex!important;flex-direction:column!important;gap:2px!important;min-height:26px!important;max-height:none!important;overflow:hidden!important;padding:6px 7px!important;border-radius:12px!important;border-top:1px solid rgba(255,255,255,.72)!important;box-shadow:0 8px 16px rgba(11,60,111,.10)!important;cursor:pointer!important;line-height:1.15!important}
-.femic-week-card:hover{z-index:30;min-height:max-content!important;overflow:visible!important;box-shadow:0 16px 28px rgba(11,60,111,.16)!important}
-.femic-week-card .appt-time{font-size:.6rem;margin:0 0 1px 0;padding:1px 5px}
-.femic-week-card .appt-name{font-size:.7rem!important;line-height:1.1!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0!important;color:var(--primary)}
-.femic-week-card .small{font-size:.58rem!important;line-height:1.08!important;margin:0!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.femic-week-card .appt-meta{margin-top:0}
-.femic-week-card .status-chip,.femic-week-card .service-badge{font-size:.54rem!important;padding:1px 4px!important}
-.femic-week-card .appt-actions{display:none!important;background:#fff;border-radius:10px;padding:5px;margin-top:4px;box-shadow:0 10px 22px rgba(11,60,111,.12)}
-.femic-week-card:hover .appt-actions{display:flex!important}
-.femic-week-card.status-agendado{background:linear-gradient(180deg,#fffaf0,#fff)!important}
-.femic-week-card.status-confirmado{background:linear-gradient(180deg,#eff6ff,#fff)!important}
-.femic-week-card.status-concluido{background:linear-gradient(180deg,#f0fdf4,#fff)!important}
-.femic-week-card.status-cancelado{background:linear-gradient(180deg,#fef2f2,#fff)!important}
-#weekView{border-radius:24px;background:linear-gradient(180deg,rgba(255,255,255,.72),rgba(248,252,255,.58))}
-.femic-week-board{--time-col:78px;--day-min:162px;--hour-h:74px;border-radius:26px!important;border-color:rgba(11,60,111,.12)!important;box-shadow:0 18px 40px rgba(11,60,111,.10)!important}
-.femic-week-head{min-height:46px;padding:9px 7px!important;font-size:.84rem!important;letter-spacing:-.01em}
-.femic-week-axis{box-shadow:inset -1px 0 0 rgba(11,60,111,.04)}
-.femic-week-hour{right:10px!important;font-size:.72rem!important;padding:2px 0;color:#5f7388!important}
-.femic-week-day{background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(250,253,255,.96))}
-.femic-week-day.today{background:linear-gradient(180deg,rgba(239,251,255,.98),rgba(255,255,255,.97))!important}
-.femic-week-day.closed{opacity:.82!important}
-.femic-week-line{background:rgba(11,60,111,.07)!important}
-.femic-week-line.major{background:rgba(11,60,111,.15)!important}
-.femic-week-period{background:rgba(31,182,233,.035)!important}
-.femic-week-empty-label{top:7px!important;right:7px!important;font-size:.58rem!important;opacity:.82}
-.femic-week-card{border-radius:13px!important;padding:6px 7px!important;gap:3px!important;box-shadow:0 7px 15px rgba(11,60,111,.095)!important;border:1px solid rgba(11,60,111,.09)!important;border-left-width:6px!important;transition:box-shadow .15s ease,transform .15s ease,filter .15s ease!important}
-.femic-week-card:hover{transform:translateY(-1px)!important;filter:saturate(1.02)}
-.femic-week-card .appt-time{width:max-content;max-width:100%;font-size:.58rem!important;line-height:1.05!important;padding:2px 5px!important;margin-bottom:1px!important}
-.femic-week-card .appt-name{font-size:.7rem!important;line-height:1.12!important;letter-spacing:-.01em}
-.femic-week-card .small{font-size:.56rem!important;line-height:1.12!important;opacity:.92}
-.femic-week-card .appt-meta{gap:3px!important}
-.femic-week-card .status-chip,.femic-week-card .service-badge{font-size:.52rem!important;padding:2px 4px!important;line-height:1!important;max-width:100%}
-.femic-week-card .appt-actions{border:1px solid rgba(11,60,111,.08)!important}
-.femic-week-card .mini-action,.femic-week-card .btn{min-height:24px!important;padding:4px 6px!important;font-size:.62rem!important;border-radius:8px!important}
-@media(max-width:768px){#weekView{margin-left:-2px;margin-right:-2px}.femic-week-board{--time-col:52px;--day-min:116px;--hour-h:62px;min-width:865px!important;border-radius:18px!important}.femic-week-head{min-height:40px;font-size:.65rem!important;padding:6px 4px!important}.femic-week-hour{right:5px!important;font-size:.58rem!important}.femic-week-empty-label{top:5px!important;right:4px!important;font-size:.52rem!important;padding:2px 5px!important}.femic-week-card{border-left-width:5px!important;border-radius:10px!important;padding:5px 5px!important;gap:2px!important}.femic-week-card .appt-time{font-size:.5rem!important;padding:1px 4px!important}.femic-week-card .appt-name{font-size:.61rem!important;line-height:1.08!important}.femic-week-card .small{font-size:.49rem!important}.femic-week-card .status-chip,.femic-week-card .service-badge{font-size:.48rem!important;padding:1px 3px!important}.femic-week-card:hover .appt-actions{display:none!important}}
-@media(max-width:430px){.femic-week-board{--day-min:108px;min-width:808px!important}}
-
-/* =====================================================
-    FEMIC AGENDA — Grade estilo Google Calendar
-    Bloco final: vence todos os anteriores
-    ===================================================== */
-
-/* Container da semana ocupa toda a largura */
-@media (min-width: 769px){
-  #panel-agenda{
-    width: calc(100vw - 20px) !important;
-    max-width: none !important;
-    margin-left: calc(50% - 50vw + 10px) !important;
-    margin-right: 0 !important;
-  }
-  #panel-agenda > .card{
-    padding: 10px !important;
-    border-radius: 20px !important;
-  }
-  #weekView{
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow-x: auto !important;
-    overflow-y: visible !important;
-    padding: 4px 0 16px !important;
-    scrollbar-width: thin !important;
-    scrollbar-color: rgba(11,60,111,.18) transparent !important;
-  }
-  #weekBoard.week-board{
-    width: 100% !important;
-    overflow: visible !important;
-  }
-
-  /* Grade principal */
-  .femic-week-board{
-    --time-col: 64px !important;
-    width: 100% !important;
-    min-width: 900px !important;
-    max-width: 100% !important;
-    grid-template-columns: var(--time-col) repeat(7, minmax(0, 1fr)) !important;
-    border-radius: 20px !important;
-    border: 1px solid rgba(11,60,111,.10) !important;
-    box-shadow: 0 8px 24px rgba(11,60,111,.08) !important;
-    background: #fff !important;
-  }
-
-  /* Cabeçalho dos dias — estilo Google */
-  .femic-week-head{
-    height: 56px !important;
-    min-height: 56px !important;
-    padding: 8px 6px !important;
-    font-size: .82rem !important;
-    font-weight: 700 !important;
-    line-height: 1.25 !important;
-    letter-spacing: .01em !important;
-    color: #5f6368 !important;
-    background: #fff !important;
-    border-bottom: 1px solid rgba(11,60,111,.10) !important;
-    text-transform: uppercase !important;
-    font-size: .72rem !important;
-  }
-
-  /* Hoje — destaque azul no header */
-  .femic-week-head.today{
-    color: var(--primary) !important;
-    background: linear-gradient(180deg,#f0f8ff,#fff) !important;
-    border-bottom: 2px solid rgba(31,182,233,.5) !important;
-    font-weight: 900 !important;
-  }
-
-  /* Coluna de horas */
-  .femic-week-axis{
-    background: #fafbfc !important;
-    border-right: 1px solid rgba(11,60,111,.08) !important;
-  }
-  .femic-week-hour{
-    right: 8px !important;
-    font-size: .72rem !important;
-    font-weight: 700 !important;
-    color: #80868b !important;
-    letter-spacing: .01em !important;
-  }
-
-  /* Colunas de dias */
-  .femic-week-day{
-    background: #fff !important;
-    border-right: 1px solid rgba(11,60,111,.07) !important;
-    overflow: hidden !important;
-  }
-  .femic-week-day:last-child{ border-right: none !important; }
-  .femic-week-day:hover{ background: #fafcff !important; }
-  .femic-week-day.today{ background: linear-gradient(180deg,#f5fbff,#fff) !important; }
-  .femic-week-day.closed{
-    background: repeating-linear-gradient(
-      45deg,#f8fafc,#f8fafc 5px,#f1f5f9 5px,#f1f5f9 10px
-    ) !important;
-    opacity: .7 !important;
-  }
-
-  /* Linhas de hora */
-  .femic-week-line{ background: rgba(11,60,111,.055) !important; }
-  .femic-week-line.major{ background: rgba(11,60,111,.13) !important; }
-  .femic-week-period{ background: rgba(31,182,233,.028) !important; }
-
-  /* Badge de atendimentos */
-  .femic-week-empty-label{
-    top: 5px !important;
-    right: 6px !important;
-    font-size: .62rem !important;
-    font-weight: 800 !important;
-    padding: 3px 7px !important;
-    background: rgba(255,255,255,.92) !important;
-    border: 1px solid rgba(11,60,111,.10) !important;
-  }
-
-  /* ── Cards — estilo Google Calendar ── */
-  .femic-week-card{
-    padding: 5px 8px !important;
-    border-radius: 6px !important;
-    min-height: 22px !important;
-    gap: 1px !important;
-    border: none !important;
-    border-left: 4px solid rgba(11,60,111,.4) !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.06) !important;
-    overflow: hidden !important;
-    transition: box-shadow .15s ease, filter .12s ease !important;
-  }
-
-  /* Status — cores sólidas como Google Calendar */
-  .femic-week-card.status-agendado{
-    background: #fff8e1 !important;
-    border-left-color: #f59e0b !important;
-  }
-  .femic-week-card.status-confirmado{
-    background: #e8f0fe !important;
-    border-left-color: #1a73e8 !important;
-  }
-  .femic-week-card.status-concluido{
-    background: #e6f4ea !important;
-    border-left-color: #34a853 !important;
-  }
-  .femic-week-card.status-cancelado{
-    background: #fce8e6 !important;
-    border-left-color: #ea4335 !important;
-    opacity: .72 !important;
-  }
-
-  /* Hover — expande o card */
-  .femic-week-card:hover,
-  .femic-week-card:focus-within{
-    z-index: 60 !important;
-    min-height: max-content !important;
-    width: min(260px, max(180px, 100%)) !important;
-    overflow: visible !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.08) !important;
-    filter: brightness(1.02) !important;
-  }
-
-  /* Conteúdo dos cards */
-  .femic-week-card .appt-time{
-    font-size: .66rem !important;
-    font-weight: 700 !important;
-    padding: 1px 5px !important;
-    margin: 0 0 2px 0 !important;
-    background: transparent !important;
-    border: none !important;
-    color: inherit !important;
-    opacity: .85 !important;
-    max-width: 100% !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-  }
-
-  .femic-week-card .appt-name{
-    display: block !important;
-    font-size: .8rem !important;
-    font-weight: 800 !important;
-    line-height: 1.2 !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    margin: 0 !important;
-    color: #1a1a2e !important;
-    letter-spacing: -.01em !important;
-  }
-
-  .femic-week-card .small,
-  .femic-week-card .appt-meta,
-  .femic-week-card .service-badge,
-  .femic-week-card .appt-actions{
-    display: none !important;
-  }
-
-  .femic-week-card:hover .small,
-  .femic-week-card:focus-within .small{
-    display: block !important;
-    font-size: .7rem !important;
-    line-height: 1.3 !important;
-    white-space: normal !important;
-    overflow: visible !important;
-    margin-top: 4px !important;
-    opacity: .85 !important;
-  }
-
-  .femic-week-card:hover .appt-meta,
-  .femic-week-card:focus-within .appt-meta{
-    display: flex !important;
-    margin-top: 4px !important;
-    flex-wrap: wrap !important;
-    gap: 4px !important;
-  }
-
-  .femic-week-card:hover .appt-actions,
-  .femic-week-card:focus-within .appt-actions{
-    display: flex !important;
-    margin-top: 6px !important;
-    gap: 5px !important;
-    flex-wrap: wrap !important;
-  }
-
-  .femic-week-card .mini-action{
-    font-size: .65rem !important;
-    padding: 4px 7px !important;
-    border-radius: 8px !important;
-  }
-  .femic-week-card .status-chip,
-  .femic-week-card .service-badge{
-    font-size: .62rem !important;
-    padding: 2px 6px !important;
-  }
-}
-
-/* Tablets */
-@media (min-width: 769px) and (max-width: 1100px){
-  .femic-week-board{
-    min-width: 800px !important;
-  }
-  .femic-week-card .appt-name{ font-size: .74rem !important; }
-}
-
-/* Telas grandes — mais espaçado */
-@media (min-width: 1400px){
-  .femic-week-board{ --time-col: 72px !important; }
-  .femic-week-head{ font-size: .76rem !important; }
-  .femic-week-card .appt-name{ font-size: .84rem !important; }
-  .femic-week-card .appt-time{ font-size: .7rem !important; }
-}
-
-
 /* FEMIC Agenda — lembretes manual/automático */
 .reminder-mode-panel{
   display:flex;
@@ -2345,7 +1694,7 @@ input:focus,select:focus,textarea:focus{
 }
 .femic-week-hour{
   right:10px!important;
-  transform:translateY(-8px)!important;
+  transform:translateY(-4px)!important;
   color:#94a3b8!important;
   font-size:.70rem!important;
   font-weight:700!important;
@@ -3443,3 +2792,2171 @@ textarea,
 /* Fallback agressivo:
    se alguma regra antiga continuar vencendo por especificidade,
    a classe no body força o escuro nos blocos principais. */
+
+/* Override final da grade semanal: menos colunas, cards maiores e leitura melhor */
+.femic-week-board{
+  --time-col:68px!important;
+  --day-min:230px!important;
+}
+
+.femic-week-head{
+  min-height:50px!important;
+  padding:11px 8px!important;
+}
+
+.week-head-day{
+  font-size:.78rem!important;
+}
+
+.week-head-date{
+  font-size:1rem!important;
+}
+
+.femic-week-empty-label{
+  top:8px!important;
+  right:8px!important;
+  font-size:.66rem!important;
+  padding:4px 8px!important;
+}
+
+.femic-week-card{
+  min-height:38px!important;
+  border-radius:15px!important;
+  padding:9px 10px!important;
+  gap:5px!important;
+  box-shadow:0 12px 24px rgba(11,60,111,.11)!important;
+}
+
+.femic-week-card .appt-time{
+  font-size:.68rem!important;
+  padding:2px 6px!important;
+}
+
+.femic-week-card .appt-name{
+  font-size:.86rem!important;
+  line-height:1.16!important;
+}
+
+.femic-week-card .week-card-service{
+  font-size:.69rem!important;
+  line-height:1.15!important;
+  color:var(--muted)!important;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.femic-week-card .status-chip,
+.femic-week-card .service-badge{
+  font-size:.6rem!important;
+  padding:2px 5px!important;
+}
+
+@media (max-width: 768px){
+  .femic-week-board{
+    --time-col:56px!important;
+    --day-min:130px!important;
+  }
+
+  .femic-week-card{
+    min-height:30px!important;
+    padding:6px 7px!important;
+    border-radius:12px!important;
+  }
+
+  .femic-week-card .appt-name{
+    font-size:.68rem!important;
+  }
+
+  .femic-week-card .week-card-service{
+    font-size:.56rem!important;
+  }
+}
+
+/* Dashboard mais compacto */
+#panel-dashboard #dashToday,
+#panel-dashboard #dashAlerts{
+  gap:8px!important;
+}
+
+#panel-dashboard #dashToday .item,
+#panel-dashboard #dashAlerts .item{
+  padding:9px 10px!important;
+  border-radius:14px!important;
+}
+
+#panel-dashboard #dashToday .item-top,
+#panel-dashboard #dashAlerts .item-top{
+  gap:8px!important;
+}
+
+#panel-dashboard #dashToday strong,
+#panel-dashboard #dashAlerts strong{
+  font-size:.9rem!important;
+  line-height:1.18!important;
+}
+
+#panel-dashboard #dashToday .muted.small,
+#panel-dashboard #dashAlerts .muted.small{
+  font-size:.74rem!important;
+  line-height:1.2!important;
+}
+
+#panel-dashboard #dashToday .status-chip,
+#panel-dashboard #dashAlerts .status-chip{
+  font-size:.62rem!important;
+  padding:3px 6px!important;
+}
+
+#panel-dashboard #dashToday .toolbar{
+  gap:5px!important;
+}
+
+#panel-dashboard #dashToday .toolbar .btn{
+  min-height:30px!important;
+  padding:6px 8px!important;
+  font-size:.68rem!important;
+  border-radius:10px!important;
+}
+
+#panel-dashboard #dashToday .status-actions{
+  margin-top:6px!important;
+  gap:5px!important;
+}
+
+#panel-dashboard #dashToday .status-actions .btn,
+#panel-dashboard #dashAlerts .btn{
+  min-height:30px!important;
+  padding:6px 8px!important;
+  font-size:.68rem!important;
+  border-radius:10px!important;
+}
+
+/* === Semana concisa estilo grade === */
+#weekBoard,
+#weekBoard *{
+  box-sizing:border-box;
+}
+
+#weekBoard{
+  min-width:0;
+}
+
+.agenda-surface{
+  background:linear-gradient(180deg,rgba(227,241,252,.88),rgba(247,251,255,.96)) !important;
+}
+
+.agenda-toolbar{
+  align-items:center;
+  justify-content:space-between;
+}
+
+.view-switch{
+  display:inline-flex;
+  gap:10px;
+  padding:4px;
+  border-radius:999px;
+  background:rgba(255,255,255,.5);
+}
+
+.view-chip{
+  border:0;
+  background:rgba(208,229,247,.86);
+  color:var(--primary);
+  border-radius:999px;
+  padding:11px 16px;
+  font-weight:900;
+  cursor:pointer;
+  transition:var(--transition);
+}
+
+.view-chip.active{
+  background:linear-gradient(135deg,var(--primary),#1f62b1);
+  color:#fff;
+  box-shadow:0 10px 18px rgba(11,60,111,.16);
+}
+
+.view-chip:hover{
+  transform:translateY(-1px);
+}
+
+#weekView{
+  overflow:auto;
+  padding:4px 0 12px;
+}
+
+.week-model-board{
+  display:grid;
+  min-width:980px;
+  margin:0;
+  border:1px solid rgba(164,200,228,.55);
+  border-radius:28px;
+  overflow:hidden;
+  background:linear-gradient(180deg,#fafdff,#f4f9fd);
+  box-shadow:0 22px 46px rgba(31,78,132,.12);
+}
+
+.week-model-head,
+.week-model-time,
+.week-model-cell{
+  border-right:1px solid rgba(184,214,236,.55);
+  border-bottom:1px solid rgba(184,214,236,.55);
+}
+
+.week-model-head{
+  min-height:64px;
+  display:flex;
+  align-items:center;
+  padding:12px 12px;
+  background:linear-gradient(180deg,#eaf5fd,#dcecf8);
+  color:#21486f;
+  font-weight:900;
+  font-size:1rem;
+}
+
+.week-model-head.today{
+  background:linear-gradient(180deg,#d9f2ff,#edf8ff);
+}
+
+.week-model-time-head{
+  font-size:.92rem;
+  color:#5f7d99;
+}
+
+.week-model-time{
+  min-height:92px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  padding-top:14px;
+  background:linear-gradient(180deg,#f9fbfd,#f3f7fb);
+  color:#6b86a1;
+  font-size:1.05rem;
+  font-weight:900;
+}
+
+.week-model-cell{
+  min-height:92px;
+  padding:12px;
+  background:rgba(255,255,255,.72);
+  cursor:pointer;
+  margin:0;
+}
+
+.week-model-cell.today{
+  background:linear-gradient(180deg,rgba(238,249,255,.96),rgba(255,255,255,.9));
+}
+
+.week-model-slot-card{
+  min-height:68px;
+  border-radius:18px;
+  background:linear-gradient(180deg,#d8edf9,#d2e9f7);
+  padding:12px 12px 10px;
+  display:grid;
+  gap:10px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5);
+}
+
+.week-model-capacity{
+  font-size:1rem;
+  font-weight:900;
+  color:#1e4a74;
+}
+
+.week-model-track{
+  position:relative;
+  min-height:84px;
+  border-radius:14px;
+  background:rgba(255,255,255,.26);
+  overflow:hidden;
+}
+
+.week-model-track::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(to bottom, rgba(255,255,255,.28), rgba(255,255,255,0)),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,.16) 0,
+      rgba(255,255,255,.16) 1px,
+      transparent 1px,
+      transparent 25%
+    );
+  pointer-events:none;
+}
+
+.week-model-empty{
+  min-height:84px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 12px;
+  border-radius:14px;
+  background:rgba(255,255,255,.42);
+  color:#56789b;
+  font-size:.92rem;
+}
+
+.week-model-block{
+  appearance:none;
+  position:absolute;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start;
+  text-align:left;
+  width:100%;
+  min-height:18%;
+  padding:7px 8px;
+  margin:0;
+  border:1px solid rgba(11,60,111,.1);
+  border-left-width:4px;
+  background:#fff;
+  box-shadow:0 6px 14px rgba(11,60,111,.08);
+  overflow:hidden;
+  text-align:left;
+  border-radius:12px;
+  cursor:pointer;
+  z-index:1;
+}
+
+.week-model-block strong{
+  display:block;
+  font-size:.78rem;
+  color:var(--primary);
+  line-height:1.15;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.week-model-block span{
+  display:block;
+  margin-top:3px;
+  font-size:.66rem;
+  color:var(--muted);
+  line-height:1.18;
+}
+
+.week-model-block.carry{
+  background:linear-gradient(180deg,#f5fbff,#eef7fd);
+  border-style:dashed;
+}
+
+.week-model-block.status-cancelado{
+  opacity:.7;
+}
+
+.week-model-block:hover{
+  transform:translateY(-1px);
+  box-shadow:0 10px 20px rgba(11,60,111,.1);
+  z-index:2;
+}
+
+@media(max-width:980px){
+  .agenda-toolbar{
+    align-items:flex-start;
+  }
+
+  .view-switch{
+    width:100%;
+  }
+
+  .week-model-board{
+    min-width:860px;
+  }
+}
+
+@media(max-width:768px){
+  .view-chip{
+    padding:9px 12px;
+    font-size:.82rem;
+  }
+
+  .week-model-board{
+    min-width:760px;
+    border-radius:20px;
+  }
+
+  .week-model-head{
+    min-height:56px;
+    font-size:.84rem;
+    padding:10px 8px;
+  }
+
+  .week-model-time,
+  .week-model-cell{
+    min-height:78px;
+  }
+
+  .week-model-time{
+    font-size:.84rem;
+    padding-top:12px;
+  }
+
+  .week-model-slot-card{
+    min-height:58px;
+    padding:10px;
+    border-radius:15px;
+    gap:8px;
+  }
+
+  .week-model-capacity{
+    font-size:.82rem;
+  }
+
+  .week-model-track,
+  .week-model-empty{
+    min-height:64px;
+  }
+
+  .week-model-empty{
+    font-size:.74rem;
+    padding:0 10px;
+  }
+
+  .week-model-block{
+    padding:6px 7px;
+    border-radius:10px;
+  }
+
+  .week-model-block strong{
+    font-size:.68rem;
+  }
+
+  .week-model-block span{
+    font-size:.58rem;
+  }
+}
+
+/* Aba Dia mais discreta */
+#panel-day #dayKpis{
+  display:block!important;
+  margin-top:0!important;
+}
+
+#panel-day .day-status-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+#panel-day .day-status-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 11px;
+  border-radius:999px;
+  background:rgba(255,255,255,.86);
+  border:1px solid rgba(164,200,228,.42);
+  color:#64819d;
+  font-size:.74rem;
+  font-weight:800;
+  box-shadow:0 4px 14px rgba(31,78,132,.05);
+}
+
+#panel-day .day-status-pill strong{
+  color:var(--primary);
+  font-size:.8rem;
+  line-height:1;
+}
+
+#panel-day .day-status-pill.agendado{
+  background:rgba(245,158,11,.08);
+  border-color:rgba(245,158,11,.18);
+}
+
+#panel-day .day-status-pill.confirmado{
+  background:rgba(37,99,235,.08);
+  border-color:rgba(37,99,235,.18);
+}
+
+#panel-day .day-status-pill.concluido{
+  background:rgba(16,185,129,.08);
+  border-color:rgba(16,185,129,.18);
+}
+
+#panel-day .day-status-pill.cancelado{
+  background:rgba(239,68,68,.08);
+  border-color:rgba(239,68,68,.18);
+}
+
+@media(max-width:768px){
+  #panel-day .day-status-row{
+    gap:6px;
+  }
+
+  #panel-day .day-status-pill{
+    padding:6px 9px;
+    font-size:.68rem;
+  }
+
+  #panel-day .day-status-pill strong{
+    font-size:.72rem;
+  }
+}
+
+/* Pacotes */
+.package-search-shell{
+  background:linear-gradient(180deg,#f8fbfe,#f3f8fc)!important;
+  border:1px solid rgba(164,200,228,.42)!important;
+}
+
+.package-search-shell .section-title{
+  margin-bottom:10px;
+}
+
+.package-search-shell h3{
+  font-size:.96rem;
+}
+
+/* Pacientes */
+.patient-search-shell{
+  background:linear-gradient(180deg,#f8fbfe,#f3f8fc)!important;
+  border:1px solid rgba(164,200,228,.42)!important;
+}
+
+.patient-search-shell .section-title{
+  margin-bottom:10px;
+}
+
+.patient-search-shell h3{
+  font-size:.96rem;
+}
+
+/* Google-like Month + Week */
+#monthView{
+  display:grid;
+  gap:0;
+  border:1px solid rgba(164,200,228,.45);
+  border-radius:24px;
+  overflow:hidden;
+  background:#fff;
+  box-shadow:0 18px 38px rgba(31,78,132,.1);
+}
+
+#monthHead{
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  background:linear-gradient(180deg,#f8fbfe,#f1f7fc);
+  border-bottom:1px solid rgba(164,200,228,.35);
+}
+
+#weekView{
+  overflow:auto;
+  padding:2px 0 12px;
+}
+
+.gcal-week-shell{
+  min-width:1080px;
+  border:1px solid rgba(164,200,228,.45);
+  border-radius:24px;
+  overflow:hidden;
+  background:#fff;
+  box-shadow:0 18px 42px rgba(31,78,132,.12);
+}
+
+.gcal-week-board{
+  display:grid;
+}
+
+.gcal-week-corner{
+  min-height:66px;
+  background:linear-gradient(180deg,#f8fbfe,#f1f7fc);
+  border-right:1px solid rgba(164,200,228,.28);
+  border-bottom:1px solid rgba(164,200,228,.28);
+}
+
+.gcal-week-head{
+  min-height:66px;
+  padding:10px 10px 8px;
+  border-right:1px solid rgba(164,200,228,.28);
+  border-bottom:1px solid rgba(164,200,228,.28);
+  background:linear-gradient(180deg,#f8fbfe,#f1f7fc);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:2px;
+}
+
+.gcal-week-head.today{
+  background:linear-gradient(180deg,#eaf6ff,#f7fbff);
+}
+
+.gcal-week-head-day{
+  font-size:.72rem;
+  font-weight:900;
+  color:#68839d;
+  text-transform:uppercase;
+}
+
+.gcal-week-head strong{
+  color:var(--primary);
+  font-size:1rem;
+  line-height:1.1;
+}
+
+.gcal-week-head-meta{
+  font-size:.68rem;
+  color:#7a92ab;
+}
+
+.gcal-week-axis,
+.gcal-week-day{
+  position:relative;
+  border-right:1px solid rgba(164,200,228,.22);
+  background-image:
+    linear-gradient(to bottom, rgba(164,200,228,.22) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(164,200,228,.12) 1px, transparent 1px);
+  background-size:100% var(--hour-height),100% calc(var(--hour-height) / 2);
+  background-position:0 0,0 calc(var(--hour-height) / 2);
+}
+
+.gcal-week-axis{
+  background-color:#f8fbfe;
+}
+
+.gcal-week-axis-label{
+  position:absolute;
+  right:10px;
+  transform:translateY(-18%);
+  font-size:.72rem;
+  font-weight:800;
+  color:#6a849d;
+}
+
+.gcal-week-day{
+  background-color:#fff;
+}
+
+.gcal-week-day.today{
+  background-color:#fbfdff;
+}
+
+.gcal-week-day.closed{
+  background-color:#f8fafc;
+  opacity:.8;
+}
+
+.gcal-week-event{
+  position:absolute;
+  z-index:2;
+  border:1px solid rgba(11,60,111,.08);
+  border-left-width:4px;
+  border-radius:12px;
+  background:#fff;
+  padding:6px 7px;
+  text-align:left;
+  box-shadow:0 8px 16px rgba(11,60,111,.08);
+  cursor:pointer;
+  overflow:hidden;
+}
+
+.gcal-week-event span,
+.gcal-week-event strong{
+  display:block;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.gcal-week-event-time{
+  font-size:.63rem;
+  font-weight:900;
+  color:#4f728f;
+}
+
+.gcal-week-event strong{
+  font-size:.76rem;
+  line-height:1.15;
+  color:var(--primary);
+  margin-top:2px;
+}
+
+.gcal-week-event-service{
+  font-size:.62rem;
+  color:#6b86a0;
+  margin-top:3px;
+}
+
+@media(max-width:980px){
+  .gcal-week-shell{
+    min-width:980px;
+  }
+}
+
+@media(max-width:768px){
+  #monthHead{
+    display:none;
+  }
+
+  .gcal-week-shell{
+    min-width:900px;
+    border-radius:18px;
+  }
+
+  .gcal-week-head{
+    min-height:58px;
+    padding:8px;
+  }
+
+  .gcal-week-event{
+    padding:5px 6px;
+    border-radius:10px;
+  }
+
+  .gcal-week-event strong{
+    font-size:.68rem;
+  }
+
+  .gcal-week-event-time,
+  .gcal-week-event-service{
+    font-size:.58rem;
+  }
+}
+
+/* =========================================================
+   FEMIC Agenda v1.4.45 — Ajustes finais de layout
+   Semana, mês, aba Dia e ficha do paciente
+   ========================================================= */
+
+#monthCalendar{
+  display:block;
+  min-width:0;
+}
+
+#weekBoard{
+  align-items:stretch;
+}
+
+#weekBoard .week-time{
+  justify-content:flex-start;
+  align-items:flex-start;
+  padding-top:18px;
+  line-height:1.1;
+}
+
+#weekBoard .week-cell.head.week-time{
+  padding-top:16px;
+}
+
+#panel-day .day-panel-shell{
+  padding:16px 18px;
+}
+
+#panel-day .day-panel-header{
+  margin-bottom:10px;
+  align-items:center;
+}
+
+#panel-day .day-panel-copy{
+  display:grid;
+  gap:4px;
+}
+
+#panel-day .day-panel-copy .eyebrow{
+  margin-bottom:0;
+}
+
+#panel-day .day-panel-controls{
+  margin-left:auto;
+  align-items:center;
+  gap:8px;
+}
+
+#panel-day .day-panel-date{
+  width:190px;
+  min-width:190px;
+  padding:10px 12px;
+}
+
+#panel-day .day-panel-note{
+  margin-bottom:12px;
+  padding:10px 12px;
+  font-weight:700;
+}
+
+#panel-day #dayKpis{
+  margin-top:0 !important;
+}
+
+#panel-day #dayList .item{
+  padding:10px 12px !important;
+}
+
+#patientModal .modal{
+  width:min(1120px,96vw);
+}
+
+#patientFicha{
+  display:block;
+}
+
+#patientFicha .patient-ficha-shell{
+  display:grid;
+  gap:16px;
+}
+
+#patientFicha .patient-ficha-kpis{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+}
+
+#patientFicha .patient-ficha-kpi{
+  min-width:0;
+  min-height:112px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+
+#patientFicha .patient-ficha-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+#patientFicha .patient-ficha-actions .btn{
+  min-height:44px;
+  padding:10px 16px;
+}
+
+#patientFicha .patient-ficha-overview{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+
+#patientFicha .patient-ficha-panel{
+  min-width:0;
+  padding:16px 18px;
+  border-radius:20px;
+}
+
+#patientFicha .patient-ficha-panel-wide{
+  margin-top:0 !important;
+}
+
+#patientFicha .patient-ficha-lines{
+  display:grid;
+  gap:8px;
+}
+
+#patientFicha .patient-ficha-line{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:8px 10px;
+  border:1px solid rgba(11,60,111,.08);
+  border-radius:12px;
+  background:rgba(248,251,253,.92);
+}
+
+#patientFicha .patient-ficha-line strong{
+  color:var(--primary);
+  font-size:.82rem;
+}
+
+#patientFicha .patient-ficha-line span{
+  color:var(--muted);
+  font-size:.76rem;
+  text-align:right;
+}
+
+#patientFicha .hub-card .muted.small,
+#patientFicha .timeline-item .muted.small{
+  line-height:1.45;
+}
+
+#patientFicha .timeline-list{
+  max-height:40vh !important;
+}
+
+@media(max-width:980px){
+  #patientFicha .patient-ficha-kpis{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  #patientFicha .patient-ficha-overview{
+    grid-template-columns:1fr;
+  }
+}
+
+@media(max-width:768px){
+  #weekBoard .week-time{
+    padding-top:14px;
+  }
+
+  #panel-day .day-panel-shell{
+    padding:14px;
+  }
+
+  #panel-day .day-panel-header{
+    align-items:flex-start;
+  }
+
+  #panel-day .day-panel-controls{
+    width:100%;
+    margin-left:0;
+  }
+
+  #panel-day .day-panel-date{
+    width:100%;
+    min-width:0;
+  }
+
+  #patientModal .modal{
+    width:100%;
+  }
+
+  #patientFicha .patient-ficha-kpis{
+    grid-template-columns:1fr;
+  }
+
+  #patientFicha .patient-ficha-actions{
+    width:100%;
+  }
+
+  #patientFicha .patient-ficha-actions .btn{
+    flex:1 1 180px;
+    justify-content:center;
+  }
+
+  #patientFicha .patient-ficha-line{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  #patientFicha .patient-ficha-line span{
+    text-align:left;
+  }
+}
+
+/* Estruturas ativas finais: gcal-week, lista mensal e ficha unificada */
+#weekView{
+  overflow:auto;
+  padding:2px 0 12px;
+}
+
+.gcal-week-shell{
+  min-width:1080px;
+  border:1px solid rgba(164,200,228,.45);
+  border-radius:24px;
+  overflow:hidden;
+  background:#fff;
+  box-shadow:0 18px 42px rgba(31,78,132,.12);
+}
+
+.gcal-week-board{
+  display:grid;
+}
+
+.gcal-week-head{
+  min-height:66px;
+  padding:10px 10px 8px;
+  border-right:1px solid rgba(164,200,228,.28);
+  border-bottom:1px solid rgba(164,200,228,.28);
+  background:linear-gradient(180deg,#f8fbfe,#f1f7fc);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:2px;
+}
+
+.gcal-week-axis-label{
+  right:10px;
+  transform:translateY(-18%);
+  font-size:.72rem;
+  font-weight:800;
+  color:#6a849d;
+}
+
+.gcal-week-day{
+  background-color:#fff;
+}
+
+.gcal-week-event{
+  position:absolute;
+  z-index:2;
+  border:1px solid rgba(11,60,111,.08);
+  border-left-width:4px;
+  border-radius:12px;
+  background:#fff;
+  padding:6px 7px;
+  text-align:left;
+  box-shadow:0 8px 16px rgba(11,60,111,.08);
+  cursor:pointer;
+  overflow:hidden;
+}
+
+.gcal-week-event strong{
+  display:block;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-size:.76rem;
+  line-height:1.15;
+  color:var(--primary);
+  margin-top:2px;
+}
+
+#monthView{
+  display:grid;
+  gap:0;
+  border:1px solid rgba(164,200,228,.45);
+  border-radius:24px;
+  overflow:hidden;
+  background:#fff;
+  box-shadow:0 18px 38px rgba(31,78,132,.1);
+}
+
+#monthHead{
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  background:linear-gradient(180deg,#f8fbfe,#f1f7fc);
+  border-bottom:1px solid rgba(164,200,228,.35);
+}
+
+#monthCalendar{
+  display:block;
+  min-width:0;
+}
+
+#patientModal .modal{
+  width:min(1120px,96vw);
+}
+
+#patientFicha{
+  display:grid;
+  gap:16px;
+}
+
+@media(max-width:980px){
+  .gcal-week-shell{
+    min-width:980px;
+  }
+}
+
+@media(max-width:768px){
+  .gcal-week-shell{
+    min-width:900px;
+    border-radius:18px;
+  }
+
+  #patientModal .modal{
+    width:100%;
+  }
+}
+
+#panel-prontuario .prontuario-shell{
+  padding-bottom:14px;
+}
+
+#panel-prontuario .prontuario-toolbar{
+  margin-left:auto;
+}
+
+#panel-prontuario #prontuarioKpis{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+
+#panel-prontuario .prontuario-main-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.3fr) minmax(320px,.9fr);
+  gap:16px;
+}
+
+#panel-prontuario .prontuario-anamnese-card,
+#panel-prontuario .prontuario-evolucao-card,
+#panel-prontuario .prontuario-timeline-card{
+  padding:16px 18px;
+}
+
+#panel-prontuario .prontuario-side-stack{
+  display:grid;
+  gap:16px;
+}
+
+#panel-prontuario .prontuario-anamnese-card textarea,
+#panel-prontuario .prontuario-evolucao-card textarea{
+  min-height:92px;
+}
+
+#panel-prontuario .prontuario-timeline-card #prontuarioTimeline{
+  gap:8px;
+}
+
+#panel-prontuario .prontuario-timeline-card .item{
+  padding:12px 14px;
+}
+
+@media(max-width:980px){
+  #panel-prontuario #prontuarioKpis{
+    grid-template-columns:1fr;
+  }
+
+  #panel-prontuario .prontuario-main-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+@media(max-width:768px){
+  #panel-prontuario .prontuario-anamnese-card,
+  #panel-prontuario .prontuario-evolucao-card,
+  #panel-prontuario .prontuario-timeline-card{
+    padding:14px;
+  }
+}
+
+/* Camada final ativa: aba Dia, agenda do mes em lista, ficha/exportacao e central IA */
+#monthHead .month-list-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+  padding:6px 2px 14px;
+}
+
+#monthHead .month-list-head h3{
+  margin:4px 0 0;
+  color:var(--primary);
+}
+
+#panel-day .day-panel-shell{
+  padding:16px 18px;
+}
+
+#panel-day .day-panel-header{
+  margin-bottom:8px;
+}
+
+#panel-day #dayKpis{
+  margin-top:10px;
+}
+
+#panel-day .day-operational-strip{
+  display:grid;
+  gap:12px;
+}
+
+#panel-day .day-operational-copy{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  padding:10px 12px;
+  border:1px solid rgba(191,211,226,.72);
+  border-radius:16px;
+  background:rgba(248,251,255,.92);
+}
+
+#panel-day .day-operational-copy strong{
+  color:var(--primary);
+  font-size:.96rem;
+}
+
+#panel-day .day-operational-copy span{
+  color:var(--muted);
+  font-size:.82rem;
+}
+
+#panel-day .day-status-row{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+}
+
+#panel-day .day-status-pill{
+  min-height:0;
+}
+
+#patientFicha .patient-ficha-actions{
+  flex-wrap:wrap;
+}
+
+#panel-ai .ai-center-shell{
+  display:grid;
+  gap:16px;
+}
+
+#panel-ai .ai-center-head{
+  align-items:flex-start;
+}
+
+#panel-ai .ai-center-note{
+  margin-top:-4px;
+}
+
+.assistant-suggestion-chip{
+  border:1px solid rgba(191,211,226,.86);
+  background:rgba(248,251,255,.96);
+  color:var(--primary);
+  padding:10px 12px;
+  border-radius:999px;
+  font-size:.82rem;
+  font-weight:700;
+  cursor:pointer;
+}
+
+#panel-ai .ai-center-chat,
+#assistantPanel .assistant-chat{
+  min-height:320px;
+}
+
+.assistant-message{
+  display:grid;
+  gap:8px;
+  margin-bottom:12px;
+}
+
+.assistant-message.user{
+  justify-items:end;
+}
+
+.assistant-message.user p{
+  margin:0;
+  padding:12px 14px;
+  border-radius:16px 16px 4px 16px;
+  background:linear-gradient(135deg,#0b3c6f,#1fb6e9);
+  color:#fff;
+  max-width:min(720px,100%);
+}
+
+.assistant-message.assistant > div{
+  padding:14px 16px;
+  border-radius:16px 16px 16px 4px;
+  border:1px solid rgba(191,211,226,.86);
+  background:rgba(255,255,255,.98);
+  color:var(--text);
+}
+
+.assistant-message.assistant ul{
+  margin:10px 0 0;
+  padding-left:18px;
+}
+
+.assistant-message.assistant .assistant-rich-text{
+  margin-top:8px;
+  line-height:1.6;
+}
+
+#patientExportModal .modal-body .day-check{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+@media(max-width:980px){
+  #monthHead .month-list-head,
+  #panel-day .day-operational-copy{
+    grid-template-columns:1fr;
+    display:grid;
+  }
+
+  #panel-day .day-status-row{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:768px){
+  #panel-day .day-panel-shell,
+  #panel-ai .ai-center-shell{
+    padding:14px;
+  }
+
+  #panel-day .day-status-row{
+    grid-template-columns:1fr;
+  }
+}
+
+/* =========================================================
+   FEMIC Stabilized UI — camada oficial de revisão profunda
+   ========================================================= */
+:root{
+  --femic-blue:#0b3c6f;
+  --femic-cyan:#1fb6e9;
+  --femic-teal:#14b8a6;
+  --femic-bg:#f3f8fb;
+  --femic-surface:#ffffff;
+  --femic-soft:#f7fbfd;
+  --femic-text:#18324a;
+  --femic-muted:#667f94;
+  --femic-line:rgba(11,60,111,.14);
+  --femic-shadow:0 12px 30px rgba(11,60,111,.08);
+  --femic-radius:14px;
+  --primary:var(--femic-blue);
+  --primary2:var(--femic-cyan);
+  --accent:var(--femic-teal);
+  --bg:var(--femic-bg);
+  --card:var(--femic-surface);
+  --text:var(--femic-text);
+  --muted:var(--femic-muted);
+  --line:var(--femic-line);
+  --shadow:var(--femic-shadow);
+  --radius:var(--femic-radius);
+}
+
+body{
+  background:linear-gradient(180deg,#f7fbfd 0%,#eef6fa 100%);
+  color:var(--femic-text);
+}
+
+.card,
+.modal,
+.item,
+.kpi,
+.hub-card,
+.soft-panel,
+.document-preview,
+.assistant-panel{
+  border:1px solid var(--femic-line);
+  border-radius:var(--femic-radius);
+  background:var(--femic-surface);
+  box-shadow:var(--femic-shadow);
+}
+
+.card{
+  padding:16px;
+}
+
+.card:hover,
+.item:hover{
+  box-shadow:var(--femic-shadow) !important;
+  transform:none !important;
+}
+
+.section-title{
+  align-items:flex-start;
+  gap:14px;
+  margin-bottom:12px;
+}
+
+.section-title h3{
+  font-size:1rem;
+  color:var(--femic-blue);
+}
+
+.eyebrow{
+  color:#0f5c5c;
+  letter-spacing:.08em;
+}
+
+.btn,
+.tab,
+.view-chip,
+input,
+select,
+textarea,
+.status-chip,
+.legend,
+.day-check{
+  border-radius:10px;
+}
+
+.btn,
+.tab,
+.view-chip{
+  min-height:38px;
+  padding:9px 13px;
+  box-shadow:none;
+}
+
+.btn:hover,
+.tab:hover,
+.view-chip:hover{
+  transform:none;
+  box-shadow:0 8px 18px rgba(11,60,111,.08);
+}
+
+.btn.primary,
+.tab.active,
+.view-chip.active{
+  background:var(--femic-blue);
+  color:#fff;
+  border-color:var(--femic-blue);
+}
+
+.btn.ghost{
+  background:#eef6fb;
+  color:var(--femic-blue);
+}
+
+input,
+select,
+textarea{
+  border-color:var(--femic-line);
+  background:#fff;
+  color:var(--femic-text);
+}
+
+.agenda-surface{
+  border-radius:16px;
+  padding:14px;
+}
+
+.agenda-toolbar{
+  align-items:center;
+  gap:12px;
+}
+
+.agenda-filterbar{
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px solid rgba(11,60,111,.08);
+}
+
+.legend-row{
+  gap:6px;
+}
+
+.legend{
+  padding:5px 8px;
+  background:var(--femic-soft);
+}
+
+#monthView{
+  display:block;
+}
+
+#monthHead{
+  display:block;
+}
+
+#monthHead .month-list-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:2px 0 12px;
+}
+
+#monthHead .month-list-head h3{
+  font-size:1.16rem;
+  text-transform:capitalize;
+}
+
+.month-list-tools{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+#monthCalendar .month-agenda-kpis{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-bottom:12px;
+}
+
+#monthCalendar .month-agenda-kpis > div{
+  border:1px solid var(--femic-line);
+  border-radius:12px;
+  background:var(--femic-soft);
+  padding:10px 12px;
+}
+
+#monthCalendar .month-agenda-kpis span{
+  display:block;
+  color:var(--femic-muted);
+  font-size:.74rem;
+  font-weight:800;
+}
+
+#monthCalendar .month-agenda-kpis strong{
+  display:block;
+  margin-top:2px;
+  color:var(--femic-blue);
+  font-size:1.24rem;
+}
+
+#monthCalendar .month-agenda-list{
+  display:grid;
+  gap:10px;
+}
+
+#monthCalendar .month-agenda-day{
+  border:1px solid var(--femic-line);
+  border-radius:14px;
+  background:#fff;
+  padding:13px;
+}
+
+#monthCalendar .month-agenda-day.today{
+  border-color:rgba(31,182,233,.55);
+  box-shadow:0 0 0 3px rgba(31,182,233,.10);
+}
+
+#monthCalendar .month-agenda-day.off{
+  background:#f8fbfd;
+}
+
+#monthCalendar .month-agenda-day-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+
+#monthCalendar .month-agenda-date{
+  color:var(--femic-blue);
+  font-weight:900;
+  font-size:.98rem;
+}
+
+#monthCalendar .month-agenda-summary{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+#monthCalendar .month-agenda-summary span{
+  padding:5px 8px;
+  border-radius:999px;
+  background:#eef6fb;
+  color:var(--femic-blue);
+  font-size:.72rem;
+  font-weight:800;
+}
+
+#monthCalendar .month-agenda-items{
+  display:grid;
+  gap:8px;
+  margin-top:10px;
+}
+
+#monthCalendar .month-agenda-item{
+  display:grid;
+  grid-template-columns:92px minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  width:100%;
+  border:1px solid rgba(11,60,111,.10);
+  border-left:5px solid #94a3b8;
+  border-radius:12px;
+  background:#fff;
+  padding:10px 12px;
+  text-align:left;
+  cursor:pointer;
+}
+
+#monthCalendar .month-agenda-item.status-agendado{border-left-color:#f59e0b}
+#monthCalendar .month-agenda-item.status-confirmado{border-left-color:#2563eb}
+#monthCalendar .month-agenda-item.status-concluido{border-left-color:#10b981}
+#monthCalendar .month-agenda-item.status-cancelado{border-left-color:#ef4444}
+
+#monthCalendar .month-agenda-time,
+#monthCalendar .month-agenda-main{
+  display:grid;
+  gap:2px;
+  min-width:0;
+}
+
+#monthCalendar .month-agenda-time strong{
+  color:var(--femic-blue);
+  font-size:.96rem;
+}
+
+#monthCalendar .month-agenda-time small,
+#monthCalendar .month-agenda-main small{
+  color:var(--femic-muted);
+  font-size:.78rem;
+}
+
+#monthCalendar .month-agenda-main strong{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--femic-text);
+}
+
+#monthCalendar .month-agenda-empty,
+#monthCalendar .month-agenda-empty-state{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:10px;
+  border:1px dashed rgba(11,60,111,.18);
+  border-radius:12px;
+  background:var(--femic-soft);
+  padding:10px 12px;
+  color:var(--femic-muted);
+}
+
+#monthCalendar .month-agenda-empty-state{
+  display:grid;
+  justify-content:stretch;
+  text-align:center;
+  margin-top:0;
+  padding:22px;
+}
+
+#panel-day .day-panel-shell{
+  padding:14px 16px;
+}
+
+#panel-day .day-panel-header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:8px;
+}
+
+#panel-day .day-panel-note{
+  margin:0 0 10px;
+  padding:9px 11px;
+  border-radius:10px;
+}
+
+#panel-day .day-operational-copy{
+  border-radius:12px;
+  padding:9px 11px;
+}
+
+#panel-day .day-status-row{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+}
+
+#panel-day .day-status-pill{
+  justify-content:space-between;
+  border-radius:12px;
+  padding:8px 10px;
+}
+
+#patientModal .modal{
+  width:min(1040px,96vw);
+  border-radius:18px;
+}
+
+#patientFicha .patient-ficha-shell{
+  gap:14px;
+}
+
+#patientFicha .patient-ficha-kpis{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+}
+
+#patientFicha .patient-ficha-overview{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+
+#patientFicha .patient-ficha-panel{
+  border-radius:12px;
+}
+
+#panel-prontuario .prontuario-main-grid{
+  grid-template-columns:minmax(0,1.18fr) minmax(300px,.82fr);
+}
+
+#panel-prontuario .section-title .toolbar{
+  margin-left:auto;
+}
+
+#panel-prontuario textarea{
+  resize:vertical;
+}
+
+#panel-ai .ai-center-shell{
+  display:grid;
+  gap:14px;
+  max-width:1120px;
+}
+
+#panel-ai .ai-center-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  border:1px solid var(--femic-line);
+  border-radius:16px;
+  background:#fff;
+  box-shadow:var(--femic-shadow);
+  padding:16px;
+}
+
+#panel-ai .ai-center-head h3{
+  color:var(--femic-blue);
+  margin:0 0 4px;
+}
+
+#panel-ai .ai-center-suggestions{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+
+#panel-ai .ai-suggestion-card{
+  border:1px solid var(--femic-line);
+  border-radius:12px;
+  background:#fff;
+  color:var(--femic-blue);
+  padding:12px;
+  min-height:58px;
+  text-align:left;
+  font-weight:800;
+  cursor:pointer;
+}
+
+#panel-ai .ai-center-chat{
+  min-height:360px;
+  max-height:52vh;
+  overflow:auto;
+  border:1px solid var(--femic-line);
+  border-radius:16px;
+  background:#fff;
+  box-shadow:var(--femic-shadow);
+  padding:14px;
+}
+
+#panel-ai .ai-center-debug{
+  border:1px solid var(--femic-line);
+  border-radius:12px;
+  background:var(--femic-soft);
+  color:var(--femic-muted);
+  padding:9px 11px;
+  font-size:.82rem;
+}
+
+#panel-ai .ai-rules-card{
+  border:1px solid var(--femic-line);
+  border-radius:16px;
+  background:#fff;
+  box-shadow:var(--femic-shadow);
+  padding:0;
+  overflow:hidden;
+}
+
+#panel-ai .ai-rules-card summary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:12px 14px;
+  color:var(--femic-blue);
+  font-weight:900;
+  cursor:pointer;
+  list-style:none;
+}
+
+#panel-ai .ai-rules-card summary::-webkit-details-marker{
+  display:none;
+}
+
+#panel-ai .ai-rules-card summary::after{
+  content:'Editar comportamento';
+  color:var(--femic-muted);
+  font-size:.76rem;
+  font-weight:800;
+}
+
+#panel-ai .ai-rules-card[open] summary{
+  border-bottom:1px solid var(--femic-line);
+  background:var(--femic-soft);
+}
+
+#panel-ai .ai-rules-card .field,
+#panel-ai .ai-rules-card .toolbar,
+#panel-ai .ai-rules-card p{
+  margin:12px 14px;
+}
+
+#panel-ai .ai-rules-card textarea{
+  min-height:132px;
+  font-size:.86rem;
+  line-height:1.45;
+}
+
+#panel-ai .ai-center-form{
+  display:grid;
+  gap:10px;
+  border:1px solid var(--femic-line);
+  border-radius:16px;
+  background:#fff;
+  box-shadow:var(--femic-shadow);
+  padding:14px;
+}
+
+#panel-ai .ai-center-actions{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.ai-message,
+.assistant-message{
+  display:grid;
+  margin-bottom:10px;
+}
+
+.ai-message.user,
+.assistant-message.user{
+  justify-items:end;
+}
+
+.ai-message.user p,
+.assistant-message.user p{
+  max-width:min(720px,86%);
+  margin:0;
+  border-radius:14px 14px 4px 14px;
+  background:var(--femic-blue);
+  color:#fff;
+  padding:11px 13px;
+}
+
+.ai-message.assistant > div,
+.assistant-message.assistant > div{
+  max-width:min(780px,92%);
+  border:1px solid rgba(11,60,111,.12);
+  border-radius:14px 14px 14px 4px;
+  background:var(--femic-soft);
+  padding:12px 13px;
+}
+
+.assistant-panel{
+  width:min(420px,calc(100vw - 24px));
+  border-radius:16px;
+}
+
+.assistant-panel-head,
+.assistant-panel-foot{
+  padding:14px;
+}
+
+.assistant-panel-body{
+  padding:12px 14px;
+}
+
+.assistant-suggestions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.assistant-suggestion-chip{
+  border-radius:999px;
+  padding:8px 10px;
+  background:#eef6fb;
+}
+
+.assistant-chat{
+  min-height:260px;
+  max-height:42vh;
+  overflow:auto;
+}
+
+#panel-documentos .document-preview{
+  box-shadow:none;
+  min-height:360px;
+}
+
+#panel-packages .package-search-shell,
+#panel-patients .patient-search-shell{
+  background:#fff;
+}
+
+@media(max-width:980px){
+  #monthCalendar .month-agenda-kpis,
+  #patientFicha .patient-ficha-kpis,
+  #panel-ai .ai-center-suggestions{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  #monthCalendar .month-agenda-day-head,
+  #panel-day .day-panel-header,
+  #panel-ai .ai-center-head{
+    display:grid;
+  }
+
+  #monthCalendar .month-agenda-summary{
+    justify-content:flex-start;
+  }
+
+  #panel-prontuario .prontuario-main-grid,
+  #patientFicha .patient-ficha-overview{
+    grid-template-columns:1fr;
+  }
+}
+
+@media(max-width:768px){
+  .wrap{
+    padding:12px;
+  }
+
+  .card{
+    padding:14px;
+  }
+
+  .agenda-toolbar,
+  .agenda-filterbar,
+  .toolbar{
+    gap:8px;
+  }
+
+  #monthCalendar .month-agenda-kpis,
+  #panel-day .day-status-row,
+  #patientFicha .patient-ficha-kpis,
+  #panel-ai .ai-center-suggestions{
+    grid-template-columns:1fr;
+  }
+
+  #monthCalendar .month-agenda-item{
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+
+  #monthCalendar .month-agenda-empty{
+    display:grid;
+  }
+
+  #patientModal .modal{
+    width:100%;
+    border-radius:18px 18px 0 0;
+  }
+
+  .assistant-panel{
+    right:12px;
+    left:12px;
+    width:auto;
+  }
+}
+
+/* IA flutuante: camada final para evitar que overrides antigos escondam o drawer */
+.assistant-fab{
+  position:fixed;
+  right:18px;
+  bottom:18px;
+  z-index:140;
+  display:inline-grid;
+  gap:2px;
+  min-width:116px;
+  border:0;
+  border-radius:16px;
+  padding:11px 14px;
+  background:linear-gradient(135deg,var(--femic-blue),var(--femic-cyan));
+  color:#fff;
+  box-shadow:0 14px 34px rgba(11,60,111,.22);
+  cursor:pointer;
+  text-align:left;
+}
+
+.assistant-fab span{
+  font-size:.72rem;
+  font-weight:800;
+  opacity:.86;
+}
+
+.assistant-fab strong{
+  font-size:.95rem;
+  line-height:1;
+}
+
+.assistant-panel{
+  position:fixed;
+  right:18px;
+  bottom:86px;
+  z-index:139;
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr) auto;
+  width:min(420px,calc(100vw - 24px));
+  max-height:min(720px,calc(100vh - 110px));
+  overflow:hidden;
+  border-radius:16px;
+  background:#fff;
+}
+
+.assistant-panel.hidden{
+  display:none !important;
+}
+
+.assistant-panel.is-open{
+  display:grid;
+}
+
+.assistant-panel-body{
+  min-height:0;
+  overflow:auto;
+}
+
+.assistant-panel-foot{
+  background:#fff;
+  border-top:1px solid var(--femic-line);
+}
+
+@media(max-width:768px){
+  .assistant-fab{
+    right:12px;
+    bottom:12px;
+  }
+
+  .assistant-panel{
+    left:12px;
+    right:12px;
+    bottom:78px;
+    width:auto;
+    max-height:calc(100dvh - 96px);
+  }
+}
+
+/* Ajustes finos FEMIC: Dia operacional, ficha e configurações */
+#panel-day .day-panel-shell{
+  padding:12px 14px;
+}
+
+#panel-day .day-panel-header{
+  align-items:center;
+  margin-bottom:8px;
+}
+
+#panel-day .day-panel-copy h3{
+  margin:2px 0 0;
+  font-size:1rem;
+}
+
+#panel-day .day-panel-note{
+  display:none;
+}
+
+#panel-day #dayKpis{
+  margin-top:6px;
+}
+
+#panel-day .day-operational-strip{
+  gap:8px;
+}
+
+#panel-day .day-operational-copy{
+  padding:8px 10px;
+  border-radius:12px;
+}
+
+#panel-day .day-operational-copy strong{
+  font-size:.9rem;
+}
+
+#panel-day .day-operational-copy span{
+  font-size:.76rem;
+}
+
+#panel-day .day-status-row{
+  gap:7px;
+}
+
+#panel-day .day-status-pill{
+  padding:7px 9px;
+  border-radius:10px;
+}
+
+#panel-day .day-status-pill span{
+  font-size:.7rem;
+}
+
+#panel-day .day-status-pill strong{
+  font-size:.95rem;
+}
+
+#patientModal .modal{
+  width:min(980px,96vw);
+}
+
+#patientModal .modal-head{
+  padding:14px 18px;
+}
+
+#patientModal .modal-head h3{
+  font-size:1.05rem;
+}
+
+#patientFicha .patient-ficha-shell{
+  gap:10px;
+}
+
+#patientFicha .patient-ficha-kpis{
+  gap:8px;
+}
+
+#patientFicha .patient-ficha-kpi{
+  min-height:78px;
+  padding:11px 12px;
+  border-radius:12px;
+}
+
+#patientFicha .patient-ficha-kpi .small{
+  font-size:.66rem;
+}
+
+#patientFicha .patient-ficha-kpi strong,
+#patientFicha .patient-ficha-kpi strong[style]{
+  font-size:.9rem !important;
+  line-height:1.12;
+}
+
+#patientFicha .patient-ficha-actions{
+  gap:8px;
+}
+
+#patientFicha .patient-ficha-actions .btn{
+  min-height:34px;
+  padding:8px 11px;
+  font-size:.78rem;
+}
+
+#patientFicha .patient-ficha-overview{
+  gap:10px;
+}
+
+#patientFicha .patient-ficha-panel{
+  padding:13px 14px;
+  border-radius:12px;
+}
+
+#patientFicha .patient-ficha-panel h4{
+  margin:0 0 8px;
+  font-size:.88rem;
+}
+
+#patientFicha .hub-card .muted.small,
+#patientFicha .timeline-item .muted.small{
+  font-size:.76rem;
+  line-height:1.38;
+}
+
+#assistantAiConfigCard{
+  max-width:1040px;
+}
+
+@media(max-width:768px){
+  #panel-day .day-panel-header{
+    gap:8px;
+  }
+
+  #panel-day .day-panel-controls{
+    width:100%;
+  }
+
+  #panel-day .day-operational-copy{
+    display:grid;
+    gap:3px;
+  }
+
+  #patientFicha .patient-ficha-kpi{
+    min-height:0;
+  }
+}
