@@ -4513,44 +4513,122 @@ textarea{
 
 #panel-pendencias .pending-shell{
   display:grid;
-  gap:14px;
+  gap:16px;
+  max-width:1180px;
 }
 
 #panel-pendencias .pending-head-card,
 #panel-pendencias .pending-card{
-  border:1px solid var(--femic-line);
-  border-radius:16px;
-  background:#fff;
-  box-shadow:var(--femic-shadow);
-  padding:16px;
+  position:relative;
+  overflow:hidden;
+}
+
+#panel-pendencias .pending-head-card{
+  padding:20px 22px;
+  border:1px solid rgba(11,60,111,.14);
+  border-radius:20px;
+  background:
+    radial-gradient(circle at top right, rgba(31,182,233,.18), transparent 28%),
+    radial-gradient(circle at left center, rgba(11,60,111,.08), transparent 24%),
+    linear-gradient(180deg, rgba(255,255,255,.98), rgba(244,249,252,.96));
+  box-shadow:0 22px 44px rgba(11,60,111,.12);
+}
+
+#panel-pendencias .pending-head-card::before{
+  content:'';
+  position:absolute;
+  inset:0 auto 0 0;
+  width:6px;
+  background:linear-gradient(180deg,var(--femic-blue),var(--femic-cyan));
+}
+
+#panel-pendencias .pending-head-card h3{
+  font-family:'DM Serif Display',serif;
+  font-size:1.36rem;
+  margin-bottom:8px;
+}
+
+#panel-pendencias .pending-card{
+  padding:18px;
+  border:1px solid rgba(11,60,111,.12);
+  border-radius:22px;
+  background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(247,251,253,.96));
+  box-shadow:0 18px 38px rgba(11,60,111,.10);
 }
 
 #panel-pendencias .pending-filters{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,240px));
+  display:flex;
+  flex-wrap:wrap;
   gap:10px;
-  margin-bottom:14px;
+  margin-bottom:16px;
+  padding:10px;
+  border:1px solid rgba(11,60,111,.09);
+  border-radius:16px;
+  background:linear-gradient(180deg,rgba(243,249,252,.95),rgba(255,255,255,.92));
+}
+
+#panel-pendencias .pending-filters select{
+  flex:1 1 220px;
+  max-width:280px;
+  background:#fff;
 }
 
 #panel-pendencias .pending-task-list{
   display:grid;
-  gap:12px;
+  gap:14px;
 }
 
 #panel-pendencias .pending-task-item{
-  border:1px solid var(--femic-line);
-  border-radius:16px;
-  background:linear-gradient(180deg,#fff,rgba(244,249,251,.96));
-  padding:14px;
+  position:relative;
+  border:1px solid rgba(11,60,111,.12);
+  border-radius:20px;
+  background:linear-gradient(180deg,#fff,rgba(246,250,252,.98));
+  box-shadow:0 14px 30px rgba(11,60,111,.08);
+  padding:16px;
+  transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+#panel-pendencias .pending-task-item:hover{
+  transform:translateY(-1px);
+  box-shadow:0 22px 40px rgba(11,60,111,.12);
+}
+
+#panel-pendencias .pending-task-item::before{
+  content:'';
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:5px;
+  border-radius:20px 0 0 20px;
+  background:linear-gradient(180deg,#94a3b8,#cbd5e1);
+}
+
+#panel-pendencias .pending-task-item.aberta::before{
+  background:linear-gradient(180deg,#f59e0b,#facc15);
+}
+
+#panel-pendencias .pending-task-item.em_andamento::before{
+  background:linear-gradient(180deg,#2563eb,#60a5fa);
 }
 
 #panel-pendencias .pending-task-item.concluida{
   border-color:rgba(16,185,129,.24);
+  background:linear-gradient(180deg,rgba(240,253,247,.98),rgba(255,255,255,.96));
+}
+
+#panel-pendencias .pending-task-item.concluida::before{
+  background:linear-gradient(180deg,#10b981,#34d399);
 }
 
 #panel-pendencias .pending-task-item.cancelada{
   border-color:rgba(239,68,68,.22);
   opacity:.88;
+  background:linear-gradient(180deg,rgba(255,248,248,.98),rgba(255,255,255,.96));
+}
+
+#panel-pendencias .pending-task-item.cancelada::before{
+  background:linear-gradient(180deg,#ef4444,#f87171);
 }
 
 #panel-pendencias .pending-task-top{
@@ -4562,6 +4640,9 @@ textarea{
 
 #panel-pendencias .pending-task-top strong{
   color:var(--femic-blue);
+  display:block;
+  font-size:1rem;
+  margin-bottom:5px;
 }
 
 #panel-pendencias .pending-task-actions{
@@ -4571,29 +4652,66 @@ textarea{
   justify-content:flex-end;
 }
 
+#panel-pendencias .pending-task-actions .btn{
+  min-height:34px;
+  padding:8px 10px;
+  border-radius:12px;
+  box-shadow:none;
+}
+
 #panel-pendencias .pending-task-notes{
-  margin-top:10px;
+  margin-top:12px;
+  padding:11px 12px;
+  border:1px dashed rgba(11,60,111,.14);
+  border-radius:14px;
+  background:rgba(248,251,253,.92);
+  line-height:1.45;
 }
 
 #panel-pendencias .pending-task-tags{
   display:flex;
   flex-wrap:wrap;
   gap:8px;
-  margin-top:10px;
+  margin-top:12px;
 }
 
 #panel-pendencias .pending-task-tags span{
-  border:1px solid var(--femic-line);
+  border:1px solid rgba(11,60,111,.10);
   border-radius:999px;
-  background:var(--femic-soft);
-  color:var(--femic-blue);
-  padding:6px 10px;
-  font-size:.8rem;
+  background:linear-gradient(180deg,#f7fbff,#eef7fb);
+  color:#0b3c6f;
+  padding:7px 11px;
+  font-size:.78rem;
   font-weight:700;
 }
 
 #panel-pendencias .pending-kpis .kpi{
   min-width:0;
+  position:relative;
+  overflow:hidden;
+  padding:14px 14px 15px;
+}
+
+#panel-pendencias .pending-kpis .kpi::before{
+  content:'';
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:4px;
+  background:linear-gradient(180deg,var(--femic-blue),var(--femic-cyan));
+}
+
+#panel-pendencias .pending-kpis .kpi:nth-child(2)::before{
+  background:linear-gradient(180deg,#2563eb,#60a5fa);
+}
+
+#panel-pendencias .pending-kpis .kpi:nth-child(3)::before{
+  background:linear-gradient(180deg,#10b981,#34d399);
+}
+
+#panel-pendencias .pending-kpis .kpi:nth-child(4)::before{
+  background:linear-gradient(180deg,#ef4444,#f87171);
 }
 
 .pending-nav-badge{
@@ -4815,6 +4933,10 @@ textarea{
   #patientFicha .patient-ficha-overview{
     grid-template-columns:1fr;
   }
+
+  #panel-pendencias .pending-task-actions{
+    justify-content:flex-start;
+  }
 }
 
 @media(max-width:768px){
@@ -4841,7 +4963,25 @@ textarea{
   }
 
   #panel-pendencias .pending-filters{
-    grid-template-columns:1fr;
+    padding:8px;
+  }
+
+  #panel-pendencias .pending-filters select{
+    max-width:none;
+  }
+
+  #panel-pendencias .pending-head-card,
+  #panel-pendencias .pending-card,
+  #panel-pendencias .pending-task-item{
+    border-radius:18px;
+  }
+
+  #panel-pendencias .pending-head-card{
+    padding:16px;
+  }
+
+  #panel-pendencias .pending-head-card h3{
+    font-size:1.18rem;
   }
 
   #monthCalendar .month-agenda-item{
