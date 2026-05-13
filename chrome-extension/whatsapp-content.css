@@ -1,0 +1,137 @@
+#femic-wa-connector,
+#femic-wa-connector * {
+  box-sizing: border-box;
+  font-family: "Segoe UI", sans-serif;
+}
+
+#femic-wa-connector {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2147483647;
+  color: #12324a;
+}
+
+.femic-wa-tab {
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #0b5fa5, #15a8df);
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 11px 16px;
+  box-shadow: 0 12px 30px rgba(5, 38, 66, .28);
+}
+
+.femic-wa-panel {
+  position: absolute;
+  right: 0;
+  bottom: 52px;
+  width: 330px;
+  display: grid;
+  gap: 9px;
+  padding: 14px;
+  border: 1px solid #cfe0ee;
+  border-radius: 18px;
+  background: #f8fbff;
+  box-shadow: 0 18px 46px rgba(5, 38, 66, .28);
+}
+
+.femic-wa-panel[hidden] {
+  display: none !important;
+}
+
+.femic-wa-head,
+.femic-wa-actions,
+.femic-wa-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.femic-wa-head {
+  justify-content: space-between;
+}
+
+.femic-wa-head strong {
+  color: #073b70;
+  font-size: 15px;
+}
+
+.femic-wa-head button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #cfe0ee;
+  border-radius: 999px;
+  background: #fff;
+  color: #073b70;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+#femic-wa-connector label {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+  color: #5f7690;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
+#femic-wa-connector input,
+#femic-wa-connector select,
+#femic-wa-connector textarea {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #cfe0ee;
+  border-radius: 11px;
+  background: #fff;
+  color: #12324a;
+  font-size: 13px;
+  outline: 0;
+  padding: 8px 10px;
+  text-transform: none;
+}
+
+#femic-wa-connector textarea {
+  resize: vertical;
+}
+
+.femic-wa-actions {
+  justify-content: flex-end;
+}
+
+.femic-wa-actions button {
+  border: 1px solid #cfe0ee;
+  border-radius: 11px;
+  background: #fff;
+  color: #073b70;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 9px 10px;
+}
+
+.femic-wa-actions #femicWaSend {
+  border-color: transparent;
+  background: linear-gradient(135deg, #0b5fa5, #15a8df);
+  color: #fff;
+}
+
+#femicWaStatus {
+  margin: 0;
+  color: #5f7690;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+#femicWaStatus[data-tone="success"] {
+  color: #047857;
+}
+
+#femicWaStatus[data-tone="error"] {
+  color: #b91c1c;
+}

@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "FEMIC WhatsApp Connector",
+  "description": "Envia sinais do WhatsApp Web para a Central IA do FEMIC como tarefas operacionais.",
+  "version": "0.1.0",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "FEMIC WhatsApp"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["whatsapp-content.js"],
+      "css": ["whatsapp-content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": ["tabs", "scripting", "storage"],
+  "host_permissions": [
+    "https://web.whatsapp.com/*",
+    "file:///*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "http://*/*",
+    "https://*/*"
+  ]
+}

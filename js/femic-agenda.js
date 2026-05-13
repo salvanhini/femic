@@ -145,7 +145,7 @@ ALTER TABLE clinic_rules DISABLE ROW LEVEL SECURITY;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 NOTIFY pgrst, 'reload schema';`;
-const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],movements=[],clinicRules=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();
+const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],movements=[],clinicRules=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();const appointmentSearchSelected=new Set();
 const CLINIC_RULES_STORAGE_KEY='femic_agenda_clinic_rules';
 function toast(msg,type='info'){const el=document.createElement('div');el.className='toast '+type;el.textContent=msg;$('toastWrap').appendChild(el);setTimeout(()=>el.remove(),3600)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
@@ -190,7 +190,7 @@ function showPanel(name){
   closeSidebar();
   renderAll();
 }
-function renderAll(){renderAgenda();renderDay();renderReminders();renderReport();renderLists();renderBackupPanel()}function patientById(id){return patients.find(p=>String(p.id)===String(id))||{}}function serviceById(id){return services.find(s=>String(s.id)===String(id))||{}}function payerName(id){return (payers.find(p=>String(p.id)===String(id))||{}).name||'Particular'}function patientName(id){return patientById(id).name||'Paciente'}function serviceName(id){return serviceById(id).name||'Sem serviço'}
+function renderAll(){renderAgenda();renderDay();renderReminders();renderReport();renderLists();renderBackupPanel();renderAppointmentSearch()}function patientById(id){return patients.find(p=>String(p.id)===String(id))||{}}function serviceById(id){return services.find(s=>String(s.id)===String(id))||{}}function payerName(id){return (payers.find(p=>String(p.id)===String(id))||{}).name||'Particular'}function patientName(id){return patientById(id).name||'Paciente'}function serviceName(id){return serviceById(id).name||'Sem serviço'}
 window.FEMICAgendaRuntime={
   getState:function(){return{patients:[...patients],payers:[...payers],services:[...services],packages:[...packages],appointments:[...appointments],movements:[...movements],clinicRules:[...clinicRules],settings:Object.assign({},settings)}},
   setClinicRules:function(list){clinicRules=Array.isArray(list)?list:[];writeClinicRulesCache(clinicRules);renderBackupPanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));return clinicRules},
@@ -233,8 +233,49 @@ function slots(){const set=new Set(),step=Number(settings.slot_interval_minutes|
 function isInsideWorkingTime(dateStr,start,end){if(!isTodayDate(dateStr)&&!isWorking(dateStr)) return false;const s=timeToMin(start),e=timeToMin(end);return parsePeriods().some(p=>s>=timeToMin(p.start)&&e<=timeToMin(p.end));}
 function prevPeriod(){if($('viewMode').value==='month')currentDate.setMonth(currentDate.getMonth()-1);else currentDate.setDate(currentDate.getDate()-7);renderAgenda()}function nextPeriod(){if($('viewMode').value==='month')currentDate.setMonth(currentDate.getMonth()+1);else currentDate.setDate(currentDate.getDate()+7);renderAgenda()}function goToday(){currentDate=new Date();$('dayDate').value=todayIso();$('reminderDate').value=isoDate(new Date(Date.now()+86400000));renderAll()}
 function agendaFiltered(list){const st=$('agendaStatusFilter')?.value||'all';const sv=$('agendaServiceFilter')?.value||'all';return list.filter(a=>(st==='all'||a.status===st)&&(sv==='all'||String(a.service_id)===String(sv)))}
-function populateAgendaFilters(){const sel=$('agendaServiceFilter');if(!sel)return;const current=sel.value||'all';sel.innerHTML='<option value="all">Todos os serviços</option>'+services.filter(s=>s.active!==false).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');sel.value=[...sel.options].some(o=>o.value===current)?current:'all'}
+function populateAgendaFilters(){const sel=$('agendaServiceFilter');if(sel){const current=sel.value||'all';sel.innerHTML='<option value="all">Todos os serviços</option>'+services.filter(s=>s.active!==false).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');sel.value=[...sel.options].some(o=>o.value===current)?current:'all'}const searchSel=$('apptSearchService');if(searchSel){const currentSearch=searchSel.value||'all';searchSel.innerHTML='<option value="all">Todos os serviços</option>'+services.filter(s=>s.active!==false).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');searchSel.value=[...searchSel.options].some(o=>o.value===currentSearch)?currentSearch:'all'}}
 function clearAgendaFilters(){if($('agendaStatusFilter'))$('agendaStatusFilter').value='all';if($('agendaServiceFilter'))$('agendaServiceFilter').value='all';renderAgenda()}
+function getAppointmentSearchResults(){
+  const rawQuery=String($('apptSearchText')?.value||'');
+  const queryText=rawQuery.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  const queryPhone=cleanPhone(rawQuery);
+  const from=$('apptSearchFrom')?.value||'';
+  const to=$('apptSearchTo')?.value||'';
+  const status=$('apptSearchStatus')?.value||'all';
+  const service=$('apptSearchService')?.value||'all';
+  return appointments.filter(a=>{
+    const patient=patientById(a.patient_id);
+    const patientText=String((patient.name||'')+' '+(patient.whatsapp||'')).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const phone=cleanPhone(patient.whatsapp||'');
+    if(queryText && patientText.indexOf(queryText)===-1 && (!queryPhone || phone.indexOf(queryPhone)===-1)) return false;
+    if(from && String(a.appointment_date||'')<from) return false;
+    if(to && String(a.appointment_date||'')>to) return false;
+    if(status!=='all' && a.status!==status) return false;
+    if(service!=='all' && String(a.service_id)!==String(service)) return false;
+    return true;
+  }).sort((a,b)=>String(a.appointment_date||'').localeCompare(String(b.appointment_date||''))||normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time))).slice(0,200);
+}
+function renderAppointmentSearch(){
+  const target=$('apptSearchResults');
+  if(!target)return;
+  const results=getAppointmentSearchResults();
+  appointmentSearchSelected.forEach(id=>{if(!results.some(a=>String(a.id)===String(id)))appointmentSearchSelected.delete(id)});
+  if($('apptSearchCount'))$('apptSearchCount').textContent=results.length+' encontrado(s)';
+  if($('apptSelectedCount'))$('apptSelectedCount').textContent=appointmentSearchSelected.size+' selecionado(s)';
+  if($('apptBulkBar'))$('apptBulkBar').classList.toggle('active',appointmentSearchSelected.size>0);
+  target.innerHTML=results.length?results.map(a=>{
+    const patient=patientById(a.patient_id),service=serviceById(a.service_id),checked=appointmentSearchSelected.has(String(a.id))?'checked':'';
+    const label={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;
+    return `<div class="appointment-search-row status-${a.status}"><label class="appt-check"><input type="checkbox" ${checked} onchange="toggleAppointmentSearchSelection('${a.id}',this.checked)"></label><div class="appt-search-main"><strong>${esc(patient.name||'Paciente')}</strong><span>${fmtDate(a.appointment_date)} · ${normalizeTime(a.start_time)}-${normalizeTime(a.end_time)} · ${esc(service.name||'Sem serviço')}</span></div><span class="status-chip ${a.status}">${label}</span><div class="appt-search-actions"><button class="btn small" onclick="openAppt('${a.appointment_date}','${a.id}')">Editar</button><button class="btn small warning" onclick="cancelAppointmentFromSearch('${a.id}')">Cancelar</button><button class="btn small danger" onclick="deleteAppointmentFromSearch('${a.id}')">Apagar</button></div></div>`;
+  }).join(''):'<div class="muted small">Nenhum agendamento encontrado.</div>';
+}
+function toggleAppointmentSearchSelection(id,checked){if(checked)appointmentSearchSelected.add(String(id));else appointmentSearchSelected.delete(String(id));renderAppointmentSearch()}
+function clearAppointmentSearch(){['apptSearchText','apptSearchFrom','apptSearchTo'].forEach(id=>{if($(id))$(id).value=''});if($('apptSearchStatus'))$('apptSearchStatus').value='all';if($('apptSearchService'))$('apptSearchService').value='all';appointmentSearchSelected.clear();renderAppointmentSearch()}
+async function cancelAppointmentFromSearch(id){if(!confirm('Cancelar este agendamento?'))return;try{await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify({status:'cancelado'})});appointmentSearchSelected.delete(String(id));await loadAll(true);toast('Agendamento cancelado.','success')}catch(e){toast('Erro ao cancelar: '+e.message,'error')}}
+async function deleteAppointmentFromSearch(id){if(!confirm('Apagar definitivamente este agendamento?'))return;try{await api('appointments?id=eq.'+id,{method:'DELETE'});appointmentSearchSelected.delete(String(id));await loadAll(true);toast('Agendamento apagado.','success')}catch(e){toast('Erro ao apagar: '+e.message,'error')}}
+function selectedAppointmentIds(){return [...appointmentSearchSelected].filter(id=>appointments.some(a=>String(a.id)===String(id)))}
+async function bulkCancelAppointments(){const ids=selectedAppointmentIds();if(!ids.length){toast('Selecione ao menos um agendamento.','warning');return}if(!confirm('Cancelar '+ids.length+' agendamento(s) selecionado(s)?'))return;try{for(const id of ids){await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify({status:'cancelado'})})}appointmentSearchSelected.clear();await loadAll(true);toast(ids.length+' agendamento(s) cancelado(s).','success')}catch(e){toast('Erro no cancelamento em massa: '+e.message,'error')}}
+async function bulkDeleteAppointments(){const ids=selectedAppointmentIds();if(!ids.length){toast('Selecione ao menos um agendamento.','warning');return}const typed=prompt('Digite APAGAR para excluir definitivamente '+ids.length+' agendamento(s).');if(typed!=='APAGAR')return;try{for(const id of ids){await api('appointments?id=eq.'+id,{method:'DELETE'})}appointmentSearchSelected.clear();await loadAll(true);toast(ids.length+' agendamento(s) apagado(s).','success')}catch(e){toast('Erro ao apagar em massa: '+e.message,'error')}}
 function updateAgendaViewToggle(){const mode=$('viewMode')?.value||'week';document.querySelectorAll('.view-chip').forEach(btn=>btn.classList.remove('active'));if(mode==='month')$('viewMonthBtn')?.classList.add('active');else $('viewWeekBtn')?.classList.add('active')}
 function setAgendaViewMode(mode){if(!$('viewMode'))return;$('viewMode').value=mode;updateAgendaViewToggle();if(mode==='day'){showPanel('day');return}if(mode==='agenda')showPanel('agenda');renderAgenda()}
 function renderAgenda(){populateAgendaFilters();updateAgendaViewToggle();if($('viewMode').value==='month')renderMonth();else renderWeek()}

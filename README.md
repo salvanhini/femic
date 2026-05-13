@@ -36,6 +36,12 @@ Sistema clínico da FEMIC Fisioterapia com:
 
 ## WhatsApp: lembretes e preparação para Meta Cloud API
 
+## Extensão Chrome: WhatsApp Web para tarefas IA
+- Extensão local criada em `chrome-extension/`.
+- Ela adiciona um botão flutuante `FEMIC` no WhatsApp Web.
+- O botão envia marcações, remarcações e cancelamentos para a aba IA do FEMIC como tarefas operacionais.
+- Instruções completas: `chrome-extension/README.md`.
+
 ### Estado atual seguro
 - A agenda envia lembretes pelo WhatsApp usando link `wa.me`, com a mensagem já preenchida.
 - O envio manual continua funcionando como antes.

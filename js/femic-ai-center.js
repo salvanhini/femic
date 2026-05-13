@@ -2,6 +2,7 @@
   'use strict';
 
   var STORAGE_KEY = 'femic_ai_center_config_v1';
+  var TASKS_STORAGE_KEY = 'femic_ai_tasks_v1';
   var state = {
     messages: [],
     status: 'Central IA pronta. Consultas internas usam primeiro os dados do sistema.',
@@ -147,6 +148,177 @@
   function addMessage(role, html){
     state.messages.push({ role: role, html: html });
     renderMessages();
+  }
+  function readTasks(){
+    try{
+      var raw = JSON.parse(localStorage.getItem(TASKS_STORAGE_KEY) || '[]');
+      return Array.isArray(raw) ? raw : [];
+    }catch(e){
+      return [];
+    }
+  }
+  function saveTasks(list){
+    localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(Array.isArray(list) ? list : []));
+  }
+  function makeTaskId(){
+    return 'task_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  }
+  function cleanPhone(value){
+    return String(value || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
+  }
+  function taskTypeLabel(type){
+    return { marcacao:'Marcação', remarcacao:'Remarcação', cancelamento:'Cancelamento', laudo:'Laudo', retorno:'Retorno', outro:'Outro' }[type] || 'Outro';
+  }
+  function taskStatusLabel(status){
+    return { aberta:'Aberta', em_andamento:'Em andamento', concluida:'Concluída', cancelada:'Cancelada' }[status] || 'Aberta';
+  }
+  function findPatientFromPayload(payload){
+    var agenda = getAgendaState();
+    var patients = agenda.patients || [];
+    var phone = cleanPhone(payload && payload.phone);
+    if(phone){
+      var byPhone = patients.find(function(patient){ return cleanPhone(patient.whatsapp) === phone; });
+      if(byPhone) return { patient: byPhone, ambiguous:false };
+    }
+    var name = String((payload && payload.patient_name) || '').trim();
+    if(name){
+      var normalized = norm(name);
+      var exact = patients.filter(function(patient){ return norm(patient.name) === normalized; });
+      if(exact.length === 1) return { patient: exact[0], ambiguous:false };
+      var partial = patients.filter(function(patient){ return norm(patient.name).indexOf(normalized) !== -1 || normalized.indexOf(norm(patient.name)) !== -1; });
+      if(partial.length === 1) return { patient: partial[0], ambiguous:false };
+      if(partial.length > 1) return { patient: null, ambiguous:true };
+    }
+    return { patient:null, ambiguous:false };
+  }
+  function inferDatesFromPayload(payload){
+    var dates = [];
+    if(payload && payload.requested_date && /^\d{4}-\d{2}-\d{2}$/.test(String(payload.requested_date))){
+      dates.push(String(payload.requested_date));
+    }
+    if(!dates.length){
+      var text = norm(((payload && payload.message_text) || '') + ' ' + ((payload && payload.requested_period) || ''));
+      var days = weekdayIndexFromQuery(text);
+      if(days.length){
+        days.forEach(function(dow){ dates.push(nextDateForWeekday(todayIso(), dow)); });
+      }
+    }
+    if(!dates.length) dates = [addDays(todayIso(), 1), addDays(todayIso(), 2), addDays(todayIso(), 3)];
+    return dates.filter(function(item, index){ return dates.indexOf(item) === index; }).slice(0, 4);
+  }
+  function buildSuggestedSlots(payload, patient){
+    var text = ((payload && payload.message_text) || '') + ' ' + ((payload && payload.requested_period) || '');
+    var duration = inferDurationForPatient(patient || {});
+    return inferDatesFromPayload(payload).reduce(function(all, date){
+      return all.concat(slotsForDate(date, duration).filter(function(slot){ return shiftFilter(slot, text); }));
+    }, []).slice(0, 5);
+  }
+  function buildCancellationCandidates(patient){
+    if(!patient) return [];
+    var agenda = getAgendaState();
+    return (agenda.appointments || []).filter(function(item){
+      return String(item.patient_id) === String(patient.id) && ['agendado','confirmado'].indexOf(item.status) !== -1 && String(item.appointment_date || '') >= todayIso();
+    }).sort(function(a,b){
+      return String(a.appointment_date || '').localeCompare(String(b.appointment_date || '')) || String(a.start_time || '').localeCompare(String(b.start_time || ''));
+    }).slice(0, 5);
+  }
+  function normalizeTask(task){
+    var now = new Date().toISOString();
+    task = task || {};
+    return {
+      id: String(task.id || makeTaskId()),
+      title: String(task.title || 'Tarefa sem título').trim(),
+      type: String(task.type || 'outro'),
+      status: String(task.status || 'aberta'),
+      priority: String(task.priority || 'normal'),
+      patient_id: task.patient_id || '',
+      patient_name: task.patient_name || '',
+      phone: task.phone || '',
+      origin: task.origin || 'manual',
+      requested_action: task.requested_action || '',
+      notes: task.notes || '',
+      suggested_slots: Array.isArray(task.suggested_slots) ? task.suggested_slots : [],
+      candidates: Array.isArray(task.candidates) ? task.candidates : [],
+      needs_review: task.needs_review === true,
+      created_at: task.created_at || now,
+      updated_at: now,
+      completed_at: task.completed_at || null
+    };
+  }
+  function upsertTask(task){
+    var normalized = normalizeTask(task);
+    var list = readTasks();
+    var index = list.findIndex(function(item){ return item.id === normalized.id; });
+    if(index === -1) list.unshift(normalized);
+    else list[index] = Object.assign({}, list[index], normalized);
+    saveTasks(list);
+    renderAssistantTasks();
+    return normalized;
+  }
+  function taskPatientName(task){
+    if(task.patient_name) return task.patient_name;
+    var agenda = getAgendaState();
+    var patient = (agenda.patients || []).find(function(item){ return String(item.id) === String(task.patient_id); });
+    return patient ? patient.name : '';
+  }
+  function renderAssistantTasks(){
+    var target = el('aiTaskList');
+    if(!target) return;
+    var statusFilter = el('aiTaskStatusFilter') ? el('aiTaskStatusFilter').value : 'open';
+    var typeFilter = el('aiTaskTypeFilter') ? el('aiTaskTypeFilter').value : 'all';
+    var list = readTasks().filter(function(task){
+      if(statusFilter === 'open' && ['concluida','cancelada'].indexOf(task.status) !== -1) return false;
+      if(statusFilter !== 'open' && statusFilter !== 'all' && task.status !== statusFilter) return false;
+      if(typeFilter !== 'all' && task.type !== typeFilter) return false;
+      return true;
+    });
+    target.innerHTML = list.length ? list.map(function(task){
+      var slots = (task.suggested_slots || []).map(function(slot){
+        return '<span>' + esc(fmtDate(slot.date) + ' ' + slot.start) + '</span>';
+      }).join('');
+      var candidates = (task.candidates || []).map(function(item){
+        return '<span>' + esc(fmtDate(item.appointment_date) + ' ' + normalizeTime(item.start_time)) + '</span>';
+      }).join('');
+      return '<article class="ai-task-item ' + esc(task.status) + '">' +
+        '<div class="ai-task-main"><div><strong>' + esc(task.title) + '</strong><div class="muted small">' + esc(taskTypeLabel(task.type)) + ' · ' + esc(taskStatusLabel(task.status)) + (taskPatientName(task) ? ' · ' + esc(taskPatientName(task)) : '') + (task.needs_review ? ' · revisar paciente' : '') + '</div></div>' +
+        '<div class="ai-task-actions"><button class="btn small" type="button" onclick="editAssistantTask(\'' + esc(task.id) + '\')">Editar</button><button class="btn small" type="button" onclick="setAssistantTaskStatus(\'' + esc(task.id) + '\',\'concluida\')">Concluir</button><button class="btn small danger" type="button" onclick="setAssistantTaskStatus(\'' + esc(task.id) + '\',\'cancelada\')">Cancelar</button></div></div>' +
+        (task.notes ? '<div class="muted small ai-task-notes">' + esc(task.notes) + '</div>' : '') +
+        (slots ? '<div class="ai-task-suggestions"><span class="muted small">Horários:</span>' + slots + '</div>' : '') +
+        (candidates ? '<div class="ai-task-suggestions"><span class="muted small">Candidatos:</span>' + candidates + '</div>' : '') +
+      '</article>';
+    }).join('') : '<div class="muted small">Nenhuma tarefa neste filtro.</div>';
+  }
+  function createTaskFromExtension(payload){
+    payload = payload || {};
+    var allowed = ['marcacao','remarcacao','cancelamento'];
+    var action = String(payload.action || payload.requested_action || '').trim();
+    if(allowed.indexOf(action) === -1 || !String(payload.message_text || '').trim()) return null;
+    var match = findPatientFromPayload(payload);
+    var patient = match.patient;
+    var suggestions = action === 'cancelamento' ? [] : buildSuggestedSlots(payload, patient);
+    var candidates = action === 'cancelamento' ? buildCancellationCandidates(patient) : [];
+    var title = taskTypeLabel(action) + (patient ? ' · ' + patient.name : (payload.patient_name ? ' · ' + payload.patient_name : ''));
+    var task = upsertTask({
+      title: title,
+      type: action,
+      status: 'aberta',
+      priority: action === 'cancelamento' ? 'alta' : 'normal',
+      patient_id: patient ? patient.id : '',
+      patient_name: patient ? patient.name : (payload.patient_name || ''),
+      phone: payload.phone || '',
+      origin: 'chrome_extension',
+      requested_action: action,
+      notes: payload.message_text || '',
+      suggested_slots: suggestions,
+      candidates: candidates,
+      needs_review: !patient || match.ambiguous,
+      created_at: payload.created_at || new Date().toISOString()
+    });
+    addMessage('assistant', '<div><strong>Tarefa criada pelo WhatsApp Web.</strong><div class="muted small">' + esc(task.title) + '</div></div>');
+    setStatus('Tarefa recebida da extensão e adicionada à lista.');
+    setDebug('Evento FEMIC_EXTENSION_EVENT processado.');
+    if(typeof window.toast === 'function') window.toast('Tarefa criada a partir do WhatsApp Web.', 'success');
+    return task;
   }
   function renderSuggestions(){
     if(el('assistantSuggestions')) el('assistantSuggestions').innerHTML = '';
@@ -343,9 +515,62 @@
     };
     return { handled:true, html:'<strong>Carga operacional de ' + esc(fmtDate(targetDate)) + ':</strong><ul><li>Agendados: ' + counts.agendado + '</li><li>Confirmados: ' + counts.confirmado + '</li><li>Concluídos: ' + counts.concluido + '</li><li>Cancelados: ' + counts.cancelado + '</li></ul>' };
   }
+  function answerTasks(question){
+    var normalized = norm(question);
+    var list = readTasks();
+    if(normalized.indexOf('concluir tarefa') !== -1){
+      var open = list.find(function(task){ return ['concluida','cancelada'].indexOf(task.status) === -1 && normalized.indexOf(norm(task.title)) !== -1; });
+      if(open){
+        window.setAssistantTaskStatus(open.id, 'concluida');
+        return { handled:true, html:'<strong>Tarefa concluída:</strong> ' + esc(open.title) };
+      }
+    }
+    var filtered = list.filter(function(task){
+      if(normalized.indexOf('laudo') !== -1 && task.type !== 'laudo') return false;
+      if(normalized.indexOf('marc') !== -1 && task.type !== 'marcacao') return false;
+      if(normalized.indexOf('remarc') !== -1 && task.type !== 'remarcacao') return false;
+      if(normalized.indexOf('cancel') !== -1 && task.type !== 'cancelamento') return false;
+      return ['concluida','cancelada'].indexOf(task.status) === -1;
+    }).slice(0, 8);
+    if(!filtered.length) return { handled:true, html:'<strong>Não há tarefas abertas nesse recorte.</strong>' };
+    var items = filtered.map(function(task){
+      return '<li>' + esc(task.title + ' · ' + taskTypeLabel(task.type) + (taskPatientName(task) ? ' · ' + taskPatientName(task) : '')) + '</li>';
+    }).join('');
+    return { handled:true, html:'<strong>Tarefas abertas:</strong><ul>' + items + '</ul>' };
+  }
+  function createTaskFromQuestion(question){
+    var normalized = norm(question);
+    if(normalized.indexOf('crie') === -1 && normalized.indexOf('criar') === -1 && normalized.indexOf('tarefa') === -1 && normalized.indexOf('lembre') === -1) return { handled:false };
+    var type = 'outro';
+    if(normalized.indexOf('remarc') !== -1) type = 'remarcacao';
+    else if(normalized.indexOf('marc') !== -1 || normalized.indexOf('agend') !== -1) type = 'marcacao';
+    else if(normalized.indexOf('cancel') !== -1) type = 'cancelamento';
+    else if(normalized.indexOf('laudo') !== -1) type = 'laudo';
+    else if(normalized.indexOf('retorno') !== -1) type = 'retorno';
+    var patient = getPatientMatch(question);
+    var task = upsertTask({
+      title: taskTypeLabel(type) + (patient ? ' · ' + patient.name : ''),
+      type: type,
+      status: 'aberta',
+      patient_id: patient ? patient.id : '',
+      patient_name: patient ? patient.name : '',
+      origin: 'ia',
+      requested_action: type,
+      notes: question,
+      suggested_slots: ['marcacao','remarcacao'].indexOf(type) !== -1 ? buildSuggestedSlots({ message_text: question }, patient) : [],
+      candidates: type === 'cancelamento' ? buildCancellationCandidates(patient) : [],
+      needs_review: !patient && ['marcacao','remarcacao','cancelamento'].indexOf(type) !== -1
+    });
+    return { handled:true, html:'<strong>Tarefa criada:</strong> ' + esc(task.title) + '<div class="muted small">Ela já aparece na lista de tarefas da IA.</div>' };
+  }
   function resolveInternalQuestion(question){
     var normalized = norm(question);
     if(!normalized) return { handled:true, html:'<strong>Escreva a pergunta que você quer fazer.</strong>' };
+    if(normalized.indexOf('tarefa') !== -1 || normalized.indexOf('pendenc') !== -1 || normalized.indexOf('pendênc') !== -1) {
+      var created = createTaskFromQuestion(question);
+      if(created.handled) return created;
+      return answerTasks(question);
+    }
     if(normalized.indexOf('livre') !== -1 && normalized.indexOf('amanha') !== -1) return answerFreeTomorrow();
     if(normalized.indexOf('sess') !== -1 && (normalized.indexOf('quant') !== -1 || getPatientMatch(question))) return answerSessionCount(question);
     if(normalized.indexOf('saldo') !== -1 || normalized.indexOf('pacote') !== -1) return answerPackageBalance(question);
@@ -648,12 +873,57 @@
   window.openAIFromFab = openAIFromFab;
   window.fillAnamneseWithAI = fillAnamneseWithAI;
   window.fillEvolutionWithAI = fillEvolutionWithAI;
+  window.renderAssistantTasks = renderAssistantTasks;
+  window.createAssistantTaskManual = function(){
+    var title = window.prompt('Título da tarefa');
+    if(!title) return;
+    var type = window.prompt('Tipo: marcacao, remarcacao, cancelamento, laudo, retorno ou outro', 'outro') || 'outro';
+    var notes = window.prompt('Observações da tarefa', '') || '';
+    upsertTask({ title:title, type:norm(type).replace('marcação','marcacao'), notes:notes, origin:'manual', status:'aberta' });
+    if(typeof window.toast === 'function') window.toast('Tarefa criada.', 'success');
+  };
+  window.setAssistantTaskStatus = function(id, status){
+    var list = readTasks();
+    var task = list.find(function(item){ return item.id === id; });
+    if(!task) return;
+    task.status = status;
+    task.updated_at = new Date().toISOString();
+    task.completed_at = status === 'concluida' ? new Date().toISOString() : task.completed_at;
+    saveTasks(list);
+    renderAssistantTasks();
+  };
+  window.editAssistantTask = function(id){
+    var list = readTasks();
+    var task = list.find(function(item){ return item.id === id; });
+    if(!task) return;
+    var title = window.prompt('Título da tarefa', task.title || '');
+    if(!title) return;
+    var notes = window.prompt('Observações da tarefa', task.notes || '') || '';
+    task.title = title.trim();
+    task.notes = notes.trim();
+    task.updated_at = new Date().toISOString();
+    saveTasks(list);
+    renderAssistantTasks();
+    if(typeof window.toast === 'function') window.toast('Tarefa atualizada.', 'success');
+  };
+  window.FEMICAssistantTasks = {
+    list: readTasks,
+    create: upsertTask,
+    fromExtension: createTaskFromExtension
+  };
+
+  window.addEventListener('message', function(event){
+    var data = event && event.data;
+    if(!data || data.type !== 'FEMIC_EXTENSION_EVENT') return;
+    createTaskFromExtension(data);
+  });
 
   function init(){
     fillConfigInputs();
     renderAssistantAiProviderBadge();
     if(el('assistantBuildLabel')) el('assistantBuildLabel').textContent = 'build ' + state.build;
     renderSuggestions();
+    renderAssistantTasks();
     wireForms();
     initGreeting();
     setStatus(state.status);

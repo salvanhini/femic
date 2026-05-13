@@ -4965,3 +4965,194 @@ textarea{
     min-height:0;
   }
 }
+
+/* Central operacional: tarefas IA e busca de agendamentos */
+.appointment-search-card,
+.ai-tasks-card{
+  display:grid;
+  gap:12px;
+  margin-bottom:16px;
+}
+
+.appointment-search-drawer{
+  margin-top:16px;
+  margin-bottom:0;
+}
+
+.appointment-search-drawer summary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  cursor:pointer;
+  color:var(--femic-blue);
+  font-weight:900;
+}
+
+.appointment-search-drawer[open] summary{
+  margin-bottom:12px;
+}
+
+.appointment-search-grid,
+.ai-task-filters{
+  display:grid;
+  grid-template-columns:1.4fr repeat(4,minmax(120px,1fr)) auto;
+  gap:8px;
+  align-items:center;
+}
+
+.appointment-bulkbar{
+  display:none;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  border:1px solid var(--femic-line);
+  border-radius:10px;
+  background:var(--femic-soft);
+  padding:8px 10px;
+}
+
+.appointment-bulkbar.active{
+  display:flex;
+}
+
+.appointment-search-results,
+.ai-task-list{
+  display:grid;
+  gap:8px;
+}
+
+.appointment-search-row,
+.ai-task-item{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto auto;
+  align-items:center;
+  gap:10px;
+  border:1px solid var(--femic-line);
+  border-left:4px solid #94a3b8;
+  border-radius:10px;
+  background:#fff;
+  padding:9px 10px;
+}
+
+.appointment-search-row.status-agendado{border-left-color:#f59e0b}
+.appointment-search-row.status-confirmado{border-left-color:#2563eb}
+.appointment-search-row.status-concluido{border-left-color:#10b981}
+.appointment-search-row.status-cancelado{border-left-color:#ef4444}
+
+.appt-search-main,
+.ai-task-main{
+  display:grid;
+  gap:3px;
+  min-width:0;
+}
+
+.appt-search-main strong,
+.ai-task-main strong{
+  color:var(--femic-blue);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.appt-search-main span{
+  color:var(--femic-muted);
+  font-size:.78rem;
+}
+
+.appt-search-actions,
+.ai-task-actions{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+.appt-check{
+  display:grid;
+  place-items:center;
+}
+
+.ai-task-item{
+  grid-template-columns:minmax(0,1fr);
+  align-items:stretch;
+}
+
+.ai-task-item.marcacao,
+.ai-task-item.remarcacao,
+.ai-task-item.aberta{
+  border-left-color:var(--femic-cyan);
+}
+
+.ai-task-item.concluida{
+  opacity:.72;
+  border-left-color:#10b981;
+}
+
+.ai-task-item.cancelada{
+  opacity:.72;
+  border-left-color:#ef4444;
+}
+
+.ai-task-main{
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:start;
+}
+
+.ai-task-notes{
+  line-height:1.35;
+}
+
+.ai-task-suggestions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  align-items:center;
+}
+
+.ai-task-suggestions span:not(.muted){
+  border:1px solid var(--femic-line);
+  border-radius:999px;
+  background:var(--femic-soft);
+  color:var(--femic-blue);
+  padding:4px 8px;
+  font-size:.72rem;
+  font-weight:800;
+}
+
+@media(max-width:980px){
+  .appointment-search-grid,
+  .ai-task-filters{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .appointment-search-row{
+    grid-template-columns:auto minmax(0,1fr);
+  }
+
+  .appointment-search-row .status-chip,
+  .appt-search-actions{
+    grid-column:2;
+    justify-content:flex-start;
+  }
+}
+
+@media(max-width:640px){
+  .appointment-search-grid,
+  .ai-task-filters{
+    grid-template-columns:1fr;
+  }
+
+  .appointment-bulkbar,
+  .appointment-bulkbar.active,
+  .ai-task-main{
+    display:grid;
+    justify-content:stretch;
+  }
+
+  .appt-search-actions .btn,
+  .ai-task-actions .btn{
+    flex:1;
+  }
+}
