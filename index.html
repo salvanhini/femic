@@ -167,6 +167,23 @@
     <div class="card agenda-surface" style="margin-bottom:16px"><div class="toolbar agenda-toolbar"><div class="view-switch" role="tablist" aria-label="Visualização da agenda"><button class="view-chip" id="viewDayBtn" type="button" onclick="showPanel('day')">Dia</button><button class="view-chip active" id="viewWeekBtn" type="button" onclick="setAgendaViewMode('week')">Semana</button><button class="view-chip" id="viewMonthBtn" type="button" onclick="setAgendaViewMode('month')">Mês</button></div><div class="toolbar"><button class="btn" onclick="prevPeriod()">◀</button><button class="btn ghost" onclick="goToday()">Hoje</button><button class="btn" onclick="nextPeriod()">▶</button></div><select id="viewMode" onchange="renderAgenda()" style="display:none"><option value="week">Semana</option><option value="month">Mês</option></select><strong id="periodLabel" style="align-self:center;color:var(--primary)"></strong><div class="legend-row"><span class="legend"><i class="legend-dot" style="background:#f59e0b"></i>Agendado</span><span class="legend"><i class="legend-dot" style="background:#2563eb"></i>Confirmado</span><span class="legend"><i class="legend-dot" style="background:#10b981"></i>Concluído</span><span class="legend"><i class="legend-dot" style="background:#ef4444"></i>Cancelado</span></div></div><div class="agenda-filterbar"><select id="agendaStatusFilter" onchange="renderAgenda()"><option value="all">Todos os status</option><option value="agendado">Agendado</option><option value="confirmado">Confirmado</option><option value="concluido">Concluído</option><option value="cancelado">Cancelado</option></select><select id="agendaServiceFilter" onchange="renderAgenda()"><option value="all">Todos os serviços</option></select><button class="btn ghost" onclick="clearAgendaFilters()">Limpar filtros</button></div></div>
     <div id="monthView"><div class="calendar-head" id="monthHead"></div><div id="monthCalendar"></div></div>
     <div id="weekView" class="hidden"><div id="weekBoard"></div></div>
+    <details class="card appointment-search-card appointment-search-drawer">
+      <summary><span>Buscar agendamentos para editar ou apagar</span><span class="muted small" id="apptSearchCount">0 encontrado(s)</span></summary>
+      <div class="appointment-search-grid">
+        <input id="apptSearchText" placeholder="Paciente ou telefone" oninput="renderAppointmentSearch()">
+        <input id="apptSearchFrom" type="date" onchange="renderAppointmentSearch()">
+        <input id="apptSearchTo" type="date" onchange="renderAppointmentSearch()">
+        <select id="apptSearchStatus" onchange="renderAppointmentSearch()"><option value="all">Todos os status</option><option value="agendado">Agendado</option><option value="confirmado">Confirmado</option><option value="concluido">Concluído</option><option value="cancelado">Cancelado</option></select>
+        <select id="apptSearchService" onchange="renderAppointmentSearch()"><option value="all">Todos os serviços</option></select>
+        <button class="btn ghost" type="button" onclick="clearAppointmentSearch()">Limpar</button>
+      </div>
+      <div class="appointment-bulkbar" id="apptBulkBar">
+        <span class="muted small" id="apptSelectedCount">0 selecionado(s)</span>
+        <button class="btn warning" type="button" onclick="bulkCancelAppointments()">Cancelar selecionados</button>
+        <button class="btn danger" type="button" onclick="bulkDeleteAppointments()">Apagar selecionados</button>
+      </div>
+      <div class="appointment-search-results" id="apptSearchResults"></div>
+    </details>
   </section>
 
   <section class="panel" id="panel-day">
@@ -399,6 +416,17 @@
         </div>
         <p class="muted small">Essas regras orientam respostas externas e rascunhos clínicos. Consultas internas da agenda continuam seguindo os dados reais do sistema.</p>
       </details>
+      <section class="ai-tasks-card">
+        <div class="section-title">
+          <div><div class="eyebrow">Tarefas</div><h3>Pendências operacionais</h3></div>
+          <div class="toolbar"><button class="btn primary" type="button" onclick="createAssistantTaskManual()">Nova tarefa</button></div>
+        </div>
+        <div class="ai-task-filters">
+          <select id="aiTaskStatusFilter" onchange="renderAssistantTasks()"><option value="open">Abertas</option><option value="all">Todas</option><option value="concluida">Concluídas</option><option value="cancelada">Canceladas</option></select>
+          <select id="aiTaskTypeFilter" onchange="renderAssistantTasks()"><option value="all">Todos os tipos</option><option value="marcacao">Marcação</option><option value="remarcacao">Remarcação</option><option value="cancelamento">Cancelamento</option><option value="laudo">Laudo</option><option value="retorno">Retorno</option><option value="outro">Outro</option></select>
+        </div>
+        <div class="ai-task-list" id="aiTaskList"></div>
+      </section>
       <div class="ai-center-chat" id="aiCenterMessages"></div>
       <div class="ai-center-debug" id="aiCenterDebug">Central IA iniciando…</div>
       <form class="ai-center-form" id="aiCenterForm">
