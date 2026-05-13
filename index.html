@@ -767,6 +767,35 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="clinicalAiModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow">IA clínica</div>
+        <h3 id="clinicalAiModalTitle">Preenchimento assistido</h3>
+      </div>
+      <button class="btn" type="button" onclick="closeClinicalAIModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="clinicalAiMode">
+      <div class="quick-note small" id="clinicalAiModalHelper">Descreva o caso em texto livre ou dite pelo microfone. A IA usará esse contexto para preencher a ficha e você revisa antes de salvar.</div>
+      <div class="toolbar clinical-ai-toolbar" style="margin-top:12px">
+        <button class="btn" type="button" id="clinicalAiMicBtn" onclick="toggleClinicalAIMicrophone()">Usar microfone</button>
+        <button class="btn ghost" type="button" onclick="clearClinicalAIPrompt()">Limpar texto</button>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label>Contexto clínico para a IA</label>
+        <textarea id="clinicalAiPrompt" rows="10" placeholder="Exemplo: paciente com dor lombar há 3 semanas, piora ao ficar sentado, irradiação leve, limitação para abaixar e objetivo de voltar às atividades sem dor."></textarea>
+      </div>
+      <div class="muted small" id="clinicalAiModalStatus" style="margin-top:10px">Você pode digitar, colar observações ou usar voz para montar o resumo.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" type="button" onclick="closeClinicalAIModal()">Cancelar</button>
+      <button class="btn primary" type="button" id="clinicalAiSubmitBtn" onclick="submitClinicalAIModal()">Gerar rascunho</button>
+    </div>
+  </div>
+</div>
+
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {

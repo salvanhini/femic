@@ -5,7 +5,10 @@
   var TASKS_STORAGE_KEY = 'femic_ai_tasks_v1';
   var state = {
     status: 'IA clinica pronta para rascunhos de anamnese e evolucao.',
-    debug: 'IA clinica iniciando...'
+    debug: 'IA clinica iniciando...',
+    clinicalMode: '',
+    speechRecognition: null,
+    speechListening: false
   };
 
   var DEFAULT_ASSISTANT_RULES = [
@@ -133,6 +136,12 @@
   function setDebug(text){
     state.debug = text;
     if(el('aiCenterDebug')) el('aiCenterDebug').textContent = text;
+  }
+  function setClinicalAiStatus(text){
+    if(el('clinicalAiModalStatus')) el('clinicalAiModalStatus').textContent = text;
+  }
+  function speechRecognitionCtor(){
+    return window.SpeechRecognition || window.webkitSpeechRecognition || null;
   }
   function readTasks(){
     try{
@@ -465,6 +474,7 @@
   }
   function extractJson(text){
     var raw = String(text || '').trim();
+    raw = raw.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
     var start = raw.indexOf('{');
     var end = raw.lastIndexOf('}');
     if(start === -1 || end === -1 || end <= start) throw new Error('A resposta nao veio em JSON valido.');
@@ -476,63 +486,210 @@
     window.alert('Selecione um paciente no prontuario antes de usar a IA clinica.');
     return null;
   }
-  async function fillAnamneseWithAI(){
-    var patient = getSelectedPatientOrWarn();
-    if(!patient) return;
-    var notes = window.prompt('Resumo curto para anamnese: queixa, contexto e objetivo principal.');
-    if(!notes) return;
-    setDebug('Montando rascunho de anamnese com IA...');
-    try{
-      var prompt = [
-        'Monte anamnese fisioterapeutica curta em JSON.',
-        'Responda apenas JSON valido. Textos objetivos, sem paragrafos longos.',
-        'Campos obrigatorios: chief_complaint, history, diagnosis, limitations, goals, obs.',
-        'Limite por campo: ate 180 caracteres.',
-        'Paciente: ' + patient.name,
-        'Patologia conhecida: ' + (patient.pathology || 'nao informada'),
-        'Resumo: ' + notes
-      ].join('\n');
-      var external = await callExternalWithFallback(prompt, getConfig().provider);
-      var draft = extractJson(external.text);
-      if(window.FEMICUnifiedRuntime && typeof window.FEMICUnifiedRuntime.applyAnamneseDraft === 'function'){
-        window.FEMICUnifiedRuntime.applyAnamneseDraft(draft);
-      }
-      setDebug('Rascunho de anamnese gerado via ' + providerLabel(external.provider) + '. Revise antes de salvar.');
-      if(typeof window.toast === 'function') window.toast('Rascunho de anamnese aplicado.', 'success');
-    }catch(error){
-      setDebug('Falha ao preencher anamnese: ' + (error.message || 'erro desconhecido'));
-      if(typeof window.toast === 'function') window.toast('Nao consegui preencher a anamnese agora: ' + error.message, 'error');
-    }
+  function readFieldValue(id){
+    return el(id) ? String(el(id).value || '').trim() : '';
   }
-  async function fillEvolutionWithAI(){
-    var patient = getSelectedPatientOrWarn();
-    if(!patient) return;
-    var notes = window.prompt('Resumo curto da sessao: conduta, resposta do paciente e orientacao principal.');
-    if(!notes) return;
+  function buildAnamneseContext(patient){
+    var lines = [];
+    if(patient && patient.name) lines.push('Paciente: ' + patient.name);
+    if(patient && patient.pathology) lines.push('Patologia conhecida: ' + patient.pathology);
+    if(readFieldValue('anamChief')) lines.push('Queixa principal atual: ' + readFieldValue('anamChief'));
+    if(readFieldValue('anamHistory')) lines.push('Historia atual registrada: ' + readFieldValue('anamHistory'));
+    if(readFieldValue('anamDiagnosis')) lines.push('Diagnostico/hipotese atual: ' + readFieldValue('anamDiagnosis'));
+    if(readFieldValue('anamLimitations')) lines.push('Limitacoes funcionais atuais: ' + readFieldValue('anamLimitations'));
+    if(readFieldValue('anamGoals')) lines.push('Objetivos atuais: ' + readFieldValue('anamGoals'));
+    if(readFieldValue('anamObs')) lines.push('Observacoes atuais: ' + readFieldValue('anamObs'));
+    return lines.join('\n');
+  }
+  function buildEvolutionContext(patient){
     var unified = getUnifiedState();
     var lastEvolution = (unified.currentEvolutions || [])[0];
-    setDebug('Montando rascunho de evolucao clinica com IA...');
-    try{
-      var prompt = [
-        'Monte evolucao clinica fisioterapeutica curta em JSON.',
-        'Responda apenas JSON valido. Seja direto.',
-        'Campos obrigatorios: conduct, guidance.',
-        'Limite: conduct ate 240 caracteres; guidance ate 180 caracteres.',
-        'Paciente: ' + patient.name,
-        'Patologia conhecida: ' + (patient.pathology || 'nao informada'),
-        lastEvolution ? 'Ultima evolucao: ' + (lastEvolution.conduct || '').slice(0,220) : '',
-        'Sessao atual: ' + notes
-      ].filter(Boolean).join('\n');
-      var external = await callExternalWithFallback(prompt, getConfig().provider);
-      var draft = extractJson(external.text);
-      if(window.FEMICUnifiedRuntime && typeof window.FEMICUnifiedRuntime.applyEvolutionDraft === 'function'){
-        window.FEMICUnifiedRuntime.applyEvolutionDraft(draft);
+    var lines = [];
+    if(patient && patient.name) lines.push('Paciente: ' + patient.name);
+    if(patient && patient.pathology) lines.push('Patologia conhecida: ' + patient.pathology);
+    if(lastEvolution && lastEvolution.conduct) lines.push('Ultima evolucao registrada: ' + lastEvolution.conduct);
+    if(lastEvolution && lastEvolution.guidance) lines.push('Ultima orientacao registrada: ' + lastEvolution.guidance);
+    if(readFieldValue('evolutionConduct')) lines.push('Conduta atual ja digitada: ' + readFieldValue('evolutionConduct'));
+    if(readFieldValue('evolutionGuidance')) lines.push('Orientacoes atuais ja digitadas: ' + readFieldValue('evolutionGuidance'));
+    return lines.join('\n');
+  }
+  function openClinicalAIModal(mode){
+    var patient = getSelectedPatientOrWarn();
+    if(!patient) return;
+    state.clinicalMode = mode;
+    if(el('clinicalAiMode')) el('clinicalAiMode').value = mode;
+    if(el('clinicalAiModalTitle')) el('clinicalAiModalTitle').textContent = mode === 'anamnese' ? 'Gerar rascunho de anamnese' : 'Gerar rascunho de evolucao clinica';
+    if(el('clinicalAiModalHelper')) el('clinicalAiModalHelper').textContent = mode === 'anamnese'
+      ? 'Descreva queixa, historia, limitacoes e objetivo. Voce pode complementar o que ja esta na ficha e usar o microfone para ditar o contexto.'
+      : 'Descreva a sessao, resposta do paciente, conduta e orientacoes. Voce pode usar o microfone e complementar o que ja estiver escrito.';
+    if(el('clinicalAiPrompt')) el('clinicalAiPrompt').value = mode === 'anamnese' ? buildAnamneseContext(patient) : buildEvolutionContext(patient);
+    if(el('clinicalAiSubmitBtn')) el('clinicalAiSubmitBtn').disabled = false;
+    setClinicalAiStatus(speechRecognitionCtor() ? 'Digite ou dite o resumo clinico e depois gere o rascunho.' : 'Digite o resumo clinico. Seu navegador nao expôs reconhecimento de voz nesta tela.');
+    var micBtn = el('clinicalAiMicBtn');
+    if(micBtn){
+      micBtn.disabled = !speechRecognitionCtor();
+      micBtn.classList.remove('is-listening');
+      micBtn.textContent = 'Usar microfone';
+    }
+    var modal = el('clinicalAiModal');
+    if(modal) modal.classList.add('show');
+    window.setTimeout(function(){
+      if(el('clinicalAiPrompt')) el('clinicalAiPrompt').focus();
+    }, 40);
+  }
+  function closeClinicalAIModal(){
+    stopClinicalAIMicrophone();
+    if(el('clinicalAiModal')) el('clinicalAiModal').classList.remove('show');
+  }
+  function clearClinicalAIPrompt(){
+    if(el('clinicalAiPrompt')) el('clinicalAiPrompt').value = '';
+    setClinicalAiStatus('Campo limpo. Voce pode digitar ou ditar um novo resumo clinico.');
+  }
+  function stopClinicalAIMicrophone(){
+    if(state.speechRecognition && state.speechListening){
+      try{ state.speechRecognition.stop(); }catch(e){}
+    }
+    state.speechListening = false;
+    var micBtn = el('clinicalAiMicBtn');
+    if(micBtn){
+      micBtn.classList.remove('is-listening');
+      micBtn.textContent = 'Usar microfone';
+    }
+  }
+  function startClinicalAIMicrophone(){
+    var Ctor = speechRecognitionCtor();
+    if(!Ctor){
+      setClinicalAiStatus('Reconhecimento de voz nao disponivel neste navegador.');
+      if(typeof window.toast === 'function') window.toast('Microfone indisponivel neste navegador.', 'warning');
+      return;
+    }
+    stopClinicalAIMicrophone();
+    var recognition = new Ctor();
+    state.speechRecognition = recognition;
+    state.speechListening = true;
+    recognition.lang = 'pt-BR';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+    var baseText = readFieldValue('clinicalAiPrompt');
+    recognition.onstart = function(){
+      var micBtn = el('clinicalAiMicBtn');
+      if(micBtn){
+        micBtn.classList.add('is-listening');
+        micBtn.textContent = 'Parar microfone';
       }
-      setDebug('Rascunho de evolucao gerado via ' + providerLabel(external.provider) + '. Revise antes de salvar.');
-      if(typeof window.toast === 'function') window.toast('Rascunho de evolucao aplicado.', 'success');
+      setClinicalAiStatus('Microfone ativo. Fale naturalmente e o texto sera inserido no resumo clinico.');
+    };
+    recognition.onresult = function(event){
+      var finalText = '';
+      var interimText = '';
+      for(var i = event.resultIndex; i < event.results.length; i += 1){
+        var transcript = String(event.results[i][0].transcript || '').trim();
+        if(!transcript) continue;
+        if(event.results[i].isFinal) finalText += (finalText ? ' ' : '') + transcript;
+        else interimText += (interimText ? ' ' : '') + transcript;
+      }
+      if(el('clinicalAiPrompt')){
+        var merged = baseText;
+        if(finalText) merged = (merged ? merged + '\n' : '') + finalText;
+        el('clinicalAiPrompt').value = interimText ? (merged ? merged + '\n' : '') + interimText : merged;
+      }
+      if(finalText) baseText = el('clinicalAiPrompt') ? String(el('clinicalAiPrompt').value || '').trim() : baseText;
+    };
+    recognition.onerror = function(event){
+      stopClinicalAIMicrophone();
+      setClinicalAiStatus('Falha no microfone: ' + (event && event.error ? event.error : 'erro desconhecido') + '.');
+    };
+    recognition.onend = function(){
+      state.speechListening = false;
+      var micBtn = el('clinicalAiMicBtn');
+      if(micBtn){
+        micBtn.classList.remove('is-listening');
+        micBtn.textContent = 'Usar microfone';
+      }
+    };
+    recognition.start();
+  }
+  function toggleClinicalAIMicrophone(){
+    if(state.speechListening) stopClinicalAIMicrophone();
+    else startClinicalAIMicrophone();
+  }
+  async function generateAnamneseDraft(patient, notes){
+    var prompt = [
+      'Monte anamnese fisioterapeutica curta em JSON.',
+      'Responda apenas JSON valido, sem markdown.',
+      'Campos obrigatorios: chief_complaint, history, diagnosis, limitations, goals, obs.',
+      'Limite por campo: ate 220 caracteres.',
+      'Preencha todos os campos mesmo que de forma concisa e segura.',
+      'Paciente: ' + patient.name,
+      'Patologia conhecida: ' + (patient.pathology || 'nao informada'),
+      'Contexto clinico:',
+      notes
+    ].join('\n');
+    var external = await callExternalWithFallback(prompt, getConfig().provider);
+    return { provider: external.provider, draft: extractJson(external.text) };
+  }
+  async function generateEvolutionDraft(patient, notes){
+    var unified = getUnifiedState();
+    var lastEvolution = (unified.currentEvolutions || [])[0];
+    var prompt = [
+      'Monte evolucao clinica fisioterapeutica curta em JSON.',
+      'Responda apenas JSON valido, sem markdown.',
+      'Campos obrigatorios: conduct, guidance.',
+      'Limite: conduct ate 320 caracteres; guidance ate 220 caracteres.',
+      'Paciente: ' + patient.name,
+      'Patologia conhecida: ' + (patient.pathology || 'nao informada'),
+      lastEvolution && lastEvolution.conduct ? 'Ultima evolucao registrada: ' + lastEvolution.conduct.slice(0,220) : '',
+      'Contexto clinico da sessao:',
+      notes
+    ].filter(Boolean).join('\n');
+    var external = await callExternalWithFallback(prompt, getConfig().provider);
+    return { provider: external.provider, draft: extractJson(external.text) };
+  }
+  async function fillAnamneseWithAI(){
+    openClinicalAIModal('anamnese');
+  }
+  async function fillEvolutionWithAI(){
+    openClinicalAIModal('evolucao');
+  }
+  async function submitClinicalAIModal(){
+    var mode = (el('clinicalAiMode') ? el('clinicalAiMode').value : '') || state.clinicalMode;
+    var patient = getSelectedPatientOrWarn();
+    var notes = readFieldValue('clinicalAiPrompt');
+    var submitBtn = el('clinicalAiSubmitBtn');
+    if(!patient) return;
+    if(!notes){
+      setClinicalAiStatus('Descreva ou dite o contexto clinico antes de gerar o rascunho.');
+      if(typeof window.toast === 'function') window.toast('Informe o contexto clinico antes de usar a IA.', 'warning');
+      return;
+    }
+    if(submitBtn) submitBtn.disabled = true;
+    setDebug('Montando rascunho clinico com IA...');
+    setClinicalAiStatus('Gerando rascunho com IA...');
+    try{
+      if(mode === 'anamnese'){
+        var anamneseResult = await generateAnamneseDraft(patient, notes);
+        if(window.FEMICUnifiedRuntime && typeof window.FEMICUnifiedRuntime.applyAnamneseDraft === 'function'){
+          window.FEMICUnifiedRuntime.applyAnamneseDraft(anamneseResult.draft);
+        }
+        setDebug('Rascunho de anamnese gerado via ' + providerLabel(anamneseResult.provider) + '. Revise antes de salvar.');
+        setClinicalAiStatus('Rascunho de anamnese aplicado. Revise os campos antes de salvar.');
+        if(typeof window.toast === 'function') window.toast('Rascunho de anamnese aplicado.', 'success');
+      }else{
+        var evolutionResult = await generateEvolutionDraft(patient, notes);
+        if(window.FEMICUnifiedRuntime && typeof window.FEMICUnifiedRuntime.applyEvolutionDraft === 'function'){
+          window.FEMICUnifiedRuntime.applyEvolutionDraft(evolutionResult.draft);
+        }
+        setDebug('Rascunho de evolucao gerado via ' + providerLabel(evolutionResult.provider) + '. Revise antes de salvar.');
+        setClinicalAiStatus('Rascunho de evolucao aplicado. Revise os campos antes de salvar.');
+        if(typeof window.toast === 'function') window.toast('Rascunho de evolucao aplicado.', 'success');
+      }
+      closeClinicalAIModal();
     }catch(error){
-      setDebug('Falha ao preencher evolucao: ' + (error.message || 'erro desconhecido'));
-      if(typeof window.toast === 'function') window.toast('Nao consegui preencher a evolucao agora: ' + error.message, 'error');
+      setDebug('Falha ao gerar rascunho clinico: ' + (error.message || 'erro desconhecido'));
+      setClinicalAiStatus('Falha: ' + (error.message || 'erro desconhecido'));
+      if(typeof window.toast === 'function') window.toast('Nao consegui gerar o rascunho agora: ' + error.message, 'error');
+    }finally{
+      if(submitBtn) submitBtn.disabled = false;
     }
   }
 
@@ -576,6 +733,10 @@
   };
   window.fillAnamneseWithAI = fillAnamneseWithAI;
   window.fillEvolutionWithAI = fillEvolutionWithAI;
+  window.closeClinicalAIModal = closeClinicalAIModal;
+  window.clearClinicalAIPrompt = clearClinicalAIPrompt;
+  window.toggleClinicalAIMicrophone = toggleClinicalAIMicrophone;
+  window.submitClinicalAIModal = submitClinicalAIModal;
   window.renderExtensionPendingTasks = renderExtensionPendingTasks;
   window.setAssistantTaskStatus = function(id, status){
     var list = readTasks();
