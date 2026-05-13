@@ -13,6 +13,18 @@
     return String(value || '').replace(/\s+/g, ' ').trim();
   }
 
+  function digits(value) {
+    return String(value || '').replace(/\D/g, '').slice(0, 11);
+  }
+
+  function formatWhatsapp(value) {
+    const raw = digits(value);
+    if (!raw) return '';
+    if (raw.length <= 2) return '(' + raw;
+    if (raw.length <= 7) return '(' + raw.slice(0, 2) + ') ' + raw.slice(2);
+    return '(' + raw.slice(0, 2) + ') ' + raw.slice(2, 7) + '-' + raw.slice(7);
+  }
+
   function activeChatName() {
     const header = document.querySelector('header');
     const title = header && header.querySelector('[title]');
@@ -91,6 +103,18 @@
     if (messageInput) messageInput.value = selectedMessageText() || messageInput.value;
   }
 
+  function bindPhoneMask() {
+    const input = document.querySelector('#femicWaPhone');
+    if (!input || input.dataset.maskBound === 'true') return;
+    input.dataset.maskBound = 'true';
+    const applyMask = () => {
+      input.value = formatWhatsapp(input.value);
+    };
+    input.addEventListener('input', applyMask);
+    input.addEventListener('blur', applyMask);
+    applyMask();
+  }
+
   function submit() {
     const payload = {
       action: document.querySelector('#femicWaAction')?.value || 'marcacao',
@@ -129,7 +153,7 @@
           <input id="femicWaPatient" placeholder="Nome do paciente">
         </label>
         <label>WhatsApp
-          <input id="femicWaPhone" placeholder="16999999999">
+          <input id="femicWaPhone" placeholder="(16) 99999-9999" inputmode="numeric" maxlength="15">
         </label>
         <div class="femic-wa-row">
           <label>Período
@@ -155,6 +179,7 @@
       </div>
     `;
     document.documentElement.appendChild(root);
+    bindPhoneMask();
     const panel = root.querySelector('.femic-wa-panel');
     const openPanel = () => {
       panel.hidden = false;
