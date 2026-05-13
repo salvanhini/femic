@@ -307,14 +307,14 @@ async function deleteAppointment(){const id=$('apptId').value;if(!id||!confirm('
 function renderDay(){
   const date=$('dayDate').value||todayIso();$('dayDate').value=date;
   const list=appointments.filter(a=>a.appointment_date===date).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));
-  const dayStatusLabels={agendado:'Agendados',confirmado:'Confirmados',concluido:'Concluídos',cancelado:'Cancelados'};
+  const dayStatusLabels={concluido:'Concluídos',cancelado:'Cancelados'};
   const peak=slots().reduce((max,slot)=>{
     const slotStart=timeToMin(slot);
     const slotEnd=timeToMin(addMinutes(slot,Number(settings.slot_interval_minutes||30)));
     const count=list.filter(a=>a.status!=='cancelado'&&timeToMin(normalizeTime(a.start_time))<slotEnd&&timeToMin(normalizeTime(a.end_time))>slotStart).length;
     return Math.max(max,count);
   },0);
-  $('dayKpis').innerHTML=`<div class="day-operational-strip"><div class="day-operational-copy"><strong>${fmtWeekday(date)}, ${fmtDate(date)}</strong><span>${list.length} atendimento(s) · pico ${peak}/${Number(settings.max_patients_per_slot||4)}</span></div><div class="day-status-row">`+['agendado','confirmado','concluido','cancelado'].map(st=>`<div class="day-status-pill ${st}"><span>${dayStatusLabels[st]}</span><strong>${list.filter(a=>a.status===st).length}</strong></div>`).join('')+`</div></div>`;
+  $('dayKpis').innerHTML=`<div class="day-operational-strip"><div class="day-operational-copy"><strong>${fmtWeekday(date)}, ${fmtDate(date)}</strong><span>${list.length} atendimento(s) · pico ${peak}/${Number(settings.max_patients_per_slot||4)}</span></div><div class="day-status-row compact">`+['concluido','cancelado'].map(st=>`<div class="day-status-pill ${st}"><span>${dayStatusLabels[st]}</span><strong>${list.filter(a=>a.status===st).length}</strong></div>`).join('')+`</div></div>`;
   $('dayList').innerHTML=list.length?list.map(a=>{
     const label={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;
     const nextStatuses=getNextStatuses(a.status);
@@ -477,9 +477,7 @@ function testWhatsappApiConfig(){
 function statusButtons(a){
   const id=String(a.id);
   return `<div class="status-actions">
-    <button class="btn primary status-mini" ${a.status==='confirmado'?'disabled':''} onclick="quickStatus('${id}','confirmado')">✓ Confirmar</button>
     <button class="btn success status-mini" ${a.status==='concluido'?'disabled':''} onclick="quickStatus('${id}','concluido')">✓ Concluir</button>
-    <button class="btn warning status-mini" ${a.status==='agendado'?'disabled':''} onclick="quickStatus('${id}','agendado')">↩ Agendado</button>
     <button class="btn danger status-mini" ${a.status==='cancelado'?'disabled':''} onclick="quickStatus('${id}','cancelado')">✕ Cancelar</button>
   </div>`;
 }
@@ -1363,8 +1361,6 @@ function toggleTheme(){
 if(typeof getNextStatuses !== 'function'){
   function getNextStatuses(current){
     const all = [
-      { value:'agendado', label:'Agendado' },
-      { value:'confirmado', label:'Confirmado' },
       { value:'concluido', label:'Concluído' },
       { value:'cancelado', label:'Cancelado' }
     ];
@@ -1550,8 +1546,6 @@ setInterval(()=>{
 if(typeof getNextStatuses !== 'function'){
   function getNextStatuses(current){
     const all = [
-      { value:'agendado', label:'Agendado' },
-      { value:'confirmado', label:'Confirmado' },
       { value:'concluido', label:'Concluído' },
       { value:'cancelado', label:'Cancelado' }
     ];
