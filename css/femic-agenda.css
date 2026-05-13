@@ -4859,6 +4859,11 @@ textarea{
   gap:7px;
 }
 
+#panel-day .day-status-row.compact{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  max-width:460px;
+}
+
 #panel-day .day-status-pill{
   padding:7px 9px;
   border-radius:10px;
