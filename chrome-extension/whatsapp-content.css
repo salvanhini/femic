@@ -121,6 +121,22 @@
   color: #fff;
 }
 
+.femic-wa-actions #femicWaSend:disabled {
+  cursor: wait;
+  opacity: .78;
+  box-shadow: none;
+}
+
+.femic-wa-actions #femicWaSend[data-state="success"] {
+  background: linear-gradient(135deg, #0f9f6e, #34d399);
+  color: #fff;
+}
+
+.femic-wa-actions #femicWaSend[data-state="sending"] {
+  background: linear-gradient(135deg, #3b82f6, #60a5fa);
+  color: #fff;
+}
+
 #femicWaStatus {
   margin: 0;
   color: #5f7690;
