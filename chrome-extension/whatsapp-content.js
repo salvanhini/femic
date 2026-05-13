@@ -2,6 +2,7 @@
   'use strict';
 
   const ROOT_ID = 'femic-wa-connector';
+  const SEND_COOLDOWN_MS = 4000;
   const ACTIONS = [
     ['marcacao', 'Marcação'],
     ['remarcacao', 'Remarcação'],
@@ -35,17 +36,51 @@
     status.dataset.tone = tone || 'info';
   }
 
+  function sendButton() {
+    return document.querySelector('#femicWaSend');
+  }
+
+  function setSendingState(isSending, label) {
+    const button = sendButton();
+    if (!button) return;
+    button.disabled = isSending;
+    button.dataset.state = isSending ? 'sending' : (button.dataset.state || 'idle');
+    button.textContent = label || (isSending ? 'Enviando...' : 'Enviar');
+  }
+
+  function setSentCooldown() {
+    const button = sendButton();
+    if (!button) return;
+    button.disabled = true;
+    button.dataset.state = 'success';
+    button.textContent = 'Enviado';
+    window.setTimeout(() => {
+      button.disabled = false;
+      button.dataset.state = 'idle';
+      button.textContent = 'Enviar';
+    }, SEND_COOLDOWN_MS);
+  }
+
   function sendToFemic(payload) {
+    setSendingState(true, 'Enviando...');
     chrome.runtime.sendMessage({ type: 'SEND_FEMIC_EVENT', payload }, (response) => {
       if (chrome.runtime.lastError) {
+        setSendingState(false, 'Enviar');
         setStatus(chrome.runtime.lastError.message, 'error');
         return;
       }
       if (!response || !response.ok) {
+        setSendingState(false, 'Enviar');
         setStatus((response && response.error) || 'Não foi possível enviar para o FEMIC.', 'error');
         return;
       }
-      setStatus('Tarefa enviada para o FEMIC.', 'success');
+      if (response.duplicate || response.ignored) {
+        setSentCooldown();
+        setStatus('Este envio já foi recebido há poucos segundos. Evitei duplicar a tarefa.', 'success');
+        return;
+      }
+      setSentCooldown();
+      setStatus('Tarefa enviada para o FEMIC com sucesso.', 'success');
     });
   }
 
@@ -67,6 +102,10 @@
     };
     if (!payload.message_text.trim()) {
       setStatus('Informe ou selecione uma mensagem do WhatsApp.', 'error');
+      return;
+    }
+    if (sendButton() && sendButton().disabled) {
+      setStatus('Aguarde a confirmação do último envio antes de clicar novamente.', 'info');
       return;
     }
     sendToFemic(payload);

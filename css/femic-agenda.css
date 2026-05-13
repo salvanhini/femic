@@ -4495,6 +4495,126 @@ textarea{
   margin:0 0 4px;
 }
 
+#panel-ai .ai-focus-grid,
+#panel-pendencias .pending-kpis{
+  align-items:stretch;
+}
+
+#panel-ai .ai-focus-card h4,
+#panel-pendencias .pending-head-card h3{
+  margin:0 0 6px;
+  color:var(--femic-blue);
+}
+
+#panel-ai .ai-focus-card p,
+#panel-pendencias .pending-head-card p{
+  margin:0;
+}
+
+#panel-pendencias .pending-shell{
+  display:grid;
+  gap:14px;
+}
+
+#panel-pendencias .pending-head-card,
+#panel-pendencias .pending-card{
+  border:1px solid var(--femic-line);
+  border-radius:16px;
+  background:#fff;
+  box-shadow:var(--femic-shadow);
+  padding:16px;
+}
+
+#panel-pendencias .pending-filters{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,240px));
+  gap:10px;
+  margin-bottom:14px;
+}
+
+#panel-pendencias .pending-task-list{
+  display:grid;
+  gap:12px;
+}
+
+#panel-pendencias .pending-task-item{
+  border:1px solid var(--femic-line);
+  border-radius:16px;
+  background:linear-gradient(180deg,#fff,rgba(244,249,251,.96));
+  padding:14px;
+}
+
+#panel-pendencias .pending-task-item.concluida{
+  border-color:rgba(16,185,129,.24);
+}
+
+#panel-pendencias .pending-task-item.cancelada{
+  border-color:rgba(239,68,68,.22);
+  opacity:.88;
+}
+
+#panel-pendencias .pending-task-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+
+#panel-pendencias .pending-task-top strong{
+  color:var(--femic-blue);
+}
+
+#panel-pendencias .pending-task-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+#panel-pendencias .pending-task-notes{
+  margin-top:10px;
+}
+
+#panel-pendencias .pending-task-tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:10px;
+}
+
+#panel-pendencias .pending-task-tags span{
+  border:1px solid var(--femic-line);
+  border-radius:999px;
+  background:var(--femic-soft);
+  color:var(--femic-blue);
+  padding:6px 10px;
+  font-size:.8rem;
+  font-weight:700;
+}
+
+#panel-pendencias .pending-kpis .kpi{
+  min-width:0;
+}
+
+.pending-nav-badge{
+  margin-left:auto;
+  min-width:22px;
+  height:22px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 7px;
+  background:rgba(239,68,68,.14);
+  color:#b91c1c;
+  font-size:.74rem;
+  font-weight:900;
+}
+
+.pending-nav-badge.hidden{
+  display:none;
+}
+
 #panel-ai .ai-center-suggestions{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
@@ -4675,13 +4795,15 @@ textarea{
 @media(max-width:980px){
   #monthCalendar .month-agenda-kpis,
   #patientFicha .patient-ficha-kpis,
-  #panel-ai .ai-center-suggestions{
+  #panel-ai .ai-center-suggestions,
+  #panel-pendencias .pending-kpis{
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
 
   #monthCalendar .month-agenda-day-head,
   #panel-day .day-panel-header,
-  #panel-ai .ai-center-head{
+  #panel-ai .ai-center-head,
+  #panel-pendencias .pending-task-top{
     display:grid;
   }
 
@@ -4713,7 +4835,12 @@ textarea{
   #monthCalendar .month-agenda-kpis,
   #panel-day .day-status-row,
   #patientFicha .patient-ficha-kpis,
-  #panel-ai .ai-center-suggestions{
+  #panel-ai .ai-center-suggestions,
+  #panel-pendencias .pending-kpis{
+    grid-template-columns:1fr;
+  }
+
+  #panel-pendencias .pending-filters{
     grid-template-columns:1fr;
   }
 

@@ -133,6 +133,7 @@
       <div class="nav-link" data-panel="packages" onclick="showPanel('packages')"><span class="icon">🎟️</span><span>Pacotes</span></div>
       <div class="nav-link" data-panel="reminders" onclick="showPanel('reminders')"><span class="icon">📲</span><span>Lembretes</span></div>
       <div class="nav-link" data-panel="report" onclick="showPanel('report')"><span class="icon">💰</span><span>Relatório</span></div>
+      <div class="nav-link" data-panel="pendencias" onclick="showPanel('pendencias')"><span class="icon">🗂️</span><span>Pendências</span><span class="pending-nav-badge hidden" id="pendingNavBadge">0</span></div>
       <div class="nav-link" data-panel="documentos" onclick="showPanel('documentos')"><span class="icon">🧾</span><span>Documentos</span></div>
       <div class="nav-link" data-panel="historico" onclick="showPanel('historico')"><span class="icon">📚</span><span>Histórico</span></div>
       <div class="nav-link" data-panel="ai" onclick="showPanel('ai')"><span class="icon">🤖</span><span>IA</span></div>
@@ -392,16 +393,53 @@
     </div>
   </section>
 
+  <section class="panel" id="panel-pendencias">
+    <div class="pending-shell">
+      <div class="pending-head-card">
+        <div>
+          <div class="eyebrow">Pendências</div>
+          <h3>Fila operacional vinda do WhatsApp</h3>
+          <p class="muted small">Esta tela mostra apenas as tarefas recebidas pela extensão do WhatsApp Web. Pendências abertas ficam em destaque para ação rápida da equipe.</p>
+        </div>
+      </div>
+      <div class="grid grid-4 pending-kpis" id="pendingKpis">
+        <div class="card kpi"><div class="eyebrow">Abertas</div><strong>0</strong><span class="muted small">aguardando ação</span></div>
+        <div class="card kpi"><div class="eyebrow">Em andamento</div><strong>0</strong><span class="muted small">com revisão em curso</span></div>
+        <div class="card kpi"><div class="eyebrow">Concluídas</div><strong>0</strong><span class="muted small">já resolvidas</span></div>
+        <div class="card kpi"><div class="eyebrow">Canceladas</div><strong>0</strong><span class="muted small">descartadas</span></div>
+      </div>
+      <section class="card pending-card">
+        <div class="section-title">
+          <div><div class="eyebrow">Extensão</div><h3>Tarefas recebidas do WhatsApp</h3></div>
+        </div>
+        <div class="pending-filters">
+          <select id="pendingTaskStatusFilter" onchange="renderExtensionPendingTasks()"><option value="open">Abertas</option><option value="all">Todas</option><option value="concluida">Concluídas</option><option value="cancelada">Canceladas</option></select>
+          <select id="pendingTaskTypeFilter" onchange="renderExtensionPendingTasks()"><option value="all">Todos os tipos</option><option value="marcacao">Marcação</option><option value="remarcacao">Remarcação</option><option value="cancelamento">Cancelamento</option></select>
+        </div>
+        <div class="pending-task-list" id="pendingTaskList"></div>
+      </section>
+    </div>
+  </section>
+
   <section class="panel" id="panel-ai">
     <div class="ai-center-shell">
       <div class="ai-center-head">
         <div>
-          <div class="eyebrow">Central IA</div>
-          <h3>Consultas do sistema e apoio clínico</h3>
-          <p class="muted small">Agenda, sessões, pacotes, anamnese e evolução clínica em uma central única.</p>
+          <div class="eyebrow">IA clínica</div>
+          <h3>Apoio de escrita para prontuário</h3>
+          <p class="muted small">A IA do FEMIC agora fica focada no que mais ajuda no atendimento: rascunhos de anamnese e evolução clínica. As pendências operacionais ficam na aba <strong>Pendências</strong>.</p>
         </div>
-        <div class="toolbar">
-          <button class="btn" type="button" onclick="openAIFromFab()">Abrir painel flutuante</button>
+      </div>
+      <div class="grid grid-2 ai-focus-grid">
+        <div class="card ai-focus-card">
+          <div class="eyebrow">Anamnese</div>
+          <h4>Preenchimento assistido</h4>
+          <p class="muted small">Use o botão <strong>Preencher com IA</strong> dentro do prontuário para montar rascunhos curtos por campo. O conteúdo nunca é salvo automaticamente.</p>
+        </div>
+        <div class="card ai-focus-card">
+          <div class="eyebrow">Evolução clínica</div>
+          <h4>Registro mais rápido</h4>
+          <p class="muted small">A IA resume conduta e orientação a partir do seu texto-base, sempre para revisão antes de salvar no prontuário.</p>
         </div>
       </div>
       <details class="ai-rules-card">
@@ -414,28 +452,9 @@
           <button class="btn primary" type="button" onclick="saveAssistantAiRules()">Salvar regras</button>
           <button class="btn" type="button" onclick="resetAssistantAiRules()">Restaurar padrão</button>
         </div>
-        <p class="muted small">Essas regras orientam respostas externas e rascunhos clínicos. Consultas internas da agenda continuam seguindo os dados reais do sistema.</p>
+        <p class="muted small">Essas regras orientam apenas os rascunhos clínicos e respostas de apoio à escrita. A parte operacional da agenda não depende mais desta central.</p>
       </details>
-      <section class="ai-tasks-card">
-        <div class="section-title">
-          <div><div class="eyebrow">Tarefas</div><h3>Pendências operacionais</h3></div>
-          <div class="toolbar"><button class="btn primary" type="button" onclick="createAssistantTaskManual()">Nova tarefa</button></div>
-        </div>
-        <div class="ai-task-filters">
-          <select id="aiTaskStatusFilter" onchange="renderAssistantTasks()"><option value="open">Abertas</option><option value="all">Todas</option><option value="concluida">Concluídas</option><option value="cancelada">Canceladas</option></select>
-          <select id="aiTaskTypeFilter" onchange="renderAssistantTasks()"><option value="all">Todos os tipos</option><option value="marcacao">Marcação</option><option value="remarcacao">Remarcação</option><option value="cancelamento">Cancelamento</option><option value="laudo">Laudo</option><option value="retorno">Retorno</option><option value="outro">Outro</option></select>
-        </div>
-        <div class="ai-task-list" id="aiTaskList"></div>
-      </section>
-      <div class="ai-center-chat" id="aiCenterMessages"></div>
-      <div class="ai-center-debug" id="aiCenterDebug">Central IA iniciando…</div>
-      <form class="ai-center-form" id="aiCenterForm">
-        <textarea id="aiCenterInput" rows="3" placeholder="Digite sua pergunta para a Central IA FEMIC."></textarea>
-        <div class="ai-center-actions">
-          <span class="muted small" id="aiCenterStatus">As consultas internas usam primeiro os dados do sistema.</span>
-          <button class="btn primary" id="aiCenterSendBtn" type="submit">Perguntar</button>
-        </div>
-      </form>
+      <div class="ai-center-debug" id="aiCenterDebug">IA clínica iniciando…</div>
     </div>
   </section>
 
@@ -473,7 +492,7 @@
         <div><div class="eyebrow">IA do assistente</div><h3>Modelos e APIs externas</h3></div>
         <span class="mode-badge manual" id="assistantAiProviderBadge">gemini</span>
       </div>
-      <p class="muted small" style="margin-top:0">Use esta configuração para perguntas externas do chat flutuante. As consultas internas da agenda continuam sem custo de IA.</p>
+      <p class="muted small" style="margin-top:0">Use esta configuração apenas para os rascunhos clínicos de anamnese e evolução. Pendências operacionais e consultas internas da agenda não dependem desta IA.</p>
       <div class="grid grid-2">
         <div class="field">
           <label>Provedor padrão</label>
@@ -748,43 +767,7 @@
   </div>
 </div>
 
-<button class="assistant-fab" id="assistantFab" type="button" aria-label="Abrir assistente FEMIC">
-  <span>Central</span>
-  <strong>FEMIC</strong>
-</button>
-
-<section class="assistant-panel hidden" id="assistantPanel" aria-live="polite">
-  <div class="assistant-panel-head">
-    <div>
-      <div class="eyebrow">Central IA FEMIC</div>
-      <h3>Agenda, prontuário e apoio clínico</h3>
-      <div class="muted small" id="assistantBuildLabel">build ai-center-1</div>
-    </div>
-    <button class="btn" type="button" onclick="toggleAssistantPanel(false)">✕</button>
-  </div>
-  <div class="assistant-panel-body">
-    <div class="assistant-chat-title">Conversa</div>
-    <div class="assistant-chat" id="assistantMessages"></div>
-    <div class="assistant-debug muted small" id="assistantDebug">Central IA iniciando…</div>
-  </div>
-  <form class="assistant-panel-foot" id="assistantPanelForm">
-    <textarea id="assistantInput" rows="3" placeholder="Digite sua pergunta. Enter envia. Shift+Enter quebra linha."></textarea>
-    <div class="assistant-panel-actions">
-      <span class="muted small" id="assistantStatus">Consultas internas priorizam os dados da agenda. Enter envia.</span>
-      <button class="btn primary" id="assistantSendBtn" type="submit">Perguntar</button>
-    </div>
-  </form>
-</section>
-
 <script>
-window.FEMIC_ASSISTANT_BUILD = 'ai-center-1';
-window.toggleAssistantPanel = window.toggleAssistantPanel || function(force){
-  var panel = document.getElementById('assistantPanel');
-  if(!panel) return;
-  var willOpen = typeof force === 'boolean' ? force : panel.classList.contains('hidden');
-  panel.classList.toggle('hidden', !willOpen);
-  panel.classList.toggle('is-open', willOpen);
-};
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
     navigator.serviceWorker.getRegistrations().then(function (registrations) {
@@ -811,8 +794,8 @@ if ('caches' in window) {
 }
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js"></script>
-<script src="js/femic-agenda.js?v=theme-refactor-4"></script>
+<script src="js/femic-agenda.js?v=theme-refactor-5"></script>
 <script src="js/femic-unified.js?v=unified-1"></script>
-<script src="js/femic-ai-center.js?v=ai-center-1"></script>
+<script src="js/femic-ai-center.js?v=ai-center-2"></script>
 </body>
 </html>

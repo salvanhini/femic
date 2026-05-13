@@ -167,7 +167,7 @@ async function loadClinicRulesCollection(){try{const rows=await api('clinic_rule
 clinicRules=readClinicRulesCache();
 function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊';$('tplReminder').value=tpl;if($('whatsappProvider'))$('whatsappProvider').value=localStorage.femic_whatsapp_provider||'wa_me';if($('whatsappEndpoint'))$('whatsappEndpoint').value=localStorage.femic_whatsapp_endpoint||'';if($('whatsappTplAppointment'))$('whatsappTplAppointment').value=localStorage.femic_whatsapp_tpl_appointment||'lembrete_sessao';renderWhatsappProviderBadge()}
 async function testConnection(){try{await api('patients?select=id&limit=1');toast('Conexão e carregamento funcionando.','success')}catch(e){toast('Erro real: '+e.message,'error')}}
-async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const [pa,hi,sv,pk,ap,mv,st,cr]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api('appointments?select=*&order=appointment_date.asc,start_time.asc'),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});syncForms();renderAll();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);toast('Erro ao carregar: '+e.message,'error')}}
+async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const [pa,hi,sv,pk,ap,mv,st,cr]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api('appointments?select=*&order=appointment_date.asc,start_time.asc'),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});syncForms();renderActivePanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);toast('Erro ao carregar: '+e.message,'error')}}
 function toggleSidebar(){
   $('sidebar')?.classList.toggle('show');
   $('overlay')?.classList.toggle('show');
@@ -183,14 +183,54 @@ function syncAgendaNavState(name){
   document.querySelectorAll('.nav-link[data-panel]').forEach(b=>b.classList.toggle('active',b.dataset.panel===name));
 }
 
+function getActivePanelName(){
+  const active = document.querySelector('.panel.active');
+  return active ? String(active.id || '').replace('panel-','') : 'agenda';
+}
+
+function renderPanel(name){
+  switch(name){
+    case 'agenda':
+      renderAgenda();
+      renderAppointmentSearch();
+      break;
+    case 'day':
+      renderDay();
+      break;
+    case 'patients':
+    case 'packages':
+    case 'settings':
+      renderLists();
+      break;
+    case 'reminders':
+      renderReminders();
+      break;
+    case 'report':
+      renderReport();
+      break;
+    case 'backup':
+      renderBackupPanel();
+      break;
+    case 'pendencias':
+      if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();
+      break;
+    default:
+      break;
+  }
+}
+
+function renderActivePanel(){
+  renderPanel(getActivePanelName());
+}
+
 function showPanel(name){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   syncAgendaNavState(name);
   $('panel-'+name).classList.add('active');
   closeSidebar();
-  renderAll();
+  renderPanel(name);
 }
-function renderAll(){renderAgenda();renderDay();renderReminders();renderReport();renderLists();renderBackupPanel();renderAppointmentSearch()}function patientById(id){return patients.find(p=>String(p.id)===String(id))||{}}function serviceById(id){return services.find(s=>String(s.id)===String(id))||{}}function payerName(id){return (payers.find(p=>String(p.id)===String(id))||{}).name||'Particular'}function patientName(id){return patientById(id).name||'Paciente'}function serviceName(id){return serviceById(id).name||'Sem serviço'}
+function renderAll(){renderAgenda();renderDay();renderReminders();renderReport();renderLists();renderBackupPanel();renderAppointmentSearch();if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks()}function patientById(id){return patients.find(p=>String(p.id)===String(id))||{}}function serviceById(id){return services.find(s=>String(s.id)===String(id))||{}}function payerName(id){return (payers.find(p=>String(p.id)===String(id))||{}).name||'Particular'}function patientName(id){return patientById(id).name||'Paciente'}function serviceName(id){return serviceById(id).name||'Sem serviço'}
 window.FEMICAgendaRuntime={
   getState:function(){return{patients:[...patients],payers:[...payers],services:[...services],packages:[...packages],appointments:[...appointments],movements:[...movements],clinicRules:[...clinicRules],settings:Object.assign({},settings)}},
   setClinicRules:function(list){clinicRules=Array.isArray(list)?list:[];writeClinicRulesCache(clinicRules);renderBackupPanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));return clinicRules},
@@ -231,7 +271,7 @@ function weekStart(d){const x=new Date(d);const day=x.getDay();x.setDate(x.getDa
 function parsePeriods(){const raw=String(settings.working_periods||((settings.start_time||'08:00')+'-'+(settings.end_time||'20:00')));return raw.split(',').map(x=>x.trim()).filter(Boolean).map(p=>{const parts=p.split('-').map(v=>v.trim());return {start:parts[0],end:parts[1]};}).filter(p=>/^\d{2}:\d{2}$/.test(p.start)&&/^\d{2}:\d{2}$/.test(p.end)&&timeToMin(p.start)<timeToMin(p.end));}
 function slots(){const set=new Set(),step=Number(settings.slot_interval_minutes||30);parsePeriods().forEach(p=>{let m=timeToMin(p.start),end=timeToMin(p.end);while(m<end){set.add(minToTime(m));m+=step}});return [...set].sort()}
 function isInsideWorkingTime(dateStr,start,end){if(!isTodayDate(dateStr)&&!isWorking(dateStr)) return false;const s=timeToMin(start),e=timeToMin(end);return parsePeriods().some(p=>s>=timeToMin(p.start)&&e<=timeToMin(p.end));}
-function prevPeriod(){if($('viewMode').value==='month')currentDate.setMonth(currentDate.getMonth()-1);else currentDate.setDate(currentDate.getDate()-7);renderAgenda()}function nextPeriod(){if($('viewMode').value==='month')currentDate.setMonth(currentDate.getMonth()+1);else currentDate.setDate(currentDate.getDate()+7);renderAgenda()}function goToday(){currentDate=new Date();$('dayDate').value=todayIso();$('reminderDate').value=isoDate(new Date(Date.now()+86400000));renderAll()}
+function prevPeriod(){if($('viewMode').value==='month')currentDate.setMonth(currentDate.getMonth()-1);else currentDate.setDate(currentDate.getDate()-7);renderAgenda()}function nextPeriod(){if($('viewMode').value==='month')currentDate.setMonth(currentDate.getMonth()+1);else currentDate.setDate(currentDate.getDate()+7);renderAgenda()}function goToday(){currentDate=new Date();$('dayDate').value=todayIso();$('reminderDate').value=isoDate(new Date(Date.now()+86400000));renderActivePanel()}
 function agendaFiltered(list){const st=$('agendaStatusFilter')?.value||'all';const sv=$('agendaServiceFilter')?.value||'all';return list.filter(a=>(st==='all'||a.status===st)&&(sv==='all'||String(a.service_id)===String(sv)))}
 function populateAgendaFilters(){const sel=$('agendaServiceFilter');if(sel){const current=sel.value||'all';sel.innerHTML='<option value="all">Todos os serviços</option>'+services.filter(s=>s.active!==false).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');sel.value=[...sel.options].some(o=>o.value===current)?current:'all'}const searchSel=$('apptSearchService');if(searchSel){const currentSearch=searchSel.value||'all';searchSel.innerHTML='<option value="all">Todos os serviços</option>'+services.filter(s=>s.active!==false).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');searchSel.value=[...searchSel.options].some(o=>o.value===currentSearch)?currentSearch:'all'}}
 function clearAgendaFilters(){if($('agendaStatusFilter'))$('agendaStatusFilter').value='all';if($('agendaServiceFilter'))$('agendaServiceFilter').value='all';renderAgenda()}

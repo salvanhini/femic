@@ -1,4 +1,6 @@
 const FEMIC_EVENT_TYPE = 'FEMIC_EXTENSION_EVENT';
+const RECENT_EVENT_WINDOW_MS = 5000;
+const recentEventCache = new Map();
 
 function normalizePhone(value) {
   return String(value || '').replace(/\D/g, '');
@@ -21,6 +23,29 @@ function normalizeEvent(input = {}) {
     requested_period: String(input.requested_period || '').trim(),
     created_at: new Date().toISOString()
   };
+}
+
+function eventFingerprint(payload) {
+  return JSON.stringify({
+    action: payload.action,
+    patient_name: String(payload.patient_name || '').trim().toLowerCase(),
+    phone: normalizePhone(payload.phone),
+    requested_date: String(payload.requested_date || '').trim(),
+    requested_period: String(payload.requested_period || '').trim().toLowerCase(),
+    message_text: String(payload.message_text || '').trim().toLowerCase()
+  });
+}
+
+function isDuplicateRecentEvent(payload) {
+  const key = eventFingerprint(payload);
+  const now = Date.now();
+  const last = recentEventCache.get(key) || 0;
+  recentEventCache.forEach((timestamp, cacheKey) => {
+    if (now - timestamp > RECENT_EVENT_WINDOW_MS) recentEventCache.delete(cacheKey);
+  });
+  if (last && now - last < RECENT_EVENT_WINDOW_MS) return true;
+  recentEventCache.set(key, now);
+  return false;
 }
 
 async function getSettings() {
@@ -57,6 +82,9 @@ async function postToFemicTab(tabId, payload) {
 
 async function sendEventToFemic(input) {
   const payload = normalizeEvent(input);
+  if (isDuplicateRecentEvent(payload)) {
+    return { ok: true, duplicate: true, ignored: true, payload };
+  }
   const tab = await findFemicTab();
   if (!tab || !tab.id) {
     throw new Error('Abra o FEMIC em outra aba antes de enviar.');

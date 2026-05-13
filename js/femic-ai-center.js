@@ -4,20 +4,16 @@
   var STORAGE_KEY = 'femic_ai_center_config_v1';
   var TASKS_STORAGE_KEY = 'femic_ai_tasks_v1';
   var state = {
-    messages: [],
-    status: 'Central IA pronta. Consultas internas usam primeiro os dados do sistema.',
-    debug: 'IA iniciando…',
-    build: window.FEMIC_ASSISTANT_BUILD || 'ai-center-1'
+    status: 'IA clinica pronta para rascunhos de anamnese e evolucao.',
+    debug: 'IA clinica iniciando...'
   };
 
   var DEFAULT_ASSISTANT_RULES = [
-    'Use sempre os dados internos do sistema como fonte principal para agenda, sessões, pacotes, pacientes e disponibilidade.',
-    'Não use paciente selecionado em perguntas genéricas. Só use contexto do paciente quando o usuário citar o nome ou pedir explicitamente o paciente selecionado.',
-    'Responda em português do Brasil, com objetividade, sem texto longo e sem inventar dados ausentes.',
-    'Quando houver horários disponíveis, priorize menor ocupação, encaixe dentro do expediente, turno solicitado e conflitos atuais.',
-    'Informe limitações da resposta quando faltarem dados, horários configurados, nome do paciente ou chave de API.',
-    'Em anamnese e evolução clínica, gere rascunhos concisos por campo e nunca salve automaticamente; o profissional deve revisar antes de salvar.',
-    'Não dê diagnóstico definitivo, prescrição médica ou promessa de resultado clínico.'
+    'Use sempre os dados internos do sistema como contexto de apoio quando eles estiverem disponiveis.',
+    'Responda em portugues do Brasil, com objetividade, sem texto longo e sem inventar dados ausentes.',
+    'Em anamnese e evolucao clinica, gere rascunhos concisos por campo e nunca salve automaticamente; o profissional deve revisar antes de salvar.',
+    'Nao de diagnostico definitivo, prescricao medica ou promessa de resultado clinico.',
+    'Se faltarem dados clinicos, produza um rascunho seguro e deixe claro que precisa de revisao humana.'
   ].join('\n');
 
   function el(id){ return document.getElementById(id); }
@@ -26,8 +22,7 @@
   function todayIso(){ return typeof window.todayIso === 'function' ? window.todayIso() : new Date().toISOString().slice(0,10); }
   function isoDate(date){
     if(typeof window.isoDate === 'function') return window.isoDate(date);
-    var d = new Date(date);
-    return d.toISOString().slice(0,10);
+    return new Date(date).toISOString().slice(0,10);
   }
   function fmtDate(value){ return typeof window.fmtDate === 'function' ? window.fmtDate(value) : String(value || ''); }
   function fmtWeekday(value){ return typeof window.fmtWeekday === 'function' ? window.fmtWeekday(value) : fmtDate(value); }
@@ -50,11 +45,11 @@
     var labels = [
       ['domingo','dom'],
       ['segunda','seg'],
-      ['terca','terça','ter'],
+      ['terca','ter'],
       ['quarta','qua'],
       ['quinta','qui'],
       ['sexta','sex'],
-      ['sabado','sábado','sab']
+      ['sabado','sab']
     ];
     var found = [];
     labels.forEach(function(variants, idx){
@@ -77,7 +72,7 @@
   function getUnifiedState(){
     return window.FEMICUnifiedRuntime && typeof window.FEMICUnifiedRuntime.getState === 'function'
       ? window.FEMICUnifiedRuntime.getState()
-      : { selectedPatientId:'', currentPatient:null, currentAnamnese:null, currentEvolutions:[] };
+      : { currentPatient:null, currentEvolutions:[] };
   }
   function getConfig(){
     var saved = {};
@@ -133,21 +128,11 @@
   function renderAssistantAiProviderBadge(){
     var provider = el('assistantAiProvider') ? el('assistantAiProvider').value : getConfig().provider;
     if(el('assistantAiProviderBadge')) el('assistantAiProviderBadge').textContent = provider;
-    if(el('assistantAiStatusInput')) el('assistantAiStatusInput').value = 'Consultas internas continuam funcionando mesmo sem provedor externo.';
-  }
-  function setStatus(text){
-    state.status = text;
-    if(el('assistantStatus')) el('assistantStatus').textContent = text;
-    if(el('aiCenterStatus')) el('aiCenterStatus').textContent = text;
+    if(el('assistantAiStatusInput')) el('assistantAiStatusInput').value = 'Usado apenas para rascunhos clinicos. Pendencias operacionais nao dependem desta IA.';
   }
   function setDebug(text){
     state.debug = text;
-    if(el('assistantDebug')) el('assistantDebug').textContent = text;
     if(el('aiCenterDebug')) el('aiCenterDebug').textContent = text;
-  }
-  function addMessage(role, html){
-    state.messages.push({ role: role, html: html });
-    renderMessages();
   }
   function readTasks(){
     try{
@@ -167,10 +152,10 @@
     return String(value || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
   }
   function taskTypeLabel(type){
-    return { marcacao:'Marcação', remarcacao:'Remarcação', cancelamento:'Cancelamento', laudo:'Laudo', retorno:'Retorno', outro:'Outro' }[type] || 'Outro';
+    return { marcacao:'Marcacao', remarcacao:'Remarcacao', cancelamento:'Cancelamento', laudo:'Laudo', retorno:'Retorno', outro:'Outro' }[type] || 'Outro';
   }
   function taskStatusLabel(status){
-    return { aberta:'Aberta', em_andamento:'Em andamento', concluida:'Concluída', cancelada:'Cancelada' }[status] || 'Aberta';
+    return { aberta:'Aberta', em_andamento:'Em andamento', concluida:'Concluida', cancelada:'Cancelada' }[status] || 'Aberta';
   }
   function findPatientFromPayload(payload){
     var agenda = getAgendaState();
@@ -206,164 +191,14 @@
     if(!dates.length) dates = [addDays(todayIso(), 1), addDays(todayIso(), 2), addDays(todayIso(), 3)];
     return dates.filter(function(item, index){ return dates.indexOf(item) === index; }).slice(0, 4);
   }
-  function buildSuggestedSlots(payload, patient){
-    var text = ((payload && payload.message_text) || '') + ' ' + ((payload && payload.requested_period) || '');
-    var duration = inferDurationForPatient(patient || {});
-    return inferDatesFromPayload(payload).reduce(function(all, date){
-      return all.concat(slotsForDate(date, duration).filter(function(slot){ return shiftFilter(slot, text); }));
-    }, []).slice(0, 5);
-  }
-  function buildCancellationCandidates(patient){
-    if(!patient) return [];
+  function inferDurationForPatient(patient){
     var agenda = getAgendaState();
-    return (agenda.appointments || []).filter(function(item){
-      return String(item.patient_id) === String(patient.id) && ['agendado','confirmado'].indexOf(item.status) !== -1 && String(item.appointment_date || '') >= todayIso();
-    }).sort(function(a,b){
-      return String(a.appointment_date || '').localeCompare(String(b.appointment_date || '')) || String(a.start_time || '').localeCompare(String(b.start_time || ''));
-    }).slice(0, 5);
-  }
-  function normalizeTask(task){
-    var now = new Date().toISOString();
-    task = task || {};
-    return {
-      id: String(task.id || makeTaskId()),
-      title: String(task.title || 'Tarefa sem título').trim(),
-      type: String(task.type || 'outro'),
-      status: String(task.status || 'aberta'),
-      priority: String(task.priority || 'normal'),
-      patient_id: task.patient_id || '',
-      patient_name: task.patient_name || '',
-      phone: task.phone || '',
-      origin: task.origin || 'manual',
-      requested_action: task.requested_action || '',
-      notes: task.notes || '',
-      suggested_slots: Array.isArray(task.suggested_slots) ? task.suggested_slots : [],
-      candidates: Array.isArray(task.candidates) ? task.candidates : [],
-      needs_review: task.needs_review === true,
-      created_at: task.created_at || now,
-      updated_at: now,
-      completed_at: task.completed_at || null
-    };
-  }
-  function upsertTask(task){
-    var normalized = normalizeTask(task);
-    var list = readTasks();
-    var index = list.findIndex(function(item){ return item.id === normalized.id; });
-    if(index === -1) list.unshift(normalized);
-    else list[index] = Object.assign({}, list[index], normalized);
-    saveTasks(list);
-    renderAssistantTasks();
-    return normalized;
-  }
-  function taskPatientName(task){
-    if(task.patient_name) return task.patient_name;
-    var agenda = getAgendaState();
-    var patient = (agenda.patients || []).find(function(item){ return String(item.id) === String(task.patient_id); });
-    return patient ? patient.name : '';
-  }
-  function renderAssistantTasks(){
-    var target = el('aiTaskList');
-    if(!target) return;
-    var statusFilter = el('aiTaskStatusFilter') ? el('aiTaskStatusFilter').value : 'open';
-    var typeFilter = el('aiTaskTypeFilter') ? el('aiTaskTypeFilter').value : 'all';
-    var list = readTasks().filter(function(task){
-      if(statusFilter === 'open' && ['concluida','cancelada'].indexOf(task.status) !== -1) return false;
-      if(statusFilter !== 'open' && statusFilter !== 'all' && task.status !== statusFilter) return false;
-      if(typeFilter !== 'all' && task.type !== typeFilter) return false;
-      return true;
-    });
-    target.innerHTML = list.length ? list.map(function(task){
-      var slots = (task.suggested_slots || []).map(function(slot){
-        return '<span>' + esc(fmtDate(slot.date) + ' ' + slot.start) + '</span>';
-      }).join('');
-      var candidates = (task.candidates || []).map(function(item){
-        return '<span>' + esc(fmtDate(item.appointment_date) + ' ' + normalizeTime(item.start_time)) + '</span>';
-      }).join('');
-      return '<article class="ai-task-item ' + esc(task.status) + '">' +
-        '<div class="ai-task-main"><div><strong>' + esc(task.title) + '</strong><div class="muted small">' + esc(taskTypeLabel(task.type)) + ' · ' + esc(taskStatusLabel(task.status)) + (taskPatientName(task) ? ' · ' + esc(taskPatientName(task)) : '') + (task.needs_review ? ' · revisar paciente' : '') + '</div></div>' +
-        '<div class="ai-task-actions"><button class="btn small" type="button" onclick="editAssistantTask(\'' + esc(task.id) + '\')">Editar</button><button class="btn small" type="button" onclick="setAssistantTaskStatus(\'' + esc(task.id) + '\',\'concluida\')">Concluir</button><button class="btn small danger" type="button" onclick="setAssistantTaskStatus(\'' + esc(task.id) + '\',\'cancelada\')">Cancelar</button></div></div>' +
-        (task.notes ? '<div class="muted small ai-task-notes">' + esc(task.notes) + '</div>' : '') +
-        (slots ? '<div class="ai-task-suggestions"><span class="muted small">Horários:</span>' + slots + '</div>' : '') +
-        (candidates ? '<div class="ai-task-suggestions"><span class="muted small">Candidatos:</span>' + candidates + '</div>' : '') +
-      '</article>';
-    }).join('') : '<div class="muted small">Nenhuma tarefa neste filtro.</div>';
-  }
-  function createTaskFromExtension(payload){
-    payload = payload || {};
-    var allowed = ['marcacao','remarcacao','cancelamento'];
-    var action = String(payload.action || payload.requested_action || '').trim();
-    if(allowed.indexOf(action) === -1 || !String(payload.message_text || '').trim()) return null;
-    var match = findPatientFromPayload(payload);
-    var patient = match.patient;
-    var suggestions = action === 'cancelamento' ? [] : buildSuggestedSlots(payload, patient);
-    var candidates = action === 'cancelamento' ? buildCancellationCandidates(patient) : [];
-    var title = taskTypeLabel(action) + (patient ? ' · ' + patient.name : (payload.patient_name ? ' · ' + payload.patient_name : ''));
-    var task = upsertTask({
-      title: title,
-      type: action,
-      status: 'aberta',
-      priority: action === 'cancelamento' ? 'alta' : 'normal',
-      patient_id: patient ? patient.id : '',
-      patient_name: patient ? patient.name : (payload.patient_name || ''),
-      phone: payload.phone || '',
-      origin: 'chrome_extension',
-      requested_action: action,
-      notes: payload.message_text || '',
-      suggested_slots: suggestions,
-      candidates: candidates,
-      needs_review: !patient || match.ambiguous,
-      created_at: payload.created_at || new Date().toISOString()
-    });
-    addMessage('assistant', '<div><strong>Tarefa criada pelo WhatsApp Web.</strong><div class="muted small">' + esc(task.title) + '</div></div>');
-    setStatus('Tarefa recebida da extensão e adicionada à lista.');
-    setDebug('Evento FEMIC_EXTENSION_EVENT processado.');
-    if(typeof window.toast === 'function') window.toast('Tarefa criada a partir do WhatsApp Web.', 'success');
-    return task;
-  }
-  function renderSuggestions(){
-    if(el('assistantSuggestions')) el('assistantSuggestions').innerHTML = '';
-    if(el('aiCenterSuggestions')) el('aiCenterSuggestions').innerHTML = '';
-  }
-  function renderMessages(){
-    var panelHtml = state.messages.map(function(item){
-      return '<div class="assistant-message ' + item.role + '">' + item.html + '</div>';
-    }).join('');
-    var centerHtml = state.messages.map(function(item){
-      return '<div class="ai-message ' + item.role + '">' + item.html + '</div>';
-    }).join('');
-    if(el('assistantMessages')) el('assistantMessages').innerHTML = panelHtml;
-    if(el('aiCenterMessages')) el('aiCenterMessages').innerHTML = centerHtml;
-    ['assistantMessages','aiCenterMessages'].forEach(function(id){
-      if(el(id)) el(id).scrollTop = el(id).scrollHeight;
-    });
-  }
-  function getPatientMatch(question){
-    var agenda = getAgendaState();
-    var patients = agenda.patients || [];
-    var normalizedQuestion = norm(question);
-    var exact = patients.find(function(patient){
-      return normalizedQuestion.indexOf(norm(patient.name)) !== -1;
-    });
-    if(exact) return exact;
-    var scored = patients.map(function(patient){
-      var tokens = norm(patient.name).split(' ').filter(Boolean);
-      var score = tokens.reduce(function(total, token){
-        return total + (normalizedQuestion.indexOf(token) !== -1 ? 1 : 0);
-      }, 0);
-      return { patient: patient, score: score };
-    }).filter(function(entry){ return entry.score > 0; }).sort(function(a,b){ return b.score - a.score; });
-    return scored[0] ? scored[0].patient : null;
-  }
-  function wantsSelectedPatientContext(question){
-    var normalized = norm(question);
-    return [
-      'paciente selecionado',
-      'este paciente',
-      'esse paciente',
-      'deste paciente',
-      'desse paciente',
-      'paciente atual'
-    ].some(function(item){ return normalized.indexOf(item) !== -1; });
+    var appointments = (agenda.appointments || []).filter(function(item){ return String(item.patient_id) === String(patient.id); });
+    var recent = appointments.slice().sort(function(a,b){
+      return String(b.appointment_date || '').localeCompare(String(a.appointment_date || '')) || String(b.start_time || '').localeCompare(String(a.start_time || ''));
+    })[0];
+    if(recent && recent.duration_minutes) return Number(recent.duration_minutes);
+    return 45;
   }
   function parsePeriods(settings){
     var raw = String((settings && settings.working_periods) || ((settings && settings.start_time) || '08:00') + '-' + ((settings && settings.end_time) || '20:00'));
@@ -403,181 +238,169 @@
     var normalized = norm(text);
     var minute = timeToMin(slot.start);
     if(normalized.indexOf('tarde') !== -1) return minute >= 12 * 60 && minute < 18 * 60;
-    if(normalized.indexOf('manha') !== -1 || normalized.indexOf('manhã') !== -1) return minute < 12 * 60;
+    if(normalized.indexOf('manha') !== -1) return minute < 12 * 60;
     if(normalized.indexOf('noite') !== -1) return minute >= 18 * 60;
     return true;
   }
-  function inferDurationForPatient(patient){
+  function buildSuggestedSlots(payload, patient){
+    var text = ((payload && payload.message_text) || '') + ' ' + ((payload && payload.requested_period) || '');
+    var duration = inferDurationForPatient(patient || {});
+    return inferDatesFromPayload(payload).reduce(function(all, date){
+      return all.concat(slotsForDate(date, duration).filter(function(slot){ return shiftFilter(slot, text); }));
+    }, []).slice(0, 5);
+  }
+  function buildCancellationCandidates(patient){
+    if(!patient) return [];
     var agenda = getAgendaState();
-    var appointments = (agenda.appointments || []).filter(function(item){ return String(item.patient_id) === String(patient.id); });
-    var recent = appointments.slice().sort(function(a,b){
-      return String(b.appointment_date || '').localeCompare(String(a.appointment_date || '')) || String(b.start_time || '').localeCompare(String(a.start_time || ''));
-    })[0];
-    if(recent && recent.duration_minutes) return Number(recent.duration_minutes);
-    return 45;
-  }
-  function summarizeSlots(slots, limit){
-    return slots.slice(0, limit || 5).map(function(slot){
-      return fmtWeekday(slot.date) + ' · ' + fmtDate(slot.date) + ' · ' + slot.start;
-    });
-  }
-  function answerFreeTomorrow(){
-    var tomorrow = addDays(todayIso(), 1);
-    var slots = slotsForDate(tomorrow, 45);
-    if(!slots.length){
-      return { handled:true, html:'<strong>Não encontrei horário livre amanhã.</strong><div class="muted small">A busca considerou os períodos configurados no expediente e os conflitos atuais da agenda para ' + esc(fmtDate(tomorrow)) + '.</div>' };
-    }
-    var items = summarizeSlots(slots, 6).map(function(line){ return '<li>' + esc(line) + '</li>'; }).join('');
-    return { handled:true, html:'<strong>Encontrei estes horários livres amanhã:</strong><ul>' + items + '</ul>' };
-  }
-  function answerSessionCount(question){
-    var patient = getPatientMatch(question);
-    if(!patient) return { handled:false };
-    var agenda = getAgendaState();
-    var count = (agenda.appointments || []).filter(function(item){
-      return String(item.patient_id) === String(patient.id) && item.status === 'concluido';
-    }).length;
-    return { handled:true, html:'<strong>' + esc(patient.name) + '</strong> tem <strong>' + count + '</strong> sessão(ões) realizada(s) com base nos atendimentos concluídos da agenda.' };
-  }
-  function answerPackageBalance(question){
-    var patient = getPatientMatch(question);
-    if(!patient) return { handled:false };
-    var agenda = getAgendaState();
-    var packages = (agenda.packages || []).filter(function(item){ return String(item.patient_id) === String(patient.id); });
-    if(!packages.length){
-      return { handled:true, html:'<strong>' + esc(patient.name) + '</strong> não tem pacote ativo cadastrado no sistema.' };
-    }
-    var lines = packages.map(function(item){
-      var total = Number(item.total_sessions || 0);
-      var remaining = Number(item.remaining_sessions || 0);
-      var service = typeof window.serviceName === 'function' ? window.serviceName(item.service_id) : 'Serviço';
-      return '<li>' + esc(service) + ': ' + Math.max(0, total - remaining) + '/' + total + ' usadas · saldo ' + remaining + '</li>';
-    }).join('');
-    return { handled:true, html:'<strong>Saldo de pacote de ' + esc(patient.name) + ':</strong><ul>' + lines + '</ul>' };
-  }
-  function answerUpcomingAppointments(question){
-    var patient = getPatientMatch(question);
-    if(!patient) return { handled:false };
-    var agenda = getAgendaState();
-    var upcoming = (agenda.appointments || []).filter(function(item){
-      return String(item.patient_id) === String(patient.id) && ['agendado','confirmado'].indexOf(item.status) !== -1;
+    return (agenda.appointments || []).filter(function(item){
+      return String(item.patient_id) === String(patient.id) && ['agendado','confirmado'].indexOf(item.status) !== -1 && String(item.appointment_date || '') >= todayIso();
     }).sort(function(a,b){
       return String(a.appointment_date || '').localeCompare(String(b.appointment_date || '')) || String(a.start_time || '').localeCompare(String(b.start_time || ''));
-    }).slice(0,5);
-    if(!upcoming.length){
-      return { handled:true, html:'<strong>' + esc(patient.name) + '</strong> não tem atendimentos futuros no momento.' };
-    }
-    var lines = upcoming.map(function(item){
-      var service = typeof window.serviceName === 'function' ? window.serviceName(item.service_id) : 'Serviço';
-      return '<li>' + esc(fmtWeekday(item.appointment_date) + ' · ' + fmtDate(item.appointment_date) + ' · ' + normalizeTime(item.start_time) + ' · ' + service) + '</li>';
-    }).join('');
-    return { handled:true, html:'<strong>Próximos atendimentos de ' + esc(patient.name) + ':</strong><ul>' + lines + '</ul>' };
+    }).slice(0, 5);
   }
-  function answerBestSlots(question){
-    var patient = getPatientMatch(question) || (wantsSelectedPatientContext(question) ? getUnifiedState().currentPatient : null);
-    var days = weekdayIndexFromQuery(norm(question));
-    var base = todayIso();
-    var duration = inferDurationForPatient(patient || {});
-    var dates = [];
-    if(norm(question).indexOf('amanha') !== -1) dates = [addDays(base,1)];
-    if(norm(question).indexOf('hoje') !== -1) dates = [base];
-    if(days.length){
-      days.forEach(function(dow){
-        for(var i=0;i<4;i++){
-          dates.push(nextDateForWeekday(addDays(base, i * 7), dow));
-        }
-      });
-    }
-    dates = dates.filter(function(item, idx){ return dates.indexOf(item) === idx; });
-    if(!dates.length) dates = [addDays(base,1), addDays(base,2), addDays(base,3)];
-    var slots = dates.reduce(function(all, date){
-      return all.concat(slotsForDate(date, duration).filter(function(slot){ return shiftFilter(slot, question); }));
-    }, []);
-    slots.sort(function(a,b){
-      return a.load - b.load || String(a.date).localeCompare(String(b.date)) || timeToMin(a.start) - timeToMin(b.start);
-    });
-    if(!slots.length){
-      return { handled:true, html:'<strong>Não encontrei horários livres no recorte pedido.</strong><div class="muted small">Tente ampliar os dias ou remover a restrição de turno.</div>' };
-    }
-    var intro = patient ? 'Melhores opções para <strong>' + esc(patient.name) + '</strong>' : 'Melhores horários encontrados';
-    var lines = summarizeSlots(slots, 5).map(function(line){ return '<li>' + esc(line) + '</li>'; }).join('');
-    return { handled:true, html:'<strong>' + intro + ':</strong><ul>' + lines + '</ul><div class="muted small">Critérios usados: expediente configurado, conflitos atuais e menor ocupação por faixa.</div>' };
-  }
-  function answerAgendaLoad(question){
-    var agenda = getAgendaState();
-    var targetDate = norm(question).indexOf('amanha') !== -1 ? addDays(todayIso(), 1) : todayIso();
-    var list = (agenda.appointments || []).filter(function(item){ return item.appointment_date === targetDate; });
-    var counts = {
-      agendado: list.filter(function(item){ return item.status === 'agendado'; }).length,
-      confirmado: list.filter(function(item){ return item.status === 'confirmado'; }).length,
-      concluido: list.filter(function(item){ return item.status === 'concluido'; }).length,
-      cancelado: list.filter(function(item){ return item.status === 'cancelado'; }).length
+  function normalizeTask(task){
+    var now = new Date().toISOString();
+    task = task || {};
+    return {
+      id: String(task.id || makeTaskId()),
+      title: String(task.title || 'Tarefa sem titulo').trim(),
+      type: String(task.type || 'outro'),
+      status: String(task.status || 'aberta'),
+      priority: String(task.priority || 'normal'),
+      patient_id: task.patient_id || '',
+      patient_name: task.patient_name || '',
+      phone: task.phone || '',
+      origin: task.origin || 'manual',
+      requested_action: task.requested_action || '',
+      notes: task.notes || '',
+      suggested_slots: Array.isArray(task.suggested_slots) ? task.suggested_slots : [],
+      candidates: Array.isArray(task.candidates) ? task.candidates : [],
+      needs_review: task.needs_review === true,
+      created_at: task.created_at || now,
+      updated_at: now,
+      completed_at: task.completed_at || null
     };
-    return { handled:true, html:'<strong>Carga operacional de ' + esc(fmtDate(targetDate)) + ':</strong><ul><li>Agendados: ' + counts.agendado + '</li><li>Confirmados: ' + counts.confirmado + '</li><li>Concluídos: ' + counts.concluido + '</li><li>Cancelados: ' + counts.cancelado + '</li></ul>' };
   }
-  function answerTasks(question){
-    var normalized = norm(question);
-    var list = readTasks();
-    if(normalized.indexOf('concluir tarefa') !== -1){
-      var open = list.find(function(task){ return ['concluida','cancelada'].indexOf(task.status) === -1 && normalized.indexOf(norm(task.title)) !== -1; });
-      if(open){
-        window.setAssistantTaskStatus(open.id, 'concluida');
-        return { handled:true, html:'<strong>Tarefa concluída:</strong> ' + esc(open.title) };
-      }
-    }
-    var filtered = list.filter(function(task){
-      if(normalized.indexOf('laudo') !== -1 && task.type !== 'laudo') return false;
-      if(normalized.indexOf('marc') !== -1 && task.type !== 'marcacao') return false;
-      if(normalized.indexOf('remarc') !== -1 && task.type !== 'remarcacao') return false;
-      if(normalized.indexOf('cancel') !== -1 && task.type !== 'cancelamento') return false;
-      return ['concluida','cancelada'].indexOf(task.status) === -1;
-    }).slice(0, 8);
-    if(!filtered.length) return { handled:true, html:'<strong>Não há tarefas abertas nesse recorte.</strong>' };
-    var items = filtered.map(function(task){
-      return '<li>' + esc(task.title + ' · ' + taskTypeLabel(task.type) + (taskPatientName(task) ? ' · ' + taskPatientName(task) : '')) + '</li>';
-    }).join('');
-    return { handled:true, html:'<strong>Tarefas abertas:</strong><ul>' + items + '</ul>' };
+  function taskPatientName(task){
+    if(task.patient_name) return task.patient_name;
+    var agenda = getAgendaState();
+    var patient = (agenda.patients || []).find(function(item){ return String(item.id) === String(task.patient_id); });
+    return patient ? patient.name : '';
   }
-  function createTaskFromQuestion(question){
-    var normalized = norm(question);
-    if(normalized.indexOf('crie') === -1 && normalized.indexOf('criar') === -1 && normalized.indexOf('tarefa') === -1 && normalized.indexOf('lembre') === -1) return { handled:false };
-    var type = 'outro';
-    if(normalized.indexOf('remarc') !== -1) type = 'remarcacao';
-    else if(normalized.indexOf('marc') !== -1 || normalized.indexOf('agend') !== -1) type = 'marcacao';
-    else if(normalized.indexOf('cancel') !== -1) type = 'cancelamento';
-    else if(normalized.indexOf('laudo') !== -1) type = 'laudo';
-    else if(normalized.indexOf('retorno') !== -1) type = 'retorno';
-    var patient = getPatientMatch(question);
-    var task = upsertTask({
-      title: taskTypeLabel(type) + (patient ? ' · ' + patient.name : ''),
-      type: type,
-      status: 'aberta',
-      patient_id: patient ? patient.id : '',
-      patient_name: patient ? patient.name : '',
-      origin: 'ia',
-      requested_action: type,
-      notes: question,
-      suggested_slots: ['marcacao','remarcacao'].indexOf(type) !== -1 ? buildSuggestedSlots({ message_text: question }, patient) : [],
-      candidates: type === 'cancelamento' ? buildCancellationCandidates(patient) : [],
-      needs_review: !patient && ['marcacao','remarcacao','cancelamento'].indexOf(type) !== -1
+  function getExtensionTasks(){
+    return readTasks().filter(function(task){ return task.origin === 'chrome_extension'; }).sort(function(a,b){
+      var statusWeight = { aberta:0, em_andamento:1, concluida:2, cancelada:3 };
+      return (statusWeight[a.status] || 9) - (statusWeight[b.status] || 9) || String(b.updated_at || '').localeCompare(String(a.updated_at || ''));
     });
-    return { handled:true, html:'<strong>Tarefa criada:</strong> ' + esc(task.title) + '<div class="muted small">Ela já aparece na lista de tarefas da IA.</div>' };
   }
-  function resolveInternalQuestion(question){
-    var normalized = norm(question);
-    if(!normalized) return { handled:true, html:'<strong>Escreva a pergunta que você quer fazer.</strong>' };
-    if(normalized.indexOf('tarefa') !== -1 || normalized.indexOf('pendenc') !== -1 || normalized.indexOf('pendênc') !== -1) {
-      var created = createTaskFromQuestion(question);
-      if(created.handled) return created;
-      return answerTasks(question);
-    }
-    if(normalized.indexOf('livre') !== -1 && normalized.indexOf('amanha') !== -1) return answerFreeTomorrow();
-    if(normalized.indexOf('sess') !== -1 && (normalized.indexOf('quant') !== -1 || getPatientMatch(question))) return answerSessionCount(question);
-    if(normalized.indexOf('saldo') !== -1 || normalized.indexOf('pacote') !== -1) return answerPackageBalance(question);
-    if(normalized.indexOf('proxim') !== -1 && normalized.indexOf('atendimento') !== -1) return answerUpcomingAppointments(question);
-    if(normalized.indexOf('melhor horario') !== -1 || normalized.indexOf('melhor horário') !== -1 || normalized.indexOf('marcar') !== -1 || normalized.indexOf('encaix') !== -1 || normalized.indexOf('tarde') !== -1 || normalized.indexOf('manha') !== -1 || normalized.indexOf('manhã') !== -1) return answerBestSlots(question);
-    if(normalized.indexOf('ocupacao') !== -1 || normalized.indexOf('ocupação') !== -1) return answerAgendaLoad(question);
-    return { handled:false };
+  function renderPendingNavBadge(){
+    var badge = el('pendingNavBadge');
+    if(!badge) return;
+    var openCount = getExtensionTasks().filter(function(task){ return ['concluida','cancelada'].indexOf(task.status) === -1; }).length;
+    badge.textContent = String(openCount);
+    badge.classList.toggle('hidden', openCount <= 0);
+  }
+  function renderPendingKpis(tasks){
+    var target = el('pendingKpis');
+    if(!target) return;
+    var counts = {
+      aberta: tasks.filter(function(task){ return task.status === 'aberta'; }).length,
+      em_andamento: tasks.filter(function(task){ return task.status === 'em_andamento'; }).length,
+      concluida: tasks.filter(function(task){ return task.status === 'concluida'; }).length,
+      cancelada: tasks.filter(function(task){ return task.status === 'cancelada'; }).length
+    };
+    target.innerHTML = [
+      { label:'Abertas', value:counts.aberta, note:'aguardando acao' },
+      { label:'Em andamento', value:counts.em_andamento, note:'com revisao em curso' },
+      { label:'Concluidas', value:counts.concluida, note:'ja resolvidas' },
+      { label:'Canceladas', value:counts.cancelada, note:'descartadas' }
+    ].map(function(item){
+      return '<div class="card kpi"><div class="eyebrow">' + esc(item.label) + '</div><strong>' + item.value + '</strong><span class="muted small">' + esc(item.note) + '</span></div>';
+    }).join('');
+  }
+  function renderExtensionPendingTasks(){
+    var target = el('pendingTaskList');
+    var allTasks = getExtensionTasks();
+    renderPendingNavBadge();
+    renderPendingKpis(allTasks);
+    if(!target) return;
+    var statusFilter = el('pendingTaskStatusFilter') ? el('pendingTaskStatusFilter').value : 'open';
+    var typeFilter = el('pendingTaskTypeFilter') ? el('pendingTaskTypeFilter').value : 'all';
+    var list = allTasks.filter(function(task){
+      if(statusFilter === 'open' && ['concluida','cancelada'].indexOf(task.status) !== -1) return false;
+      if(statusFilter !== 'open' && statusFilter !== 'all' && task.status !== statusFilter) return false;
+      if(typeFilter !== 'all' && task.type !== typeFilter) return false;
+      return true;
+    });
+    target.innerHTML = list.length ? list.map(function(task){
+      var tags = [];
+      if(task.needs_review) tags.push('<span>revisar paciente</span>');
+      if(task.phone) tags.push('<span>' + esc(task.phone) + '</span>');
+      (task.suggested_slots || []).slice(0, 3).forEach(function(slot){
+        tags.push('<span>' + esc(fmtWeekday(slot.date) + ' · ' + fmtDate(slot.date) + ' · ' + slot.start) + '</span>');
+      });
+      (task.candidates || []).slice(0, 3).forEach(function(item){
+        tags.push('<span>' + esc('Candidato: ' + fmtDate(item.appointment_date) + ' ' + normalizeTime(item.start_time)) + '</span>');
+      });
+      return '<article class="pending-task-item ' + esc(task.status) + '">' +
+        '<div class="pending-task-top">' +
+          '<div><strong>' + esc(task.title) + '</strong><div class="muted small">' + esc(taskTypeLabel(task.type)) + ' · ' + esc(taskStatusLabel(task.status)) + (taskPatientName(task) ? ' · ' + esc(taskPatientName(task)) : '') + '</div></div>' +
+          '<div class="pending-task-actions"><button class="btn small" type="button" onclick="editAssistantTask(\'' + esc(task.id) + '\')">Editar</button><button class="btn small" type="button" onclick="setAssistantTaskStatus(\'' + esc(task.id) + '\',\'concluida\')">Concluir</button><button class="btn small danger" type="button" onclick="setAssistantTaskStatus(\'' + esc(task.id) + '\',\'cancelada\')">Cancelar</button></div>' +
+        '</div>' +
+        (task.notes ? '<div class="muted small pending-task-notes">' + esc(task.notes) + '</div>' : '') +
+        (tags.length ? '<div class="pending-task-tags">' + tags.join('') + '</div>' : '') +
+      '</article>';
+    }).join('') : '<div class="muted small">Nenhuma pendencia da extensao neste filtro.</div>';
+  }
+  function upsertTask(task){
+    var normalized = normalizeTask(task);
+    var list = readTasks();
+    var index = list.findIndex(function(item){ return item.id === normalized.id; });
+    if(index === -1) list.unshift(normalized);
+    else list[index] = Object.assign({}, list[index], normalized);
+    saveTasks(list);
+    renderExtensionPendingTasks();
+    return normalized;
+  }
+  function createTaskFromExtension(payload){
+    payload = payload || {};
+    var allowed = ['marcacao','remarcacao','cancelamento'];
+    var action = String(payload.action || payload.requested_action || '').trim();
+    if(allowed.indexOf(action) === -1 || !String(payload.message_text || '').trim()) return null;
+    var match = findPatientFromPayload(payload);
+    var patient = match.patient;
+    var suggestions = action === 'cancelamento' ? [] : buildSuggestedSlots(payload, patient);
+    var candidates = action === 'cancelamento' ? buildCancellationCandidates(patient) : [];
+    var title = taskTypeLabel(action) + (patient ? ' · ' + patient.name : (payload.patient_name ? ' · ' + payload.patient_name : ''));
+    var task = upsertTask({
+      title: title,
+      type: action,
+      status: 'aberta',
+      priority: action === 'cancelamento' ? 'alta' : 'normal',
+      patient_id: patient ? patient.id : '',
+      patient_name: patient ? patient.name : (payload.patient_name || ''),
+      phone: payload.phone || '',
+      origin: 'chrome_extension',
+      requested_action: action,
+      notes: payload.message_text || '',
+      suggested_slots: suggestions,
+      candidates: candidates,
+      needs_review: !patient || match.ambiguous,
+      created_at: payload.created_at || new Date().toISOString()
+    });
+    setDebug('Extensao do WhatsApp conectada. Ultima tarefa: ' + task.title);
+    if(typeof window.toast === 'function') window.toast('Pendencia recebida do WhatsApp Web.', 'success');
+    return task;
+  }
+  function buildSystemPrompt(){
+    return [
+      'Voce e a IA clinica da FEMIC.',
+      'Seu papel e ajudar apenas com rascunhos de anamnese e evolucao clinica.',
+      getConfig().rules || DEFAULT_ASSISTANT_RULES
+    ].join('\n');
+  }
+  function buildExternalPrompt(prompt){
+    return buildSystemPrompt() + '\n\nSolicitacao:\n' + prompt;
   }
   async function callGemini(config, prompt){
     var response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(config.geminiModel) + ':generateContent?key=' + encodeURIComponent(config.geminiKey), {
@@ -604,7 +427,7 @@
     });
     var data = await response.json();
     if(!response.ok) throw new Error((data && data.error && data.error.message) || 'Falha no Groq');
-    return (((data || {}).choices || [])[0] || {}).message && ((((data || {}).choices || [])[0].message || {}).content) || '';
+    return (((data || {}).choices || [])[0] || {}).message && ((((data || {}).choices || [])[0] || {}).message.content) || '';
   }
   async function callDeepSeek(config, prompt){
     var response = await fetch('https://api.deepseek.com/chat/completions', {
@@ -621,94 +444,36 @@
     });
     var data = await response.json();
     if(!response.ok) throw new Error((data && data.error && data.error.message) || 'Falha no DeepSeek');
-    return (((data || {}).choices || [])[0] || {}).message && ((((data || {}).choices || [])[0].message || {}).content) || '';
+    return (((data || {}).choices || [])[0] || {}).message && ((((data || {}).choices || [])[0] || {}).message.content) || '';
   }
-  async function callExternalWithFallback(prompt, preferred){
+  async function callExternalWithFallback(prompt, provider){
     var config = getConfig();
-    var order = providerOrder(preferred);
+    var order = providerOrder(provider).filter(function(item){ return providerHasKey(config, item); });
+    if(!order.length) throw new Error('Configure ao menos uma chave de IA para usar os rascunhos clinicos.');
     var lastError = null;
-    for(var i=0;i<order.length;i++){
-      var provider = order[i];
-      if(!providerHasKey(config, provider)) continue;
+    for(var i = 0; i < order.length; i += 1){
+      var current = order[i];
       try{
-        setDebug('Consultando ' + providerLabel(provider) + '…');
-        var text = provider === 'gemini'
-          ? await callGemini(config, prompt)
-          : provider === 'groq'
-            ? await callGroq(config, prompt)
-            : await callDeepSeek(config, prompt);
-        return { ok:true, provider: provider, text: text };
+        if(current === 'gemini') return { provider: current, text: await callGemini(config, prompt) };
+        if(current === 'groq') return { provider: current, text: await callGroq(config, prompt) };
+        if(current === 'deepseek') return { provider: current, text: await callDeepSeek(config, prompt) };
       }catch(error){
         lastError = error;
-        var next = order.slice(i + 1).find(function(candidate){ return providerHasKey(config, candidate); });
-        if(next && window.confirm(providerLabel(provider) + ' falhou: ' + error.message + '. Deseja tentar com ' + providerLabel(next) + '?')){
-          continue;
-        }
-        throw error;
       }
     }
-    if(lastError) throw lastError;
-    throw new Error('Nenhuma API externa está configurada no momento.');
-  }
-  function buildSystemPrompt(){
-    return [
-      'Você é a Central IA da FEMIC, integrada a agenda, pacientes, pacotes, anamnese e evolução clínica.',
-      getConfig().rules || DEFAULT_ASSISTANT_RULES
-    ].join('\n');
-  }
-  function buildExternalPrompt(prompt){
-    return buildSystemPrompt() + '\n\nSolicitação:\n' + prompt;
-  }
-  function buildGeneralPrompt(question){
-    var agenda = getAgendaState();
-    var unified = getUnifiedState();
-    var patient = unified.currentPatient;
-    return [
-      'Você é a Central IA da FEMIC.',
-      'Dados internos resumidos:',
-      '- pacientes ativos: ' + ((agenda.patients || []).filter(function(item){ return item.archived !== true; }).length),
-      '- agendamentos totais: ' + ((agenda.appointments || []).length),
-      '- paciente selecionado: ' + (patient ? patient.name : 'nenhum'),
-      patient ? '- patologia do paciente selecionado: ' + (patient.pathology || 'não informada') : '',
-      'Pergunta do usuário: ' + question
-    ].filter(Boolean).join('\n');
+    throw lastError || new Error('Falha ao consultar os provedores configurados.');
   }
   function extractJson(text){
     var raw = String(text || '').trim();
     var start = raw.indexOf('{');
     var end = raw.lastIndexOf('}');
-    if(start === -1 || end === -1 || end <= start) throw new Error('A resposta não veio em JSON válido.');
+    if(start === -1 || end === -1 || end <= start) throw new Error('A resposta nao veio em JSON valido.');
     return JSON.parse(raw.slice(start, end + 1));
-  }
-  async function submitQuestion(question){
-    var value = String(question || '').trim();
-    if(!value) return;
-    if(el('assistantInput')) el('assistantInput').value = '';
-    if(el('aiCenterInput')) el('aiCenterInput').value = '';
-    addMessage('user', '<p>' + esc(value) + '</p>');
-    setStatus('Processando pergunta…');
-    try{
-      var internal = resolveInternalQuestion(value);
-      if(internal.handled){
-        addMessage('assistant', '<div>' + internal.html + '</div>');
-        setStatus('Resposta entregue com base nos dados internos do sistema.');
-        setDebug('Consulta operacional resolvida sem API externa.');
-        return;
-      }
-      var external = await callExternalWithFallback(buildGeneralPrompt(value), getConfig().provider);
-      addMessage('assistant', '<div><strong>Resposta da IA externa (' + esc(providerLabel(external.provider)) + '):</strong><div class="assistant-rich-text">' + esc(external.text).replace(/\n/g, '<br>') + '</div></div>');
-      setStatus('Resposta entregue com apoio do provedor ' + providerLabel(external.provider) + '.');
-      setDebug('Fallback externo ativo via ' + providerLabel(external.provider) + '.');
-    }catch(error){
-      addMessage('assistant', '<div><strong>Não consegui concluir essa consulta agora.</strong><div class="muted small">' + esc(error.message || 'Falha desconhecida') + '</div></div>');
-      setStatus('Falha na consulta. Você pode ajustar a pergunta ou revisar as chaves das APIs.');
-      setDebug('Erro: ' + (error.message || 'falha desconhecida'));
-    }
   }
   function getSelectedPatientOrWarn(){
     var unified = getUnifiedState();
     if(unified.currentPatient) return unified.currentPatient;
-    window.alert('Selecione um paciente no prontuário antes de usar a IA clínica.');
+    window.alert('Selecione um paciente no prontuario antes de usar a IA clinica.');
     return null;
   }
   async function fillAnamneseWithAI(){
@@ -716,15 +481,15 @@
     if(!patient) return;
     var notes = window.prompt('Resumo curto para anamnese: queixa, contexto e objetivo principal.');
     if(!notes) return;
-    setStatus('Montando rascunho de anamnese com IA…');
+    setDebug('Montando rascunho de anamnese com IA...');
     try{
       var prompt = [
-        'Monte anamnese fisioterapêutica curta em JSON.',
-        'Responda apenas JSON válido. Textos objetivos, sem parágrafos longos.',
-        'Campos obrigatórios: chief_complaint, history, diagnosis, limitations, goals, obs.',
-        'Limite por campo: até 180 caracteres.',
+        'Monte anamnese fisioterapeutica curta em JSON.',
+        'Responda apenas JSON valido. Textos objetivos, sem paragrafos longos.',
+        'Campos obrigatorios: chief_complaint, history, diagnosis, limitations, goals, obs.',
+        'Limite por campo: ate 180 caracteres.',
         'Paciente: ' + patient.name,
-        'Patologia conhecida: ' + (patient.pathology || 'não informada'),
+        'Patologia conhecida: ' + (patient.pathology || 'nao informada'),
         'Resumo: ' + notes
       ].join('\n');
       var external = await callExternalWithFallback(prompt, getConfig().provider);
@@ -732,98 +497,43 @@
       if(window.FEMICUnifiedRuntime && typeof window.FEMICUnifiedRuntime.applyAnamneseDraft === 'function'){
         window.FEMICUnifiedRuntime.applyAnamneseDraft(draft);
       }
-      addMessage('assistant', '<div><strong>Rascunho de anamnese aplicado.</strong><div class="muted small">Revise os campos antes de salvar.</div></div>');
-      setStatus('Rascunho de anamnese preenchido com apoio do ' + providerLabel(external.provider) + '.');
-      setDebug('Anamnese estruturada via ' + providerLabel(external.provider) + '.');
+      setDebug('Rascunho de anamnese gerado via ' + providerLabel(external.provider) + '. Revise antes de salvar.');
+      if(typeof window.toast === 'function') window.toast('Rascunho de anamnese aplicado.', 'success');
     }catch(error){
-      addMessage('assistant', '<div><strong>Não consegui preencher a anamnese agora.</strong><div class="muted small">' + esc(error.message || 'Falha desconhecida') + '</div></div>');
-      setStatus('Falha ao preencher anamnese com IA.');
-      setDebug('Erro na anamnese: ' + (error.message || 'falha desconhecida'));
+      setDebug('Falha ao preencher anamnese: ' + (error.message || 'erro desconhecido'));
+      if(typeof window.toast === 'function') window.toast('Nao consegui preencher a anamnese agora: ' + error.message, 'error');
     }
   }
   async function fillEvolutionWithAI(){
     var patient = getSelectedPatientOrWarn();
     if(!patient) return;
-    var notes = window.prompt('Resumo curto da sessão: conduta, resposta do paciente e orientação principal.');
+    var notes = window.prompt('Resumo curto da sessao: conduta, resposta do paciente e orientacao principal.');
     if(!notes) return;
     var unified = getUnifiedState();
     var lastEvolution = (unified.currentEvolutions || [])[0];
-    setStatus('Montando rascunho de evolução clínica com IA…');
+    setDebug('Montando rascunho de evolucao clinica com IA...');
     try{
       var prompt = [
-        'Monte evolução clínica fisioterapêutica curta em JSON.',
-        'Responda apenas JSON válido. Seja direto.',
-        'Campos obrigatórios: conduct, guidance.',
-        'Limite: conduct até 240 caracteres; guidance até 180 caracteres.',
+        'Monte evolucao clinica fisioterapeutica curta em JSON.',
+        'Responda apenas JSON valido. Seja direto.',
+        'Campos obrigatorios: conduct, guidance.',
+        'Limite: conduct ate 240 caracteres; guidance ate 180 caracteres.',
         'Paciente: ' + patient.name,
-        'Patologia conhecida: ' + (patient.pathology || 'não informada'),
-        lastEvolution ? 'Última evolução: ' + (lastEvolution.conduct || '').slice(0,220) : '',
-        'Sessão atual: ' + notes
+        'Patologia conhecida: ' + (patient.pathology || 'nao informada'),
+        lastEvolution ? 'Ultima evolucao: ' + (lastEvolution.conduct || '').slice(0,220) : '',
+        'Sessao atual: ' + notes
       ].filter(Boolean).join('\n');
       var external = await callExternalWithFallback(prompt, getConfig().provider);
       var draft = extractJson(external.text);
       if(window.FEMICUnifiedRuntime && typeof window.FEMICUnifiedRuntime.applyEvolutionDraft === 'function'){
         window.FEMICUnifiedRuntime.applyEvolutionDraft(draft);
       }
-      addMessage('assistant', '<div><strong>Rascunho de evolução clínica aplicado.</strong><div class="muted small">Revise os campos antes de salvar.</div></div>');
-      setStatus('Rascunho de evolução preenchido com apoio do ' + providerLabel(external.provider) + '.');
-      setDebug('Evolução estruturada via ' + providerLabel(external.provider) + '.');
+      setDebug('Rascunho de evolucao gerado via ' + providerLabel(external.provider) + '. Revise antes de salvar.');
+      if(typeof window.toast === 'function') window.toast('Rascunho de evolucao aplicado.', 'success');
     }catch(error){
-      addMessage('assistant', '<div><strong>Não consegui preencher a evolução clínica agora.</strong><div class="muted small">' + esc(error.message || 'Falha desconhecida') + '</div></div>');
-      setStatus('Falha ao preencher evolução clínica com IA.');
-      setDebug('Erro na evolução: ' + (error.message || 'falha desconhecida'));
+      setDebug('Falha ao preencher evolucao: ' + (error.message || 'erro desconhecido'));
+      if(typeof window.toast === 'function') window.toast('Nao consegui preencher a evolucao agora: ' + error.message, 'error');
     }
-  }
-  function toggleAssistantPanel(force){
-    var panel = el('assistantPanel');
-    if(!panel) return;
-    var willOpen = typeof force === 'boolean' ? force : panel.classList.contains('hidden');
-    panel.classList.toggle('hidden', !willOpen);
-    panel.classList.toggle('is-open', willOpen);
-    if(willOpen && el('assistantInput')){
-      setTimeout(function(){
-        if(el('assistantInput')) el('assistantInput').focus();
-      }, 50);
-    }
-  }
-  function openAIFromFab(){
-    toggleAssistantPanel(true);
-  }
-  function wireForms(){
-    var fab = el('assistantFab');
-    if(fab && !fab.dataset.aiFabBound){
-      fab.dataset.aiFabBound = 'true';
-      fab.addEventListener('click', function(event){
-        event.preventDefault();
-        toggleAssistantPanel();
-      });
-    }
-    var panelForm = el('assistantPanelForm');
-    if(panelForm){
-      panelForm.addEventListener('submit', function(event){
-        event.preventDefault();
-        submitQuestion(el('assistantInput') ? el('assistantInput').value : '');
-      });
-    }
-    if(el('aiCenterForm')){
-      el('aiCenterForm').addEventListener('submit', function(event){
-        event.preventDefault();
-        submitQuestion(el('aiCenterInput') ? el('aiCenterInput').value : '');
-      });
-    }
-    ['assistantInput','aiCenterInput'].forEach(function(id){
-      if(!el(id)) return;
-      el(id).addEventListener('keydown', function(event){
-        if(event.key === 'Enter' && !event.shiftKey){
-          event.preventDefault();
-          submitQuestion(event.target.value);
-        }
-      });
-    });
-  }
-  function initGreeting(){
-    if(state.messages.length) return;
-    addMessage('assistant', '<div><strong>Central IA pronta.</strong><div class="muted small">Você pode perguntar sobre horários livres, melhores encaixes, sessões realizadas, pacotes, ocupação da agenda e usar apoio clínico para anamnese e evolução.</div></div>');
   }
 
   window.renderAssistantAiProviderBadge = renderAssistantAiProviderBadge;
@@ -831,22 +541,19 @@
     var config = readConfigFromInputs();
     saveConfigToStorage(config);
     renderAssistantAiProviderBadge();
-    setStatus('Configuração de IA salva. Consultas internas continuam independentes das APIs.');
-    setDebug('Configuração salva com provedor principal ' + providerLabel(config.provider) + '.');
-    if(typeof window.toast === 'function') window.toast('Configuração da IA salva.', 'success');
+    setDebug('Configuracao clinica salva com provedor principal ' + providerLabel(config.provider) + '.');
+    if(typeof window.toast === 'function') window.toast('Configuracao da IA clinica salva.', 'success');
   };
   window.saveAssistantAiRules = function(){
     saveConfigToStorage({ rules: el('assistantAiRules') ? el('assistantAiRules').value.trim() || DEFAULT_ASSISTANT_RULES : DEFAULT_ASSISTANT_RULES });
-    setStatus('Regras da IA salvas.');
-    setDebug('Regras comportamentais atualizadas para respostas externas e rascunhos clínicos.');
+    setDebug('Regras da IA clinica atualizadas.');
     if(typeof window.toast === 'function') window.toast('Regras da IA salvas.', 'success');
   };
   window.resetAssistantAiRules = function(){
     if(el('assistantAiRules')) el('assistantAiRules').value = DEFAULT_ASSISTANT_RULES;
     saveConfigToStorage({ rules: DEFAULT_ASSISTANT_RULES });
-    setStatus('Regras padrão da IA restauradas.');
-    setDebug('A IA voltou ao comportamento padrão FEMIC.');
-    if(typeof window.toast === 'function') window.toast('Regras padrão restauradas.', 'success');
+    setDebug('Regras padrao da IA clinica restauradas.');
+    if(typeof window.toast === 'function') window.toast('Regras padrao restauradas.', 'success');
   };
   window.testAssistantAiConfig = async function(){
     var config = readConfigFromInputs();
@@ -854,34 +561,22 @@
     renderAssistantAiProviderBadge();
     var order = providerOrder(config.provider).filter(function(provider){ return providerHasKey(config, provider); });
     if(!order.length){
-      if(typeof window.toast === 'function') window.toast('Nenhuma chave de API foi configurada. As consultas internas continuam ativas.', 'warning');
+      if(typeof window.toast === 'function') window.toast('Nenhuma chave de API foi configurada para os rascunhos clinicos.', 'warning');
       return;
     }
-    setStatus('Testando configuração externa…');
+    setDebug('Testando provedor clinico externo...');
     try{
-      var external = await callExternalWithFallback('Responda apenas: ok FEMIC', config.provider);
-      setStatus('Teste concluído com sucesso usando ' + providerLabel(external.provider) + '.');
-      setDebug('Teste externo concluído com sucesso.');
-      if(typeof window.toast === 'function') window.toast('Teste concluído com sucesso usando ' + providerLabel(external.provider) + '.', 'success');
+      var external = await callExternalWithFallback('Responda apenas: ok FEMIC clinico', config.provider);
+      setDebug('Teste clinico concluido com sucesso usando ' + providerLabel(external.provider) + '.');
+      if(typeof window.toast === 'function') window.toast('Teste concluido com sucesso usando ' + providerLabel(external.provider) + '.', 'success');
     }catch(error){
-      setStatus('Falha ao testar a configuração externa.');
-      setDebug('Falha no teste: ' + (error.message || 'erro desconhecido'));
-      if(typeof window.toast === 'function') window.toast('Falha ao testar IA externa: ' + error.message, 'error');
+      setDebug('Falha no teste clinico: ' + (error.message || 'erro desconhecido'));
+      if(typeof window.toast === 'function') window.toast('Falha ao testar IA clinica: ' + error.message, 'error');
     }
   };
-  window.toggleAssistantPanel = toggleAssistantPanel;
-  window.openAIFromFab = openAIFromFab;
   window.fillAnamneseWithAI = fillAnamneseWithAI;
   window.fillEvolutionWithAI = fillEvolutionWithAI;
-  window.renderAssistantTasks = renderAssistantTasks;
-  window.createAssistantTaskManual = function(){
-    var title = window.prompt('Título da tarefa');
-    if(!title) return;
-    var type = window.prompt('Tipo: marcacao, remarcacao, cancelamento, laudo, retorno ou outro', 'outro') || 'outro';
-    var notes = window.prompt('Observações da tarefa', '') || '';
-    upsertTask({ title:title, type:norm(type).replace('marcação','marcacao'), notes:notes, origin:'manual', status:'aberta' });
-    if(typeof window.toast === 'function') window.toast('Tarefa criada.', 'success');
-  };
+  window.renderExtensionPendingTasks = renderExtensionPendingTasks;
   window.setAssistantTaskStatus = function(id, status){
     var list = readTasks();
     var task = list.find(function(item){ return item.id === id; });
@@ -890,21 +585,21 @@
     task.updated_at = new Date().toISOString();
     task.completed_at = status === 'concluida' ? new Date().toISOString() : task.completed_at;
     saveTasks(list);
-    renderAssistantTasks();
+    renderExtensionPendingTasks();
   };
   window.editAssistantTask = function(id){
     var list = readTasks();
     var task = list.find(function(item){ return item.id === id; });
     if(!task) return;
-    var title = window.prompt('Título da tarefa', task.title || '');
+    var title = window.prompt('Titulo da tarefa', task.title || '');
     if(!title) return;
-    var notes = window.prompt('Observações da tarefa', task.notes || '') || '';
+    var notes = window.prompt('Observacoes da tarefa', task.notes || '') || '';
     task.title = title.trim();
     task.notes = notes.trim();
     task.updated_at = new Date().toISOString();
     saveTasks(list);
-    renderAssistantTasks();
-    if(typeof window.toast === 'function') window.toast('Tarefa atualizada.', 'success');
+    renderExtensionPendingTasks();
+    if(typeof window.toast === 'function') window.toast('Pendencia atualizada.', 'success');
   };
   window.FEMICAssistantTasks = {
     list: readTasks,
@@ -918,16 +613,15 @@
     createTaskFromExtension(data);
   });
 
+  window.addEventListener('storage', function(event){
+    if(event.key === TASKS_STORAGE_KEY) renderExtensionPendingTasks();
+  });
+
   function init(){
     fillConfigInputs();
     renderAssistantAiProviderBadge();
-    if(el('assistantBuildLabel')) el('assistantBuildLabel').textContent = 'build ' + state.build;
-    renderSuggestions();
-    renderAssistantTasks();
-    wireForms();
-    initGreeting();
-    setStatus(state.status);
-    setDebug('Central IA ativa. Modo híbrido: dados internos primeiro, provedores externos por demanda.');
+    renderExtensionPendingTasks();
+    setDebug('IA clinica ativa. A parte operacional agora fica concentrada nas pendencias do WhatsApp.');
   }
 
   if(document.readyState === 'loading'){
