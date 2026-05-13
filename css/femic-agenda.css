@@ -4771,6 +4771,36 @@ textarea{
   font-size:.82rem;
 }
 
+#clinicalAiModal .modal{
+  width:min(780px,96vw);
+  border-radius:24px;
+}
+
+#clinicalAiModal .modal-body{
+  display:grid;
+  gap:0;
+}
+
+#clinicalAiModal .clinical-ai-toolbar{
+  align-items:center;
+}
+
+#clinicalAiModal #clinicalAiPrompt{
+  min-height:220px;
+  resize:vertical;
+  line-height:1.55;
+}
+
+#clinicalAiModal #clinicalAiMicBtn.is-listening{
+  border-color:transparent;
+  background:linear-gradient(135deg,#ef4444,#f97316);
+  color:#fff;
+}
+
+#clinicalAiModal #clinicalAiModalStatus{
+  min-height:20px;
+}
+
 #panel-ai .ai-rules-card{
   border:1px solid var(--femic-line);
   border-radius:16px;
