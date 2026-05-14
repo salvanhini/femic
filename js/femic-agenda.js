@@ -1,9 +1,11 @@
-const SQL_SCHEMA = `-- FEMIC Agenda v1.4.36 - Ficha com dia da semana FINAL LIMPA — Supabase da agenda
--- ATENÇÃO: este SQL reseta APENAS as tabelas da agenda/pacientes deste Supabase.
--- Use este SQL apenas quando desejar criar ou resetar a estrutura da Agenda FEMIC.
+const SQL_SCHEMA = `-- FEMIC Agenda v1.5.0 - Supabase seguro + prontuário em nuvem
+-- ATENÇÃO: este SQL reseta as tabelas operacionais deste Supabase.
+-- Faça backup JSON antes de rodar em um banco com dados reais.
 DROP TABLE IF EXISTS session_movements CASCADE;
 DROP TABLE IF EXISTS session_packages CASCADE;
 DROP TABLE IF EXISTS appointments CASCADE;
+DROP TABLE IF EXISTS clinical_evolutions CASCADE;
+DROP TABLE IF EXISTS clinical_anamneses CASCADE;
 DROP TABLE IF EXISTS clinic_rules CASCADE;
 DROP TABLE IF EXISTS services CASCADE;
 DROP TABLE IF EXISTS health_insurances CASCADE;
@@ -78,6 +80,30 @@ CREATE TABLE appointments (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+-- ANAMNESE CLÍNICA
+CREATE TABLE clinical_anamneses (
+  id TEXT PRIMARY KEY,
+  patient_id TEXT NOT NULL UNIQUE REFERENCES patients(id) ON DELETE CASCADE,
+  chief_complaint TEXT,
+  history TEXT,
+  diagnosis TEXT,
+  limitations TEXT,
+  goals TEXT,
+  obs TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- EVOLUÇÕES CLÍNICAS
+CREATE TABLE clinical_evolutions (
+  id TEXT PRIMARY KEY,
+  patient_id TEXT NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  conduct TEXT,
+  guidance TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
 -- HISTÓRICO DE MOVIMENTOS DE SESSÃO
 CREATE TABLE session_movements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -132,34 +158,61 @@ INSERT INTO schedule_settings (
   30
 );
 
--- LIBERAÇÃO PARA TESTE/USO SEM LOGIN
--- Futuramente, com login, podemos reativar RLS com políticas específicas.
-ALTER TABLE patients DISABLE ROW LEVEL SECURITY;
-ALTER TABLE health_insurances DISABLE ROW LEVEL SECURITY;
-ALTER TABLE services DISABLE ROW LEVEL SECURITY;
-ALTER TABLE schedule_settings DISABLE ROW LEVEL SECURITY;
-ALTER TABLE session_packages DISABLE ROW LEVEL SECURITY;
-ALTER TABLE appointments DISABLE ROW LEVEL SECURITY;
-ALTER TABLE session_movements DISABLE ROW LEVEL SECURITY;
-ALTER TABLE clinic_rules DISABLE ROW LEVEL SECURITY;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+-- ÍNDICES PARA USO NO PLANO FREE
+CREATE INDEX idx_patients_name ON patients(name);
+CREATE INDEX idx_patients_whatsapp ON patients(whatsapp);
+CREATE INDEX idx_appointments_date ON appointments(appointment_date);
+CREATE INDEX idx_appointments_patient ON appointments(patient_id);
+CREATE INDEX idx_session_packages_patient ON session_packages(patient_id);
+CREATE INDEX idx_movements_patient ON session_movements(patient_id);
+CREATE INDEX idx_clinical_evolutions_patient_date ON clinical_evolutions(patient_id, date DESC);
+
+-- SEGURANÇA: anon não acessa dados. Usuários autenticados da clínica acessam tudo.
+ALTER TABLE patients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE health_insurances ENABLE ROW LEVEL SECURITY;
+ALTER TABLE services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE schedule_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE session_packages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE session_movements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clinic_rules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clinical_anamneses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clinical_evolutions ENABLE ROW LEVEL SECURITY;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon;
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+
+CREATE POLICY "authenticated_full_access_patients" ON patients FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_full_access_health_insurances" ON health_insurances FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_full_access_services" ON services FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_full_access_schedule_settings" ON schedule_settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_full_access_session_packages" ON session_packages FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_full_access_appointments" ON appointments FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_full_access_session_movements" ON session_movements FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_full_access_clinic_rules" ON clinic_rules FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_full_access_clinical_anamneses" ON clinical_anamneses FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_full_access_clinical_evolutions" ON clinical_evolutions FOR ALL TO authenticated USING (true) WITH CHECK (true);
 NOTIFY pgrst, 'reload schema';`;
-const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],movements=[],clinicRules=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();const appointmentSearchSelected=new Set();
+const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],movements=[],clinicRules=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();let editingServiceId='';let loadedAppointmentQuery='';const appointmentSearchSelected=new Set();
+const packageScheduleCache=new Map();
+const dayAppointmentCache=new Map();
 const CLINIC_RULES_STORAGE_KEY='femic_agenda_clinic_rules';
 function toast(msg,type='info'){const el=document.createElement('div');el.className='toast '+type;el.textContent=msg;$('toastWrap').appendChild(el);setTimeout(()=>el.remove(),3600)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function localIsoDate(d){const x=new Date(d);return String(x.getFullYear())+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}function todayIso(){return localIsoDate(new Date())}function isoDate(d){return localIsoDate(d)}function dateDay(dateStr){const [y,m,d]=String(dateStr).split('-').map(Number);return new Date(y,m-1,d).getDay()}function fmtDate(s){if(!s)return'';const [y,m,d]=String(s).split('-');return d+'/'+m+'/'+y}function fmtWeekday(s){if(!s)return'';const [y,m,d]=String(s).split('-').map(Number);const dias=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];return dias[new Date(y,m-1,d).getDay()]||''}function cleanPhone(v){return String(v||'').replace(/\D/g,'')}function brl(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}function normalizeTime(t){return String(t||'').slice(0,5)}function timeToMin(t){const [h,m]=normalizeTime(t).split(':').map(Number);return h*60+(m||0)}function minToTime(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}function addMinutes(t,m){return minToTime(timeToMin(t)+Number(m||0))}function base(){return ($('sbUrl').value||localStorage.femic_agenda_url||'').trim().replace(/\/$/,'')}function key(){return ($('sbKey').value||localStorage.femic_agenda_key||'').trim()}function headers(){
+function localIsoDate(d){const x=new Date(d);return String(x.getFullYear())+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}function todayIso(){return localIsoDate(new Date())}function isoDate(d){return localIsoDate(d)}function dateDay(dateStr){const [y,m,d]=String(dateStr).split('-').map(Number);return new Date(y,m-1,d).getDay()}function fmtDate(s){if(!s)return'';const [y,m,d]=String(s).split('-');return d+'/'+m+'/'+y}function fmtWeekday(s){if(!s)return'';const [y,m,d]=String(s).split('-').map(Number);const dias=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];return dias[new Date(y,m-1,d).getDay()]||''}function cleanPhone(v){return String(v||'').replace(/\D/g,'')}function brl(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}function normalizeTime(t){return String(t||'').slice(0,5)}function timeToMin(t){const [h,m]=normalizeTime(t).split(':').map(Number);return h*60+(m||0)}function minToTime(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}function addMinutes(t,m){return minToTime(timeToMin(t)+Number(m||0))}function base(){return ($('sbUrl').value||localStorage.femic_agenda_url||'').trim().replace(/\/$/,'')}function key(){return ($('sbKey').value||localStorage.femic_agenda_key||'').trim()}function hasValidSession(){const jwt=sessionStorage.getItem('femic_jwt');const expiry=Number(sessionStorage.getItem('femic_token_expiry')||0);return !!(jwt&&expiry&&Date.now()<expiry)}async function ensureSession(){if(hasValidSession())return true;if(sessionStorage.getItem('femic_refresh_token')&&await femicRefreshToken())return true;throw new Error('Faça login para acessar os dados do Supabase.')}function headers(){
   const jwt = sessionStorage.getItem('femic_jwt');
   const expiry = Number(sessionStorage.getItem('femic_token_expiry') || 0);
   const tokenValid = jwt && expiry && Date.now() < expiry;
-  const authJwt = tokenValid ? jwt : key();
+  const authJwt = tokenValid ? jwt : '';
   if (jwt && expiry && Date.now() > expiry && sessionStorage.getItem('femic_refresh_token')) {
     femicRefreshToken().catch(function(){});
   }
   return{apikey:key(),Authorization:'Bearer '+authJwt,'Content-Type':'application/json',Prefer:'return=representation'};
 }
-async function api(path,opt={}){const res=await fetch(base()+'/rest/v1/'+path,{headers:headers(),...opt});const txt=await res.text();let data;try{data=txt?JSON.parse(txt):null}catch(e){data=txt}if(!res.ok){console.error('Supabase error',path,res.status,data);throw new Error((data&&data.message)||txt||('HTTP '+res.status))}return data}
+async function api(path,opt={}){await ensureSession();const res=await fetch(base()+'/rest/v1/'+path,{headers:headers(),...opt});const txt=await res.text();let data;try{data=txt?JSON.parse(txt):null}catch(e){data=txt}if(!res.ok){console.error('Supabase error',path,res.status,data);throw new Error((data&&data.message)||txt||('HTTP '+res.status))}return data}
 function readClinicRulesCache(){try{const raw=JSON.parse(localStorage.getItem(CLINIC_RULES_STORAGE_KEY)||'[]');return Array.isArray(raw)?raw:[]}catch(e){return[]}}
 function writeClinicRulesCache(list){localStorage.setItem(CLINIC_RULES_STORAGE_KEY,JSON.stringify(Array.isArray(list)?list:[]))}
 function isMissingClinicRulesTableError(err){return /clinic_rules|relation .* does not exist|Could not find the table/i.test(String(err&&err.message||err||''))}
@@ -167,7 +220,56 @@ async function loadClinicRulesCollection(){try{const rows=await api('clinic_rule
 clinicRules=readClinicRulesCache();
 function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊';$('tplReminder').value=tpl;if($('whatsappProvider'))$('whatsappProvider').value=localStorage.femic_whatsapp_provider||'wa_me';if($('whatsappEndpoint'))$('whatsappEndpoint').value=localStorage.femic_whatsapp_endpoint||'';if($('whatsappTplAppointment'))$('whatsappTplAppointment').value=localStorage.femic_whatsapp_tpl_appointment||'lembrete_sessao';renderWhatsappProviderBadge()}
 async function testConnection(){try{await api('patients?select=id&limit=1');toast('Conexão e carregamento funcionando.','success')}catch(e){toast('Erro real: '+e.message,'error')}}
-async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const [pa,hi,sv,pk,ap,mv,st,cr]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api('appointments?select=*&order=appointment_date.asc,start_time.asc'),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});syncForms();renderActivePanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);toast('Erro ao carregar: '+e.message,'error')}}
+function appointmentWindowQuery(){
+  const mode = $('viewMode') ? $('viewMode').value : 'week';
+  let from, to;
+  if(mode === 'month'){
+    from = localIsoDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), 1));
+    to = localIsoDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0));
+  }else{
+    const start = weekStart(currentDate);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    from = localIsoDate(start);
+    to = localIsoDate(end);
+  }
+  return 'appointments?select=*&appointment_date=gte.' + from + '&appointment_date=lte.' + to + '&order=appointment_date.asc,start_time.asc';
+}
+function appointmentReportQuery(month){
+  const parts = String(month || new Date().toISOString().slice(0,7)).split('-').map(Number);
+  const y = parts[0], m = parts[1] || 1;
+  const from = String(y).padStart(4,'0') + '-' + String(m).padStart(2,'0') + '-01';
+  const to = localIsoDate(new Date(y, m, 0));
+  return 'appointments?select=*&appointment_date=gte.' + from + '&appointment_date=lte.' + to + '&order=appointment_date.asc,start_time.asc';
+}
+async function refreshAppointmentWindowIfNeeded(){
+  const query = appointmentWindowQuery();
+  if(!base() || !key() || query === loadedAppointmentQuery) return;
+  try{
+    appointments = await api(query) || [];
+    loadedAppointmentQuery = query;
+    renderAgenda();
+    renderAppointmentSearch();
+    document.dispatchEvent(new CustomEvent('femic:state-updated'));
+  }catch(e){
+    console.error(e);
+    toast('Erro ao carregar período da agenda: ' + e.message, 'error');
+  }
+}
+async function refreshReportMonthIfNeeded(month){
+  const query = appointmentReportQuery(month);
+  if(!base() || !key() || query === loadedAppointmentQuery) return;
+  try{
+    appointments = await api(query) || [];
+    loadedAppointmentQuery = query;
+    renderReport();
+    document.dispatchEvent(new CustomEvent('femic:state-updated'));
+  }catch(e){
+    console.error(e);
+    toast('Erro ao carregar relatório mensal: ' + e.message, 'error');
+  }
+}
+async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const apQuery=appointmentWindowQuery();const [pa,hi,sv,pk,ap,mv,st,cr]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api(apQuery),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];loadedAppointmentQuery=apQuery;movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});packageScheduleCache.clear();dayAppointmentCache.clear();syncForms();renderActivePanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);toast('Erro ao carregar: '+e.message,'error')}}
 function toggleSidebar(){
   $('sidebar')?.classList.toggle('show');
   $('overlay')?.classList.toggle('show');
@@ -306,7 +408,7 @@ function renderAppointmentSearch(){
   target.innerHTML=results.length?results.map(a=>{
     const patient=patientById(a.patient_id),service=serviceById(a.service_id),checked=appointmentSearchSelected.has(String(a.id))?'checked':'';
     const label={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;
-    return `<div class="appointment-search-row status-${a.status}"><label class="appt-check"><input type="checkbox" ${checked} onchange="toggleAppointmentSearchSelection('${a.id}',this.checked)"></label><div class="appt-search-main"><strong>${esc(patient.name||'Paciente')}</strong><span>${fmtDate(a.appointment_date)} · ${normalizeTime(a.start_time)}-${normalizeTime(a.end_time)} · ${esc(service.name||'Sem serviço')}</span></div><span class="status-chip ${a.status}">${label}</span><div class="appt-search-actions"><button class="btn small" onclick="openAppt('${a.appointment_date}','${a.id}')">Editar</button><button class="btn small warning" onclick="cancelAppointmentFromSearch('${a.id}')">Cancelar</button><button class="btn small danger" onclick="deleteAppointmentFromSearch('${a.id}')">Apagar</button></div></div>`;
+    return `<div class="appointment-search-row status-${a.status}"><label class="appt-check"><input type="checkbox" ${checked} onchange="toggleAppointmentSearchSelection('${a.id}',this.checked)"></label><div class="appt-search-main"><strong>${esc(patient.name||'Paciente')}</strong><span>${fmtWeekday(a.appointment_date)} · ${fmtDate(a.appointment_date)} · ${normalizeTime(a.start_time)}-${normalizeTime(a.end_time)} · ${esc(service.name||'Sem serviço')}</span></div><span class="status-chip ${a.status}">${label}</span><div class="appt-search-actions"><button class="btn small" onclick="openAppt('${a.appointment_date}','${a.id}')">Editar</button><button class="btn small warning" onclick="cancelAppointmentFromSearch('${a.id}')">Cancelar</button><button class="btn small danger" onclick="deleteAppointmentFromSearch('${a.id}')">Apagar</button></div></div>`;
   }).join(''):'<div class="muted small">Nenhum agendamento encontrado.</div>';
 }
 function toggleAppointmentSearchSelection(id,checked){if(checked)appointmentSearchSelected.add(String(id));else appointmentSearchSelected.delete(String(id));renderAppointmentSearch()}
@@ -318,7 +420,7 @@ async function bulkCancelAppointments(){const ids=selectedAppointmentIds();if(!i
 async function bulkDeleteAppointments(){const ids=selectedAppointmentIds();if(!ids.length){toast('Selecione ao menos um agendamento.','warning');return}const typed=prompt('Digite APAGAR para excluir definitivamente '+ids.length+' agendamento(s).');if(typed!=='APAGAR')return;try{for(const id of ids){await api('appointments?id=eq.'+id,{method:'DELETE'})}appointmentSearchSelected.clear();await loadAll(true);toast(ids.length+' agendamento(s) apagado(s).','success')}catch(e){toast('Erro ao apagar em massa: '+e.message,'error')}}
 function updateAgendaViewToggle(){const mode=$('viewMode')?.value||'week';document.querySelectorAll('.view-chip').forEach(btn=>btn.classList.remove('active'));if(mode==='month')$('viewMonthBtn')?.classList.add('active');else $('viewWeekBtn')?.classList.add('active')}
 function setAgendaViewMode(mode){if(!$('viewMode'))return;$('viewMode').value=mode;updateAgendaViewToggle();if(mode==='day'){showPanel('day');return}if(mode==='agenda')showPanel('agenda');renderAgenda()}
-function renderAgenda(){populateAgendaFilters();updateAgendaViewToggle();if($('viewMode').value==='month')renderMonth();else renderWeek()}
+function renderAgenda(){populateAgendaFilters();updateAgendaViewToggle();refreshAppointmentWindowIfNeeded();if($('viewMode').value==='month')renderMonth();else renderWeek()}
 function shouldShowEmptyMonthDays(){return localStorage.getItem('femic_month_show_empty_days')==='true'}
 function toggleMonthEmptyDays(){localStorage.setItem('femic_month_show_empty_days',shouldShowEmptyMonthDays()?'false':'true');renderMonth()}
 function renderMonth(){
@@ -375,7 +477,8 @@ function toggleRecDayCard(i){const card=$('recCard'+i);if(card)card.classList.to
 function syncRecurrenceTimes(){document.querySelectorAll('.recTime').forEach(inp=>{if(!inp.value)inp.value=$('apptStart').value||'08:00'});document.querySelectorAll('.recDay').forEach(ch=>toggleRecDayCard(ch.value));}
 function previewRecurringEnd(i){const inp=$('recTime'+i),out=$('recEnd'+i),s=serviceById($('apptService').value);if(!inp||!out)return;if(!$('apptService').value){out.textContent='Selecione o serviço';return}const start=inp.value||$('apptStart').value||'08:00';const end=addMinutes(start,Number(s.duration_minutes||45));out.textContent='Fim previsto: '+end;}function onServiceChange(updatePrice=false){const sid=$('apptService').value;if(!sid){$('apptEnd').value='';if(updatePrice)$('apptPrice').value='';showSaldoInfo();document.querySelectorAll('.recDay:checked').forEach(ch=>previewRecurringEnd(ch.value));return}const s=serviceById(sid);$('apptEnd').value=addMinutes($('apptStart').value||settings.start_time,Number(s.duration_minutes||45));if(updatePrice)setAppointmentPriceFromService(true);showSaldoInfo();document.querySelectorAll('.recDay:checked').forEach(ch=>previewRecurringEnd(ch.value))}
 function showSaldoInfo(){const pid=$('apptPatient').value,sid=$('apptService').value;if(!pid&&!sid){$('saldoInfo').innerHTML='Selecione paciente e serviço para visualizar pacote e saldo.';return}if(!pid){$('saldoInfo').innerHTML='Selecione o paciente para visualizar pacote e saldo.';return}if(!sid){$('saldoInfo').innerHTML='Selecione o serviço para visualizar pacote e saldo.';return}const pk=packages.find(p=>String(p.patient_id)===String(pid)&&String(p.service_id)===String(sid)&&p.active!==false);const future=appointments.filter(a=>a.patient_id===pid&&a.service_id===sid&&a.status==='agendado'&&a.appointment_date>=todayIso()).length;if(!pk)$('saldoInfo').innerHTML='Sem pacote ativo para este paciente/serviço.';else $('saldoInfo').innerHTML=`Pacote: ${pk.total_sessions} sessões · saldo ${pk.remaining_sessions} · futuras agendadas ${future} · disponível aproximado ${Number(pk.remaining_sessions||0)-future}`}
-function hasConflict(candidate,ignoreId=null){const sNew=serviceById(candidate.service_id);const n1=timeToMin(candidate.start_time),n2=timeToMin(candidate.end_time);const sameDay=appointments.filter(a=>a.appointment_date===candidate.appointment_date&&a.status!=='cancelado'&&String(a.id)!==String(ignoreId));const overlaps=sameDay.filter(a=>timeToMin(normalizeTime(a.start_time))<n2 && timeToMin(normalizeTime(a.end_time))>n1);if(!overlaps.length)return null;if((sNew.appointment_mode||'grupo')==='individual')return 'Serviço individual exige horário exclusivo.';if(overlaps.some(a=>(serviceById(a.service_id).appointment_mode||'grupo')==='individual'))return 'Já existe atendimento individual neste intervalo.';const max=Number(sNew.max_patients||settings.max_patients_per_slot||4);if(overlaps.length>=max)return 'Limite de pacientes simultâneos atingido.';return null}
+function conflictInAppointmentList(candidate,list,ignoreId=null){const sNew=serviceById(candidate.service_id);const n1=timeToMin(candidate.start_time),n2=timeToMin(candidate.end_time);const sameDay=(list||[]).filter(a=>a.appointment_date===candidate.appointment_date&&a.status!=='cancelado'&&String(a.id)!==String(ignoreId));const overlaps=sameDay.filter(a=>timeToMin(normalizeTime(a.start_time))<n2 && timeToMin(normalizeTime(a.end_time))>n1);if(!overlaps.length)return null;if((sNew.appointment_mode||'grupo')==='individual')return 'Serviço individual exige horário exclusivo.';if(overlaps.some(a=>(serviceById(a.service_id).appointment_mode||'grupo')==='individual'))return 'Já existe atendimento individual neste intervalo.';const max=Number(sNew.max_patients||settings.max_patients_per_slot||4);if(overlaps.length>=max)return 'Limite de pacientes simultâneos atingido.';return null}
+function hasConflict(candidate,ignoreId=null){return conflictInAppointmentList(candidate,appointments,ignoreId)}
 async function persistAppointment(id,payload){try{return id?(await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify(payload)}))[0]:(await api('appointments',{method:'POST',body:JSON.stringify(payload)}))[0]}catch(e){if(String(e.message||'').includes('service_price_at_time')){const clone={...payload};delete clone.service_price_at_time;toast('Campo service_price_at_time ausente no banco. Salvando sem ele. Rode o patch SQL v1.4.28 depois.','warning');return id?(await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify(clone)}))[0]:(await api('appointments',{method:'POST',body:JSON.stringify(clone)}))[0]}throw e}}
 async function saveAppointment(){const saveBtn=$('saveApptBtn');try{if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Salvando...'}const id=$('apptId').value;if(!$('apptPatient').value){toast('Selecione o paciente antes de salvar.','warning');$('apptPatient').focus();return}if(!$('apptService').value){toast('Selecione o serviço antes de salvar.','warning');$('apptService').focus();return}if(!$('apptDate').value){toast('Informe a data do atendimento.','warning');$('apptDate').focus();return}if(!$('apptStart').value){toast('Informe o horário inicial.','warning');$('apptStart').focus();return}const s=serviceById($('apptService').value);if(!$('apptEnd').value) $('apptEnd').value=addMinutes($('apptStart').value,Number(s.duration_minutes||45));const agreedPrice=Number(String($('apptPrice')?.value||'0').replace(',','.'));if(!Number.isFinite(agreedPrice)||agreedPrice<0){toast('Informe um valor válido para a sessão.','warning');$('apptPrice')?.focus();return}const basePayload={patient_id:$('apptPatient').value,service_id:$('apptService').value,appointment_date:$('apptDate').value,start_time:$('apptStart').value,end_time:$('apptEnd').value,duration_minutes:Number(s.duration_minutes||45),status:$('apptStatus').value,service_price_at_time:agreedPrice};if(timeToMin(basePayload.end_time)<=timeToMin(basePayload.start_time)){toast('O horário final precisa ser maior que o inicial.','warning');return}if(!isTodayDate(basePayload.appointment_date)&&!isWorking(basePayload.appointment_date)){toast('Dia fora do expediente.','warning');return}if(!isInsideWorkingTime(basePayload.appointment_date,basePayload.start_time,basePayload.end_time)){toast('Horário fora dos períodos de expediente configurados.','warning');return}if($('recurring').checked&&!id){await saveRecurring(basePayload);return}const msg=hasConflict(basePayload,id);if(msg){toast(msg,'warning');return}let old=id?appointments.find(a=>String(a.id)===String(id)):null;let saved=await persistAppointment(id,basePayload);await handlePackageMovement(old,saved);if(!id&&$('rescheduleOriginId').value){await finalizeReschedule($('rescheduleOriginId').value,$('rescheduleCancelOriginal').value==='true')}closeModal('apptModal');await loadAll(true);toast('Agendamento salvo.','success')}catch(e){toast('Erro ao salvar: '+e.message,'error')}finally{if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='Salvar agendamento'}}}
 async function saveRecurring(payload){const selected=[...document.querySelectorAll('.recDay:checked')].map(x=>Number(x.value));const count=Number($('recCount').value||1);if(!selected.length){toast('Selecione ao menos um dia da semana.','warning');return}const s=serviceById(payload.service_id);const dayTimes={};selected.forEach(d=>{dayTimes[d]=($('recTime'+d)?.value||payload.start_time||'08:00')});let created=0,conflicts=0,date=new Date(payload.appointment_date+'T00:00:00'),tries=0;while(created<count&&tries<370){const ds=isoDate(date),dow=date.getDay();if(selected.includes(dow)&&(isTodayDate(ds)||isWorking(ds))){const st=dayTimes[dow]||payload.start_time;const cand={...payload,appointment_date:ds,start_time:st,end_time:addMinutes(st,Number(s.duration_minutes||payload.duration_minutes||45)),duration_minutes:Number(s.duration_minutes||payload.duration_minutes||45)};const msg=hasConflict(cand);if(msg||!isInsideWorkingTime(cand.appointment_date,cand.start_time,cand.end_time))conflicts++;else{await persistAppointment(null,cand);created++}}date.setDate(date.getDate()+1);tries++}closeModal('apptModal');await loadAll(true);toast(`${created} agendamentos criados. ${conflicts} conflitos ignorados.`,'success')}
@@ -575,7 +678,7 @@ async function quickStatus(id,newStatus){
     toast('Status atualizado para '+label+'.','success');
   }catch(e){console.error(e);toast('Erro ao alterar status: '+e.message,'error')}
 }
-function renderReport(){const month=$('reportMonth').value||new Date().toISOString().slice(0,7);$('reportMonth').value=month;const done=appointments.filter(a=>a.status==='concluido'&&String(a.appointment_date).startsWith(month));const groups={};done.forEach(a=>{const s=serviceById(a.service_id),key=(s.health_insurance_id||'')+'|'+(s.id||'')+'|'+Number(a.service_price_at_time||s.price||0);if(!groups[key])groups[key]={payer:payerName(s.health_insurance_id),service:s.name||'Sem serviço',q:0,price:Number(a.service_price_at_time||s.price||0)};groups[key].q++});const rows=Object.values(groups),total=rows.reduce((a,r)=>a+r.q*r.price,0);$('reportKpis').innerHTML=`<div class="kpi"><div class="small muted">Concluídos</div><strong>${done.length}</strong></div><div class="kpi"><div class="small muted">Total</div><strong>${brl(total)}</strong></div><div class="kpi"><div class="small muted">Cancelados</div><strong>${appointments.filter(a=>a.status==='cancelado'&&String(a.appointment_date).startsWith(month)).length}</strong></div><div class="kpi"><div class="small muted">Agendados</div><strong>${appointments.filter(a=>['agendado','confirmado'].includes(a.status)&&String(a.appointment_date).startsWith(month)).length}</strong></div>`;$('reportBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.payer)}</td><td>${esc(r.service)}</td><td>${r.q}</td><td>${brl(r.price)}</td><td><strong>${brl(r.q*r.price)}</strong></td></tr>`).join(''):'<tr><td colspan="5" class="muted">Sem atendimentos concluídos.</td></tr>'}
+function renderReport(){const month=$('reportMonth').value||new Date().toISOString().slice(0,7);$('reportMonth').value=month;refreshReportMonthIfNeeded(month);const done=appointments.filter(a=>a.status==='concluido'&&String(a.appointment_date).startsWith(month));const groups={};done.forEach(a=>{const s=serviceById(a.service_id),key=(s.health_insurance_id||'')+'|'+(s.id||'')+'|'+Number(a.service_price_at_time||s.price||0);if(!groups[key])groups[key]={payer:payerName(s.health_insurance_id),service:s.name||'Sem serviço',q:0,price:Number(a.service_price_at_time||s.price||0)};groups[key].q++});const rows=Object.values(groups),total=rows.reduce((a,r)=>a+r.q*r.price,0);$('reportKpis').innerHTML=`<div class="kpi"><div class="small muted">Concluídos</div><strong>${done.length}</strong></div><div class="kpi"><div class="small muted">Total</div><strong>${brl(total)}</strong></div><div class="kpi"><div class="small muted">Cancelados</div><strong>${appointments.filter(a=>a.status==='cancelado'&&String(a.appointment_date).startsWith(month)).length}</strong></div><div class="kpi"><div class="small muted">Agendados</div><strong>${appointments.filter(a=>['agendado','confirmado'].includes(a.status)&&String(a.appointment_date).startsWith(month)).length}</strong></div>`;$('reportBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.payer)}</td><td>${esc(r.service)}</td><td>${r.q}</td><td>${brl(r.price)}</td><td><strong>${brl(r.q*r.price)}</strong></td></tr>`).join(''):'<tr><td colspan="5" class="muted">Sem atendimentos concluídos.</td></tr>'}
 function exportCsv(){const rows=[['Pagador','Serviço','Quantidade','Valor','Total']];document.querySelectorAll('#reportBody tr').forEach(tr=>{const cells=[...tr.children].map(td=>td.innerText);if(cells.length===5)rows.push(cells)});const csv=rows.map(r=>r.map(c=>'"'+String(c).replaceAll('"','""')+'"').join(';')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='relatorio_agenda_femic.csv';a.click()}
 
 
@@ -619,6 +722,137 @@ function packagePatternSummary(p){
     return `<div class="package-pattern"><div class="package-pattern-title">🗓️ Padrão de agendamento</div><div class="package-pattern-list">${chips}</div>${extra}<div class="package-pattern-note">${note}</div></div>`;
   }catch(e){return '';}
 }
+function packageScheduleKey(p){return String(p?.patient_id||'')+'|'+String(p?.service_id||'')}
+async function fetchPackageAppointments(p,force=false){
+  const cacheKey=packageScheduleKey(p);
+  if(!force&&packageScheduleCache.has(cacheKey))return packageScheduleCache.get(cacheKey);
+  try{
+    const query='appointments?select=*&patient_id=eq.'+encodeURIComponent(p.patient_id)+'&service_id=eq.'+encodeURIComponent(p.service_id)+'&order=appointment_date.asc,start_time.asc';
+    const rows=await api(query)||[];
+    packageScheduleCache.set(cacheKey,rows);
+    return rows;
+  }catch(e){
+    console.warn('Falha ao buscar agenda completa do pacote:',e);
+    const fallback=appointments.filter(a=>String(a.patient_id)===String(p.patient_id)&&String(a.service_id)===String(p.service_id));
+    packageScheduleCache.set(cacheKey,fallback);
+    return fallback;
+  }
+}
+async function fetchAppointmentsForDate(dateStr){
+  if(dayAppointmentCache.has(dateStr))return dayAppointmentCache.get(dateStr);
+  const rows=await api('appointments?select=*&appointment_date=eq.'+encodeURIComponent(dateStr)+'&order=start_time.asc')||[];
+  dayAppointmentCache.set(dateStr,rows);
+  return rows;
+}
+function isFutureScheduledAppointment(a){return ['agendado','confirmado'].includes(a.status)&&String(a.appointment_date||'')>=todayIso()}
+function compareAppointmentAsc(a,b){return String(a.appointment_date||'').localeCompare(String(b.appointment_date||''))||normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time))}
+function addDaysIso(dateStr,days){const d=new Date(String(dateStr)+'T00:00:00');d.setDate(d.getDate()+Number(days||0));return isoDate(d)}
+function packageScheduleStats(p,list){
+  const total=Number(p.total_sessions||0),remain=Number(p.remaining_sessions||0);
+  const related=(list||[]).filter(a=>String(a.patient_id)===String(p.patient_id)&&String(a.service_id)===String(p.service_id));
+  const futures=related.filter(isFutureScheduledAppointment).sort(compareAppointmentAsc);
+  const valid=related.filter(a=>a.status!=='cancelado').sort(compareAppointmentAsc);
+  const lastFuture=futures[futures.length-1]||null;
+  const lastAny=valid[valid.length-1]||null;
+  return {total,remain,used:Math.max(0,total-remain),futures,futureCount:futures.length,lastFuture,lastAny,toSchedule:Math.max(0,remain-futures.length),alert:remain>0&&futures.length<=1};
+}
+function packageScheduleLine(a){
+  if(!a)return 'Sem futuras marcadas';
+  return fmtWeekday(a.appointment_date)+' · '+fmtDate(a.appointment_date)+' · '+normalizeTime(a.start_time);
+}
+function packageScheduleSummaryHtml(p,list){
+  const st=packageScheduleStats(p,list);
+  const cls=st.alert?'package-schedule-alert':'package-schedule-ok';
+  const alertText=st.alert?(st.futureCount?'Última sessão futura':'Sem futuras marcadas'):'Agenda suficiente para o saldo atual';
+  const action=st.toSchedule>0&&p.active!==false?`<button class="btn ghost package-complete-btn" onclick="completePackageBalance('${p.id}')">Completar saldo</button>`:'';
+  return `<div class="package-schedule ${cls}"><div><strong>${esc(alertText)}</strong><span>${esc(packageScheduleLine(st.lastFuture))} · futuras ${st.futureCount} · faltam agendar ${st.toSchedule}</span></div>${action}</div>`;
+}
+async function hydratePackageScheduleSummaries(){
+  const nodes=[...document.querySelectorAll('[data-package-schedule-id]')];
+  if(!nodes.length)return;
+  await Promise.all(nodes.map(async node=>{
+    const p=packages.find(x=>String(x.id)===String(node.dataset.packageScheduleId));
+    if(!p)return;
+    const rows=await fetchPackageAppointments(p);
+    node.innerHTML=packageScheduleSummaryHtml(p,rows);
+  }));
+}
+function inferRecentPackagePattern(list){
+  const recent=(list||[]).filter(a=>a.status!=='cancelado'&&a.appointment_date&&a.start_time).sort((a,b)=>-compareAppointmentAsc(a,b)).slice(0,10);
+  const seen=new Set(),items=[];
+  recent.forEach(a=>{
+    const wd=dateDay(a.appointment_date),time=normalizeTime(a.start_time),key=wd+'|'+time;
+    if(seen.has(key))return;
+    seen.add(key);
+    items.push({weekday:wd,time});
+  });
+  return items.sort((a,b)=>(a.weekday-b.weekday)||a.time.localeCompare(b.time));
+}
+function fillRecurringFromPackage(p,count,pattern,startDate){
+  openAppt(startDate||todayIso(),null,pattern[0]?.time||((parsePeriods()[0]||{}).start)||settings.start_time||'08:00');
+  $('apptPatient').value=p.patient_id;
+  $('apptService').value=p.service_id;
+  $('apptStatus').value='agendado';
+  $('recurring').checked=true;
+  $('recCount').value=String(Math.max(1,count||1));
+  toggleRecurrence();
+  pattern.forEach(item=>{
+    const ch=$('recCard'+item.weekday)?.querySelector('.recDay'),time=$('recTime'+item.weekday);
+    if(ch)ch.checked=true;
+    if(time)time.value=item.time;
+    toggleRecDayCard(item.weekday);
+  });
+  onServiceChange(true);
+}
+async function completePackageBalance(id){
+  const p=packages.find(x=>String(x.id)===String(id));
+  if(!p){toast('Pacote não encontrado.','warning');return}
+  try{
+    toast('Analisando saldo e agenda do pacote...','info');
+    const rows=await fetchPackageAppointments(p,true);
+    const stats=packageScheduleStats(p,rows);
+    if(stats.toSchedule<=0){toast('Este pacote já tem futuras suficientes para o saldo atual.','success');return}
+    const pattern=inferRecentPackagePattern(rows);
+    const startBase=stats.lastFuture?addDaysIso(stats.lastFuture.appointment_date,1):(stats.lastAny?addDaysIso(stats.lastAny.appointment_date,1):todayIso());
+    const startDate=String(startBase)<todayIso()?todayIso():startBase;
+    if(!pattern.length){
+      fillRecurringFromPackage(p,stats.toSchedule,[],startDate);
+      toast('Não achei padrão recente. Complete os dias manualmente no agendamento recorrente.','warning');
+      return;
+    }
+    const patternLabel=pattern.map(x=>['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'][x.weekday]+' '+x.time).join(', ');
+    const ok=confirm('Completar saldo deste pacote?\n\nPaciente: '+patientName(p.patient_id)+'\nServiço: '+serviceName(p.service_id)+'\nSaldo: '+stats.remain+'\nFuturas marcadas: '+stats.futureCount+'\nNovas sessões: '+stats.toSchedule+'\nÚltima futura: '+packageScheduleLine(stats.lastFuture)+'\nPadrão: '+patternLabel);
+    if(!ok)return;
+    const service=serviceById(p.service_id);
+    const duration=Number(service.duration_minutes||45);
+    const dayTimes=pattern.reduce((acc,item)=>{if(!acc[item.weekday])acc[item.weekday]=[];acc[item.weekday].push(item.time);return acc},{});
+    let created=0,conflicts=0,tries=0,date=new Date(startDate+'T00:00:00');
+    while(created<stats.toSchedule&&tries<370){
+      const ds=isoDate(date),wd=date.getDay(),times=dayTimes[wd]||[];
+      for(const st of times){
+        if(created>=stats.toSchedule)break;
+        const cand={patient_id:p.patient_id,service_id:p.service_id,appointment_date:ds,start_time:st,end_time:addMinutes(st,duration),duration_minutes:duration,status:'agendado',service_price_at_time:Number(service.price||0)};
+        if((!isTodayDate(ds)&&!isWorking(ds))||!isInsideWorkingTime(ds,cand.start_time,cand.end_time)){conflicts++;continue}
+        const dayRows=await fetchAppointmentsForDate(ds);
+        const msg=conflictInAppointmentList(cand,dayRows);
+        if(msg){conflicts++;continue}
+        const saved=await persistAppointment(null,cand);
+        dayRows.push(saved);
+        rows.push(saved);
+        created++;
+      }
+      date.setDate(date.getDate()+1);
+      tries++;
+    }
+    packageScheduleCache.delete(packageScheduleKey(p));
+    closeModal('apptModal');
+    await loadAll(true);
+    toast(created+' sessão(ões) criada(s). '+conflicts+' encaixe(s) ignorado(s).',created?'success':'warning');
+  }catch(e){
+    console.error(e);
+    toast('Erro ao completar saldo: '+e.message,'error');
+  }
+}
 function patientCard(p){const linked=appointments.some(a=>String(a.patient_id)===String(p.id))||packages.some(pk=>String(pk.patient_id)===String(p.id))||movements.some(m=>String(m.patient_id)===String(p.id));const archived=p.archived===true;return `<div class="item patient-card ${archived?'archived':''}"><div class="item-top"><div><strong>${esc(p.name||'Sem nome')}</strong>${archived?' <span class="muted small">(inativo)</span>':''}<div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(p.pathology||'Sem patologia')}</div></div><div class="toolbar"><button class="btn" onclick="openPatient('${p.id}')">Ficha</button><button class="btn ghost" onclick="openEditPatient('${p.id}')">✏️ Editar</button>${archived?`<button class="btn success" onclick="reactivatePatient('${p.id}')">Reativar</button>`:`<button class="btn warning" onclick="archivePatient('${p.id}')">Inativar</button>`}<button class="btn danger" onclick="deletePatientSafe('${p.id}')">Apagar</button></div></div>${linked?'<div class="muted small" style="margin-top:8px">Possui vínculo: apagar será bloqueado; use inativar.</div>':''}</div>`}
 function renderLists(){$('payerList').innerHTML=payers.map(p=>`<div class="item"><div class="item-top"><strong>${esc(p.name)}</strong><button class="btn danger" onclick="removePayer('${p.id}')">Remover</button></div></div>`).join('')||'<div class="muted">Nenhum pagador.</div>';$('serviceList').innerHTML=services.map(s=>`<div class="item"><div class="item-top"><div><strong>${esc(s.name)}</strong><div class="muted small">${payerName(s.health_insurance_id)} · ${brl(s.price)} · ${s.duration_minutes}min · ${s.appointment_mode}</div></div><button class="btn danger" onclick="removeService('${s.id}')">Remover</button></div></div>`).join('')||'<div class="muted">Nenhum serviço.</div>';const activePk=packages.filter(p=>p.active!==false),inactivePk=packages.filter(p=>p.active===false);if($('packageListActive')){$('packagesActiveCount').textContent=activePk.length+' ativo(s)';$('packagesInactiveCount').textContent=inactivePk.length+' inativo(s)';$('packageListActive').innerHTML=activePk.length?activePk.map(packageCard).join(''):'<div class="muted">Nenhum pacote ativo.</div>';$('packageListInactive').innerHTML=inactivePk.length?inactivePk.map(packageCard).join(''):'<div class="muted">Nenhum pacote inativo.</div>'}else if($('packageList')){$('packageList').innerHTML=packages.length?packages.map(packageCard).join(''):'<div class="muted">Nenhum pacote.</div>'}const activePatients=patients.filter(p=>p.archived!==true),archivedPatients=patients.filter(p=>p.archived===true);if($('patientListActive')){$('patientsActiveCount').textContent=activePatients.length+' ativo(s)';$('patientsArchivedCount').textContent=archivedPatients.length+' inativo(s)';$('patientListActive').innerHTML=activePatients.length?activePatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente ativo.</div>';$('patientListArchived').innerHTML=archivedPatients.length?archivedPatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente inativo.</div>'}}
 function formatWhatsappInput(input){let v=input.value.replace(/\D/g,'').slice(0,11);if(v.length>6)input.value=`(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;else if(v.length>2)input.value=`(${v.slice(0,2)}) ${v.slice(2)}`;else if(v.length>0)input.value=`(${v}`;}
@@ -627,7 +861,7 @@ async function savePatient(){const name=$('newPatientName').value.trim();const w
 async function archivePatient(id){if(!confirm('Inativar este paciente? Ele sairá das listas de novo agendamento, mas o histórico será preservado.'))return;try{await api('patients?id=eq.'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({archived:true,archived_at:new Date().toISOString()})});await loadAll(true);toast('Paciente inativado.','success')}catch(e){toast('Erro ao inativar: '+e.message,'error')}}
 async function reactivatePatient(id){try{await api('patients?id=eq.'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({archived:false,archived_at:null})});await loadAll(true);toast('Paciente reativado.','success')}catch(e){toast('Erro ao reativar: '+e.message,'error')}}
 async function deletePatientSafe(id){const linked=appointments.some(a=>String(a.patient_id)===String(id))||packages.some(p=>String(p.patient_id)===String(id))||movements.some(m=>String(m.patient_id)===String(id));if(linked){toast('Paciente possui vínculos. Não apaguei; use Inativar para preservar histórico.','warning');return}if(!confirm('Apagar este paciente definitivamente? Só faça isso para cadastro criado por engano.'))return;try{await api('patients?id=eq.'+encodeURIComponent(id),{method:'DELETE'});await loadAll(true);toast('Paciente apagado.','success')}catch(e){toast('Erro ao apagar: '+e.message,'error')}}
-async function savePayer(){const name=$('payerName').value.trim();if(!name)return;try{await api('health_insurances',{method:'POST',body:JSON.stringify({name,active:true})});$('payerName').value='';await loadAll(true);toast('Pagador salvo.','success')}catch(e){toast('Erro: '+e.message,'error')}}async function saveService(){const payload={name:$('svcName').value.trim(),health_insurance_id:$('svcPayer').value||null,price:Number($('svcPrice').value||0),duration_minutes:Number($('svcDur').value||45),appointment_mode:$('svcMode').value,max_patients:Number($('svcMax').value||4),type:$('svcMode').value==='individual'?'particular':'convenio',active:true};if(!payload.name)return;try{await api('services',{method:'POST',body:JSON.stringify(payload)});$('svcName').value='';await loadAll(true);toast('Serviço salvo.','success')}catch(e){toast('Erro: '+e.message,'error')}}async function savePackage(){
+async function savePayer(){const name=$('payerName').value.trim();if(!name)return;try{await api('health_insurances',{method:'POST',body:JSON.stringify({name,active:true})});$('payerName').value='';await loadAll(true);toast('Pagador salvo.','success')}catch(e){toast('Erro: '+e.message,'error')}}async function saveService(){const name=$('svcName').value.trim();const price=Number(String($('svcPrice').value||0).replace(',','.'));if(!name){toast('Informe o nome do serviço.','warning');return}if(!Number.isFinite(price)||price<0){toast('Informe um valor válido para o serviço.','warning');return}try{if(editingServiceId){await api('services?id=eq.'+editingServiceId,{method:'PATCH',body:JSON.stringify({name:name,price:price})});cancelServiceEdit(false);await loadAll(true);toast('Serviço atualizado.','success');return}const payload={name:name,health_insurance_id:$('svcPayer').value||null,price:price,duration_minutes:Number($('svcDur').value||45),appointment_mode:$('svcMode').value,max_patients:Number($('svcMax').value||4),type:$('svcMode').value==='individual'?'particular':'convenio',active:true};await api('services',{method:'POST',body:JSON.stringify(payload)});$('svcName').value='';$('svcPrice').value='';await loadAll(true);toast('Serviço salvo.','success')}catch(e){toast('Erro: '+e.message,'error')}}async function savePackage(){
   const patientId = $('pkgPatient').value;
   const serviceId = $('pkgService').value;
   const total = Number($('pkgTotal').value||0);
@@ -699,6 +933,33 @@ function downloadJsonFile(filename, payload){
 
 async function fetchTableForBackup(table){
   return await api(table + '?select=*');
+}
+
+function startServiceEdit(id){
+  const service = services.find(s => String(s.id) === String(id));
+  if(!service) return;
+  editingServiceId = String(id);
+  if($('svcName')) $('svcName').value = service.name || '';
+  if($('svcPrice')) $('svcPrice').value = Number(service.price || 0);
+  if($('svcPayer')) $('svcPayer').value = service.health_insurance_id || '';
+  if($('svcDur')) $('svcDur').value = String(service.duration_minutes || 45);
+  if($('svcMode')) $('svcMode').value = service.appointment_mode || 'grupo';
+  if($('svcMax')) $('svcMax').value = Number(service.max_patients || 4);
+  ['svcPayer','svcDur','svcMode','svcMax'].forEach(idName => { if($(idName)) $(idName).disabled = true; });
+  if($('saveServiceBtn')) $('saveServiceBtn').textContent = 'Salvar edição';
+  if($('cancelServiceEditBtn')) $('cancelServiceEditBtn').style.display = 'inline-flex';
+  if($('svcName')) $('svcName').focus();
+  toast('Editando nome e valor do serviço. Duração e modo ficam preservados.', 'info');
+}
+
+function cancelServiceEdit(clearFields=true){
+  editingServiceId = '';
+  ['svcPayer','svcDur','svcMode','svcMax'].forEach(idName => { if($(idName)) $(idName).disabled = false; });
+  if($('saveServiceBtn')) $('saveServiceBtn').textContent = 'Adicionar serviço';
+  if($('cancelServiceEditBtn')) $('cancelServiceEditBtn').style.display = 'none';
+  if(clearFields){
+    ['svcName','svcPrice'].forEach(idName => { if($(idName)) $(idName).value = ''; });
+  }
 }
 
 async function exportAgendaBackup(){
@@ -1066,6 +1327,7 @@ function packageCard(p){
     </div>
     <div class="small"><span class="used-counter">${used}/${total} sessões usadas</span> · <span class="${cls}">saldo ${remain}</span></div>
     <div class="package-progress"><span style="width:${pct}%"></span></div>
+    ${inactive?'':`<div class="package-schedule-placeholder" data-package-schedule-id="${esc(p.id)}">Verificando agenda do pacote...</div>`}
     ${packagePatternSummary(p)}
   </div>`;
 }
@@ -1147,7 +1409,7 @@ async function editPackage(id){
 function renderLists(){
   $('payerList').innerHTML=payers.map(p=>`<div class="item"><div class="item-top"><strong>${esc(p.name)}</strong><button class="btn danger" onclick="removePayer('${p.id}')">Remover</button></div></div>`).join('')||'<div class="muted">Nenhum pagador.</div>';
 
-  $('serviceList').innerHTML=services.map(s=>`<div class="item"><div class="item-top"><div><strong>${esc(s.name)}</strong><div class="muted small">${payerName(s.health_insurance_id)} · ${brl(s.price)} · ${s.duration_minutes}min · ${s.appointment_mode}</div></div><button class="btn danger" onclick="removeService('${s.id}')">Remover</button></div></div>`).join('')||'<div class="muted">Nenhum serviço.</div>';
+  $('serviceList').innerHTML=services.map(s=>`<div class="item"><div class="item-top"><div><strong>${esc(s.name)}</strong><div class="muted small">${payerName(s.health_insurance_id)} · ${brl(s.price)} · ${s.duration_minutes}min · ${s.appointment_mode}</div></div><div class="toolbar"><button class="btn" onclick="startServiceEdit('${s.id}')">Editar</button><button class="btn danger" onclick="removeService('${s.id}')">Remover</button></div></div></div>`).join('')||'<div class="muted">Nenhum serviço.</div>';
 
   const activePk=packages.filter(p=>p.active!==false);
   const inactivePk=packages.filter(p=>p.active===false);
@@ -1191,6 +1453,7 @@ function renderLists(){
     $('patientListActive').innerHTML=activePatients.length?activePatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente encontrado.</div>';
     $('patientListArchived').innerHTML=archivedPatients.length?archivedPatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente inativo.</div>';
   }
+  hydratePackageScheduleSummaries();
 }
 
 
