@@ -6,9 +6,39 @@ Sistema clínico da FEMIC Fisioterapia com:
 - anamnese e evolução com IA (Gemini/Groq/DeepSeek)
 - sincronização com Supabase
 - agenda unificada
+- pacotes de sessões com saldo, recorrência e apoio para renovação
 
 ## Versões atuais
 - Sistema unificado (`index.html`)
+
+## Atualizações recentes
+
+### Agenda, pacotes e saldo
+- A busca **Buscar agendamentos para editar ou apagar** agora mostra o dia da semana antes da data.
+- Cards de pacotes ativos exibem um aviso discreto quando o paciente ainda tem saldo, mas está na última sessão futura ou sem futuras marcadas.
+- O card do pacote mostra:
+  - saldo atual;
+  - futuras marcadas;
+  - última sessão futura;
+  - quantidade que ainda falta agendar.
+- O botão **Completar saldo** cria apenas as sessões que faltam para cobrir o saldo do pacote.
+- O sistema detecta o padrão recente do paciente/serviço, por exemplo terça e quinta às 08:00, e tenta criar as próximas sessões nesses mesmos dias e horários.
+- A criação respeita as regras já existentes de expediente, duração do serviço, conflitos e limite de pacientes.
+- O saldo do pacote continua sendo consumido somente quando a sessão é marcada como `concluido`.
+- Essa melhoria não exige alteração no Supabase. Ela usa as tabelas existentes `session_packages`, `appointments`, `patients` e `services`.
+
+### Ficha do paciente
+- A ficha mostra um resumo mais útil dos pacotes:
+  - sessões usadas;
+  - saldo;
+  - futuras marcadas;
+  - aviso de última futura ou ausência de futuras.
+- O objetivo é reduzir a necessidade de procurar manualmente na agenda quando o paciente ainda tem saldo.
+
+### Anamnese e evolução em nuvem
+- Para salvar anamnese e evolução clínica no Supabase, é necessário criar as tabelas `clinical_anamneses` e `clinical_evolutions`.
+- Use o patch SQL seguro da seção **Patch seguro: anamnese e evolução no Supabase**.
+- Não use o SQL completo/resetado apenas para ativar esse recurso.
 
 ## Estrutura principal
 - `index.html`: app clínico, agenda, documentos, histórico e IA
@@ -33,6 +63,80 @@ Sistema clínico da FEMIC Fisioterapia com:
 - Backup local em JSON (export/import)
 - Backup manual em nuvem via Supabase
 - Restauração de dados via Supabase
+- Backup completo inclui agenda, pacientes, pacotes, histórico de sessões, documentos e dados clínicos disponíveis.
+
+## Patch seguro: anamnese e evolução no Supabase
+
+Use este SQL quando o banco já existe e você só precisa ativar o salvamento de anamnese e evolução clínica em nuvem.
+
+Importante:
+- Este patch não apaga dados.
+- Este patch não recria a agenda.
+- Este patch não é necessário para as melhorias de saldo/pacotes.
+
+```sql
+CREATE TABLE IF NOT EXISTS clinical_anamneses (
+  id TEXT PRIMARY KEY,
+  patient_id TEXT NOT NULL UNIQUE REFERENCES patients(id) ON DELETE CASCADE,
+  chief_complaint TEXT,
+  history TEXT,
+  diagnosis TEXT,
+  limitations TEXT,
+  goals TEXT,
+  obs TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS clinical_evolutions (
+  id TEXT PRIMARY KEY,
+  patient_id TEXT NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  conduct TEXT,
+  guidance TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_clinical_evolutions_patient_date
+ON clinical_evolutions(patient_id, date DESC);
+
+ALTER TABLE clinical_anamneses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clinical_evolutions ENABLE ROW LEVEL SECURITY;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON clinical_anamneses TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON clinical_evolutions TO authenticated;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'clinical_anamneses'
+      AND policyname = 'authenticated_full_access_clinical_anamneses'
+  ) THEN
+    CREATE POLICY "authenticated_full_access_clinical_anamneses"
+    ON clinical_anamneses
+    FOR ALL TO authenticated
+    USING (true)
+    WITH CHECK (true);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'clinical_evolutions'
+      AND policyname = 'authenticated_full_access_clinical_evolutions'
+  ) THEN
+    CREATE POLICY "authenticated_full_access_clinical_evolutions"
+    ON clinical_evolutions
+    FOR ALL TO authenticated
+    USING (true)
+    WITH CHECK (true);
+  END IF;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
+```
 
 ## WhatsApp: lembretes e preparação para Meta Cloud API
 
