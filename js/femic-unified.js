@@ -37,6 +37,13 @@
   var runtime = {
     currentPatientId: '',
     historyDataset: { source:'empty', patients:[], sessions:[] },
+    clinicalCloud: {
+      loadedPatientId: '',
+      loadingPatientId: '',
+      unavailable: false,
+      anamneses: [],
+      evolutions: []
+    },
     historyYearsChart: null,
     historyPathologiesChart: null
   };
@@ -89,6 +96,137 @@
       archived_at: raw.archived_at || null,
       created_at: raw.created_at || new Date().toISOString()
     };
+  }
+  function normalizeAnamneseRecord(raw){
+    raw = raw || {};
+    return {
+      id: String(raw.id || generateId('a')),
+      patient_id: String(raw.patient_id || ''),
+      chief_complaint: String(raw.chief_complaint || raw.chief || ''),
+      history: String(raw.history || ''),
+      diagnosis: String(raw.diagnosis || ''),
+      limitations: String(raw.limitations || ''),
+      goals: String(raw.goals || ''),
+      obs: String(raw.obs || raw.observations || ''),
+      created_at: raw.created_at || new Date().toISOString(),
+      updated_at: raw.updated_at || new Date().toISOString()
+    };
+  }
+  function normalizeEvolutionRecord(raw){
+    raw = raw || {};
+    return {
+      id: String(raw.id || generateId('e')),
+      patient_id: String(raw.patient_id || ''),
+      date: String(raw.date || raw.created_at || todayIsoSafe()).slice(0,10),
+      conduct: String(raw.conduct || raw.evolution || ''),
+      guidance: String(raw.guidance || raw.orientations || ''),
+      created_at: raw.created_at || new Date().toISOString()
+    };
+  }
+  function isMissingClinicalTableError(err){
+    return /clinical_anamneses|clinical_evolutions|relation .* does not exist|Could not find the table/i.test(String(err && err.message || err || ''));
+  }
+  function canUseCloudClinical(){
+    return typeof api === 'function' && typeof base === 'function' && typeof key === 'function' && base() && key() && (!window.hasValidSession || hasValidSession()) && !runtime.clinicalCloud.unavailable;
+  }
+  async function fetchClinicalForPatient(pid){
+    if(!pid || !canUseCloudClinical()) return false;
+    if(runtime.clinicalCloud.loadedPatientId === String(pid) || runtime.clinicalCloud.loadingPatientId === String(pid)) return true;
+    runtime.clinicalCloud.loadingPatientId = String(pid);
+    try{
+      var encodedPid = encodeURIComponent(String(pid));
+      var rows = await Promise.all([
+        api('clinical_anamneses?select=*&patient_id=eq.' + encodedPid + '&limit=1'),
+        api('clinical_evolutions?select=*&patient_id=eq.' + encodedPid + '&order=date.desc,created_at.desc')
+      ]);
+      runtime.clinicalCloud.loadedPatientId = String(pid);
+      runtime.clinicalCloud.anamneses = (rows[0] || []).map(normalizeAnamneseRecord);
+      runtime.clinicalCloud.evolutions = (rows[1] || []).map(normalizeEvolutionRecord);
+      runtime.clinicalCloud.loadingPatientId = '';
+      renderUnifiedAll();
+      return true;
+    }catch(e){
+      runtime.clinicalCloud.loadingPatientId = '';
+      if(isMissingClinicalTableError(e)){
+        runtime.clinicalCloud.unavailable = true;
+        if(typeof toast === 'function') toast('Tabelas clínicas em nuvem ainda não existem. Rode o SQL atualizado para sincronizar anamnese e evolução.', 'warning');
+        return false;
+      }
+      throw e;
+    }
+  }
+  function getLoadedCloudAnamnese(pid){
+    if(runtime.clinicalCloud.loadedPatientId !== String(pid)) return null;
+    return runtime.clinicalCloud.anamneses.find(function(item){ return String(item.patient_id) === String(pid); }) || null;
+  }
+  function getLoadedCloudEvolutions(pid){
+    if(runtime.clinicalCloud.loadedPatientId !== String(pid)) return null;
+    return runtime.clinicalCloud.evolutions.filter(function(item){ return String(item.patient_id) === String(pid); });
+  }
+  async function fetchClinicalBackupPayload(){
+    if(!canUseCloudClinical()) return { anamneses:getAnamneses(), clinical_evolutions:getEvolutions(), cloud:false };
+    try{
+      var rows = await Promise.all([
+        api('clinical_anamneses?select=*'),
+        api('clinical_evolutions?select=*&order=date.desc,created_at.desc')
+      ]);
+      return {
+        anamneses: (rows[0] || []).map(normalizeAnamneseRecord),
+        clinical_evolutions: (rows[1] || []).map(normalizeEvolutionRecord),
+        cloud: true
+      };
+    }catch(e){
+      if(isMissingClinicalTableError(e)){
+        runtime.clinicalCloud.unavailable = true;
+        return { anamneses:getAnamneses(), clinical_evolutions:getEvolutions(), cloud:false };
+      }
+      throw e;
+    }
+  }
+  async function upsertCloudAnamneses(rows){
+    rows = (rows || []).map(normalizeAnamneseRecord).filter(function(item){ return item.patient_id; });
+    if(!rows.length || !canUseCloudClinical()) return [];
+    var res = await fetch(base() + '/rest/v1/clinical_anamneses?on_conflict=patient_id', {
+      method: 'POST',
+      headers: Object.assign({}, headers(), { Prefer:'resolution=merge-duplicates,return=representation' }),
+      body: JSON.stringify(rows)
+    });
+    var txt = await res.text();
+    var data; try{ data = txt ? JSON.parse(txt) : null; }catch(e){ data = txt; }
+    if(!res.ok) throw new Error((data && data.message) || txt || 'Erro ao salvar anamnese em nuvem');
+    return data || [];
+  }
+  async function insertCloudEvolutions(rows){
+    rows = (rows || []).map(normalizeEvolutionRecord).filter(function(item){ return item.patient_id && item.date; });
+    if(!rows.length || !canUseCloudClinical()) return [];
+    var res = await fetch(base() + '/rest/v1/clinical_evolutions?on_conflict=id', {
+      method: 'POST',
+      headers: Object.assign({}, headers(), { Prefer:'resolution=merge-duplicates,return=representation' }),
+      body: JSON.stringify(rows)
+    });
+    var txt = await res.text();
+    var data; try{ data = txt ? JSON.parse(txt) : null; }catch(e){ data = txt; }
+    if(!res.ok) throw new Error((data && data.message) || txt || 'Erro ao salvar evoluções em nuvem');
+    return data || [];
+  }
+  async function restoreClinicalToCloud(clinical, clearBefore){
+    if(!canUseCloudClinical()) return false;
+    try{
+      if(clearBefore && typeof deleteAllRows === 'function'){
+        await deleteAllRows('clinical_evolutions');
+        await deleteAllRows('clinical_anamneses');
+      }
+      await upsertCloudAnamneses(clinical.anamneses || []);
+      await insertCloudEvolutions(clinical.clinical_evolutions || clinical.evolutions || []);
+      runtime.clinicalCloud.loadedPatientId = '';
+      return true;
+    }catch(e){
+      if(isMissingClinicalTableError(e)){
+        runtime.clinicalCloud.unavailable = true;
+        return false;
+      }
+      throw e;
+    }
   }
   function getSessions(){ return safeArrayParse(STORAGE.sessions).map(normalizeSessionRecord).filter(function(s){ return s.id && s.patient_id && s.date; }); }
   function saveSessions(list){ saveArray(STORAGE.sessions, (list || []).map(normalizeSessionRecord)); }
@@ -146,13 +284,15 @@
     });
   }
   function getAnamneseByPatient(pid){
-    return getAnamneses().find(function(item){ return String(item.patient_id) === String(pid); }) || null;
+    return getLoadedCloudAnamnese(pid) || getAnamneses().find(function(item){ return String(item.patient_id) === String(pid); }) || null;
   }
   function getPatientSessions(pid){
     return getSessions().filter(function(item){ return String(item.patient_id) === String(pid); }).sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
   }
   function getPatientEvolutions(pid){
-    return getEvolutions().filter(function(item){ return String(item.patient_id) === String(pid); }).sort(function(a,b){ return String(b.date || '').localeCompare(String(a.date || '')); });
+    var cloud = getLoadedCloudEvolutions(pid);
+    var list = cloud || getEvolutions().filter(function(item){ return String(item.patient_id) === String(pid); });
+    return list.sort(function(a,b){ return String(b.date || '').localeCompare(String(a.date || '')); });
   }
   function getDocumentsByPatient(pid){
     return getPatientDocuments().filter(function(item){ return String(item.patient_id) === String(pid); }).sort(function(a,b){ return String(b.created_at || '').localeCompare(String(a.created_at || '')); });
@@ -199,6 +339,7 @@
       target.innerHTML = 'Abra a ficha de um paciente ou selecione-o no prontuário para ver agenda, pacote, evolução, documentos e atalhos em um único lugar.';
       return;
     }
+    fetchClinicalForPatient(pid).catch(function(e){ if(typeof toast === 'function') toast('Erro ao carregar prontuário em nuvem: ' + e.message, 'error'); });
     var sessions = getPatientSessions(pid);
     var evolutions = getPatientEvolutions(pid);
     var docs = getDocumentsByPatient(pid);
@@ -239,6 +380,7 @@
       });
       return;
     }
+    fetchClinicalForPatient(pid).catch(function(e){ if(typeof toast === 'function') toast('Erro ao carregar prontuário em nuvem: ' + e.message, 'error'); });
     var anamnese = getAnamneseByPatient(pid) || {};
     var evolutions = getPatientEvolutions(pid);
     var appointments = getAgendaAppointmentsByPatient(pid);
@@ -519,6 +661,33 @@
     if(el('bkClinicalDocuments')) el('bkClinicalDocuments').textContent = String(getPatientDocuments().length + getGuias().length + getGeneratedDocuments().length);
   }
 
+  async function offerLocalClinicalMigration(){
+    if(localStorage.getItem('femic_clinical_cloud_migration_done') === 'yes') return;
+    if(!canUseCloudClinical()) return;
+    var localAnamneses = getAnamneses().map(normalizeAnamneseRecord).filter(function(item){ return item.patient_id; });
+    var localEvolutions = getEvolutions().map(normalizeEvolutionRecord).filter(function(item){ return item.patient_id; });
+    if(!localAnamneses.length && !localEvolutions.length){
+      localStorage.setItem('femic_clinical_cloud_migration_done', 'yes');
+      return;
+    }
+    if(!confirm('Encontrei anamnese/evoluções antigas salvas neste navegador. Migrar esses dados para o Supabase para usar em outros dispositivos?')) return;
+    try{
+      await upsertCloudAnamneses(localAnamneses);
+      await insertCloudEvolutions(localEvolutions);
+      localStorage.setItem('femic_clinical_cloud_migration_done', 'yes');
+      runtime.clinicalCloud.loadedPatientId = '';
+      if(typeof toast === 'function') toast('Prontuário local migrado para o Supabase.', 'success');
+      renderUnifiedAll();
+    }catch(e){
+      if(isMissingClinicalTableError(e)){
+        runtime.clinicalCloud.unavailable = true;
+        if(typeof toast === 'function') toast('Para migrar o prontuário, rode primeiro o SQL atualizado no Supabase.', 'warning');
+        return;
+      }
+      if(typeof toast === 'function') toast('Erro ao migrar prontuário local: ' + e.message, 'error');
+    }
+  }
+
   function renderUnifiedAll(){
     populateUnifiedPatientSelects();
     renderPatientHub();
@@ -542,30 +711,45 @@
     await upsertRows('patients', rows.map(normalizePatientRecord));
   }
 
-  function buildUnifiedBackupPayload(){
+  async function buildUnifiedBackupPayload(){
     var agenda = getAgendaState();
+    var tables = {
+      patients: agenda.patients || [],
+      health_insurances: agenda.payers || [],
+      services: agenda.services || [],
+      schedule_settings: agenda.settings && agenda.settings.id ? [agenda.settings] : (agenda.settings ? [agenda.settings] : []),
+      clinic_rules: agenda.clinicRules || [],
+      session_packages: agenda.packages || [],
+      appointments: agenda.appointments || [],
+      session_movements: agenda.movements || []
+    };
+    if(typeof fetchTableForBackup === 'function' && typeof loadClinicRulesCollection === 'function' && base() && key() && (!window.hasValidSession || hasValidSession())){
+      tables = {
+        patients: await fetchTableForBackup('patients'),
+        health_insurances: await fetchTableForBackup('health_insurances'),
+        services: await fetchTableForBackup('services'),
+        schedule_settings: await fetchTableForBackup('schedule_settings'),
+        clinic_rules: await loadClinicRulesCollection(),
+        session_packages: await fetchTableForBackup('session_packages'),
+        appointments: await fetchTableForBackup('appointments'),
+        session_movements: await fetchTableForBackup('session_movements')
+      };
+    }
+    var cloudClinical = await fetchClinicalBackupPayload();
     return {
       app: 'FEMIC Unified',
       version: 'v1-unified-index',
       exported_at: new Date().toISOString(),
       note: 'Backup unificado com agenda, prontuário, documentos e histórico clínico da FEMIC.',
-      tables: {
-        patients: agenda.patients || [],
-        health_insurances: agenda.payers || [],
-        services: agenda.services || [],
-        schedule_settings: agenda.settings && agenda.settings.id ? [agenda.settings] : (agenda.settings ? [agenda.settings] : []),
-        clinic_rules: agenda.clinicRules || [],
-        session_packages: agenda.packages || [],
-        appointments: agenda.appointments || [],
-        session_movements: agenda.movements || []
-      },
+      tables: tables,
       clinical: {
         sessions: getSessions(),
-        anamneses: getAnamneses(),
-        clinical_evolutions: getEvolutions(),
+        anamneses: cloudClinical.anamneses,
+        clinical_evolutions: cloudClinical.clinical_evolutions,
         patient_documents: getPatientDocuments(),
         generated_documents: getGeneratedDocuments(),
-        guias: getGuias()
+        guias: getGuias(),
+        source: cloudClinical.cloud ? 'supabase' : 'local'
       },
       settings: {
         forms_link: localStorage.getItem('femic_form_link') || '',
@@ -639,7 +823,7 @@
     window.exportAgendaBackup = async function(){
       try{
         if(typeof toast === 'function') toast('Preparando backup unificado...', 'info');
-        var payload = buildUnifiedBackupPayload();
+        var payload = await buildUnifiedBackupPayload();
         if(typeof downloadJsonFile === 'function'){
           downloadJsonFile('femic_unified_backup_' + todayIsoSafe().replace(/-/g, '') + '.json', payload);
         }else{
@@ -688,8 +872,9 @@
         }
 
         if(Array.isArray(clinical.sessions)) saveSessions(clinical.sessions);
-        if(Array.isArray(clinical.anamneses)) saveAnamneses(clinical.anamneses);
-        if(Array.isArray(clinical.clinical_evolutions)) saveEvolutions(clinical.clinical_evolutions);
+        var restoredClinicalCloud = await restoreClinicalToCloud(clinical, !!tables);
+        if(!restoredClinicalCloud && Array.isArray(clinical.anamneses)) saveAnamneses(clinical.anamneses);
+        if(!restoredClinicalCloud && Array.isArray(clinical.clinical_evolutions)) saveEvolutions(clinical.clinical_evolutions);
         if(Array.isArray(clinical.patient_documents)) savePatientDocuments(clinical.patient_documents);
         if(Array.isArray(clinical.generated_documents)) saveGeneratedDocuments(clinical.generated_documents);
         if(Array.isArray(clinical.guias)) saveGuias(clinical.guias);
@@ -703,6 +888,40 @@
         if(typeof toast === 'function') toast('Erro ao restaurar backup: ' + e.message, 'error');
       }finally{
         event.target.value = '';
+      }
+    };
+
+    window.runAnnualOperationalReset = async function(){
+      if(!base() || !key()){
+        if(typeof toast === 'function') toast('Preencha URL e anon key antes do reset anual.', 'warning');
+        return;
+      }
+      var typed = prompt('Antes do reset, o sistema exportará um backup JSON completo. Depois apagará agenda, pacotes, movimentos, anamnese e evoluções, preservando pacientes, serviços, pagadores e configurações. Digite RESET para confirmar.');
+      if(typed !== 'RESET') return;
+      try{
+        if(typeof toast === 'function') toast('Exportando backup completo antes do reset...', 'info');
+        var payload = await buildUnifiedBackupPayload();
+        if(typeof downloadJsonFile === 'function'){
+          downloadJsonFile('femic_backup_pre_reset_' + todayIsoSafe().replace(/-/g, '') + '.json', payload);
+        }
+        if(typeof toast === 'function') toast('Limpando dados operacionais do ano...', 'info');
+        await deleteAllRows('session_movements');
+        await deleteAllRows('appointments');
+        await deleteAllRows('session_packages');
+        try{ await deleteAllRows('clinical_evolutions'); }catch(e){ if(!isMissingClinicalTableError(e)) throw e; }
+        try{ await deleteAllRows('clinical_anamneses'); }catch(e){ if(!isMissingClinicalTableError(e)) throw e; }
+        saveSessions([]);
+        saveAnamneses([]);
+        saveEvolutions([]);
+        runtime.clinicalCloud.loadedPatientId = '';
+        runtime.clinicalCloud.anamneses = [];
+        runtime.clinicalCloud.evolutions = [];
+        await loadAll(true);
+        renderUnifiedAll();
+        if(typeof toast === 'function') toast('Reset anual concluído. Pacientes, serviços, pagadores e configurações foram preservados.', 'success');
+      }catch(e){
+        console.error(e);
+        if(typeof toast === 'function') toast('Erro no reset anual: ' + e.message, 'error');
       }
     };
   }
@@ -726,7 +945,7 @@
     renderUnifiedAll();
   };
 
-  window.saveUnifiedAnamnese = function(){
+  window.saveUnifiedAnamnese = async function(){
     var pid = ensurePatientSelected();
     if(!pid) return;
     var now = new Date().toISOString();
@@ -744,29 +963,69 @@
       created_at: existing && existing.created_at ? existing.created_at : now,
       updated_at: now
     };
-    var index = list.findIndex(function(item){ return String(item.patient_id) === String(pid); });
-    if(index >= 0) list[index] = payload; else list.push(payload);
-    saveAnamneses(list);
-    if(typeof toast === 'function') toast('Anamnese salva.', 'success');
+    try{
+      if(canUseCloudClinical()){
+        var saved = await upsertCloudAnamneses([payload]);
+        runtime.clinicalCloud.loadedPatientId = String(pid);
+        runtime.clinicalCloud.anamneses = (saved && saved.length ? saved : [payload]).map(normalizeAnamneseRecord);
+        renderUnifiedAll();
+        if(typeof toast === 'function') toast('Anamnese salva no Supabase.', 'success');
+        return;
+      }
+      var index = list.findIndex(function(item){ return String(item.patient_id) === String(pid); });
+      if(index >= 0) list[index] = payload; else list.push(payload);
+      saveAnamneses(list);
+      if(typeof toast === 'function') toast('Anamnese salva localmente.', 'warning');
+    }catch(e){
+      if(isMissingClinicalTableError(e)){
+        runtime.clinicalCloud.unavailable = true;
+        var localIndex = list.findIndex(function(item){ return String(item.patient_id) === String(pid); });
+        if(localIndex >= 0) list[localIndex] = payload; else list.push(payload);
+        saveAnamneses(list);
+        if(typeof toast === 'function') toast('Anamnese salva localmente. Rode o SQL atualizado para ativar nuvem.', 'warning');
+        return;
+      }
+      if(typeof toast === 'function') toast('Erro ao salvar anamnese: ' + e.message, 'error');
+    }
   };
 
-  window.saveUnifiedEvolution = function(){
+  window.saveUnifiedEvolution = async function(){
     var pid = ensurePatientSelected();
     if(!pid) return;
     var list = getEvolutions();
-    list.push({
+    var payload = {
       id: generateId('e'),
       patient_id: pid,
       date: el('evolutionDate') && el('evolutionDate').value ? el('evolutionDate').value : todayIsoSafe(),
       conduct: el('evolutionConduct') ? el('evolutionConduct').value.trim() : '',
       guidance: el('evolutionGuidance') ? el('evolutionGuidance').value.trim() : '',
       created_at: new Date().toISOString()
-    });
-    saveEvolutions(list);
-    if(el('evolutionDate')) el('evolutionDate').value = todayIsoSafe();
-    if(el('evolutionConduct')) el('evolutionConduct').value = '';
-    if(el('evolutionGuidance')) el('evolutionGuidance').value = '';
-    if(typeof toast === 'function') toast('Evolução clínica salva.', 'success');
+    };
+    try{
+      if(canUseCloudClinical()){
+        var saved = await insertCloudEvolutions([payload]);
+        runtime.clinicalCloud.loadedPatientId = String(pid);
+        runtime.clinicalCloud.evolutions = (saved || [payload]).concat(runtime.clinicalCloud.evolutions || []).map(normalizeEvolutionRecord).sort(function(a,b){ return String(b.date || '').localeCompare(String(a.date || '')); });
+        if(typeof toast === 'function') toast('Evolução clínica salva no Supabase.', 'success');
+      }else{
+        list.push(payload);
+        saveEvolutions(list);
+        if(typeof toast === 'function') toast('Evolução clínica salva localmente.', 'warning');
+      }
+      if(el('evolutionDate')) el('evolutionDate').value = todayIsoSafe();
+      if(el('evolutionConduct')) el('evolutionConduct').value = '';
+      if(el('evolutionGuidance')) el('evolutionGuidance').value = '';
+      renderUnifiedAll();
+    }catch(e){
+      if(isMissingClinicalTableError(e)){
+        runtime.clinicalCloud.unavailable = true;
+        list.push(payload);
+        saveEvolutions(list);
+        if(typeof toast === 'function') toast('Evolução salva localmente. Rode o SQL atualizado para ativar nuvem.', 'warning');
+        return;
+      }
+      if(typeof toast === 'function') toast('Erro ao salvar evolução: ' + e.message, 'error');
+    }
   };
 
   window.generateUnifiedDocument = function(){
@@ -909,7 +1168,11 @@
   };
 
   window.loadHistoryFromCurrentState = function(){
-    setHistoryDataset('current', getPatients(), getSessions());
+    var evolutionSessions = getEvolutions().map(function(item){
+      item = normalizeEvolutionRecord(item);
+      return normalizeSessionRecord({ id:'hist-' + item.id, patient_id:item.patient_id, date:item.date, obs:item.conduct, source:'evolution', created_at:item.created_at });
+    });
+    setHistoryDataset('current', getPatients(), getSessions().concat(evolutionSessions));
     if(typeof toast === 'function') toast('Histórico carregado com os dados atuais do sistema.', 'success');
   };
 
@@ -921,7 +1184,12 @@
       var backup = JSON.parse(text);
       var patients = extractPatientsForLegacyRestore(backup);
       var clinical = extractClinicalPayloadFromBackup(backup);
-      setHistoryDataset('backup', patients, clinical.sessions || []);
+      var sessions = (clinical.sessions || []).map(normalizeSessionRecord);
+      var evolutionSessions = (clinical.clinical_evolutions || []).map(function(item){
+        item = normalizeEvolutionRecord(item);
+        return normalizeSessionRecord({ id:'hist-' + item.id, patient_id:item.patient_id, date:item.date, obs:item.conduct, source:'evolution', created_at:item.created_at });
+      });
+      setHistoryDataset('backup', patients, sessions.concat(evolutionSessions));
       if(typeof toast === 'function') toast('Histórico carregado a partir do backup.', 'success');
     }catch(e){
       console.error(e);
@@ -1007,12 +1275,23 @@
       return String(a.appointment_date || '').localeCompare(String(b.appointment_date || '')) || String(a.start_time || '').localeCompare(String(b.start_time || ''));
     });
     var nextAppointments = sortedAppointments.filter(function(item){ return ['agendado','confirmado'].indexOf(item.status) !== -1; }).slice(0,5);
+    var todayForPackages = new Date();
+    var todayPackageIso = todayForPackages.getFullYear() + '-' + String(todayForPackages.getMonth() + 1).padStart(2, '0') + '-' + String(todayForPackages.getDate()).padStart(2, '0');
     var packageLines = packages.length ? packages.map(function(item){
       var service = window.serviceName ? serviceName(item.service_id) : 'Serviço';
       var total = Number(item.total_sessions || 0);
       var remaining = Number(item.remaining_sessions || 0);
       var used = Math.max(0, total - remaining);
-      return '<div class="patient-ficha-line"><strong>' + escHtml(service) + '</strong><span>' + used + '/' + total + ' usadas · saldo ' + remaining + '</span></div>';
+      var pkgAppointments = appointments.filter(function(appt){ return String(appt.service_id) === String(item.service_id); });
+      var futurePkg = pkgAppointments.filter(function(appt){ return ['agendado','confirmado'].indexOf(appt.status) !== -1 && String(appt.appointment_date || '') >= todayPackageIso; }).sort(function(a,b){
+        return String(a.appointment_date || '').localeCompare(String(b.appointment_date || '')) || String(a.start_time || '').localeCompare(String(b.start_time || ''));
+      });
+      var lastFuture = futurePkg[futurePkg.length - 1] || null;
+      var missing = Math.max(0, remaining - futurePkg.length);
+      var alertText = remaining > 0 && futurePkg.length <= 1
+        ? (lastFuture ? 'Última futura: ' + fmtWeekdaySafe(lastFuture.appointment_date) + ' · ' + fmtDateSafe(lastFuture.appointment_date) : 'Sem futuras marcadas')
+        : 'Futuras marcadas: ' + futurePkg.length;
+      return '<div class="patient-ficha-line"><strong>' + escHtml(service) + '</strong><span>' + used + '/' + total + ' usadas · saldo ' + remaining + ' · ' + escHtml(alertText) + (missing > 0 ? ' · faltam ' + missing : '') + '</span></div>';
     }).join('') : '<div class="muted">Sem pacote ativo.</div>';
     var evolutionLines = evolutions.length ? evolutions.slice(0,4).map(function(item){
       return '<div class="item"><strong>' + fmtDateSafe(item.date) + '</strong><div class="muted small">' + escHtml(item.conduct || 'Sem registro') + '</div>' + (item.guidance ? '<div class="muted small">' + escHtml(item.guidance) + '</div>' : '') + '</div>';
@@ -1106,12 +1385,14 @@
     populateDocPresets();
     loadHistoryFromCurrentState();
     document.addEventListener('femic:state-updated', renderUnifiedAll);
+    document.addEventListener('femic:state-updated', function(){ offerLocalClinicalMigration().catch(function(e){ console.error(e); }); });
     document.addEventListener('femic:unified-state-updated', renderUnifiedAll);
     if(el('docBodyInput')) el('docBodyInput').addEventListener('input', renderUnifiedDocumentPreview);
     if(el('professionalNameInput')) el('professionalNameInput').addEventListener('input', renderUnifiedDocumentPreview);
     if(el('professionalNoteInput')) el('professionalNoteInput').addEventListener('input', renderUnifiedDocumentPreview);
     if(el('showStampSelect')) el('showStampSelect').addEventListener('change', renderUnifiedDocumentPreview);
     renderUnifiedAll();
+    offerLocalClinicalMigration().catch(function(e){ console.error(e); });
   }
 
   if(document.readyState === 'loading'){

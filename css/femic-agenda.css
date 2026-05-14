@@ -5453,3 +5453,68 @@ textarea{
     flex:1;
   }
 }
+
+/* Pacotes: alerta discreto de saldo x agenda */
+.package-schedule-placeholder,
+.package-schedule{
+  margin-top:10px;
+  border:1px solid rgba(11,60,111,.11);
+  border-radius:14px;
+  background:#f8fbfd;
+  padding:9px 10px;
+  color:var(--muted);
+  font-size:.76rem;
+  line-height:1.25;
+}
+
+.package-schedule{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.package-schedule strong{
+  display:block;
+  color:var(--primary);
+  font-size:.78rem;
+}
+
+.package-schedule span{
+  display:block;
+  margin-top:3px;
+}
+
+.package-schedule-alert{
+  background:#fff8e8;
+  border-color:rgba(245,158,11,.32);
+}
+
+.package-schedule-alert strong{
+  color:#92400e;
+}
+
+.package-schedule-ok{
+  background:#f0fdf7;
+  border-color:rgba(16,185,129,.24);
+}
+
+.package-complete-btn{
+  padding:7px 9px;
+  min-height:32px;
+  border-radius:10px;
+  font-size:.72rem;
+  flex:0 0 auto;
+}
+
+@media(max-width:768px){
+  .package-schedule{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .package-complete-btn{
+    width:100%;
+    justify-content:center;
+  }
+}
