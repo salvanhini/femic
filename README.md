@@ -144,6 +144,9 @@ NOTIFY pgrst, 'reload schema';
 - Extensão local criada em `chrome-extension/`.
 - Ela adiciona um botão flutuante `FEMIC` no WhatsApp Web.
 - O botão envia marcações, remarcações e cancelamentos para a aba IA do FEMIC como tarefas operacionais.
+- Na Fase 1 do assistente de agendamento, as tarefas de marcação/remarcação vindas do WhatsApp passam a gerar propostas com horários válidos.
+- A confirmação final continua humana: a equipe clica em um horário sugerido na aba **Pendências** e só então o FEMIC grava o agendamento.
+- As propostas respeitam as regras da agenda: expediente, períodos, duração do serviço, conflitos, atendimento individual/grupo e limite de pacientes por horário.
 - Instruções completas: `chrome-extension/README.md`.
 
 ### Estado atual seguro

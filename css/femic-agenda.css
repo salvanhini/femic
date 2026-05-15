@@ -4685,6 +4685,86 @@ textarea{
   font-weight:700;
 }
 
+#panel-pendencias .proposal-group{
+  margin-top:12px;
+  display:grid;
+  gap:10px;
+}
+#panel-pendencias .proposal-slot{
+  border:1px solid rgba(11,60,111,.10);
+  border-radius:16px;
+  padding:14px;
+  background:linear-gradient(180deg,#f8fbff,#fff);
+  display:grid;
+  gap:8px;
+}
+#panel-pendencias .proposal-slot.proposal-best{
+  border-color:rgba(16,185,129,.35);
+  background:linear-gradient(180deg,#f0fdf6,#fff);
+  box-shadow:0 6px 16px rgba(16,185,129,.10);
+}
+#panel-pendencias .proposal-badge{
+  display:inline-block;
+  font-size:.68rem;
+  font-weight:800;
+  color:#047857;
+  background:rgba(16,185,129,.12);
+  padding:3px 9px;
+  border-radius:999px;
+  letter-spacing:.03em;
+  width:fit-content;
+}
+#panel-pendencias .proposal-slot strong{
+  color:var(--femic-blue,#0b3c6f);
+  font-size:.92rem;
+}
+#panel-pendencias .proposal-time{
+  color:#5a7186;
+  font-size:.82rem;
+  font-weight:700;
+}
+#panel-pendencias .proposal-actions{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+#panel-pendencias .proposal-actions .btn{
+  min-height:32px;
+  padding:6px 10px;
+  font-size:.75rem;
+  border-radius:10px;
+}
+#panel-pendencias .cancel-candidate{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:10px 12px;
+  border:1px solid rgba(239,68,68,.15);
+  border-radius:14px;
+  background:rgba(255,248,248,.94);
+}
+#panel-pendencias .cancel-candidate span{
+  font-size:.82rem;
+  font-weight:600;
+  color:#18324a;
+}
+#panel-pendencias .cancel-candidate .btn{
+  flex:0 0 auto;
+}
+#panel-pendencias .tag-review{
+  border-color:rgba(245,158,11,.3)!important;
+  color:#9a6700!important;
+  background:rgba(255,248,230,.92)!important;
+}
+#panel-pendencias .tag-phone{
+  font-family:monospace!important;
+}
+#panel-pendencias .tag-shift{
+  text-transform:capitalize!important;
+}
+
 #panel-pendencias .pending-kpis .kpi{
   min-width:0;
   position:relative;

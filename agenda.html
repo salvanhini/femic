@@ -135,6 +135,7 @@ window.location.replace('index.html');
       <div class="nav-link" data-panel="packages" onclick="showPanel('packages')"><span class="icon">🎟️</span><span>Pacotes</span></div>
       <div class="nav-link" data-panel="reminders" onclick="showPanel('reminders')"><span class="icon">📲</span><span>Lembretes</span></div>
       <div class="nav-link" data-panel="report" onclick="showPanel('report')"><span class="icon">💰</span><span>Relatório</span></div>
+      <div class="nav-link" data-panel="pendencias" onclick="showPanel('pendencias')"><span class="icon">🗂️</span><span>Pendências</span><span class="pending-nav-badge hidden" id="pendingNavBadge">0</span></div>
       <div class="nav-link" data-panel="settings" onclick="showPanel('settings')"><span class="icon">⚙️</span><span>Configurações</span></div>
       <div class="nav-link" data-panel="backup" onclick="showPanel('backup')"><span class="icon">☁️</span><span>Backup</span></div>
       <div class="nav-link" data-panel="sql" onclick="showPanel('sql')"><span class="icon">🧱</span><span>SQL</span></div>
@@ -212,6 +213,34 @@ window.location.replace('index.html');
   <section class="panel" id="panel-reminders"><div class="card"><div class="section-title"><div><div class="eyebrow">Lembretes</div><h3>Fila de WhatsApp</h3></div><div id="reminderModeBadge" class="mode-badge manual">Manual</div></div><div class="toolbar"><select id="reminderType" onchange="renderReminders()" style="max-width:260px"><option value="appointment">Lembrete de sessão</option><option value="form">Formulário pós-atendimento</option></select><input type="date" id="reminderDate" onchange="renderReminders()" style="max-width:190px"><button class="btn primary" onclick="sendNextReminder()">Enviar próximo pendente</button><button class="btn" onclick="renderReminders()">Atualizar</button></div><div class="reminder-mode-panel" style="margin-top:12px"><div><strong>Modo de envio</strong><div class="muted small" id="reminderAutoStatus">Manual: você escolhe quando enviar.</div></div><div class="toolbar"><button class="btn primary" id="manualModeBtn" onclick="setReminderMode('manual')">Manual</button><button class="btn" id="autoModeBtn" onclick="setReminderMode('auto')">Automático</button></div></div><div class="quick-note small" style="margin-top:12px">Sessão: automático 12 horas antes do atendimento. Formulário: automático 5 horas depois da sessão concluída. O navegador precisa estar aberto para disparar os envios pelo WhatsApp.</div></div><div class="grid grid-4" id="reminderKpis" style="margin-top:16px"></div><div class="card" style="margin-top:16px"><div class="eyebrow" id="reminderTitle">Lembretes</div><div class="list" id="reminderList"></div></div></section>
 
   <section class="panel" id="panel-report"><div class="card"><div class="toolbar"><input type="month" id="reportMonth" onchange="renderReport()" style="max-width:190px"><button class="btn" onclick="exportCsv()">Exportar CSV</button><button class="btn" onclick="window.print()">Imprimir/PDF</button></div></div><div class="grid grid-4" id="reportKpis" style="margin-top:16px"></div><div class="card" id="reportPrintArea" style="margin-top:16px"><div class="eyebrow">Relatório mensal</div><div class="table-wrap"><table><thead><tr><th>Pagador</th><th>Serviço</th><th>Qtd.</th><th>Valor</th><th>Total</th></tr></thead><tbody id="reportBody"></tbody></table></div></div></section>
+
+  <section class="panel" id="panel-pendencias">
+    <div class="pending-shell">
+      <div class="pending-head-card">
+        <div>
+          <div class="eyebrow">Pendências</div>
+          <h3>Fila operacional vinda do WhatsApp</h3>
+          <p class="muted small">Pedidos capturados pela extensão do WhatsApp Web aparecem aqui com horários sugeridos para confirmação.</p>
+        </div>
+      </div>
+      <div class="grid grid-4 pending-kpis" id="pendingKpis">
+        <div class="card kpi"><div class="eyebrow">Abertas</div><strong>0</strong><span class="muted small">aguardando ação</span></div>
+        <div class="card kpi"><div class="eyebrow">Em andamento</div><strong>0</strong><span class="muted small">com revisão em curso</span></div>
+        <div class="card kpi"><div class="eyebrow">Concluídas</div><strong>0</strong><span class="muted small">já resolvidas</span></div>
+        <div class="card kpi"><div class="eyebrow">Canceladas</div><strong>0</strong><span class="muted small">descartadas</span></div>
+      </div>
+      <section class="card pending-card">
+        <div class="section-title">
+          <div><div class="eyebrow">Extensão</div><h3>Tarefas recebidas do WhatsApp</h3></div>
+        </div>
+        <div class="pending-filters">
+          <select id="pendingTaskStatusFilter" onchange="renderExtensionPendingTasks()"><option value="open">Abertas</option><option value="all">Todas</option><option value="concluida">Concluídas</option><option value="cancelada">Canceladas</option></select>
+          <select id="pendingTaskTypeFilter" onchange="renderExtensionPendingTasks()"><option value="all">Todos os tipos</option><option value="marcacao">Marcação</option><option value="remarcacao">Remarcação</option><option value="cancelamento">Cancelamento</option></select>
+        </div>
+        <div class="pending-task-list" id="pendingTaskList"></div>
+      </section>
+    </div>
+  </section>
 
   
   <section class="panel" id="panel-packages">
@@ -570,6 +599,7 @@ if ('caches' in window) {
 }
 </script>
 <script src="js/femic-agenda.js?v=secure-cloud-1"></script>
+<script src="js/femic-ai-center.js?v=ai-center-3"></script>
 <script src="js/femic-assistant-rules.js?v=assistant-rules-4"></script>
 <script src="js/femic-assistant.js?v=assistant-ui-5"></script>
 </body>

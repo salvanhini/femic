@@ -185,6 +185,75 @@
     }
     return { patient:null, ambiguous:false };
   }
+  function detectDateFromText(texto){
+    var n = norm(texto);
+    var result = [];
+    var diasSemana = { domingo:0, segund:1, terc:2, quarta:3, quint:4, sext:5, sabad:6, sab:6, dom:0, seg:1, ter:2, qua:3, qui:4, sex:5 };
+    for(var name in diasSemana){
+      if(n.indexOf(name) !== -1){
+        var dow = diasSemana[name];
+        var date = nextDateForWeekday(todayIso(), dow);
+        result.push({ date: date, label: name + ' (' + fmtDate(date) + ')', dow: dow });
+      }
+    }
+    var matchDate = n.match(/(\d{1,2})\s*\/\s*(\d{1,2})/);
+    if(matchDate){
+      var day = parseInt(matchDate[1], 10), month = parseInt(matchDate[2], 10);
+      var now = new Date();
+      var y = month < now.getMonth() + 1 ? now.getFullYear() + 1 : now.getFullYear();
+      var ds = y + '-' + String(month).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+      result.push({ date: ds, label: fmtDate(ds) });
+    }
+    var matchWord = n.match(/(hoje|amanha|depois\s*de\s*amanha|essa\s*semana|proxima\s*semana)/);
+    if(matchWord){
+      var word = matchWord[1];
+      if(word === 'hoje') result.push({ date: todayIso(), label: 'Hoje' });
+      else if(word === 'amanha') result.push({ date: addDays(todayIso(), 1), label: 'Amanha' });
+      else if(word === 'depois de amanha') result.push({ date: addDays(todayIso(), 2), label: 'Depois de amanha' });
+    }
+    return result;
+  }
+  function detectShiftFromText(texto){
+    var n = norm(texto);
+    if(n.indexOf('manha') !== -1) return 'manha';
+    if(n.indexOf('tarde') !== -1) return 'tarde';
+    if(n.indexOf('noite') !== -1) return 'noite';
+    return '';
+  }
+  function detectServiceFromText(texto, services){
+    var n = norm(texto);
+    if(!services || !services.length) return null;
+    return services.find(function(s){
+      if(!s.active || s.active === false) return false;
+      return n.indexOf(norm(s.name)) !== -1;
+    }) || null;
+  }
+  function findServiceFromPayload(payload, patient){
+    var agenda = getAgendaState();
+    var services = (agenda.services || []).filter(function(service){ return service.active !== false; });
+    var text = norm([
+      (payload && payload.service_name) || '',
+      (payload && payload.message_text) || '',
+      (payload && payload.requested_period) || ''
+    ].join(' '));
+    if(text){
+      var exact = services.find(function(service){ return text.indexOf(norm(service.name)) !== -1; });
+      if(exact) return { service: exact, inferred_from:'mensagem', needs_review:false };
+    }
+    if(patient && patient.id){
+      var recent = (agenda.appointments || []).filter(function(item){
+        return String(item.patient_id) === String(patient.id) && item.service_id;
+      }).sort(function(a,b){
+        return String(b.appointment_date || '').localeCompare(String(a.appointment_date || '')) || String(b.start_time || '').localeCompare(String(a.start_time || ''));
+      })[0];
+      if(recent){
+        var byHistory = services.find(function(service){ return String(service.id) === String(recent.service_id); });
+        if(byHistory) return { service: byHistory, inferred_from:'historico recente', needs_review:false };
+      }
+    }
+    if(services.length === 1) return { service: services[0], inferred_from:'servico unico', needs_review:false };
+    return { service:null, inferred_from:'', needs_review:true };
+  }
   function inferDatesFromPayload(payload){
     var dates = [];
     if(payload && payload.requested_date && /^\d{4}-\d{2}-\d{2}$/.test(String(payload.requested_date))){
@@ -200,7 +269,8 @@
     if(!dates.length) dates = [addDays(todayIso(), 1), addDays(todayIso(), 2), addDays(todayIso(), 3)];
     return dates.filter(function(item, index){ return dates.indexOf(item) === index; }).slice(0, 4);
   }
-  function inferDurationForPatient(patient){
+  function inferDurationForPatient(patient, service){
+    if(service && service.duration_minutes) return Number(service.duration_minutes);
     var agenda = getAgendaState();
     var appointments = (agenda.appointments || []).filter(function(item){ return String(item.patient_id) === String(patient.id); });
     var recent = appointments.slice().sort(function(a,b){
@@ -218,14 +288,17 @@
       return /^\d{2}:\d{2}$/.test(item.start) && /^\d{2}:\d{2}$/.test(item.end) && timeToMin(item.end) > timeToMin(item.start);
     });
   }
-  function slotsForDate(dateStr, duration){
+  function slotsForDate(dateStr, duration, patient, service){
     var agenda = getAgendaState();
+    var workingDays = String((agenda.settings && agenda.settings.working_days) || '1,2,3,4,5,6').split(',');
+    var date = new Date(dateStr + 'T00:00:00');
+    if(!workingDays.includes(String(date.getDay()))) return [];
     var step = Number((agenda.settings && agenda.settings.slot_interval_minutes) || 30);
     var periods = parsePeriods(agenda.settings);
     var appointments = (agenda.appointments || []).filter(function(item){
       return item.appointment_date === dateStr && item.status !== 'cancelado';
     });
-    var maxPatients = Number((agenda.settings && agenda.settings.max_patients_per_slot) || 4);
+    var maxPatients = Number((service && service.max_patients) || (agenda.settings && agenda.settings.max_patients_per_slot) || 4);
     var result = [];
     periods.forEach(function(period){
       for(var minute = timeToMin(period.start); minute + duration <= timeToMin(period.end); minute += step){
@@ -234,8 +307,26 @@
         var overlaps = appointments.filter(function(item){
           return timeToMin(normalizeTime(item.start_time)) < minute + duration && timeToMin(normalizeTime(item.end_time)) > minute;
         });
+        var hasIndividual = overlaps.some(function(item){
+          var other = (agenda.services || []).find(function(s){ return String(s.id) === String(item.service_id); }) || {};
+          return (other.appointment_mode || 'grupo') === 'individual';
+        });
+        if((service && service.appointment_mode) === 'individual' && overlaps.length) continue;
+        if(hasIndividual) continue;
         if(overlaps.length < maxPatients){
-          result.push({ date: dateStr, start: start, end: end, load: overlaps.length });
+          result.push({
+            patient_id: patient && patient.id || '',
+            service_id: service && service.id || '',
+            date: dateStr,
+            appointment_date: dateStr,
+            start: start,
+            start_time: start,
+            end: end,
+            end_time: end,
+            duration_minutes: duration,
+            service_price_at_time: Number(service && service.price || 0),
+            load: overlaps.length
+          });
         }
       }
     });
@@ -251,12 +342,35 @@
     if(normalized.indexOf('noite') !== -1) return minute >= 18 * 60;
     return true;
   }
-  function buildSuggestedSlots(payload, patient){
+  function buildSuggestedSlots(payload, patient, service){
     var text = ((payload && payload.message_text) || '') + ' ' + ((payload && payload.requested_period) || '');
-    var duration = inferDurationForPatient(patient || {});
+    if(!patient || !service) return [];
+    var duration = inferDurationForPatient(patient || {}, service);
     return inferDatesFromPayload(payload).reduce(function(all, date){
-      return all.concat(slotsForDate(date, duration).filter(function(slot){ return shiftFilter(slot, text); }));
+      return all.concat(slotsForDate(date, duration, patient, service).filter(function(slot){ return shiftFilter(slot, text); }));
     }, []).slice(0, 5);
+  }
+  async function hydrateTaskSuggestions(taskId, payload, patient, service){
+    if(!patient || !service || !window.FEMICAgendaRuntime || typeof window.FEMICAgendaRuntime.suggestAppointmentSlots !== 'function') return;
+    try{
+      var result = await window.FEMICAgendaRuntime.suggestAppointmentSlots({
+        patient_id: patient.id,
+        service_id: service.id,
+        dates: inferDatesFromPayload(payload),
+        requested_period: (payload && payload.requested_period) || '',
+        period: (payload && payload.requested_period) || ''
+      });
+      var list = readTasks();
+      var task = list.find(function(item){ return item.id === taskId; });
+      if(!task) return;
+      task.suggested_slots = result.slots || [];
+      task.suggestion_reason = result.reason || '';
+      task.updated_at = new Date().toISOString();
+      saveTasks(list);
+      renderExtensionPendingTasks();
+    }catch(e){
+      console.warn('Falha ao atualizar sugestões da agenda:', e);
+    }
   }
   function buildCancellationCandidates(patient){
     if(!patient) return [];
@@ -278,12 +392,17 @@
       priority: String(task.priority || 'normal'),
       patient_id: task.patient_id || '',
       patient_name: task.patient_name || '',
+      service_id: task.service_id || '',
+      service_name: task.service_name || '',
+      suggestion_reason: task.suggestion_reason || '',
       phone: task.phone || '',
       origin: task.origin || 'manual',
       requested_action: task.requested_action || '',
       notes: task.notes || '',
       suggested_slots: Array.isArray(task.suggested_slots) ? task.suggested_slots : [],
       candidates: Array.isArray(task.candidates) ? task.candidates : [],
+      parsed_shift: task.parsed_shift || '',
+      parsed_dates: Array.isArray(task.parsed_dates) ? task.parsed_dates : [],
       needs_review: task.needs_review === true,
       created_at: task.created_at || now,
       updated_at: now,
@@ -295,6 +414,12 @@
     var agenda = getAgendaState();
     var patient = (agenda.patients || []).find(function(item){ return String(item.id) === String(task.patient_id); });
     return patient ? patient.name : '';
+  }
+  function taskServiceName(task){
+    if(task.service_name) return task.service_name;
+    var agenda = getAgendaState();
+    var service = (agenda.services || []).find(function(item){ return String(item.id) === String(task.service_id); });
+    return service ? service.name : '';
   }
   function getExtensionTasks(){
     return readTasks().filter(function(task){ return task.origin === 'chrome_extension'; }).sort(function(a,b){
@@ -327,6 +452,21 @@
       return '<div class="card kpi"><div class="eyebrow">' + esc(item.label) + '</div><strong>' + item.value + '</strong><span class="muted small">' + esc(item.note) + '</span></div>';
     }).join('');
   }
+  function renderSlotProposal(task, slot, index, maxIndex){
+    var dateLabel = fmtWeekday(slot.date) + ' · ' + fmtDate(slot.date);
+    var timeLabel = slot.start + (slot.end ? '-' + slot.end : '');
+    var isBest = index === 0;
+    return '<div class="proposal-slot ' + (isBest ? 'proposal-best' : '') + '">' +
+      (isBest ? '<span class="proposal-badge">Melhor opção</span>' : '') +
+      '<strong>' + esc(dateLabel) + '</strong>' +
+      '<span class="proposal-time">' + esc(timeLabel) + '</span>' +
+      '<div class="proposal-actions">' +
+        '<button class="btn small primary" type="button" onclick="confirmAssistantTaskSlot(\'' + esc(task.id) + '\',' + index + ')">✓ Confirmar</button>' +
+        (maxIndex > 1 ? '<button class="btn small" type="button" onclick="showAssistantTaskSlots(\'' + esc(task.id) + '\')">Ver mais opções</button>' : '') +
+        '<button class="btn small" type="button" onclick="openAgendaForDate(\'' + esc(slot.date) + '\')">📅 Abrir agenda</button>' +
+      '</div>' +
+    '</div>';
+  }
   function renderExtensionPendingTasks(){
     var target = el('pendingTaskList');
     var allTasks = getExtensionTasks();
@@ -343,20 +483,39 @@
     });
     target.innerHTML = list.length ? list.map(function(task){
       var tags = [];
-      if(task.needs_review) tags.push('<span>revisar paciente</span>');
-      if(task.phone) tags.push('<span>' + esc(task.phone) + '</span>');
-      (task.suggested_slots || []).slice(0, 3).forEach(function(slot){
-        tags.push('<span>' + esc(fmtWeekday(slot.date) + ' · ' + fmtDate(slot.date) + ' · ' + slot.start) + '</span>');
-      });
-      (task.candidates || []).slice(0, 3).forEach(function(item){
-        tags.push('<span>' + esc('Candidato: ' + fmtDate(item.appointment_date) + ' ' + normalizeTime(item.start_time)) + '</span>');
-      });
+      if(task.needs_review) tags.push('<span class="tag-review">Revisar paciente</span>');
+      if(task.phone) tags.push('<span class="tag-phone">' + esc(task.phone) + '</span>');
+      if(taskServiceName(task)) tags.push('<span class="tag-service">' + esc(taskServiceName(task)) + '</span>');
+      if(task.parsed_shift) tags.push('<span class="tag-shift">Turno: ' + esc(task.parsed_shift) + '</span>');
+      if(task.suggestion_reason && !(task.suggested_slots || []).length) tags.push('<span class="tag-reason">' + esc(task.suggestion_reason) + '</span>');
+      var slots = task.suggested_slots || [];
+      var candidates = task.candidates || [];
+      var maxVisible = 2;
       return '<article class="pending-task-item ' + esc(task.status) + '">' +
         '<div class="pending-task-top">' +
-          '<div><strong>' + esc(task.title) + '</strong><div class="muted small">' + esc(taskTypeLabel(task.type)) + ' · ' + esc(taskStatusLabel(task.status)) + (taskPatientName(task) ? ' · ' + esc(taskPatientName(task)) : '') + '</div></div>' +
-          '<div class="pending-task-actions"><button class="btn small" type="button" onclick="editAssistantTask(\'' + esc(task.id) + '\')">Editar</button><button class="btn small" type="button" onclick="setAssistantTaskStatus(\'' + esc(task.id) + '\',\'concluida\')">Concluir</button><button class="btn small danger" type="button" onclick="setAssistantTaskStatus(\'' + esc(task.id) + '\',\'cancelada\')">Cancelar</button></div>' +
+          '<div><strong>' + esc(task.title) + '</strong><div class="muted small">' +
+            esc(taskTypeLabel(task.type)) + ' · ' + esc(taskStatusLabel(task.status)) +
+            (taskPatientName(task) ? ' · ' + esc(taskPatientName(task)) : '') +
+          '</div></div>' +
+          '<div class="pending-task-actions">' +
+            '<button class="btn small" type="button" onclick="editAssistantTask(\'' + esc(task.id) + '\')">Editar</button>' +
+            '<button class="btn small" type="button" onclick="setAssistantTaskStatus(\'' + esc(task.id) + '\',\'concluida\')">Concluir</button>' +
+            '<button class="btn small danger" type="button" onclick="setAssistantTaskStatus(\'' + esc(task.id) + '\',\'cancelada\')">Descartar</button>' +
+          '</div>' +
         '</div>' +
-        (task.notes ? '<div class="muted small pending-task-notes">' + esc(task.notes) + '</div>' : '') +
+        (task.notes ? '<div class="muted small pending-task-notes">📝 ' + esc(task.notes) + '</div>' : '') +
+        (slots.length && ['marcacao','remarcacao'].indexOf(task.type) !== -1 ? '<div class="proposal-group">' +
+          slots.slice(0, maxVisible).map(function(slot, index){ return renderSlotProposal(task, slot, index, slots.length - 1); }).join('') +
+          (slots.length > maxVisible ? '<button class="btn small" type="button" onclick="showAssistantTaskSlots(\'' + esc(task.id) + '\')" style="margin-top:6px">+ Ver todos os ' + slots.length + ' horários</button>' : '') +
+        '</div>' : '') +
+        (candidates.length && task.type === 'cancelamento' ? '<div class="proposal-group"><div class="muted small" style="margin-bottom:6px">Agendamentos futuros deste paciente:</div>' +
+          candidates.slice(0, 4).map(function(item){
+            return '<div class="cancel-candidate">' +
+              '<span>' + esc(fmtDate(item.appointment_date) + ' ' + normalizeTime(item.start_time)) + ' — ' + esc(serviceName(item.service_id)) + '</span>' +
+              '<button class="btn small danger" type="button" onclick="confirmAssistantCancellation(\'' + esc(task.id) + '\',\'' + esc(item.id) + '\')">✕ Cancelar este</button>' +
+            '</div>';
+          }).join('') +
+        '</div>' : '') +
         (tags.length ? '<div class="pending-task-tags">' + tags.join('') + '</div>' : '') +
       '</article>';
     }).join('') : '<div class="muted small">Nenhuma pendencia da extensao neste filtro.</div>';
@@ -378,7 +537,17 @@
     if(allowed.indexOf(action) === -1 || !String(payload.message_text || '').trim()) return null;
     var match = findPatientFromPayload(payload);
     var patient = match.patient;
-    var suggestions = action === 'cancelamento' ? [] : buildSuggestedSlots(payload, patient);
+    var agenda = getAgendaState();
+    var serviceMatch = findServiceFromPayload(payload, patient);
+    var service = serviceMatch.service;
+    if(!service && agenda && agenda.services){
+      service = detectServiceFromText(payload.message_text, agenda.services);
+      if(service) serviceMatch = { service: service, inferred_from:'mensagem', needs_review:false };
+    }
+    var parsedShift = detectShiftFromText(payload.message_text);
+    var parsedDates = detectDateFromText(payload.message_text);
+    if(!action) action = 'marcacao';
+    var suggestions = action === 'cancelamento' ? [] : buildSuggestedSlots(payload, patient, service);
     var candidates = action === 'cancelamento' ? buildCancellationCandidates(patient) : [];
     var title = taskTypeLabel(action) + (patient ? ' · ' + patient.name : (payload.patient_name ? ' · ' + payload.patient_name : ''));
     var task = upsertTask({
@@ -388,15 +557,20 @@
       priority: action === 'cancelamento' ? 'alta' : 'normal',
       patient_id: patient ? patient.id : '',
       patient_name: patient ? patient.name : (payload.patient_name || ''),
+      service_id: service ? service.id : '',
+      service_name: service ? service.name : '',
       phone: payload.phone || '',
       origin: 'chrome_extension',
       requested_action: action,
       notes: payload.message_text || '',
       suggested_slots: suggestions,
       candidates: candidates,
-      needs_review: !patient || match.ambiguous,
+      parsed_shift: parsedShift,
+      parsed_dates: parsedDates.map(function(d){ return d.date; }),
+      needs_review: !patient || match.ambiguous || (action !== 'cancelamento' && serviceMatch.needs_review),
       created_at: payload.created_at || new Date().toISOString()
     });
+    if(action !== 'cancelamento') hydrateTaskSuggestions(task.id, payload, patient, service);
     setDebug('Extensao do WhatsApp conectada. Ultima tarefa: ' + task.title);
     if(typeof window.toast === 'function') window.toast('Pendencia recebida do WhatsApp Web.', 'success');
     return task;
@@ -748,6 +922,36 @@
     saveTasks(list);
     renderExtensionPendingTasks();
   };
+  window.confirmAssistantTaskSlot = async function(id, index){
+    var list = readTasks();
+    var task = list.find(function(item){ return item.id === id; });
+    if(!task) return;
+    var slot = (task.suggested_slots || [])[index];
+    if(!slot){
+      if(typeof window.toast === 'function') window.toast('Horário sugerido não encontrado.', 'warning');
+      return;
+    }
+    if(!window.FEMICAgendaRuntime || typeof window.FEMICAgendaRuntime.confirmAppointmentProposal !== 'function'){
+      if(typeof window.toast === 'function') window.toast('Agenda ainda não expôs confirmação segura. Atualize a página.', 'warning');
+      return;
+    }
+    var label = (taskPatientName(task) || 'Paciente') + '\n' + (taskServiceName(task) || 'Serviço') + '\n' + fmtWeekday(slot.date) + ' · ' + fmtDate(slot.date) + ' · ' + slot.start + '-' + slot.end;
+    if(!window.confirm('Confirmar este agendamento?\n\n' + label)) return;
+    try{
+      var result = await window.FEMICAgendaRuntime.confirmAppointmentProposal(slot);
+      task.status = 'concluida';
+      task.completed_at = new Date().toISOString();
+      task.updated_at = task.completed_at;
+      task.result_appointment_id = result && result.saved ? result.saved.id : '';
+      saveTasks(list);
+      renderExtensionPendingTasks();
+      if(typeof window.toast === 'function') window.toast('Agendamento confirmado pela pendência do WhatsApp.', 'success');
+      setDebug('Agendamento confirmado a partir da pendencia: ' + task.title);
+    }catch(error){
+      if(typeof window.toast === 'function') window.toast('Não consegui confirmar: ' + (error.message || error), 'error');
+      setDebug('Falha ao confirmar pendencia: ' + (error.message || error));
+    }
+  };
   window.editAssistantTask = function(id){
     var list = readTasks();
     var task = list.find(function(item){ return item.id === id; });
@@ -761,6 +965,54 @@
     saveTasks(list);
     renderExtensionPendingTasks();
     if(typeof window.toast === 'function') window.toast('Pendencia atualizada.', 'success');
+  };
+  window.showAssistantTaskSlots = function(id){
+    var list = readTasks();
+    var task = list.find(function(item){ return item.id === id; });
+    if(!task || !task.suggested_slots || !task.suggested_slots.length) return;
+    var slots = task.suggested_slots;
+    var msg = 'HORARIOS DISPONIVEIS:\n\n';
+    slots.forEach(function(slot, i){
+      msg += (i+1) + '. ' + fmtWeekday(slot.date) + ' · ' + fmtDate(slot.date) + ' · ' + slot.start + '-' + slot.end + '\n';
+    });
+    var choice = window.prompt(msg + '\nDigite o numero do horario desejado (ou deixe em branco para cancelar):', '');
+    if(!choice) return;
+    var index = parseInt(String(choice).trim(), 10) - 1;
+    if(isNaN(index) || index < 0 || index >= slots.length){
+      if(typeof window.toast === 'function') window.toast('Numero invalido.', 'warning');
+      return;
+    }
+    confirmAssistantTaskSlot(id, index);
+  };
+  window.openAgendaForDate = function(date){
+    if(typeof window.showPanel === 'function') window.showPanel('agenda');
+    if(typeof window.currentDate !== 'undefined' && date){
+      window.currentDate = new Date(date + 'T12:00:00');
+      if(typeof window.renderAgenda === 'function') window.renderAgenda();
+    }
+    if(typeof window.toast === 'function') window.toast('Agenda aberta para ' + fmtDate(date), 'info');
+  };
+  window.confirmAssistantCancellation = async function(taskId, appointmentId){
+    if(!appointmentId || !window.FEMICAgendaRuntime || typeof window.FEMICAgendaRuntime.cancelAppointment !== 'function'){
+      if(typeof window.toast === 'function') window.toast('Funcao de cancelamento indisponivel.', 'warning');
+      return;
+    }
+    if(!window.confirm('Tem certeza que deseja CANCELAR este agendamento?')) return;
+    try{
+      await window.FEMICAgendaRuntime.cancelAppointment(appointmentId);
+      var list = readTasks();
+      var task = list.find(function(item){ return item.id === taskId; });
+      if(task){
+        task.status = 'concluida';
+        task.completed_at = new Date().toISOString();
+        task.updated_at = task.completed_at;
+        saveTasks(list);
+        renderExtensionPendingTasks();
+      }
+      if(typeof window.toast === 'function') window.toast('Agendamento cancelado com sucesso.', 'success');
+    }catch(error){
+      if(typeof window.toast === 'function') window.toast('Erro ao cancelar: ' + (error.message || error), 'error');
+    }
   };
   window.FEMICAssistantTasks = {
     list: readTasks,
