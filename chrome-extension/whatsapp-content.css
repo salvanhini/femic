@@ -15,13 +15,37 @@
 .femic-wa-tab {
   border: 0;
   border-radius: 999px;
+  width: 48px;
+  height: 48px;
   background: linear-gradient(135deg, #0b5fa5, #15a8df);
   color: #fff;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 800;
-  padding: 11px 16px;
   box-shadow: 0 12px 30px rgba(5, 38, 66, .28);
+  transition: transform .2s;
+}
+.femic-wa-tab:hover {
+  transform: scale(1.06);
+}
+
+.femic-wa-quick {
+  position: absolute;
+  right: 0;
+  bottom: 106px;
+  border: 0;
+  border-radius: 999px;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #0f9f6e, #34d399);
+  color: #fff;
+  cursor: pointer;
+  font-size: 20px;
+  box-shadow: 0 12px 30px rgba(5, 66, 38, .28);
+  transition: transform .2s;
+}
+.femic-wa-quick:hover {
+  transform: scale(1.06);
 }
 
 .femic-wa-panel {
