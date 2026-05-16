@@ -131,7 +131,7 @@
   function renderAssistantAiProviderBadge(){
     var provider = el('assistantAiProvider') ? el('assistantAiProvider').value : getConfig().provider;
     if(el('assistantAiProviderBadge')) el('assistantAiProviderBadge').textContent = provider;
-    if(el('assistantAiStatusInput')) el('assistantAiStatusInput').value = 'Usado apenas para rascunhos clinicos. Pendencias operacionais nao dependem desta IA.';
+    if(el('assistantAiStatusInput')) el('assistantAiStatusInput').value = 'Rascunhos clinicos usam esta configuracao; o salvamento continua manual.';
   }
   function setDebug(text){
     state.debug = text;
@@ -1020,6 +1020,101 @@
     fromExtension: createTaskFromExtension
   };
 
+  // Voice task creation (mobile-friendly)
+  var voiceRec = null;
+  var voiceListening = false;
+  var voiceText = '';
+
+  function startVoiceTask() {
+    var Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Ctor) {
+      if (typeof window.toast === 'function') window.toast('Microfone não disponível neste navegador.', 'warning');
+      return;
+    }
+    if (voiceListening) {
+      stopVoiceTask();
+      return;
+    }
+    var btn = el('voiceTaskBtn');
+    voiceText = '';
+    voiceRec = new Ctor();
+    voiceRec.lang = 'pt-BR';
+    voiceRec.interimResults = true;
+    voiceRec.continuous = true;
+    voiceRec.onstart = function() {
+      voiceListening = true;
+      if (btn) { btn.textContent = '🔴 Gravando...'; btn.classList.add('is-recording'); }
+      if (typeof window.toast === 'function') window.toast('Fale seu lembrete agora.', 'info');
+    };
+    voiceRec.onresult = function(event) {
+      var interim = '';
+      for (var i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) voiceText += event.results[i][0].transcript;
+        else interim += event.results[i][0].transcript;
+      }
+      if (btn) btn.textContent = '🔴 ' + (voiceText + interim).slice(0, 40);
+    };
+    voiceRec.onerror = function() {
+      stopVoiceTask();
+      if (typeof window.toast === 'function') window.toast('Falha no microfone.', 'error');
+    };
+    voiceRec.onend = function() {
+      if (voiceListening) {
+        voiceListening = false;
+        if (voiceText.trim()) {
+          createVoiceTask(voiceText.trim());
+        } else {
+          if (typeof window.toast === 'function') window.toast('Nada captado. Tente novamente.', 'warning');
+        }
+      }
+      if (btn) { btn.textContent = '🎤 Nova por voz'; btn.classList.remove('is-recording'); }
+    };
+    voiceRec.start();
+  }
+
+  function stopVoiceTask() {
+    if (voiceRec && voiceListening) {
+      try { voiceRec.stop(); } catch(e) {}
+    }
+    voiceListening = false;
+    var btn = el('voiceTaskBtn');
+    if (btn) { btn.textContent = '🎤 Nova por voz'; btn.classList.remove('is-recording'); }
+  }
+
+  function createVoiceTask(text) {
+    var n = norm(text);
+    var action = '';
+    if (/cancel|desmarc|nao vou|nao pod/.test(n)) action = 'cancelamento';
+    else if (/remarc|reagen|remanej|mudar|trocar|alterar/.test(n)) action = 'remarcacao';
+    else if (/marcar|agendar|queria|gostaria|preciso|pode|podia|consigo|vaga|horario/.test(n)) action = 'marcacao';
+    if (!action) action = 'marcacao';
+    var title = taskTypeLabel(action) + ' · Lembrete por voz';
+    var task = upsertTask({
+      title: title,
+      type: action,
+      status: 'aberta',
+      priority: 'normal',
+      patient_id: '',
+      patient_name: '',
+      service_id: '',
+      service_name: '',
+      phone: '',
+      origin: 'voice',
+      requested_action: action,
+      notes: text,
+      suggested_slots: [],
+      candidates: [],
+      parsed_shift: detectShiftFromText(text),
+      parsed_dates: detectDateFromText(text).map(function(d){ return d.date; }),
+      needs_review: true,
+      created_at: new Date().toISOString()
+    });
+    if (typeof window.toast === 'function') window.toast('Lembrete por voz criado: ' + task.title, 'success');
+    setDebug('Lembrete por voz: ' + task.title);
+  }
+
+  window.startVoiceTask = startVoiceTask;
+
   window.addEventListener('message', function(event){
     var data = event && event.data;
     if(!data || data.type !== 'FEMIC_EXTENSION_EVENT') return;
@@ -1034,7 +1129,9 @@
     fillConfigInputs();
     renderAssistantAiProviderBadge();
     renderExtensionPendingTasks();
-    setDebug('IA clinica ativa. A parte operacional agora fica concentrada nas pendencias do WhatsApp.');
+    var voiceBtn = el('voiceTaskBtn');
+    if (voiceBtn) voiceBtn.addEventListener('click', startVoiceTask);
+    setDebug('IA clinica pronta para apoiar o prontuario. A operacao segue concentrada em Pendencias.');
   }
 
   if(document.readyState === 'loading'){

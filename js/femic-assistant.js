@@ -95,7 +95,7 @@
   };
 
   function init(){
-    if(el('assistantBuildLabel')) el('assistantBuildLabel').textContent = 'build assistant-phase-1';
+    if(el('assistantBuildLabel')) el('assistantBuildLabel').textContent = window.FEMIC_ASSISTANT_BUILD || 'build assistant-live-4';
     renderSuggestions();
     var form = el('assistantInput') && el('assistantInput').closest('form');
     if(form && !form.dataset.femicAssistantBound){
@@ -107,10 +107,10 @@
         if(!prompt) return;
         addMessage('user', '<p>' + esc(prompt) + '</p>');
         if(input) input.value = '';
-        setDebug('Consultando agenda...');
+        setDebug('Consultando a agenda operacional...');
         answerPrompt(prompt).catch(function(error){
           addMessage('assistant', '<p>Não consegui responder agora: ' + esc(error.message || error) + '</p>');
-        }).finally(function(){ setDebug('Consultas internas priorizam os dados da agenda.'); });
+        }).finally(function(){ setDebug('Assistente operacional usa os dados da agenda como fonte principal.'); });
       });
     }
   }
