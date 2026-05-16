@@ -167,3 +167,46 @@
     padding:16px;
   }
 }
+
+
+.prontuario-intro{
+  margin:8px 0 0;
+  max-width:560px;
+}
+
+.prontuario-card-note{
+  margin:6px 0 0;
+  max-width:420px;
+}
+
+.prontuario-save-note{
+  max-width:320px;
+  line-height:1.35;
+}
+
+.settings-advanced-block{
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:rgba(255,255,255,.65);
+  padding:12px 14px;
+}
+
+.settings-advanced-block summary{
+  cursor:pointer;
+  font-weight:700;
+  color:var(--primary);
+}
+
+.settings-ai-actions{
+  align-items:center;
+}
+
+.ai-center-debug{
+  line-height:1.4;
+}
+
+@media (max-width: 900px){
+  .prontuario-save-note{
+    max-width:none;
+  }
+}

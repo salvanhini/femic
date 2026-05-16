@@ -136,7 +136,6 @@
       <div class="nav-link" data-panel="pendencias" onclick="showPanel('pendencias')"><span class="icon">🗂️</span><span>Pendências</span><span class="pending-nav-badge hidden" id="pendingNavBadge">0</span></div>
       <div class="nav-link" data-panel="documentos" onclick="showPanel('documentos')"><span class="icon">🧾</span><span>Documentos</span></div>
       <div class="nav-link" data-panel="historico" onclick="showPanel('historico')"><span class="icon">📚</span><span>Histórico</span></div>
-      <div class="nav-link" data-panel="ai" onclick="showPanel('ai')"><span class="icon">🤖</span><span>IA</span></div>
       <div class="nav-link" data-panel="settings" onclick="showPanel('settings')"><span class="icon">⚙️</span><span>Configurações</span></div>
       <div class="nav-link" data-panel="backup" onclick="showPanel('backup')"><span class="icon">☁️</span><span>Backup</span></div>
     </nav>
@@ -153,7 +152,7 @@
           <div class="logo"></div>
           <div>
             <h1>FEMIC Unificado</h1>
-            <p>Agenda, pacientes, prontuário, documentos, histórico, IA e lembretes em um só lugar</p>
+            <p>Agenda, pacientes, prontuário, documentos, histórico e lembretes em um só lugar</p>
           </div>
         </div>
         <div class="toolbar">
@@ -235,7 +234,7 @@
   <section class="panel" id="panel-prontuario">
     <div class="card prontuario-shell">
       <div class="section-title">
-        <div><div class="eyebrow">Prontuário</div><h3>Anamnese, evolução e contexto clínico</h3></div>
+        <div><div class="eyebrow">Prontuário</div><h3>Preencher, revisar e salvar o registro clínico</h3><p class="muted small prontuario-intro">Use a IA só para rascunho. O texto continua sob revisão profissional antes do salvamento.</p></div>
         <div class="toolbar prontuario-toolbar">
           <select id="prontuarioPatientSelect" onchange="selectUnifiedPatient(this.value,'prontuario')" style="min-width:260px"></select>
         </div>
@@ -244,7 +243,7 @@
     </div>
     <div class="grid grid-2 prontuario-main-grid" style="margin-top:16px">
       <div class="card prontuario-anamnese-card">
-        <div class="section-title"><div><div class="eyebrow">Anamnese</div><h3>Base clínica do paciente</h3></div><div class="toolbar"><button class="btn" type="button" onclick="fillAnamneseWithAI()">Preencher com IA</button></div></div>
+        <div class="section-title"><div><div class="eyebrow">Anamnese</div><h3>Base clínica do paciente</h3><p class="muted small prontuario-card-note">IA sugere o texto inicial. Revise e salve quando estiver pronto.</p></div><div class="toolbar"><button class="btn" type="button" onclick="fillAnamneseWithAI()">IA anamnese</button></div></div>
         <div class="grid" style="gap:12px">
           <div class="field"><label>Queixa principal</label><textarea id="anamChief" rows="3"></textarea></div>
           <div class="field"><label>História atual</label><textarea id="anamHistory" rows="4"></textarea></div>
@@ -255,11 +254,12 @@
         </div>
         <div class="toolbar" style="margin-top:12px">
           <button class="btn primary" onclick="saveUnifiedAnamnese()">Salvar anamnese</button>
+          <span class="muted small prontuario-save-note">Salva no Supabase quando disponível, com fallback local sinalizado.</span>
         </div>
       </div>
       <div class="prontuario-side-stack">
       <div class="card prontuario-evolucao-card">
-        <div class="section-title"><div><div class="eyebrow">Evolução clínica</div><h3>Registro clínico e orientação</h3></div><div class="toolbar"><button class="btn" type="button" onclick="fillEvolutionWithAI()">Preencher com IA</button></div></div>
+        <div class="section-title"><div><div class="eyebrow">Evolução clínica</div><h3>Registro clínico e orientação</h3><p class="muted small prontuario-card-note">IA resume conduta e orientação a partir do seu contexto, sem salvar sozinha.</p></div><div class="toolbar"><button class="btn" type="button" onclick="fillEvolutionWithAI()">IA evolução</button></div></div>
         <div class="grid" style="gap:12px">
           <div class="field"><label>Data</label><input id="evolutionDate" type="date"></div>
           <div class="field"><label>Evolução clínica</label><textarea id="evolutionConduct" rows="4"></textarea></div>
@@ -267,6 +267,7 @@
         </div>
         <div class="toolbar" style="margin-top:12px">
           <button class="btn primary" onclick="saveUnifiedEvolution()">Salvar evolução clínica</button>
+          <span class="muted small prontuario-save-note">Revise o texto antes de gravar. O salvamento continua sempre explícito.</span>
         </div>
       </div>
       <div class="card prontuario-timeline-card">
@@ -411,6 +412,7 @@
       <section class="card pending-card">
         <div class="section-title">
           <div><div class="eyebrow">Extensão</div><h3>Tarefas recebidas do WhatsApp</h3></div>
+          <button class="btn" id="voiceTaskBtn" type="button" title="Criar pendência por voz">🎤 Nova por voz</button>
         </div>
         <div class="pending-filters">
           <select id="pendingTaskStatusFilter" onchange="renderExtensionPendingTasks()"><option value="open">Abertas</option><option value="all">Todas</option><option value="concluida">Concluídas</option><option value="cancelada">Canceladas</option></select>
@@ -421,44 +423,6 @@
     </div>
   </section>
 
-  <section class="panel" id="panel-ai">
-    <div class="ai-center-shell">
-      <div class="ai-center-head">
-        <div>
-          <div class="eyebrow">IA clínica</div>
-          <h3>Apoio de escrita para prontuário</h3>
-          <p class="muted small">A IA do FEMIC agora fica focada no que mais ajuda no atendimento: rascunhos de anamnese e evolução clínica. As pendências operacionais ficam na aba <strong>Pendências</strong>.</p>
-        </div>
-      </div>
-      <div class="grid grid-2 ai-focus-grid">
-        <div class="card ai-focus-card">
-          <div class="eyebrow">Anamnese</div>
-          <h4>Preenchimento assistido</h4>
-          <p class="muted small">Use o botão <strong>Preencher com IA</strong> dentro do prontuário para montar rascunhos curtos por campo. O conteúdo nunca é salvo automaticamente.</p>
-        </div>
-        <div class="card ai-focus-card">
-          <div class="eyebrow">Evolução clínica</div>
-          <h4>Registro mais rápido</h4>
-          <p class="muted small">A IA resume conduta e orientação a partir do seu texto-base, sempre para revisão antes de salvar no prontuário.</p>
-        </div>
-      </div>
-      <details class="ai-rules-card">
-        <summary>Regras da IA</summary>
-        <div class="field">
-          <label>Como a IA deve se comportar</label>
-          <textarea id="assistantAiRules" rows="7" placeholder="Defina aqui o comportamento da IA no sistema FEMIC."></textarea>
-        </div>
-        <div class="toolbar">
-          <button class="btn primary" type="button" onclick="saveAssistantAiRules()">Salvar regras</button>
-          <button class="btn" type="button" onclick="resetAssistantAiRules()">Restaurar padrão</button>
-        </div>
-        <p class="muted small">Essas regras orientam apenas os rascunhos clínicos e respostas de apoio à escrita. A parte operacional da agenda não depende mais desta central.</p>
-      </details>
-      <div class="ai-center-debug" id="aiCenterDebug">IA clínica iniciando…</div>
-    </div>
-  </section>
-
-  
   <section class="panel" id="panel-packages">
     <div class="card">
       <div class="eyebrow">Novo pacote</div>
@@ -489,10 +453,10 @@
     <div class="card" style="margin-top:16px"><div class="section-title"><div><div class="eyebrow">WhatsApp API</div><h3>Preparação segura para Meta Cloud API</h3></div><span class="mode-badge manual" id="whatsappProviderBadge">wa.me</span></div><p class="muted small" style="margin-top:0">Deixe em link manual enquanto a API não estiver pronta. Para usar a Meta Cloud API, configure uma Supabase Edge Function e cole aqui apenas a URL pública da função. O token da Meta nunca deve ficar neste navegador.</p><div class="grid grid-2"><div class="field"><label>Provedor de envio</label><select id="whatsappProvider" onchange="renderWhatsappProviderBadge()"><option value="wa_me">Link WhatsApp seguro</option><option value="api">API via Supabase Edge Function</option></select></div><div class="field"><label>Endpoint da Edge Function</label><input id="whatsappEndpoint" placeholder="https://SEU-PROJETO.functions.supabase.co/send-whatsapp-reminder"></div><div class="field"><label>Template Meta: sessão</label><input id="whatsappTplAppointment" placeholder="lembrete_sessao"></div></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" onclick="saveWhatsappApiConfig()">Salvar WhatsApp API</button><button class="btn" onclick="testWhatsappApiConfig()">Testar configuração local</button></div></div>
     <div class="card" style="margin-top:16px" id="assistantAiConfigCard">
       <div class="section-title">
-        <div><div class="eyebrow">IA do assistente</div><h3>Modelos e APIs externas</h3></div>
+        <div><div class="eyebrow">IA clínica</div><h3>Configuração avançada de rascunhos</h3></div>
         <span class="mode-badge manual" id="assistantAiProviderBadge">gemini</span>
       </div>
-      <p class="muted small" style="margin-top:0">Use esta configuração apenas para os rascunhos clínicos de anamnese e evolução. Pendências operacionais e consultas internas da agenda não dependem desta IA.</p>
+      <p class="muted small" style="margin-top:0">Esse bloco afeta apenas os rascunhos de anamnese e evolução do prontuário. Pendências, agenda e WhatsApp seguem independentes desta configuração.</p>
       <div class="grid grid-2">
         <div class="field">
           <label>Provedor padrão</label>
@@ -504,7 +468,7 @@
         </div>
         <div class="field">
           <label>Status</label>
-          <input id="assistantAiStatusInput" value="Consultas internas sempre usam os dados da agenda." readonly>
+          <input id="assistantAiStatusInput" value="Rascunhos clínicos usam esta configuração; o salvamento continua manual." readonly>
         </div>
         <div class="field">
           <label>Modelo Gemini</label>
@@ -531,10 +495,23 @@
           <input id="assistantGroqKey" type="password" placeholder="gsk_...">
         </div>
       </div>
-      <div class="toolbar" style="margin-top:12px">
-        <button class="btn primary" onclick="saveAssistantAiConfig()">Salvar IA do assistente</button>
+      <details class="settings-advanced-block" style="margin-top:14px">
+        <summary>Regras e comportamento da IA clínica</summary>
+        <div class="field" style="margin-top:12px">
+          <label>Como a IA deve se comportar</label>
+          <textarea id="assistantAiRules" rows="7" placeholder="Defina aqui o comportamento da IA no sistema FEMIC."></textarea>
+        </div>
+        <div class="toolbar" style="margin-top:12px">
+          <button class="btn primary" type="button" onclick="saveAssistantAiRules()">Salvar regras</button>
+          <button class="btn" type="button" onclick="resetAssistantAiRules()">Restaurar padrão</button>
+        </div>
+        <p class="muted small" style="margin:10px 0 0">Use regras curtas e objetivas. Elas orientam apenas os rascunhos clínicos apresentados no prontuário.</p>
+      </details>
+      <div class="toolbar settings-ai-actions" style="margin-top:12px">
+        <button class="btn primary" onclick="saveAssistantAiConfig()">Salvar configuração clínica</button>
         <button class="btn" onclick="testAssistantAiConfig()">Testar configuração</button>
       </div>
+      <div class="muted small ai-center-debug" id="aiCenterDebug" style="margin-top:12px">IA clínica iniciando…</div>
     </div>
   </section>
 

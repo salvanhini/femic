@@ -1,5 +1,5 @@
 const FEMIC_EVENT_TYPE = 'FEMIC_EXTENSION_EVENT';
-const RECENT_EVENT_WINDOW_MS = 5000;
+const RECENT_EVENT_WINDOW_MS = 60000;
 const recentEventCache = new Map();
 
 function normalizePhone(value) {
