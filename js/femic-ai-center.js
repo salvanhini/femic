@@ -8,7 +8,9 @@
     debug: 'IA clinica iniciando...',
     clinicalMode: '',
     speechRecognition: null,
-    speechListening: false
+    speechListening: false,
+    tasksCloudReady: false,
+    tasksCloudLoading: false
   };
 
   var DEFAULT_ASSISTANT_RULES = [
@@ -159,6 +161,128 @@
       throw e;
     }
   }
+  function canUseCloudTasks(){
+    return !!(window.FEMICAgendaRuntime && typeof window.FEMICAgendaRuntime.api === 'function');
+  }
+  function isMissingAssistantTasksTableError(error){
+    return /assistant_tasks|relation .* does not exist|Could not find the table/i.test(String(error && error.message || error || ''));
+  }
+  async function tasksApi(path, opt){
+    if(!canUseCloudTasks()) throw new Error('Supabase indisponivel para pendencias.');
+    return window.FEMICAgendaRuntime.api(path, opt || {});
+  }
+  function cloudTaskRow(task){
+    task = normalizeTask(task);
+    return {
+      id: task.id,
+      title: task.title,
+      type: task.type,
+      status: task.status,
+      priority: task.priority,
+      patient_id: task.patient_id || null,
+      patient_name: task.patient_name || '',
+      service_id: task.service_id || null,
+      service_name: task.service_name || '',
+      suggestion_reason: task.suggestion_reason || '',
+      phone: task.phone || '',
+      origin: task.origin || 'manual',
+      requested_action: task.requested_action || '',
+      notes: task.notes || '',
+      suggested_slots: Array.isArray(task.suggested_slots) ? task.suggested_slots : [],
+      candidates: Array.isArray(task.candidates) ? task.candidates : [],
+      parsed_shift: task.parsed_shift || '',
+      parsed_dates: Array.isArray(task.parsed_dates) ? task.parsed_dates : [],
+      extension_fingerprint: task.extension_fingerprint || '',
+      needs_review: task.needs_review === true,
+      created_at: task.created_at || new Date().toISOString(),
+      updated_at: task.updated_at || new Date().toISOString(),
+      completed_at: task.completed_at || null
+    };
+  }
+  function taskFromCloudRow(row){
+    row = row || {};
+    return normalizeTask({
+      id: row.id,
+      title: row.title,
+      type: row.type,
+      status: row.status,
+      priority: row.priority,
+      patient_id: row.patient_id || '',
+      patient_name: row.patient_name || '',
+      service_id: row.service_id || '',
+      service_name: row.service_name || '',
+      suggestion_reason: row.suggestion_reason || '',
+      phone: row.phone || '',
+      origin: row.origin || 'manual',
+      requested_action: row.requested_action || '',
+      notes: row.notes || '',
+      suggested_slots: Array.isArray(row.suggested_slots) ? row.suggested_slots : [],
+      candidates: Array.isArray(row.candidates) ? row.candidates : [],
+      parsed_shift: row.parsed_shift || '',
+      parsed_dates: Array.isArray(row.parsed_dates) ? row.parsed_dates : [],
+      extension_fingerprint: row.extension_fingerprint || '',
+      needs_review: row.needs_review === true,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      completed_at: row.completed_at
+    });
+  }
+  function mergeTasks(primary, secondary){
+    var map = {};
+    (secondary || []).concat(primary || []).forEach(function(task){
+      if(!task || !task.id) return;
+      var normalized = normalizeTask(task);
+      var current = map[normalized.id];
+      if(!current || String(normalized.updated_at || normalized.created_at || '') >= String(current.updated_at || current.created_at || '')){
+        map[normalized.id] = normalized;
+      }
+    });
+    return Object.keys(map).map(function(id){ return map[id]; }).sort(function(a,b){
+      return String(b.updated_at || b.created_at || '').localeCompare(String(a.updated_at || a.created_at || ''));
+    });
+  }
+  async function persistTaskToCloud(task){
+    if(!canUseCloudTasks()) return false;
+    var row = cloudTaskRow(task);
+    try{
+      var patched = await tasksApi('assistant_tasks?id=eq.' + encodeURIComponent(row.id), { method:'PATCH', body:JSON.stringify(row) });
+      if(Array.isArray(patched) && patched.length) return true;
+      await tasksApi('assistant_tasks', { method:'POST', body:JSON.stringify(row) });
+      return true;
+    }catch(error){
+      if(isMissingAssistantTasksTableError(error)){
+        setDebug('Tabela assistant_tasks ausente. Rode o SQL atualizado para sincronizar pendencias.');
+      }else{
+        setDebug('Pendencia salva localmente; falha ao sincronizar Supabase: ' + (error.message || error));
+      }
+      return false;
+    }
+  }
+  async function loadTasksFromCloud(silent){
+    if(!canUseCloudTasks() || state.tasksCloudLoading) return readTasks();
+    state.tasksCloudLoading = true;
+    try{
+      var rows = await tasksApi('assistant_tasks?select=*&order=updated_at.desc&limit=200');
+      var cloud = (rows || []).map(taskFromCloudRow);
+      var local = readTasks();
+      var merged = mergeTasks(cloud, local);
+      saveTasks(merged);
+      state.tasksCloudReady = true;
+      renderExtensionPendingTasks();
+      local.filter(function(task){
+        return task && task.id && !cloud.some(function(item){ return item.id === task.id; });
+      }).forEach(function(task){ persistTaskToCloud(task); });
+      return merged;
+    }catch(error){
+      state.tasksCloudReady = false;
+      if(!silent && typeof window.toast === 'function'){
+        window.toast(isMissingAssistantTasksTableError(error) ? 'Crie a tabela assistant_tasks para sincronizar pendencias.' : 'Pendencias em modo local: ' + (error.message || error), 'warning');
+      }
+      return readTasks();
+    }finally{
+      state.tasksCloudLoading = false;
+    }
+  }
   function makeTaskId(){
     return 'task_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
   }
@@ -267,9 +391,9 @@
   }
   function detectShiftFromText(texto){
     var n = norm(texto);
-    if(n.indexOf('manha') !== -1) return 'manha';
-    if(n.indexOf('tarde') !== -1) return 'tarde';
-    if(n.indexOf('noite') !== -1) return 'noite';
+    if(/\bmanha\b/.test(n)) return 'manha';
+    if(/\btarde\b/.test(n)) return 'tarde';
+    if(/\bnoite\b/.test(n)) return 'noite';
     return '';
   }
   function detectServiceFromText(texto, services){
@@ -389,9 +513,9 @@
   function shiftFilter(slot, text){
     var normalized = norm(text);
     var minute = timeToMin(slot.start);
-    if(normalized.indexOf('tarde') !== -1) return minute >= 12 * 60 && minute < 18 * 60;
-    if(normalized.indexOf('manha') !== -1) return minute < 12 * 60;
-    if(normalized.indexOf('noite') !== -1) return minute >= 18 * 60;
+    if(/\btarde\b/.test(normalized)) return minute >= 12 * 60 && minute < 18 * 60;
+    if(/\bmanha\b/.test(normalized)) return minute < 12 * 60;
+    if(/\bnoite\b/.test(normalized)) return minute >= 18 * 60;
     return true;
   }
   function buildSuggestedSlots(payload, patient, service){
@@ -419,6 +543,7 @@
       task.suggestion_reason = result.reason || '';
       task.updated_at = new Date().toISOString();
       saveTasks(list);
+      persistTaskToCloud(task);
       renderExtensionPendingTasks();
     }catch(e){
       console.warn('Falha ao atualizar sugestões da agenda:', e);
@@ -458,7 +583,7 @@
       extension_fingerprint: task.extension_fingerprint || '',
       needs_review: task.needs_review === true,
       created_at: task.created_at || now,
-      updated_at: now,
+      updated_at: task.updated_at || now,
       completed_at: task.completed_at || null
     };
   }
@@ -475,7 +600,7 @@
     return service ? service.name : '';
   }
   function getExtensionTasks(){
-    return readTasks().filter(function(task){ return task.origin === 'chrome_extension'; }).sort(function(a,b){
+    return readTasks().filter(function(task){ return ['chrome_extension','voice','voice_mobile'].indexOf(task.origin) !== -1; }).sort(function(a,b){
       var statusWeight = { aberta:0, em_andamento:1, concluida:2, cancelada:3 };
       return (statusWeight[a.status] || 9) - (statusWeight[b.status] || 9) || String(b.updated_at || '').localeCompare(String(a.updated_at || ''));
     });
@@ -571,7 +696,7 @@
         '</div>' : '') +
         (tags.length ? '<div class="pending-task-tags">' + tags.join('') + '</div>' : '') +
       '</article>';
-    }).join('') : '<div class="muted small">Nenhuma pendencia da extensao neste filtro.</div>';
+    }).join('') : '<div class="muted small">Nenhuma pendencia neste filtro.</div>';
   }
   function upsertTask(task){
     var normalized = normalizeTask(task);
@@ -581,6 +706,9 @@
     else list[index] = Object.assign({}, list[index], normalized);
     saveTasks(list);
     renderExtensionPendingTasks();
+    persistTaskToCloud(normalized).then(function(ok){
+      if(ok && !state.tasksCloudReady) state.tasksCloudReady = true;
+    });
     return normalized;
   }
   function createTaskFromExtension(payload){
@@ -979,6 +1107,7 @@
     task.updated_at = new Date().toISOString();
     task.completed_at = status === 'concluida' ? new Date().toISOString() : task.completed_at;
     saveTasks(list);
+    persistTaskToCloud(task);
     renderExtensionPendingTasks();
   };
   window.confirmAssistantTaskSlot = async function(id, index){
@@ -1003,6 +1132,7 @@
       task.updated_at = task.completed_at;
       task.result_appointment_id = result && result.saved ? result.saved.id : '';
       saveTasks(list);
+      persistTaskToCloud(task);
       renderExtensionPendingTasks();
       if(typeof window.toast === 'function') window.toast('Agendamento confirmado pela pendência do WhatsApp.', 'success');
       setDebug('Agendamento confirmado a partir da pendencia: ' + task.title);
@@ -1022,6 +1152,7 @@
     task.notes = notes.trim();
     task.updated_at = new Date().toISOString();
     saveTasks(list);
+    persistTaskToCloud(task);
     renderExtensionPendingTasks();
     if(typeof window.toast === 'function') window.toast('Pendencia atualizada.', 'success');
   };
@@ -1066,6 +1197,7 @@
         task.completed_at = new Date().toISOString();
         task.updated_at = task.completed_at;
         saveTasks(list);
+        persistTaskToCloud(task);
         renderExtensionPendingTasks();
       }
       if(typeof window.toast === 'function') window.toast('Agendamento cancelado com sucesso.', 'success');
@@ -1183,11 +1315,15 @@
   window.addEventListener('storage', function(event){
     if(event.key === TASKS_STORAGE_KEY) renderExtensionPendingTasks();
   });
+  document.addEventListener('femic:state-updated', function(){
+    loadTasksFromCloud(true);
+  });
 
   function init(){
     fillConfigInputs();
     renderAssistantAiProviderBadge();
     renderExtensionPendingTasks();
+    loadTasksFromCloud(true);
     var voiceBtn = el('voiceTaskBtn');
     if (voiceBtn) voiceBtn.addEventListener('click', startVoiceTask);
     setDebug('IA clinica pronta para apoiar o prontuario. A operacao segue concentrada em Pendencias.');

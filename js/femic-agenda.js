@@ -7,6 +7,7 @@ DROP TABLE IF EXISTS appointments CASCADE;
 DROP TABLE IF EXISTS clinical_evolutions CASCADE;
 DROP TABLE IF EXISTS clinical_anamneses CASCADE;
 DROP TABLE IF EXISTS clinic_rules CASCADE;
+DROP TABLE IF EXISTS assistant_tasks CASCADE;
 DROP TABLE IF EXISTS services CASCADE;
 DROP TABLE IF EXISTS health_insurances CASCADE;
 DROP TABLE IF EXISTS schedule_settings CASCADE;
@@ -129,6 +130,33 @@ CREATE TABLE clinic_rules (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+-- PENDÊNCIAS OPERACIONAIS DO ASSISTENTE
+CREATE TABLE assistant_tasks (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  type TEXT DEFAULT 'outro',
+  status TEXT DEFAULT 'aberta',
+  priority TEXT DEFAULT 'normal',
+  patient_id TEXT REFERENCES patients(id) ON DELETE SET NULL,
+  patient_name TEXT,
+  service_id UUID REFERENCES services(id) ON DELETE SET NULL,
+  service_name TEXT,
+  suggestion_reason TEXT,
+  phone TEXT,
+  origin TEXT DEFAULT 'manual',
+  requested_action TEXT,
+  notes TEXT,
+  suggested_slots JSONB DEFAULT '[]'::jsonb,
+  candidates JSONB DEFAULT '[]'::jsonb,
+  parsed_shift TEXT,
+  parsed_dates JSONB DEFAULT '[]'::jsonb,
+  extension_fingerprint TEXT,
+  needs_review BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  completed_at TIMESTAMP WITH TIME ZONE
+);
+
 -- CONFIGURAÇÕES DA AGENDA
 CREATE TABLE schedule_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -166,6 +194,9 @@ CREATE INDEX idx_appointments_patient ON appointments(patient_id);
 CREATE INDEX idx_session_packages_patient ON session_packages(patient_id);
 CREATE INDEX idx_movements_patient ON session_movements(patient_id);
 CREATE INDEX idx_clinical_evolutions_patient_date ON clinical_evolutions(patient_id, date DESC);
+CREATE INDEX idx_assistant_tasks_status_updated ON assistant_tasks(status, updated_at DESC);
+CREATE INDEX idx_assistant_tasks_origin ON assistant_tasks(origin);
+CREATE INDEX idx_assistant_tasks_fingerprint ON assistant_tasks(extension_fingerprint);
 
 -- SEGURANÇA: anon não acessa dados. Usuários autenticados da clínica acessam tudo.
 ALTER TABLE patients ENABLE ROW LEVEL SECURITY;
@@ -176,6 +207,7 @@ ALTER TABLE session_packages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE session_movements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinic_rules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assistant_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinical_anamneses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinical_evolutions ENABLE ROW LEVEL SECURITY;
 
@@ -193,6 +225,7 @@ CREATE POLICY "authenticated_full_access_session_packages" ON session_packages F
 CREATE POLICY "authenticated_full_access_appointments" ON appointments FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_session_movements" ON session_movements FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_clinic_rules" ON clinic_rules FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_full_access_assistant_tasks" ON assistant_tasks FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_clinical_anamneses" ON clinical_anamneses FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_clinical_evolutions" ON clinical_evolutions FOR ALL TO authenticated USING (true) WITH CHECK (true);
 NOTIFY pgrst, 'reload schema';`;
@@ -482,6 +515,7 @@ window.FEMICAgendaRuntime={
   confirmAppointmentProposal:confirmAssistantAppointmentProposal,
   findFutureAppointments:findPatientFutureAppointments,
   cancelAppointment:function(id){return cancelAppointmentProposal(id);},
+  api:function(path,opt){return api(path,opt||{});},
   setClinicRules:function(list){clinicRules=Array.isArray(list)?list:[];writeClinicRulesCache(clinicRules);renderBackupPanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));return clinicRules},
   readClinicRulesCache:readClinicRulesCache,
   writeClinicRulesCache:writeClinicRulesCache,

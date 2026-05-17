@@ -29,9 +29,73 @@
     .subtitle{
       font-size:.82rem;
       opacity:.7;
-      margin-bottom:32px;
+      margin-bottom:16px;
       text-align:center;
     }
+    .sync-card{
+      width:100%;
+      max-width:360px;
+      background:rgba(255,255,255,.12);
+      border:1px solid rgba(255,255,255,.22);
+      border-radius:16px;
+      padding:12px;
+      margin-bottom:22px;
+    }
+    .sync-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .sync-title{
+      font-size:.78rem;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      opacity:.78;
+    }
+    .sync-status{
+      font-size:.72rem;
+      font-weight:800;
+      padding:4px 8px;
+      border-radius:999px;
+      background:rgba(255,255,255,.14);
+      color:#fff;
+      white-space:nowrap;
+    }
+    .sync-status[data-state="online"]{background:#dcfce7;color:#166534}
+    .sync-status[data-state="offline"]{background:#fee2e2;color:#991b1b}
+    .sync-grid{
+      display:grid;
+      gap:8px;
+    }
+    .sync-grid input{
+      width:100%;
+      border:1px solid rgba(255,255,255,.24);
+      background:rgba(255,255,255,.9);
+      color:#0b3c6f;
+      border-radius:10px;
+      padding:10px 11px;
+      font-size:.86rem;
+      outline:none;
+    }
+    .sync-actions{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-top:8px;
+    }
+    .sync-actions button{
+      border:none;
+      border-radius:10px;
+      padding:10px;
+      font-size:.78rem;
+      font-weight:800;
+      cursor:pointer;
+    }
+    .sync-primary{background:#fff;color:#0b3c6f}
+    .sync-secondary{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.22)!important}
     .mic-btn{
       width:120px;
       height:120px;
@@ -186,6 +250,23 @@
   <h1>FEMIC</h1>
   <p class="subtitle">Toque no microfone e fale seu lembrete</p>
 
+  <section class="sync-card" aria-label="Conexão Supabase">
+    <div class="sync-head">
+      <div class="sync-title">Supabase</div>
+      <div class="sync-status" id="syncStatus" data-state="offline">Local</div>
+    </div>
+    <div class="sync-grid">
+      <input id="sbUrl" type="url" placeholder="URL do projeto Supabase">
+      <input id="sbKey" type="password" placeholder="Anon key">
+      <input id="sbEmail" type="email" placeholder="E-mail">
+      <input id="sbPassword" type="password" placeholder="Senha">
+    </div>
+    <div class="sync-actions">
+      <button class="sync-primary" id="loginBtn" type="button">Conectar</button>
+      <button class="sync-secondary" id="syncBtn" type="button">Atualizar</button>
+    </div>
+  </section>
+
   <button class="mic-btn" id="micBtn" type="button">🎤</button>
   <p class="status" id="status">Toque para começar</p>
 
@@ -215,6 +296,9 @@
   var clearBtn = document.getElementById('clearBtn');
   var taskListEl = document.getElementById('taskList');
   var toastEl = document.getElementById('toast');
+  var syncStatusEl = document.getElementById('syncStatus');
+  var loginBtn = document.getElementById('loginBtn');
+  var syncBtn = document.getElementById('syncBtn');
 
   var recognition = null;
   var listening = false;
@@ -224,6 +308,213 @@
     toastEl.textContent = msg;
     toastEl.classList.add('show');
     setTimeout(function(){ toastEl.classList.remove('show'); }, 3000);
+  }
+
+  function setSyncStatus(message, state){
+    syncStatusEl.textContent = message;
+    syncStatusEl.dataset.state = state || 'offline';
+  }
+
+  function base(){
+    return (document.getElementById('sbUrl').value || localStorage.femic_agenda_url || '').trim().replace(/\/$/,'');
+  }
+
+  function key(){
+    return (document.getElementById('sbKey').value || localStorage.femic_agenda_key || '').trim();
+  }
+
+  function hasValidSession(){
+    var jwt = sessionStorage.getItem('femic_jwt');
+    var expiry = Number(sessionStorage.getItem('femic_token_expiry') || 0);
+    return !!(jwt && expiry && Date.now() < expiry);
+  }
+
+  async function refreshToken(){
+    var refresh = sessionStorage.getItem('femic_refresh_token');
+    if(!base() || !key() || !refresh) return false;
+    try{
+      var res = await fetch(base() + '/auth/v1/token?grant_type=refresh_token', {
+        method:'POST',
+        headers:{apikey:key(),'Content-Type':'application/json'},
+        body:JSON.stringify({refresh_token:refresh})
+      });
+      if(!res.ok) return false;
+      var data = await res.json();
+      storeSession(data);
+      return true;
+    }catch(e){ return false; }
+  }
+
+  async function ensureSession(){
+    if(hasValidSession()) return true;
+    if(await refreshToken()) return true;
+    throw new Error('Conecte o Supabase para sincronizar.');
+  }
+
+  function storeSession(data){
+    sessionStorage.setItem('femic_jwt', data.access_token || '');
+    sessionStorage.setItem('femic_refresh_token', data.refresh_token || '');
+    sessionStorage.setItem('femic_token_expiry', String(Date.now() + ((Number(data.expires_in) || 3600) - 60) * 1000));
+    sessionStorage.setItem('femic_user', JSON.stringify(data.user || {}));
+  }
+
+  function apiHeaders(){
+    return {
+      apikey:key(),
+      Authorization:'Bearer ' + sessionStorage.getItem('femic_jwt'),
+      'Content-Type':'application/json',
+      Prefer:'return=representation'
+    };
+  }
+
+  async function mobileApi(path, options){
+    if(!base() || !key()) throw new Error('Informe URL e anon key do Supabase.');
+    await ensureSession();
+    var res = await fetch(base() + '/rest/v1/' + path, Object.assign({headers:apiHeaders()}, options || {}));
+    if(!res.ok){
+      var body = await res.text();
+      throw new Error(body || ('Supabase ' + res.status));
+    }
+    if(res.status === 204) return null;
+    var textBody = await res.text();
+    return textBody ? JSON.parse(textBody) : null;
+  }
+
+  function saveConfig(){
+    localStorage.femic_agenda_url = document.getElementById('sbUrl').value.trim();
+    localStorage.femic_agenda_key = document.getElementById('sbKey').value.trim();
+  }
+
+  function loadConfig(){
+    document.getElementById('sbUrl').value = localStorage.femic_agenda_url || '';
+    document.getElementById('sbKey').value = localStorage.femic_agenda_key || '';
+    if(hasValidSession()) setSyncStatus('Conectado', 'online');
+    else setSyncStatus('Local', 'offline');
+  }
+
+  async function login(){
+    saveConfig();
+    var email = document.getElementById('sbEmail').value.trim();
+    var password = document.getElementById('sbPassword').value;
+    if(!base() || !key() || !email || !password){
+      showToast('Informe Supabase, e-mail e senha.');
+      return;
+    }
+    setSyncStatus('Conectando...', 'offline');
+    try{
+      var res = await fetch(base() + '/auth/v1/token?grant_type=password', {
+        method:'POST',
+        headers:{apikey:key(),'Content-Type':'application/json'},
+        body:JSON.stringify({email:email,password:password})
+      });
+      if(!res.ok) throw new Error(await res.text());
+      storeSession(await res.json());
+      document.getElementById('sbPassword').value = '';
+      setSyncStatus('Conectado', 'online');
+      showToast('Supabase conectado.');
+      await loadCloudTasks(false);
+    }catch(e){
+      setSyncStatus('Local', 'offline');
+      showToast('Login falhou. Confira os dados.');
+    }
+  }
+
+  function cloudTaskRow(task){
+    return {
+      id: task.id,
+      title: task.title || taskTypeLabel(task.type) + ' · Lembrete por voz',
+      type: task.type || 'marcacao',
+      status: task.status || 'aberta',
+      priority: task.priority || 'normal',
+      patient_id: task.patient_id || null,
+      patient_name: task.patient_name || '',
+      phone: task.phone || '',
+      origin: task.origin || 'voice',
+      requested_action: task.requested_action || task.type || 'marcacao',
+      notes: task.notes || '',
+      parsed_shift: task.parsed_shift || '',
+      parsed_dates: Array.isArray(task.parsed_dates) ? task.parsed_dates : [],
+      suggested_slots: Array.isArray(task.suggested_slots) ? task.suggested_slots : [],
+      candidates: Array.isArray(task.candidates) ? task.candidates : [],
+      needs_review: task.needs_review !== false,
+      extension_fingerprint: task.extension_fingerprint || null,
+      created_at: task.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: task.completed_at || null
+    };
+  }
+
+  function taskFromCloud(row){
+    return {
+      id: row.id,
+      title: row.title || taskTypeLabel(row.type) + ' · Pendência',
+      type: row.type || row.requested_action || 'marcacao',
+      status: row.status || 'aberta',
+      priority: row.priority || 'normal',
+      patient_id: row.patient_id || '',
+      patient_name: row.patient_name || '',
+      service_id: row.service_id || '',
+      service_name: row.service_name || '',
+      phone: row.phone || '',
+      origin: row.origin || 'voice',
+      requested_action: row.requested_action || row.type || 'marcacao',
+      notes: row.notes || '',
+      suggested_slots: Array.isArray(row.suggested_slots) ? row.suggested_slots : [],
+      candidates: Array.isArray(row.candidates) ? row.candidates : [],
+      parsed_shift: row.parsed_shift || '',
+      parsed_dates: Array.isArray(row.parsed_dates) ? row.parsed_dates : [],
+      needs_review: row.needs_review !== false,
+      extension_fingerprint: row.extension_fingerprint || '',
+      created_at: row.created_at || new Date().toISOString(),
+      updated_at: row.updated_at || row.created_at || new Date().toISOString(),
+      completed_at: row.completed_at || null,
+      sync_pending: false
+    };
+  }
+
+  function mergeTasks(primary, secondary){
+    var map = {};
+    (primary || []).concat(secondary || []).forEach(function(task){
+      if(!task || !task.id) return;
+      var current = map[task.id];
+      if(!current || new Date(task.updated_at || task.created_at || 0) >= new Date(current.updated_at || current.created_at || 0)){
+        map[task.id] = task;
+      }
+    });
+    return Object.keys(map).map(function(id){ return map[id]; }).sort(function(a,b){
+      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
+  }
+
+  async function persistTask(task){
+    if(!base() || !key()) throw new Error('Supabase não configurado.');
+    var row = cloudTaskRow(task);
+    var patched = await mobileApi('assistant_tasks?id=eq.' + encodeURIComponent(row.id), {method:'PATCH', body:JSON.stringify(row)});
+    if(!Array.isArray(patched) || !patched.length){
+      await mobileApi('assistant_tasks', {method:'POST', body:JSON.stringify(row)});
+    }
+    var list = readTasks().map(function(item){
+      return item.id === task.id ? Object.assign({}, item, {updated_at: row.updated_at, sync_pending:false}) : item;
+    });
+    saveTasks(list);
+    setSyncStatus('Conectado', 'online');
+  }
+
+  async function loadCloudTasks(silent){
+    try{
+      var rows = await mobileApi('assistant_tasks?select=*&order=updated_at.desc&limit=200');
+      var cloud = Array.isArray(rows) ? rows.map(taskFromCloud) : [];
+      var merged = mergeTasks(cloud, readTasks());
+      saveTasks(merged);
+      renderTasks();
+      setSyncStatus('Conectado', 'online');
+      var pending = merged.filter(function(t){ return t.sync_pending; });
+      pending.forEach(function(t){ persistTask(t).catch(function(){}); });
+      if(!silent) showToast('Pendências atualizadas.');
+    }catch(e){
+      setSyncStatus('Local', 'offline');
+      if(!silent) showToast('Modo local: não sincronizou.');
+    }
   }
 
   function norm(v){
@@ -239,9 +530,9 @@
 
   function detectShift(text){
     var n = norm(text);
-    if(n.indexOf('manha')!==-1) return 'manha';
-    if(n.indexOf('tarde')!==-1) return 'tarde';
-    if(n.indexOf('noite')!==-1) return 'noite';
+    if(/\bmanha\b/.test(n)) return 'manha';
+    if(/\btarde\b/.test(n)) return 'tarde';
+    if(/\bnoite\b/.test(n)) return 'noite';
     return '';
   }
 
@@ -315,7 +606,7 @@
       service_id: '',
       service_name: '',
       phone: '',
-      origin: 'voice_mobile',
+      origin: 'voice',
       requested_action: action,
       notes: text,
       suggested_slots: [],
@@ -335,7 +626,7 @@
 
   function renderTasks(){
     var list = readTasks().filter(function(t){
-      return t.origin === 'voice_mobile' || t.origin === 'chrome_extension';
+      return t.origin === 'voice' || t.origin === 'voice_mobile' || t.origin === 'chrome_extension';
     }).slice(0, 10);
     if(!list.length){
       taskListEl.innerHTML = '<div class="empty">Nenhum lembrete ainda</div>';
@@ -344,9 +635,11 @@
     taskListEl.innerHTML = list.map(function(t){
       var ago = Math.round((Date.now() - new Date(t.created_at).getTime()) / 60000);
       var timeLabel = ago < 1 ? 'agora' : ago < 60 ? ago + ' min atrás' : Math.round(ago/60) + 'h atrás';
+      var syncLabel = t.sync_pending ? ' · sincronização pendente' : '';
+      var note = String(t.notes || '');
       return '<div class="task-item">' +
         '<strong><span class="task-type">' + taskTypeLabel(t.type) + '</span>' + esc(t.title) + '</strong>' +
-        '<span>' + esc(t.notes).slice(0,80) + (t.notes.length>80?'...':'') + ' · ' + timeLabel + '</span>' +
+        '<span>' + esc(note).slice(0,80) + (note.length>80?'...':'') + ' · ' + timeLabel + syncLabel + '</span>' +
       '</div>';
     }).join('');
   }
@@ -430,6 +723,18 @@
     sendBtn.disabled = true;
     statusEl.textContent = 'Toque para novo lembrete';
     renderTasks();
+    persistTask(task).then(function(){
+      renderTasks();
+      showToast('Sincronizado com o FEMIC.');
+    }).catch(function(){
+      var list = readTasks().map(function(item){
+        return item.id === task.id ? Object.assign({}, item, {sync_pending:true}) : item;
+      });
+      saveTasks(list);
+      renderTasks();
+      setSyncStatus('Local', 'offline');
+      showToast('Salvo no celular. Sincronização pendente.');
+    });
   }
 
   function clearTask(){
@@ -443,12 +748,16 @@
   micBtn.addEventListener('click', startListening);
   sendBtn.addEventListener('click', sendTask);
   clearBtn.addEventListener('click', clearTask);
+  loginBtn.addEventListener('click', login);
+  syncBtn.addEventListener('click', function(){ saveConfig(); loadCloudTasks(false); });
 
   transcriptEl.addEventListener('input', function(){
     sendBtn.disabled = !transcriptEl.value.trim();
   });
 
+  loadConfig();
   renderTasks();
+  if(hasValidSession()) loadCloudTasks(true);
 })();
 </script>
 </body>
