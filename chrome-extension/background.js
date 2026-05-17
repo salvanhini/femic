@@ -57,8 +57,11 @@ function isDuplicateRecentEvent(payload) {
     if (now - timestamp > RECENT_EVENT_WINDOW_MS) recentEventCache.delete(cacheKey);
   });
   if (last && now - last < RECENT_EVENT_WINDOW_MS) return true;
-  recentEventCache.set(key, now);
   return false;
+}
+
+function rememberRecentEvent(payload) {
+  recentEventCache.set(eventFingerprint(payload), Date.now());
 }
 
 async function getSettings() {
@@ -86,14 +89,29 @@ async function findFemicTab() {
 }
 
 async function postToFemicTab(tabId, payload) {
-  await chrome.scripting.executeScript({
+  const results = await chrome.scripting.executeScript({
     target: { tabId },
     world: 'MAIN',
     args: [payload, FEMIC_EVENT_CHANNEL],
     func: (eventPayload, channelName) => {
+      const url = String(window.localStorage.getItem('femic_agenda_url') || '').trim();
+      const key = String(window.localStorage.getItem('femic_agenda_key') || '').trim();
+      const jwt = String(window.sessionStorage.getItem('femic_jwt') || '').trim();
+      const expiry = Number(window.sessionStorage.getItem('femic_token_expiry') || 0);
+      if (!url || !key) {
+        return { ok: false, error: 'FEMIC aberto, mas o Supabase nao esta configurado. Abra Configuracoes e informe URL/anon key.' };
+      }
+      if (!jwt || !expiry || Date.now() >= expiry) {
+        return { ok: false, error: 'FEMIC aberto, mas nao esta conectado ao Supabase. Faca login no FEMIC antes de enviar.' };
+      }
       document.dispatchEvent(new CustomEvent(channelName, { detail: eventPayload }));
+      return { ok: true };
     }
   });
+  const result = results && results[0] && results[0].result;
+  if (!result || !result.ok) {
+    throw new Error((result && result.error) || 'Nao foi possivel entregar o evento para a aba FEMIC.');
+  }
 }
 
 async function sendEventToFemic(input) {
@@ -106,6 +124,7 @@ async function sendEventToFemic(input) {
     throw new Error('Abra o FEMIC em outra aba antes de enviar. Se estiver no GitHub Pages ou em uma URL específica, abra o popup da extensão e informe um identificador como index.html, localhost ou github.io.');
   }
   await postToFemicTab(tab.id, payload);
+  rememberRecentEvent(payload);
   return { ok: true, tabId: tab.id, payload };
 }
 

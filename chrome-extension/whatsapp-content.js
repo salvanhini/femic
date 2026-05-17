@@ -52,6 +52,55 @@
     return String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
   }
 
+  function isVisible(el) {
+    if (!el) return false;
+    const style = window.getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false;
+    return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+  }
+
+  function isArchivedLabel(value) {
+    return /^(arquivadas?|archived|archivados?)$/.test(norm(value));
+  }
+
+  function isArchivedWhatsappContext() {
+    if (/\/(?:archiv|archive)/i.test(window.location.pathname + window.location.search + window.location.hash)) return true;
+
+    const exactSelectors = [
+      'header h1',
+      'header [title]',
+      'header [aria-label]',
+      '[data-testid="drawer-title"]',
+      '[data-testid="chat-list-header"] [title]',
+      '[data-testid="chat-list-header"] [aria-label]'
+    ];
+
+    for (let i = 0; i < exactSelectors.length; i += 1) {
+      const nodes = document.querySelectorAll(exactSelectors[i]);
+      for (let j = 0; j < nodes.length; j += 1) {
+        const node = nodes[j];
+        if (!isVisible(node)) continue;
+        if (isArchivedLabel(node.getAttribute('title')) || isArchivedLabel(node.getAttribute('aria-label')) || isArchivedLabel(node.textContent || node.innerText)) {
+          return true;
+        }
+      }
+    }
+
+    try {
+      const archiveHints = document.querySelectorAll('[data-testid*="archiv" i], [aria-label*="arquiv" i], [aria-label*="archiv" i], [title*="arquiv" i], [title*="archiv" i]');
+      for (let i = 0; i < archiveHints.length; i += 1) {
+        const hint = archiveHints[i];
+        if (!isVisible(hint)) continue;
+        const rect = hint.getBoundingClientRect();
+        const isHeaderArea = rect.top < 170;
+        const label = hint.getAttribute('aria-label') || hint.getAttribute('title') || hint.textContent || hint.innerText;
+        if (isHeaderArea && isArchivedLabel(label)) return true;
+      }
+    } catch (e) {}
+
+    return false;
+  }
+
   function fieldMeta(id) {
     return {
       input: document.getElementById(id),
@@ -237,11 +286,19 @@
 
   function selectedMessageDetails() {
     const selected = window.getSelection && text(window.getSelection().toString());
-    if (selected) return { value: selected, confidence: 'strong', source: 'trecho selecionado' };
-    const messages = Array.from(document.querySelectorAll('[data-pre-plain-text] span.selectable-text, div.message-in span.selectable-text, div.message-out span.selectable-text'));
-    const last = messages[messages.length - 1];
-    const fallback = last ? text(last.innerText) : '';
-    return { value: fallback, confidence: fallback ? 'weak' : 'weak', source: fallback ? 'ultima mensagem visivel' : 'mensagem nao localizada' };
+    if (!selected) return { value: '', confidence: 'weak', source: 'sem selecao' };
+    try {
+      const selection = window.getSelection();
+      const anchor = selection && selection.anchorNode ? (selection.anchorNode.nodeType === 1 ? selection.anchorNode : selection.anchorNode.parentElement) : null;
+      const selectedBubble = anchor && anchor.closest ? anchor.closest('div.message-in, div.message-out, [data-pre-plain-text]') : null;
+      if (selectedBubble && selectedBubble.closest('div.message-out')) {
+        return { value: '', confidence: 'weak', source: 'selecao enviada pela clinica ignorada' };
+      }
+      if (selectedBubble && (selectedBubble.closest('div.message-in') || selectedBubble.matches('[data-pre-plain-text]'))) {
+        return { value: selected, confidence: 'strong', source: 'trecho selecionado recebido' };
+      }
+    } catch (e) {}
+    return { value: '', confidence: 'weak', source: 'selecao fora de mensagem recebida' };
   }
 
   function lastReceivedMessageDetails() {
@@ -262,7 +319,7 @@
     if (/remarcar|reagendar|remanejar|mudar|trocar|alterar/.test(normalized)) return 'remarcacao';
     if (/marcar|agendar|queria|gostaria|preciso|pode|podia|consigo|vaga|horario|dia\s\d|semana|mes.*que vem/.test(normalized)) return 'marcacao';
     if (/quinta|sexta|sabado|domingo|segunda|terca|quarta/.test(normalized)) return 'marcacao';
-    if (/manha|tarde|noite/.test(normalized)) return 'marcacao';
+    if (/\bmanha\b|\btarde\b|\bnoite\b/.test(normalized)) return 'marcacao';
     return '';
   }
 
@@ -284,6 +341,17 @@
       },
       signature: [name.value, phone.value, message.value.slice(0, 120)].join('|')
     };
+  }
+
+  function quickSendBlockReason(snapshot) {
+    if (snapshot.archived) return 'Conversa arquivada ignorada.';
+    if (!snapshot.message.value.trim()) return 'Mensagem recebida nao localizada.';
+    if (snapshot.message.source && /enviada pela clinica|fora de mensagem recebida/.test(snapshot.message.source)) return 'Selecione uma mensagem recebida do paciente.';
+    if (!snapshot.action.value) return 'Acao incerta. Abra o painel e confirme marcacao, remarcacao ou cancelamento.';
+    const strongName = snapshot.name.value && snapshot.name.confidence === 'strong';
+    const strongPhone = snapshot.phone.value && (snapshot.phone.confidence === 'strong' || digits(snapshot.phone.value).length >= 10);
+    if (!strongName && !strongPhone) return 'Nome ou telefone fracos. Abra o painel e revise antes de enviar.';
+    return '';
   }
 
   function showToast(message, tone) {
@@ -384,6 +452,17 @@
 
   function fillFromChat(options) {
     const opts = options || {};
+    if (isArchivedWhatsappContext()) {
+      setStatus('Conversa em Arquivadas ignorada. Abra uma conversa fora das Arquivadas para enviar ao FEMIC.', 'warning');
+      return {
+        archived: true,
+        name: { value: '', confidence: 'weak', source: 'aba arquivadas' },
+        phone: { value: '', confidence: 'weak', source: 'aba arquivadas' },
+        message: { value: '', confidence: 'weak', source: 'aba arquivadas' },
+        action: { value: '', confidence: 'weak', source: 'aba arquivadas' },
+        signature: ''
+      };
+    }
     const snapshot = getChatSnapshot();
     if (!snapshot.signature) {
       setStatus('Nao consegui localizar a conversa atual. Revise manualmente.', 'warning');
@@ -420,13 +499,13 @@
     const previous = wasAlreadySent(snapshot.name.value, snapshot.phone.value);
     if (previous) {
       const ago = Math.max(1, Math.round((Date.now() - previous.time) / 60000));
-      setStatus('Este contato ja foi enviado ha ' + ago + ' min. Revise antes de reenviar.', 'warning');
+      setStatus('Ultimo envio ha ' + ago + ' min para este contato. Revise antes de reenviar.', 'warning');
     } else if (!snapshot.action.value || (!snapshot.name.value && !snapshot.phone.value)) {
       setStatus('Captura parcial. Revise os campos destacados antes de enviar.', 'warning');
     } else if (opts.source === 'auto') {
       setStatus('Conversa trocada. Campos livres foram atualizados sem sobrescrever sua edicao.', 'info');
     } else {
-      setStatus('Captura pronta. Revise e envie quando estiver seguro.', 'success');
+      setStatus('Captura pronta: ' + (snapshot.name.value || 'sem nome') + ' · ' + (snapshot.phone.value ? formatWhatsapp(snapshot.phone.value) : 'sem telefone') + ' · ' + snapshot.message.value.slice(0, 54), 'success');
     }
 
     autoChatSignature = snapshot.signature;
@@ -570,16 +649,11 @@
   function quickSend() {
     const panel = getPanel();
     const snapshot = fillFromChat({ preserveManual: false, source: 'manual' });
-    if (!snapshot.message.value.trim()) {
+    const blockReason = quickSendBlockReason(snapshot);
+    if (blockReason) {
       if (panel) panel.hidden = false;
-      setStatus('Nenhuma mensagem encontrada. Revise manualmente.', 'error');
-      showToast('Nenhuma mensagem encontrada. Abra o painel e revise.', 'error');
-      return;
-    }
-    if (!snapshot.action.value || (!snapshot.name.value && !snapshot.phone.value)) {
-      if (panel) panel.hidden = false;
-      setStatus('Captura parcial. Revise os campos antes do envio rapido.', 'warning');
-      showToast('Revise os campos antes de enviar.', 'info');
+      setStatus(blockReason, snapshot.archived ? 'warning' : 'error');
+      showToast(blockReason, snapshot.archived ? 'warning' : 'error');
       return;
     }
     const payload = {
@@ -599,6 +673,11 @@
   }
 
   function submit() {
+    if (isArchivedWhatsappContext()) {
+      setStatus('Conversa em Arquivadas ignorada. Abra uma conversa fora das Arquivadas para enviar ao FEMIC.', 'warning');
+      showToast('Conversa arquivada ignorada.', 'warning');
+      return;
+    }
     const payload = buildPayloadFromInputs();
     if (!payload.message_text.trim()) {
       setStatus('Informe ou selecione uma mensagem do WhatsApp.', 'error');

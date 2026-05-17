@@ -144,10 +144,15 @@ NOTIFY pgrst, 'reload schema';
 - Extensão local criada em `chrome-extension/`.
 - Ela adiciona um botão flutuante `FEMIC` no WhatsApp Web.
 - O botão envia marcações, remarcações e cancelamentos para a aba IA do FEMIC como tarefas operacionais.
+- As pendências agora usam a tabela Supabase `assistant_tasks`, compartilhada entre desktop, FEMIC Mobile e extensão.
+- O FEMIC Mobile pode gravar lembretes por voz direto nessa mesma fila; se o Supabase falhar, mantém cache local com sincronização pendente.
 - Na Fase 1 do assistente de agendamento, as tarefas de marcação/remarcação vindas do WhatsApp passam a gerar propostas com horários válidos.
 - A confirmação final continua humana: a equipe clica em um horário sugerido na aba **Pendências** e só então o FEMIC grava o agendamento.
 - As propostas respeitam as regras da agenda: expediente, períodos, duração do serviço, conflitos, atendimento individual/grupo e limite de pacientes por horário.
 - Instruções completas: `chrome-extension/README.md`.
+
+### Fila compartilhada de pendências
+Rode o SQL atualizado mostrado em `Configurações > Banco de dados` para criar `assistant_tasks`. Essa tabela guarda pedidos vindos do WhatsApp Web e lembretes de voz do mobile com status, paciente, telefone, ação solicitada, datas/turno interpretados, sugestões, candidatos, fingerprint da extensão e carimbos de criação/atualização.
 
 ### Estado atual seguro
 - A agenda envia lembretes pelo WhatsApp usando link `wa.me`, com a mensagem já preenchida.
@@ -615,6 +620,7 @@ create policy "Authenticated CRUD clinical templates"
 
 ### 6) Variáveis de conexão usadas no front
 - Sistema unificado (`index.html`): `femic_agenda_url` e `femic_agenda_key` (localStorage)
+- FEMIC Mobile (`femic-mobile.html`): usa as mesmas chaves `femic_agenda_url` e `femic_agenda_key`, com login Supabase próprio no celular.
 
 ## Configuração de RLS e usuário (Supabase)
 

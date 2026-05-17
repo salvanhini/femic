@@ -14,19 +14,24 @@ Extensão local do Chrome para transformar pedidos recebidos no WhatsApp Web em 
 ## Uso
 
 1. Abra o FEMIC em uma aba.
-2. Abra `https://web.whatsapp.com` em outra aba.
-3. Entre em uma conversa.
-4. Clique no botão flutuante `FEMIC`.
-5. Escolha `Marcação`, `Remarcação` ou `Cancelamento`.
-6. Revise paciente, telefone, período, data e mensagem.
-7. Clique em `Enviar`.
+2. Confirme que o FEMIC está configurado e conectado ao Supabase.
+3. Abra `https://web.whatsapp.com` em outra aba.
+4. Entre em uma conversa.
+5. Clique no botão flutuante `FEMIC`.
+6. Escolha `Marcação`, `Remarcação` ou `Cancelamento`.
+7. Revise paciente, telefone, período, data e mensagem.
+8. Clique em `Enviar`.
 
-O FEMIC receberá o evento interno `FEMIC_EXTENSION_EVENT` pelo canal DOM da extensão e criará uma tarefa em `IA > Pendências operacionais`.
+O FEMIC receberá o evento interno `FEMIC_EXTENSION_EVENT` pelo canal DOM da extensão e criará uma tarefa em `IA > Pendências operacionais`, persistida na tabela Supabase `assistant_tasks`.
 
 ## Observações
 
 - A extensão não agenda automaticamente.
 - A confirmação final continua manual dentro do FEMIC.
+- Conversas abertas pela aba `Arquivadas` do WhatsApp Web são ignoradas pela captura e pelo envio rápido.
+- O botão raio faz envio rápido somente quando a captura está forte; o botão `F` abre a revisão completa.
+- A extensão prioriza mensagem recebida selecionada ou a última mensagem recebida, evitando usar mensagem enviada pela clínica.
+- Se a aba FEMIC não estiver aberta ou não estiver conectada ao Supabase, a extensão mostra erro claro.
 - O telefone pode ser preenchido manualmente quando o WhatsApp Web não expõe o número na tela.
 - Se houver mais de uma aba parecida, abra o popup da extensão e preencha um identificador da URL do FEMIC, como `index.html`, `localhost:8000` ou `github.io`.
 - A extensão não solicita permissão ampla para todos os sites; ela mira WhatsApp Web, arquivos locais, localhost/127.0.0.1 e GitHub Pages.
