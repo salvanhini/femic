@@ -323,6 +323,39 @@
     return (document.getElementById('sbKey').value || localStorage.femic_agenda_key || '').trim();
   }
 
+  function authHeaders(){
+    return {
+      apikey:key(),
+      Authorization:'Bearer ' + key(),
+      'Content-Type':'application/json'
+    };
+  }
+
+  async function parseSupabaseError(res){
+    var fallback = 'Login falhou. Confira os dados.';
+    var text = await res.text().catch(function(){ return ''; });
+    var data = {};
+    try{ data = text ? JSON.parse(text) : {}; }catch(e){}
+    var raw = String(data.error_description || data.msg || data.message || data.error || text || fallback);
+    var lower = raw.toLowerCase();
+    if(res.status === 401 || /invalid login credentials|invalid credentials|invalid grant/.test(lower)){
+      return 'E-mail ou senha inválidos no Supabase.';
+    }
+    if(/email not confirmed|confirm/.test(lower)){
+      return 'E-mail ainda não confirmado no Supabase Auth.';
+    }
+    if(/api key|apikey|invalid jwt|jwt/.test(lower)){
+      return 'Anon key inválida. Use a chave anon/public do projeto.';
+    }
+    if(/user not found/.test(lower)){
+      return 'Usuário não encontrado no Supabase Auth.';
+    }
+    if(/signup|email logins are disabled|provider/.test(lower)){
+      return 'Login por e-mail/senha não está habilitado no Supabase Auth.';
+    }
+    return raw;
+  }
+
   function hasValidSession(){
     var jwt = sessionStorage.getItem('femic_jwt');
     var expiry = Number(sessionStorage.getItem('femic_token_expiry') || 0);
@@ -335,7 +368,7 @@
     try{
       var res = await fetch(base() + '/auth/v1/token?grant_type=refresh_token', {
         method:'POST',
-        headers:{apikey:key(),'Content-Type':'application/json'},
+        headers:authHeaders(),
         body:JSON.stringify({refresh_token:refresh})
       });
       if(!res.ok) return false;
@@ -381,7 +414,7 @@
   }
 
   function saveConfig(){
-    localStorage.femic_agenda_url = document.getElementById('sbUrl').value.trim();
+    localStorage.femic_agenda_url = document.getElementById('sbUrl').value.trim().replace(/\/$/,'');
     localStorage.femic_agenda_key = document.getElementById('sbKey').value.trim();
   }
 
@@ -400,14 +433,22 @@
       showToast('Informe Supabase, e-mail e senha.');
       return;
     }
+    if(base().indexOf('https://') !== 0 || base().indexOf('.supabase.co') === -1){
+      showToast('Informe a URL completa do projeto Supabase.');
+      return;
+    }
+    if(key().length < 20){
+      showToast('Informe a anon key do Supabase.');
+      return;
+    }
     setSyncStatus('Conectando...', 'offline');
     try{
       var res = await fetch(base() + '/auth/v1/token?grant_type=password', {
         method:'POST',
-        headers:{apikey:key(),'Content-Type':'application/json'},
+        headers:authHeaders(),
         body:JSON.stringify({email:email,password:password})
       });
-      if(!res.ok) throw new Error(await res.text());
+      if(!res.ok) throw new Error(await parseSupabaseError(res));
       storeSession(await res.json());
       document.getElementById('sbPassword').value = '';
       setSyncStatus('Conectado', 'online');
@@ -415,7 +456,7 @@
       await loadCloudTasks(false);
     }catch(e){
       setSyncStatus('Local', 'offline');
-      showToast('Login falhou. Confira os dados.');
+      showToast(e.message || 'Login falhou. Confira os dados.');
     }
   }
 
