@@ -152,13 +152,65 @@
     }
   }
   function saveTasks(list){
-    localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(Array.isArray(list) ? list : []));
+    try{
+      localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(Array.isArray(list) ? list : []));
+    }catch(e){
+      if(typeof window.toast === 'function') window.toast('Nao foi possivel salvar a pendencia localmente. Verifique o armazenamento do navegador.', 'error');
+      throw e;
+    }
   }
   function makeTaskId(){
     return 'task_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
   }
   function cleanPhone(value){
     return String(value || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
+  }
+  function limitText(value, maxLength){
+    return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+  }
+  function normalizeExtensionPayload(payload){
+    payload = payload || {};
+    var allowed = ['marcacao','remarcacao','cancelamento'];
+    var action = limitText(payload.action || payload.requested_action, 32);
+    var message = limitText(payload.message_text, 1200);
+    var period = limitText(payload.requested_period, 20).toLowerCase();
+    var date = limitText(payload.requested_date, 10);
+    if(payload.type !== 'FEMIC_EXTENSION_EVENT' || payload.source !== 'whatsapp_web') return null;
+    if(allowed.indexOf(action) === -1 || !message) return null;
+    if(date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) date = '';
+    if(period && ['manha','tarde','noite'].indexOf(period) === -1) period = '';
+    return {
+      type: 'FEMIC_EXTENSION_EVENT',
+      source: 'whatsapp_web',
+      action: action,
+      requested_action: action,
+      message_text: message,
+      patient_name: limitText(payload.patient_name, 120),
+      phone: cleanPhone(payload.phone).slice(0, 11),
+      requested_date: date,
+      requested_period: period,
+      service_name: limitText(payload.service_name, 120),
+      created_at: payload.created_at || new Date().toISOString()
+    };
+  }
+  function extensionTaskFingerprint(payload){
+    return [
+      payload.action,
+      norm(payload.patient_name),
+      cleanPhone(payload.phone),
+      payload.requested_date || '',
+      payload.requested_period || '',
+      norm(payload.message_text)
+    ].join('|');
+  }
+  function findRecentExtensionDuplicate(payload){
+    var fingerprint = extensionTaskFingerprint(payload);
+    var now = Date.now();
+    return readTasks().find(function(task){
+      if(task.origin !== 'chrome_extension' || task.extension_fingerprint !== fingerprint) return false;
+      var created = Date.parse(task.created_at || task.updated_at || '');
+      return created && now - created < 10 * 60 * 1000;
+    }) || null;
   }
   function taskTypeLabel(type){
     return { marcacao:'Marcacao', remarcacao:'Remarcacao', cancelamento:'Cancelamento', laudo:'Laudo', retorno:'Retorno', outro:'Outro' }[type] || 'Outro';
@@ -403,6 +455,7 @@
       candidates: Array.isArray(task.candidates) ? task.candidates : [],
       parsed_shift: task.parsed_shift || '',
       parsed_dates: Array.isArray(task.parsed_dates) ? task.parsed_dates : [],
+      extension_fingerprint: task.extension_fingerprint || '',
       needs_review: task.needs_review === true,
       created_at: task.created_at || now,
       updated_at: now,
@@ -531,10 +584,15 @@
     return normalized;
   }
   function createTaskFromExtension(payload){
-    payload = payload || {};
-    var allowed = ['marcacao','remarcacao','cancelamento'];
-    var action = String(payload.action || payload.requested_action || '').trim();
-    if(allowed.indexOf(action) === -1 || !String(payload.message_text || '').trim()) return null;
+    payload = normalizeExtensionPayload(payload);
+    if(!payload) return null;
+    var duplicate = findRecentExtensionDuplicate(payload);
+    if(duplicate){
+      if(typeof window.toast === 'function') window.toast('Pendencia repetida ignorada para evitar duplicidade.', 'warning');
+      setDebug('Pendencia repetida ignorada: ' + duplicate.title);
+      return duplicate;
+    }
+    var action = payload.action;
     var match = findPatientFromPayload(payload);
     var patient = match.patient;
     var agenda = getAgendaState();
@@ -567,6 +625,7 @@
       candidates: candidates,
       parsed_shift: parsedShift,
       parsed_dates: parsedDates.map(function(d){ return d.date; }),
+      extension_fingerprint: extensionTaskFingerprint(payload),
       needs_review: !patient || match.ambiguous || (action !== 'cancelamento' && serviceMatch.needs_review),
       created_at: payload.created_at || new Date().toISOString()
     });
@@ -1115,8 +1174,8 @@
 
   window.startVoiceTask = startVoiceTask;
 
-  window.addEventListener('message', function(event){
-    var data = event && event.data;
+  document.addEventListener('FEMIC_EXTENSION_EVENT_CHANNEL', function(event){
+    var data = event && event.detail;
     if(!data || data.type !== 'FEMIC_EXTENSION_EVENT') return;
     createTaskFromExtension(data);
   });

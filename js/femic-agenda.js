@@ -218,7 +218,7 @@ function writeClinicRulesCache(list){localStorage.setItem(CLINIC_RULES_STORAGE_K
 function isMissingClinicRulesTableError(err){return /clinic_rules|relation .* does not exist|Could not find the table/i.test(String(err&&err.message||err||''))}
 async function loadClinicRulesCollection(){try{const rows=await api('clinic_rules?select=*&order=priority.asc,created_at.asc');writeClinicRulesCache(rows||[]);return rows||[]}catch(e){if(isMissingClinicRulesTableError(e))return readClinicRulesCache();throw e}}
 clinicRules=readClinicRulesCache();
-function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊';$('tplReminder').value=tpl;if($('whatsappProvider'))$('whatsappProvider').value=localStorage.femic_whatsapp_provider||'wa_me';if($('whatsappEndpoint'))$('whatsappEndpoint').value=localStorage.femic_whatsapp_endpoint||'';if($('whatsappTplAppointment'))$('whatsappTplAppointment').value=localStorage.femic_whatsapp_tpl_appointment||'lembrete_sessao';renderWhatsappProviderBadge()}
+function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊';const formTpl=localStorage.femic_tpl_form_reminder||'Olá, {nome}! Obrigado por comparecer à FEMIC. Quando puder, responda o formulário pós-atendimento: {form_link}';$('tplReminder').value=tpl;if($('tplFormReminder'))$('tplFormReminder').value=formTpl;if($('formLinkInput'))$('formLinkInput').value=localStorage.femic_form_link||'';if($('whatsappProvider'))$('whatsappProvider').value=localStorage.femic_whatsapp_provider||'wa_me';if($('whatsappEndpoint'))$('whatsappEndpoint').value=localStorage.femic_whatsapp_endpoint||'';if($('whatsappTplAppointment'))$('whatsappTplAppointment').value=localStorage.femic_whatsapp_tpl_appointment||'lembrete_sessao';if($('whatsappTplForm'))$('whatsappTplForm').value=localStorage.femic_whatsapp_tpl_form||'formulario_pos_sessao';renderWhatsappProviderBadge()}
 async function testConnection(){try{await api('patients?select=id&limit=1');toast('Conexão e carregamento funcionando.','success')}catch(e){toast('Erro real: '+e.message,'error')}}
 function appointmentWindowQuery(){
   const mode = $('viewMode') ? $('viewMode').value : 'week';
@@ -290,6 +290,126 @@ function getActivePanelName(){
   return active ? String(active.id || '').replace('panel-','') : 'agenda';
 }
 
+function defaultClinicRules(){
+  return [
+    {
+      rule_key:'scheduling_human_confirmation',
+      rule_category:'assistant',
+      title:'Confirmação humana obrigatória',
+      description:'Pedidos vindos do WhatsApp geram propostas, mas só são gravados quando a equipe confirma no FEMIC.',
+      rule_value_json:{scope:'assistant'},
+      active:true,
+      priority:10
+    },
+    {
+      rule_key:'respect_working_periods',
+      rule_category:'scheduling',
+      title:'Respeitar expediente e conflitos',
+      description:'Sugestões devem respeitar dias de trabalho, períodos configurados, duração do serviço, atendimento individual/grupo e limite por horário.',
+      rule_value_json:{scope:'agenda'},
+      active:true,
+      priority:20
+    },
+    {
+      rule_key:'clinical_drafts_require_review',
+      rule_category:'clinical_ai',
+      title:'Rascunhos clínicos precisam de revisão',
+      description:'Anamnese e evolução geradas por IA são apenas rascunhos. O profissional revisa antes de salvar.',
+      rule_value_json:{scope:'clinical_ai'},
+      active:true,
+      priority:30
+    }
+  ];
+}
+
+function normalizeClinicRule(rule,index){
+  const normalized={
+    rule_key:String(rule.rule_key||('clinic_rule_'+(index+1))).trim(),
+    rule_category:String(rule.rule_category||'assistant').trim(),
+    title:String(rule.title||'Regra da clínica').trim(),
+    description:String(rule.description||'').trim(),
+    rule_value_json:rule.rule_value_json&&typeof rule.rule_value_json==='object'?rule.rule_value_json:{},
+    active:rule.active!==false,
+    priority:Number(rule.priority||((index+1)*10))
+  };
+  if(rule.id) normalized.id=rule.id;
+  return normalized;
+}
+
+function renderClinicRulesEditor(){
+  const editor=$('clinicRulesEditor'),status=$('clinicRulesStatus');
+  if(!editor) return;
+  const list=(clinicRules&&clinicRules.length?clinicRules:defaultClinicRules()).map(normalizeClinicRule);
+  editor.innerHTML=list.map((rule,index)=>`<div class="clinic-rule-item" data-rule-index="${index}">
+    <input type="hidden" data-field="id" value="${esc(rule.id||'')}">
+    <div class="grid grid-2">
+      <div class="field"><label>Título</label><input data-field="title" value="${esc(rule.title)}"></div>
+      <div class="field"><label>Chave</label><input data-field="rule_key" value="${esc(rule.rule_key)}"></div>
+      <div class="field"><label>Categoria</label><input data-field="rule_category" value="${esc(rule.rule_category)}"></div>
+      <div class="field"><label>Prioridade</label><input data-field="priority" type="number" value="${esc(rule.priority)}"></div>
+    </div>
+    <div class="field" style="margin-top:8px"><label>Descrição</label><textarea data-field="description" rows="3">${esc(rule.description)}</textarea></div>
+    <label class="small muted" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input data-field="active" type="checkbox" ${rule.active?'checked':''}> Regra ativa</label>
+  </div>`).join('');
+  if(status) status.textContent=list.length+' regra(s) carregada(s)';
+}
+
+function readClinicRulesEditor(){
+  const editor=$('clinicRulesEditor');
+  if(!editor) return [];
+  return Array.from(editor.querySelectorAll('.clinic-rule-item')).map((item,index)=>{
+    const value=(field)=>item.querySelector('[data-field="'+field+'"]');
+    const id=(value('id')?.value||'').trim();
+    const rule=normalizeClinicRule({
+      id:id||null,
+      rule_key:value('rule_key')?.value,
+      rule_category:value('rule_category')?.value,
+      title:value('title')?.value,
+      description:value('description')?.value,
+      active:!!value('active')?.checked,
+      priority:value('priority')?.value,
+      rule_value_json:{source:'settings'}
+    },index);
+    if(!rule.id) delete rule.id;
+    return rule;
+  });
+}
+
+async function saveClinicRules(){
+  const list=readClinicRulesEditor();
+  if(!list.length){toast('Nenhuma regra para salvar.','warning');return}
+  clinicRules=list;
+  writeClinicRulesCache(list);
+  try{
+    if(base()&&key()&&hasValidSession()){
+      await deleteAllRows('clinic_rules');
+      await upsertRows('clinic_rules', list);
+      clinicRules=await loadClinicRulesCollection();
+    }
+    renderClinicRulesEditor();
+    renderBackupPanel();
+    document.dispatchEvent(new CustomEvent('femic:state-updated'));
+    toast('Regras da clínica salvas.','success');
+  }catch(e){
+    if(isMissingClinicRulesTableError(e)){
+      renderClinicRulesEditor();
+      toast('Tabela clinic_rules ausente. Regras salvas localmente e incluídas no backup.','warning');
+      return;
+    }
+    toast('Erro ao salvar regras: '+e.message,'error');
+  }
+}
+
+function resetClinicRulesToDefaults(){
+  if(!confirm('Restaurar as regras padrão da clínica?')) return;
+  clinicRules=defaultClinicRules();
+  writeClinicRulesCache(clinicRules);
+  renderClinicRulesEditor();
+  renderBackupPanel();
+  document.dispatchEvent(new CustomEvent('femic:state-updated'));
+  toast('Regras padrão restauradas localmente. Clique em salvar para enviar ao Supabase.','info');
+}
+
 function renderPanel(name){
   switch(name){
     case 'agenda':
@@ -303,6 +423,7 @@ function renderPanel(name){
     case 'packages':
     case 'settings':
       renderLists();
+      renderClinicRulesEditor();
       break;
     case 'reminders':
       renderReminders();
@@ -552,7 +673,7 @@ function renderDay(){
     </div>`;
   }).join(''):'<div class="muted">Nenhum agendamento.</div>';
 }
-function reminderFlag(a,kind){return !!(a.appointment_reminder_sent||a.reminder_sent)}
+function reminderFlag(a,kind){return kind==='form'?!!a.form_reminder_sent:!!(a.appointment_reminder_sent||a.reminder_sent)}
 function appointmentDateTime(a,field='start_time'){
   const date=String(a.appointment_date||'');
   const time=normalizeTime(a[field]||a.start_time||'00:00');
@@ -560,12 +681,12 @@ function appointmentDateTime(a,field='start_time'){
   return Number.isNaN(d.getTime())?null:d;
 }
 function reminderDueAt(a,kind){
-  const base=appointmentDateTime(a,'start_time');
+  const base=appointmentDateTime(a,kind==='form'?'end_time':'start_time');
   if(!base) return null;
-  return new Date(base.getTime()-(12*60*60*1000));
+  return kind==='form'?new Date(base.getTime()+(5*60*60*1000)):new Date(base.getTime()-(12*60*60*1000));
 }
 function isReminderCandidate(a,kind){
-  return ['agendado','confirmado'].includes(a.status);
+  return kind==='form'?a.status==='concluido':['agendado','confirmado'].includes(a.status);
 }
 function reminderPhoneOk(a){return cleanPhone(patientById(a.patient_id).whatsapp).length>=10}
 function reminderDueLabel(a,kind){
@@ -605,23 +726,24 @@ function reminderListFor(kind,date){
 }
 function dueAutomaticReminders(){
   const now=Date.now();
-  return ['appointment'].flatMap(kind=>appointments
+  return ['appointment','form'].flatMap(kind=>appointments
     .filter(a=>isReminderCandidate(a,kind)&&!reminderFlag(a,kind)&&reminderPhoneOk(a))
     .map(a=>({a,kind,due:reminderDueAt(a,kind)}))
     .filter(x=>{
       if(!x.due||x.due.getTime()>now) return false;
       const start=appointmentDateTime(x.a,'start_time');
+      if(x.kind==='form') return now<=x.due.getTime()+(24*60*60*1000);
       return start&&now<=start.getTime();
     })
   ).sort((x,y)=>x.due-y.due);
 }
 function renderReminders(){
-  const kind='appointment';
+  const kind=$('reminderType')?$('reminderType').value:'appointment';
   const date=$('reminderDate').value||isoDate(new Date(Date.now()+86400000));
   $('reminderDate').value=date;
   renderReminderAutomationStatus();
   const list=reminderListFor(kind,date);
-  $('reminderTitle').textContent='Lembretes de sessão';
+  $('reminderTitle').textContent=kind==='form'?'Formulários pós-atendimento':'Lembretes de sessão';
   const pending=list.filter(a=>!reminderFlag(a,kind)&&reminderPhoneOk(a));
   const sent=list.filter(a=>reminderFlag(a,kind));
   const no=list.filter(a=>!reminderPhoneOk(a));
@@ -633,7 +755,10 @@ function renderReminders(){
   }).join(''):'<div class="muted">Nenhum lembrete nesta data.</div>';
 }
 async function markReminder(id,kind='appointment'){
-  const body={appointment_reminder_sent:true,appointment_reminder_sent_at:new Date().toISOString(),reminder_sent:true,reminder_sent_at:new Date().toISOString()};
+  const now=new Date().toISOString();
+  const body=kind==='form'
+    ? {form_reminder_sent:true,form_reminder_sent_at:now}
+    : {appointment_reminder_sent:true,appointment_reminder_sent_at:now,reminder_sent:true,reminder_sent_at:now};
   await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});
   await loadAll(true);
   toast('Lembrete marcado como enviado.','success');
@@ -645,8 +770,11 @@ async function sendWhatsapp(id,mark=false,kind='appointment'){
   }
   const p=patientById(a.patient_id);const phone='55'+cleanPhone(p.whatsapp);
   if(phone.length<12){toast('Paciente sem WhatsApp válido.','warning');return false}
-  const tpl=(localStorage.femic_tpl_reminder||$('tplReminder').value)||'';
-  const msg=tpl.replaceAll('{nome}',p.name||'').replaceAll('{data}',fmtDate(a.appointment_date)).replaceAll('{hora}',normalizeTime(a.start_time)).replaceAll('{servico}',serviceName(a.service_id));
+  const defaultTpl=kind==='form'?'Olá, {nome}! Obrigado por comparecer à FEMIC. Quando puder, responda o formulário pós-atendimento: {form_link}':'';
+  const tpl=kind==='form'
+    ? (localStorage.femic_tpl_form_reminder||($('tplFormReminder')?.value)||defaultTpl)
+    : ((localStorage.femic_tpl_reminder||$('tplReminder').value)||'');
+  const msg=tpl.replaceAll('{nome}',p.name||'').replaceAll('{data}',fmtDate(a.appointment_date)).replaceAll('{hora}',normalizeTime(a.start_time)).replaceAll('{servico}',serviceName(a.service_id)).replaceAll('{form_link}',localStorage.femic_form_link||($('formLinkInput')?.value)||'');
   const opened=window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');
   if(!opened){toast('O navegador bloqueou a janela do WhatsApp. Use o modo manual ou libere pop-ups para a agenda.','warning');return false}
   if(mark) await markReminder(id,kind);
@@ -670,6 +798,7 @@ function saveWhatsappApiConfig(){
   localStorage.femic_whatsapp_provider=provider;
   localStorage.femic_whatsapp_endpoint=($('whatsappEndpoint')?.value||'').trim();
   localStorage.femic_whatsapp_tpl_appointment=($('whatsappTplAppointment')?.value||'lembrete_sessao').trim()||'lembrete_sessao';
+  localStorage.femic_whatsapp_tpl_form=($('whatsappTplForm')?.value||'formulario_pos_sessao').trim()||'formulario_pos_sessao';
   renderWhatsappProviderBadge();
   if(provider==='api') toast('Configuração salva. O envio pela API fica preparado, mas o sistema mantém fallback seguro por link até a Edge Function ser implementada.','info');
   else toast('WhatsApp por link seguro ativado.','success');
@@ -1108,7 +1237,7 @@ async function restoreAgendaBackup(event){
   }
 }
 
-function saveTemplates(){localStorage.femic_tpl_reminder=$('tplReminder').value;toast('Modelos salvos.','success')}async function copySql(){await navigator.clipboard.writeText(SQL_SCHEMA);toast('SQL copiado.','success')}
+function saveTemplates(){localStorage.femic_tpl_reminder=$('tplReminder').value;if($('tplFormReminder'))localStorage.femic_tpl_form_reminder=$('tplFormReminder').value;if($('formLinkInput'))localStorage.femic_form_link=$('formLinkInput').value.trim();toast('Modelos salvos.','success')}async function copySql(){await navigator.clipboard.writeText(SQL_SCHEMA);toast('SQL copiado.','success')}
 $('sqlBox').textContent=SQL_SCHEMA;loadConfig();checkFemicAuth();$('dayDate').value=todayIso();$('reminderDate').value=isoDate(new Date(Date.now()+86400000));$('reportMonth').value=new Date().toISOString().slice(0,7);
 /* =========================================================
    FEMIC Agenda v1.4.36 - Ficha com dia da semana — Correção robusta de consumo de pacote

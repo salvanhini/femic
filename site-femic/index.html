@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FEMIC — Fisioterapia Especializada | Marco Salvanhini</title>
+  <meta name="description" content="Fisioterapia de qualidade para dor crônica e prevenção. Agende sua avaliação com Marco Salvanhini.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --primary:#0b3c6f;
+      --primary-light:#1a5fa8;
+      --accent:#1fb6e9;
+      --accent-soft:#e8f6fc;
+      --warm:#f0f7ff;
+      --text:#1a2a3a;
+      --text-light:#5a6a7a;
+      --white:#ffffff;
+      --radius:20px;
+      --shadow:0 8px 32px rgba(11,60,111,.10);
+      --shadow-lg:0 20px 60px rgba(11,60,111,.14);
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      font-family:'DM Sans',sans-serif;
+      color:var(--text);
+      background:var(--white);
+      line-height:1.6;
+      overflow-x:hidden;
+    }
+    h1,h2,h3{font-family:'DM Serif Display',serif;font-weight:400;line-height:1.2}
+    a{color:inherit;text-decoration:none}
+    img{max-width:100%;display:block}
+
+    /* NAV */
+    .nav{
+      position:fixed;top:0;left:0;right:0;z-index:100;
+      background:rgba(255,255,255,.88);
+      backdrop-filter:blur(16px);
+      -webkit-backdrop-filter:blur(16px);
+      border-bottom:1px solid rgba(11,60,111,.06);
+      transition:box-shadow .3s;
+    }
+    .nav.scrolled{box-shadow:var(--shadow)}
+    .nav-inner{
+      max-width:1200px;margin:0 auto;
+      padding:14px 24px;
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .nav-logo{
+      font-family:'DM Serif Display',serif;
+      font-size:1.5rem;color:var(--primary);
+    }
+    .nav-logo span{color:var(--accent)}
+    .nav-links{display:flex;gap:28px;align-items:center}
+    .nav-links a{
+      font-size:.9rem;font-weight:500;color:var(--text-light);
+      transition:color .2s;
+    }
+    .nav-links a:hover{color:var(--primary)}
+    .nav-cta{
+      background:linear-gradient(135deg,var(--primary),var(--primary-light));
+      color:#fff!important;padding:10px 22px;border-radius:999px;
+      font-weight:600;font-size:.88rem;
+      transition:transform .2s,box-shadow .2s;
+    }
+    .nav-cta:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(11,60,111,.25)}
+    .nav-mobile{display:none;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--primary)}
+
+    /* HERO */
+    .hero{
+      min-height:100vh;
+      display:flex;align-items:center;
+      background:linear-gradient(160deg,var(--warm) 0%,var(--white) 50%,var(--accent-soft) 100%);
+      padding:120px 24px 80px;
+      position:relative;
+      overflow:hidden;
+    }
+    .hero::before{
+      content:'';position:absolute;
+      top:-200px;right:-200px;
+      width:600px;height:600px;
+      background:radial-gradient(circle,rgba(31,182,233,.08),transparent 70%);
+      border-radius:50%;
+    }
+    .hero-inner{
+      max-width:1200px;margin:0 auto;width:100%;
+      display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;
+    }
+    .hero-text{position:relative;z-index:1}
+    .hero-badge{
+      display:inline-flex;align-items:center;gap:8px;
+      background:var(--accent-soft);color:var(--primary-light);
+      padding:8px 16px;border-radius:999px;
+      font-size:.82rem;font-weight:600;margin-bottom:24px;
+    }
+    .hero-badge::before{content:'';width:8px;height:8px;background:var(--accent);border-radius:50%}
+    .hero h1{
+      font-size:clamp(2.2rem,5vw,3.4rem);
+      color:var(--primary);margin-bottom:20px;
+    }
+    .hero h1 em{
+      font-style:normal;
+      background:linear-gradient(135deg,var(--accent),var(--primary-light));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+      background-clip:text;
+    }
+    .hero p{
+      font-size:1.1rem;color:var(--text-light);
+      max-width:480px;margin-bottom:32px;line-height:1.7;
+    }
+    .hero-actions{display:flex;gap:14px;flex-wrap:wrap}
+    .btn{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:14px 28px;border-radius:999px;
+      font-weight:600;font-size:.95rem;
+      transition:all .2s;cursor:pointer;border:none;
+    }
+    .btn-primary{
+      background:linear-gradient(135deg,var(--primary),var(--primary-light));
+      color:#fff;box-shadow:0 6px 24px rgba(11,60,111,.2);
+    }
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 32px rgba(11,60,111,.28)}
+    .btn-outline{
+      background:transparent;color:var(--primary);
+      border:2px solid rgba(11,60,111,.15);
+    }
+    .btn-outline:hover{border-color:var(--primary);background:var(--accent-soft)}
+    .hero-image{
+      position:relative;
+      display:flex;justify-content:center;
+    }
+    .hero-photo{
+      width:380px;height:460px;
+      border-radius:32px;
+      object-fit:cover;
+      box-shadow:var(--shadow-lg);
+      position:relative;z-index:1;
+    }
+    .hero-photo-bg{
+      position:absolute;
+      top:20px;left:20px;right:-20px;bottom:-20px;
+      background:linear-gradient(135deg,var(--accent),var(--primary-light));
+      border-radius:32px;opacity:.12;z-index:0;
+    }
+    .hero-stats{
+      display:flex;gap:32px;margin-top:40px;
+      padding-top:32px;border-top:1px solid rgba(11,60,111,.08);
+    }
+    .hero-stat strong{
+      display:block;font-size:1.6rem;color:var(--primary);
+      font-family:'DM Serif Display',serif;
+    }
+    .hero-stat span{font-size:.82rem;color:var(--text-light)}
+
+    /* SECTIONS */
+    section{padding:100px 24px}
+    .section-inner{max-width:1200px;margin:0 auto}
+    .section-label{
+      display:inline-flex;align-items:center;gap:8px;
+      font-size:.82rem;font-weight:600;color:var(--accent);
+      text-transform:uppercase;letter-spacing:.06em;
+      margin-bottom:12px;
+    }
+    .section-label::before{content:'';width:24px;height:2px;background:var(--accent);border-radius:2px}
+    .section-title{
+      font-size:clamp(1.8rem,4vw,2.6rem);
+      color:var(--primary);margin-bottom:16px;
+    }
+    .section-desc{
+      font-size:1.05rem;color:var(--text-light);
+      max-width:560px;line-height:1.7;
+    }
+
+    /* ABOUT */
+    .about{background:var(--white)}
+    .about-grid{
+      display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;
+      margin-top:48px;
+    }
+    .about-photo-wrap{position:relative}
+    .about-photo{
+      width:100%;max-width:420px;
+      border-radius:28px;
+      box-shadow:var(--shadow-lg);
+    }
+    .about-content h3{
+      font-size:1.4rem;color:var(--primary);margin-bottom:16px;
+    }
+    .about-content p{
+      color:var(--text-light);line-height:1.8;margin-bottom:16px;
+    }
+    .about-features{
+      display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:28px;
+    }
+    .about-feature{
+      display:flex;align-items:flex-start;gap:12px;
+      padding:16px;background:var(--warm);border-radius:14px;
+    }
+    .about-feature-icon{
+      width:36px;height:36px;border-radius:10px;
+      background:linear-gradient(135deg,var(--accent),var(--primary-light));
+      display:flex;align-items:center;justify-content:center;
+      font-size:1rem;flex-shrink:0;
+    }
+    .about-feature strong{display:block;font-size:.88rem;color:var(--primary);margin-bottom:2px}
+    .about-feature span{font-size:.8rem;color:var(--text-light)}
+
+    /* SERVICES */
+    .services{background:var(--warm)}
+    .services-header{text-align:center;margin-bottom:56px}
+    .services-header .section-desc{margin:0 auto}
+    .services-grid{
+      display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;
+    }
+    .service-card{
+      background:var(--white);border-radius:var(--radius);
+      padding:36px 32px;
+      box-shadow:var(--shadow);
+      transition:transform .3s,box-shadow .3s;
+      position:relative;overflow:hidden;
+    }
+    .service-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
+    .service-card::before{
+      content:'';position:absolute;top:0;left:0;right:0;height:4px;
+      background:linear-gradient(90deg,var(--accent),var(--primary-light));
+      opacity:0;transition:opacity .3s;
+    }
+    .service-card:hover::before{opacity:1}
+    .service-icon{
+      width:56px;height:56px;border-radius:16px;
+      background:var(--accent-soft);
+      display:flex;align-items:center;justify-content:center;
+      font-size:1.5rem;margin-bottom:20px;
+    }
+    .service-card h3{
+      font-size:1.2rem;color:var(--primary);margin-bottom:12px;
+      font-family:'DM Sans',sans-serif;font-weight:700;
+    }
+    .service-card p{color:var(--text-light);font-size:.92rem;line-height:1.7}
+    .service-card ul{
+      list-style:none;margin-top:16px;
+    }
+    .service-card li{
+      padding:6px 0;font-size:.88rem;color:var(--text-light);
+      display:flex;align-items:center;gap:8px;
+    }
+    .service-card li::before{content:'✓';color:var(--accent);font-weight:700}
+
+    /* BENEFITS */
+    .benefits{background:var(--white)}
+    .benefits-grid{
+      display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;
+      margin-top:48px;
+    }
+    .benefit-card{
+      text-align:center;padding:36px 24px;
+      border-radius:var(--radius);
+      border:1px solid rgba(11,60,111,.06);
+      transition:border-color .3s,box-shadow .3s;
+    }
+    .benefit-card:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+    .benefit-icon{
+      width:64px;height:64px;border-radius:50%;
+      background:linear-gradient(135deg,var(--accent-soft),var(--warm));
+      display:flex;align-items:center;justify-content:center;
+      font-size:1.6rem;margin:0 auto 20px;
+    }
+    .benefit-card h3{
+      font-size:1.05rem;color:var(--primary);margin-bottom:10px;
+      font-family:'DM Sans',sans-serif;font-weight:700;
+    }
+    .benefit-card p{font-size:.88rem;color:var(--text-light);line-height:1.6}
+
+    /* CTA */
+    .cta{
+      background:linear-gradient(160deg,var(--primary) 0%,var(--primary-light) 50%,var(--accent) 100%);
+      color:#fff;text-align:center;
+      padding:80px 24px;
+      position:relative;overflow:hidden;
+    }
+    .cta::before{
+      content:'';position:absolute;
+      top:-100px;left:-100px;
+      width:400px;height:400px;
+      background:radial-gradient(circle,rgba(255,255,255,.06),transparent 70%);
+      border-radius:50%;
+    }
+    .cta::after{
+      content:'';position:absolute;
+      bottom:-150px;right:-100px;
+      width:500px;height:500px;
+      background:radial-gradient(circle,rgba(255,255,255,.04),transparent 70%);
+      border-radius:50%;
+    }
+    .cta-inner{position:relative;z-index:1;max-width:640px;margin:0 auto}
+    .cta h2{
+      font-size:clamp(1.8rem,4vw,2.4rem);
+      margin-bottom:16px;color:#fff;
+    }
+    .cta p{
+      font-size:1.05rem;opacity:.85;margin-bottom:32px;line-height:1.7;
+    }
+    .btn-white{
+      background:#fff;color:var(--primary);
+      padding:16px 36px;border-radius:999px;
+      font-weight:700;font-size:1rem;
+      display:inline-flex;align-items:center;gap:10px;
+      transition:transform .2s,box-shadow .2s;
+      border:none;cursor:pointer;
+    }
+    .btn-white:hover{transform:translateY(-2px);box-shadow:0 10px 32px rgba(0,0,0,.2)}
+
+    /* FOOTER */
+    .footer{
+      background:var(--text);color:rgba(255,255,255,.6);
+      padding:48px 24px 32px;
+    }
+    .footer-inner{
+      max-width:1200px;margin:0 auto;
+      display:flex;justify-content:space-between;align-items:center;
+      flex-wrap:wrap;gap:20px;
+    }
+    .footer-logo{
+      font-family:'DM Serif Display',serif;
+      font-size:1.3rem;color:#fff;
+    }
+    .footer-logo span{color:var(--accent)}
+    .footer p{font-size:.85rem}
+    .footer-links{display:flex;gap:20px}
+    .footer-links a{
+      font-size:.85rem;color:rgba(255,255,255,.5);
+      transition:color .2s;
+    }
+    .footer-links a:hover{color:#fff}
+
+    /* ANIMATIONS */
+    .fade-up{
+      opacity:0;transform:translateY(30px);
+      transition:opacity .6s ease,transform .6s ease;
+    }
+    .fade-up.visible{opacity:1;transform:translateY(0)}
+
+    /* MOBILE */
+    @media(max-width:900px){
+      .hero-inner{grid-template-columns:1fr;text-align:center}
+      .hero p{margin:0 auto 32px}
+      .hero-actions{justify-content:center}
+      .hero-stats{justify-content:center}
+      .hero-image{order:-1;margin-bottom:20px}
+      .hero-photo{width:260px;height:320px}
+      .hero-photo-bg{top:12px;left:12px;right:-12px;bottom:-12px}
+      .about-grid{grid-template-columns:1fr;gap:40px}
+      .about-photo-wrap{text-align:center}
+      .about-photo{max-width:320px;margin:0 auto}
+      .about-features{grid-template-columns:1fr}
+      .nav-links{display:none}
+      .nav-links.open{
+        display:flex;flex-direction:column;
+        position:absolute;top:100%;left:0;right:0;
+        background:var(--white);padding:20px 24px;
+        box-shadow:var(--shadow);gap:16px;
+      }
+      .nav-mobile{display:block}
+      section{padding:70px 20px}
+    }
+    @media(max-width:480px){
+      .hero{padding:100px 16px 60px}
+      .hero-photo{width:220px;height:280px}
+      .services-grid{grid-template-columns:1fr}
+      .benefits-grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav" id="nav">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">FEMIC<span>.</span></a>
+      <div class="nav-links" id="navLinks">
+        <a href="#sobre">Sobre</a>
+        <a href="#servicos">Serviços</a>
+        <a href="#beneficios">Benefícios</a>
+        <a href="#contato" class="nav-cta">Agendar Avaliação</a>
+      </div>
+      <button class="nav-mobile" id="navToggle" aria-label="Menu">☰</button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero" id="inicio">
+    <div class="hero-inner">
+      <div class="hero-text fade-up">
+        <div class="hero-badge">Fisioterapia Especializada</div>
+        <h1>Sua dor não precisa ser <em>o seu normal</em></h1>
+        <p>Tratamento personalizado para dor crônica e fisioterapia preventiva. Cuide do seu corpo com quem entende de verdade.</p>
+        <div class="hero-actions">
+          <a href="#contato" class="btn btn-primary">Agendar Avaliação →</a>
+          <a href="#servicos" class="btn btn-outline">Nossos Serviços</a>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <strong>1000+</strong>
+            <span>Pacientes atendidos</span>
+          </div>
+          <div class="hero-stat">
+            <strong>10+</strong>
+            <span>Anos de experiência</span>
+          </div>
+          <div class="hero-stat">
+            <strong>98%</strong>
+            <span>Satisfação</span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-image fade-up">
+        <div class="hero-photo-bg"></div>
+        <img src="foto1.jpg" alt="Marco Salvanhini — Fisioterapeuta" class="hero-photo">
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section class="about" id="sobre">
+    <div class="section-inner">
+      <div class="about-grid">
+        <div class="about-photo-wrap fade-up">
+          <img src="foto2.jpg" alt="Marco Salvanhini" class="about-photo">
+        </div>
+        <div class="about-content fade-up">
+          <div class="section-label">Sobre</div>
+          <h2>Marco Salvanhini</h2>
+          <h3>Fisioterapeuta especializado em dor crônica e reabilitação</h3>
+          <p>Acredito que cada paciente é único. Por isso, cada plano de tratamento é construído com atenção individual — ouvindo, avaliando e entendendo a sua história antes de qualquer intervenção.</p>
+          <p>Com mais de uma década de experiência, desenvolvi uma abordagem que combina técnicas manuais avançadas, exercícios terapêuticos e tecnologia para resultados reais e duradouros.</p>
+          <div class="about-features">
+            <div class="about-feature">
+              <div class="about-feature-icon">🎯</div>
+              <div>
+                <strong>Tratamento focado</strong>
+                <span>Causa raiz, não só sintoma</span>
+              </div>
+            </div>
+            <div class="about-feature">
+              <div class="about-feature-icon">🤝</div>
+              <div>
+                <strong>Acolhimento real</strong>
+                <span>Você é ouvido e respeitado</span>
+              </div>
+            </div>
+            <div class="about-feature">
+              <div class="about-feature-icon">📊</div>
+              <div>
+                <strong>Acompanhamento</strong>
+                <span>Evolução monitorada sessãp a sessão</span>
+              </div>
+            </div>
+            <div class="about-feature">
+              <div class="about-feature-icon">💡</div>
+              <div>
+                <strong>Tecnologia</strong>
+                <span>Agendamento e prontuário digital</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SERVICES -->
+  <section class="services" id="servicos">
+    <div class="section-inner">
+      <div class="services-header fade-up">
+        <div class="section-label">Serviços</div>
+        <h2 class="section-title">Cuidado completo para o seu corpo</h2>
+        <p class="section-desc">Do tratamento da dor à prevenção — tudo que você precisa para viver sem limitações.</p>
+      </div>
+      <div class="services-grid">
+        <div class="service-card fade-up">
+          <div class="service-icon">🔥</div>
+          <h3>Dor Crônica</h3>
+          <p>Tratamento especializado para dores que persistem e afetam sua qualidade de vida.</p>
+          <ul>
+            <li>Dor lombar e cervical</li>
+            <li>Ciatalgia e hérnia de disco</li>
+            <li>Fibromialgia</li>
+            <li>Artrose e osteoartrite</li>
+            <li>Dor miofascial</li>
+          </ul>
+        </div>
+        <div class="service-card fade-up">
+          <div class="service-icon">🛡️</div>
+          <h3>Fisioterapia Preventiva</h3>
+          <p>Cuide do seu corpo antes que a dor apareça. Prevenção é o melhor tratamento.</p>
+          <ul>
+            <li>Avaliação postural completa</li>
+            <li>Fortalecimento muscular</li>
+            <li>Mobilidade e flexibilidade</li>
+            <li>Prevenção de lesões</li>
+            <li>Orientação ergonômica</li>
+          </ul>
+        </div>
+        <div class="service-card fade-up">
+          <div class="service-icon">🏃</div>
+          <h3>Reabilitação</h3>
+          <p>Recuperação completa após lesões, cirurgias ou períodos de imobilização.</p>
+          <ul>
+            <li>Pós-operatório</li>
+            <li>Lesões esportivas</li>
+            <li>Entorses e fraturas</li>
+            <li>Retorno às atividades</li>
+            <li>Reeducação do movimento</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BENEFITS -->
+  <section class="benefits" id="beneficios">
+    <div class="section-inner">
+      <div class="fade-up" style="text-align:center">
+        <div class="section-label" style="justify-content:center">Por que a FEMIC</div>
+        <h2 class="section-title">Um cuidado que faz diferença</h2>
+        <p class="section-desc" style="margin:0 auto">Cada detalhe foi pensado para que sua experiência seja tão boa quanto o resultado.</p>
+      </div>
+      <div class="benefits-grid">
+        <div class="benefit-card fade-up">
+          <div class="benefit-icon">⏰</div>
+          <h3>Agendamento Online</h3>
+          <p>Marque sua sessão pelo celular, a qualquer hora. Sem ligações, sem espera.</p>
+        </div>
+        <div class="benefit-card fade-up">
+          <div class="benefit-icon">📋</div>
+          <h3>Prontuário Digital</h3>
+          <p>Todo seu histórico em um só lugar. Acesso fácil e seguro às suas informações.</p>
+        </div>
+        <div class="benefit-card fade-up">
+          <div class="benefit-icon">🧠</div>
+          <h3>IA Clínica</h3>
+          <p>Tecnologia de apoio para análises mais precisas e tratamentos personalizados.</p>
+        </div>
+        <div class="benefit-card fade-up">
+          <div class="benefit-icon">💬</div>
+          <h3>WhatsApp Direto</h3>
+          <p>Comunicação fácil e rápida. Tire dúvidas e receba orientações sem complicação.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta" id="contato">
+    <div class="cta-inner fade-up">
+      <h2>Pronto para viver sem dor?</h2>
+      <p>Agende sua avaliação e dê o primeiro passo para uma vida com mais movimento, menos dor e mais qualidade.</p>
+      <a href="#contato" class="btn-white" aria-disabled="true" title="Configure o número oficial do WhatsApp antes de publicar">
+        WhatsApp em configuração
+      </a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-logo">FEMIC<span>.</span></div>
+      <p>© 2026 FEMIC — Fisioterapia Especializada. Todos os direitos reservados.</p>
+      <div class="footer-links">
+        <a href="#inicio">Início</a>
+        <a href="#sobre">Sobre</a>
+        <a href="#servicos">Serviços</a>
+        <a href="#contato">Contato</a>
+      </div>
+    </div>
+  </footer>
+
+<script>
+(function(){
+  'use strict';
+
+  // Nav scroll effect
+  var nav = document.getElementById('nav');
+  window.addEventListener('scroll', function(){
+    nav.classList.toggle('scrolled', window.scrollY > 20);
+  });
+
+  // Mobile nav toggle
+  var toggle = document.getElementById('navToggle');
+  var links = document.getElementById('navLinks');
+  toggle.addEventListener('click', function(){
+    links.classList.toggle('open');
+    toggle.textContent = links.classList.contains('open') ? '✕' : '☰';
+  });
+  links.querySelectorAll('a').forEach(function(a){
+    a.addEventListener('click', function(){
+      links.classList.remove('open');
+      toggle.textContent = '☰';
+    });
+  });
+
+  // Fade-up on scroll
+  var els = document.querySelectorAll('.fade-up');
+  var observer = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  },{threshold:0.15,rootMargin:'0px 0px -40px 0px'});
+  els.forEach(function(el){ observer.observe(el); });
+})();
+</script>
+</body>
+</html>
