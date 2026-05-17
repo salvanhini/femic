@@ -1,6 +1,11 @@
 const FEMIC_EVENT_TYPE = 'FEMIC_EXTENSION_EVENT';
+const FEMIC_EVENT_CHANNEL = 'FEMIC_EXTENSION_EVENT_CHANNEL';
 const RECENT_EVENT_WINDOW_MS = 60000;
 const recentEventCache = new Map();
+
+function limitText(value, maxLength) {
+  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+}
 
 function normalizePhone(value) {
   return String(value || '').replace(/\D/g, '');
@@ -8,19 +13,27 @@ function normalizePhone(value) {
 
 function normalizeEvent(input = {}) {
   const action = String(input.action || '').trim();
-  const messageText = String(input.message_text || '').trim();
+  const messageText = limitText(input.message_text, 1200);
+  const requestedDate = limitText(input.requested_date, 10);
+  const requestedPeriod = limitText(input.requested_period, 20).toLowerCase();
   if (!['marcacao', 'remarcacao', 'cancelamento'].includes(action) || !messageText) {
     throw new Error('Evento incompleto. Informe ação e mensagem.');
+  }
+  if (requestedDate && !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
+    throw new Error('Data solicitada inválida. Use o formato AAAA-MM-DD.');
+  }
+  if (requestedPeriod && !['manha', 'tarde', 'noite'].includes(requestedPeriod)) {
+    throw new Error('Período inválido. Use manhã, tarde ou noite.');
   }
   return {
     type: FEMIC_EVENT_TYPE,
     source: 'whatsapp_web',
     action,
     message_text: messageText,
-    patient_name: String(input.patient_name || '').trim(),
-    phone: normalizePhone(input.phone),
-    requested_date: String(input.requested_date || '').trim(),
-    requested_period: String(input.requested_period || '').trim(),
+    patient_name: limitText(input.patient_name, 120),
+    phone: normalizePhone(input.phone).slice(0, 15),
+    requested_date: requestedDate,
+    requested_period: requestedPeriod,
     created_at: new Date().toISOString()
   };
 }
@@ -60,7 +73,10 @@ function isFemicTab(tab, urlHint) {
   const url = String(tab.url || '');
   const title = String(tab.title || '');
   if (urlHint && url.includes(urlHint)) return true;
-  return /femic/i.test(title) || /\/index\.html(?:$|[?#])/.test(url) || /\/agenda\.html(?:$|[?#])/.test(url);
+  return /femic/i.test(title) ||
+    /\/index\.html(?:$|[?#])/.test(url) ||
+    /\/agenda\.html(?:$|[?#])/.test(url) ||
+    /^https:\/\/[^/]+\.github\.io\/.*(?:index|agenda)\.html(?:$|[?#])/.test(url);
 }
 
 async function findFemicTab() {
@@ -73,9 +89,9 @@ async function postToFemicTab(tabId, payload) {
   await chrome.scripting.executeScript({
     target: { tabId },
     world: 'MAIN',
-    args: [payload],
-    func: (eventPayload) => {
-      window.postMessage(eventPayload, '*');
+    args: [payload, FEMIC_EVENT_CHANNEL],
+    func: (eventPayload, channelName) => {
+      document.dispatchEvent(new CustomEvent(channelName, { detail: eventPayload }));
     }
   });
 }
@@ -87,7 +103,7 @@ async function sendEventToFemic(input) {
   }
   const tab = await findFemicTab();
   if (!tab || !tab.id) {
-    throw new Error('Abra o FEMIC em outra aba antes de enviar.');
+    throw new Error('Abra o FEMIC em outra aba antes de enviar. Se estiver no GitHub Pages ou em uma URL específica, abra o popup da extensão e informe um identificador como index.html, localhost ou github.io.');
   }
   await postToFemicTab(tab.id, payload);
   return { ok: true, tabId: tab.id, payload };

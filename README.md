@@ -160,10 +160,10 @@ NOTIFY pgrst, 'reload schema';
 - O sistema está preparado para uma futura integração com API, mas não coloca token da Meta no HTML, JS ou `localStorage`.
 
 ### Por que não colocar token da Meta no navegador
-O token da Meta WhatsApp Cloud API permite enviar mensagens em nome do negócio. Se ele ficar no `agenda.html`, em JavaScript público ou em `localStorage`, qualquer pessoa com acesso ao navegador ou ao código consegue copiar esse token. Por isso, a arquitetura segura é:
+O token da Meta WhatsApp Cloud API permite enviar mensagens em nome do negócio. Se ele ficar no `index.html`, no `agenda.html`, em JavaScript público ou em `localStorage`, qualquer pessoa com acesso ao navegador ou ao código consegue copiar esse token. Por isso, a arquitetura segura futura é:
 
 ```text
-agenda.html/js -> Supabase Edge Function -> Meta WhatsApp Cloud API
+index.html/agenda.html -> Supabase Edge Function -> Meta WhatsApp Cloud API
 ```
 
 Na agenda ficam apenas:
@@ -186,7 +186,7 @@ Configurações -> WhatsApp API
 Campos disponíveis:
 - **Provedor de envio**
   - `Link WhatsApp seguro`: usa `wa.me`, recomendado enquanto a API não estiver pronta.
-  - `API via Supabase Edge Function`: deixa a integração preparada.
+  - `API preparada via Supabase Edge Function`: salva a configuração para implementação futura, mas não envia pela API nesta versão.
 - **Endpoint da Edge Function**
   - Exemplo: `https://SEU-PROJETO.functions.supabase.co/send-whatsapp-reminder`
 - **Template Meta: sessão**
@@ -194,7 +194,7 @@ Campos disponíveis:
 - **Template Meta: formulário**
   - Sugestão: `formulario_pos_sessao`
 
-Importante: nesta versão, o envio real pela API deve ser implementado na Edge Function antes de substituir o fallback `wa.me`. Isso evita quebrar o sistema em produção.
+Importante: nesta versão, o envio real continua por `wa.me`. A Edge Function precisa ser implementada e testada antes de substituir esse fallback seguro.
 
 ### Configuração no site da Meta
 1. Acesse o Meta for Developers e crie um app do tipo Business.
