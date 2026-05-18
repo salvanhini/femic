@@ -303,9 +303,13 @@
         <span><i class="ai-dot full"></i>Lotado</span>
       </div>
     </div>
-    <div class="grid grid-4" id="aiRadarKpis" style="margin-top:16px"></div>
+    <div id="aiRadarQuick" class="ai-radar-quick" style="margin-top:16px"></div>
     <div id="aiRadarSummary" class="ai-radar-summary" style="margin-top:16px"></div>
-    <div id="aiRadarWeeks" class="ai-radar-weeks" style="margin-top:16px"></div>
+    <details class="card ai-radar-full" style="margin-top:16px">
+      <summary><span>Ver radar completo</span><span class="muted small" id="aiRadarKpiLine"></span></summary>
+      <div class="ai-radar-compact-kpis" id="aiRadarKpis"></div>
+      <div id="aiRadarWeeks" class="ai-radar-weeks" style="margin-top:12px"></div>
+    </details>
   </section>
 
   <section class="panel" id="panel-reminders"><div class="card"><div class="section-title"><div><div class="eyebrow">Lembretes</div><h3>Fila de WhatsApp</h3></div><div id="reminderModeBadge" class="mode-badge manual">Manual</div></div><div class="toolbar"><input type="date" id="reminderDate" onchange="renderReminders()" style="max-width:190px"><button class="btn primary" onclick="sendNextReminder()">Enviar próximo pendente</button><button class="btn" onclick="renderReminders()">Atualizar</button></div><div class="reminder-mode-panel" style="margin-top:12px"><div><strong>Modo de envio</strong><div class="muted small" id="reminderAutoStatus">Manual: você escolhe quando enviar.</div></div><div class="toolbar"><button class="btn primary" id="manualModeBtn" onclick="setReminderMode('manual')">Manual</button><button class="btn" id="autoModeBtn" onclick="setReminderMode('auto')">Automático</button></div></div><div class="quick-note small" style="margin-top:12px">Os lembretes automáticos verificam os atendimentos futuros enquanto o navegador estiver aberto.</div></div><div class="grid grid-4" id="reminderKpis" style="margin-top:16px"></div><div class="card" style="margin-top:16px"><div class="eyebrow" id="reminderTitle">Lembretes</div><div class="list" id="reminderList"></div></div></section>
@@ -313,37 +317,80 @@
   <section class="panel" id="panel-report"><div class="card"><div class="toolbar"><input type="month" id="reportMonth" onchange="renderReport()" style="max-width:190px"><button class="btn" onclick="exportCsv()">Exportar CSV</button><button class="btn" onclick="window.print()">Imprimir/PDF</button></div></div><div class="grid grid-4" id="reportKpis" style="margin-top:16px"></div><div class="card" id="reportPrintArea" style="margin-top:16px"><div class="eyebrow">Relatório mensal</div><div class="table-wrap"><table><thead><tr><th>Pagador</th><th>Serviço</th><th>Qtd.</th><th>Valor</th><th>Total</th></tr></thead><tbody id="reportBody"></tbody></table></div></div></section>
 
   <section class="panel" id="panel-documentos">
-    <div class="grid grid-2">
-      <div class="card">
+    <div class="docs-premium-shell">
+      <div class="card docs-premium-builder">
         <div class="section-title">
-          <div><div class="eyebrow">Documentos</div><h3>Gerador integrado ao prontuário</h3></div>
+          <div><div class="eyebrow">Documentos</div><h3>Assistente de documentos clínicos</h3></div>
           <div class="toolbar">
             <select id="docsPatientSelect" onchange="selectUnifiedPatient(this.value,'documentos')" style="min-width:260px"></select>
             <button class="btn" onclick="renderUnifiedDocuments()">Atualizar</button>
           </div>
         </div>
-        <div class="grid grid-2">
-          <div class="field"><label>Tipo</label><select id="docTypeSelect" onchange="populateDocPresets()"><option value="attendance">Atestado</option><option value="declaration">Declaração</option><option value="exam">Pedido de exame</option><option value="report">Laudo</option><option value="summary">Resumo evolutivo</option></select></div>
-          <div class="field"><label>Modelo</label><select id="docPresetSelect"></select></div>
-          <div class="field"><label>Data do documento</label><input id="docDateInput" type="date"></div>
-          <div class="field"><label>Nome profissional</label><input id="professionalNameInput" placeholder="FEMIC Fisioterapia"></div>
-          <div class="field"><label>Observação/assinatura</label><input id="professionalNoteInput" placeholder="CREFITO, observação institucional ou cargo"></div>
-          <div class="field"><label>Mostrar carimbo</label><select id="showStampSelect"><option value="yes">Sim</option><option value="no">Não</option></select></div>
+        <div class="docs-steps">
+          <button class="doc-step active" type="button" data-doc-step="1" onclick="setDocumentStep(1)"><span>1</span>Paciente e tipo</button>
+          <button class="doc-step" type="button" data-doc-step="2" onclick="setDocumentStep(2)"><span>2</span>Modelo</button>
+          <button class="doc-step" type="button" data-doc-step="3" onclick="setDocumentStep(3)"><span>3</span>Texto</button>
+          <button class="doc-step" type="button" data-doc-step="4" onclick="setDocumentStep(4)"><span>4</span>Revisão</button>
         </div>
-        <div class="field" style="margin-top:12px"><label>Corpo do documento</label><textarea id="docBodyInput" rows="12"></textarea></div>
-        <div class="toolbar" style="margin-top:12px">
-          <button class="btn primary" onclick="generateUnifiedDocument()">Gerar texto</button>
-          <button class="btn" onclick="saveGeneratedDocument()">Salvar no histórico</button>
-          <button class="btn ghost" onclick="printUnifiedDocument()">Imprimir / PDF</button>
+        <div class="docs-premium-stage">
+          <div class="grid grid-2">
+          <div class="field"><label>Tipo</label><select id="docTypeSelect" onchange="populateDocPresets()"><option value="attendance">Atestado</option><option value="declaration">Declaração</option><option value="exam">Pedido de exame</option><option value="report">Laudo</option><option value="summary">Resumo evolutivo</option></select></div>
+          <div class="field"><label>Modelo</label><select id="docPresetSelect" onchange="renderUnifiedDocumentPreview()"></select></div>
+          <div class="field"><label>Data do documento</label><input id="docDateInput" type="date" onchange="renderUnifiedDocumentPreview()"></div>
+          <div class="field"><label>Nome profissional</label><input id="professionalNameInput" placeholder="FEMIC Fisioterapia" oninput="renderUnifiedDocumentPreview()"></div>
+          <div class="field"><label>Observação/assinatura</label><input id="professionalNoteInput" placeholder="CREFITO, observação institucional ou cargo" oninput="renderUnifiedDocumentPreview()"></div>
+          <div class="field"><label>Mostrar carimbo</label><select id="showStampSelect" onchange="renderUnifiedDocumentPreview()"><option value="yes">Sim</option><option value="no">Não</option></select></div>
+          </div>
+          <details class="docs-identity-panel">
+            <summary>Identidade do documento</summary>
+            <div class="docs-identity-grid">
+              <div class="docs-asset-field">
+                <label>Logo PNG</label>
+                <div class="docs-asset-preview"><img id="docLogoPreview" alt="Logo do documento"></div>
+                <input type="file" id="docLogoInput" accept="image/png" onchange="handleDocumentAssetUpload('logoData',this)">
+                <button class="btn" type="button" onclick="clearDocumentAsset('logoData')">Remover</button>
+              </div>
+              <div class="docs-asset-field">
+                <label>Assinatura PNG</label>
+                <div class="docs-asset-preview"><img id="docSignaturePreview" alt="Assinatura do documento"></div>
+                <input type="file" id="docSignatureInput" accept="image/png" onchange="handleDocumentAssetUpload('signatureData',this)">
+                <button class="btn" type="button" onclick="clearDocumentAsset('signatureData')">Remover</button>
+              </div>
+              <div class="docs-asset-field">
+                <label>Carimbo PNG</label>
+                <div class="docs-asset-preview"><img id="docStampPreview" alt="Carimbo do documento"></div>
+                <input type="file" id="docStampInput" accept="image/png" onchange="handleDocumentAssetUpload('stampData',this)">
+                <button class="btn" type="button" onclick="clearDocumentAsset('stampData')">Remover</button>
+              </div>
+            </div>
+          </details>
+          <div class="docs-quick-models" id="docQuickModels"></div>
+          <div class="field" style="margin-top:12px"><label>Corpo do documento</label><textarea id="docBodyInput" rows="12" oninput="renderUnifiedDocumentPreview()"></textarea></div>
+          <div class="toolbar docs-actions" style="margin-top:12px">
+            <button class="btn primary" onclick="generateUnifiedDocument()">Gerar texto</button>
+            <button class="btn" onclick="saveGeneratedDocument()">Salvar no histórico</button>
+            <button class="btn ghost" onclick="printUnifiedDocument()">Imprimir / PDF</button>
+          </div>
         </div>
       </div>
-      <div class="card">
+      <div class="card docs-preview-card">
         <div class="section-title"><div><div class="eyebrow">Pré-visualização</div><h3>Documento pronto</h3></div></div>
         <div id="documentPreview" class="document-preview"></div>
       </div>
     </div>
-    <div class="grid grid-2" style="margin-top:16px">
-      <div class="card">
+    <div class="card docs-history-card" style="margin-top:16px">
+      <div class="section-title"><div><div class="eyebrow">Biblioteca</div><h3>Histórico de documentos</h3></div></div>
+      <div class="docs-history-filters">
+        <input id="generatedDocSearch" placeholder="Buscar por paciente, tipo ou trecho" oninput="renderGeneratedDocumentsHistory()">
+        <select id="generatedDocTypeFilter" onchange="renderGeneratedDocumentsHistory()"><option value="">Todos os tipos</option><option value="attendance">Atestado</option><option value="declaration">Declaração</option><option value="exam">Pedido de exame</option><option value="report">Laudo</option><option value="summary">Resumo evolutivo</option></select>
+        <button class="btn" type="button" onclick="renderGeneratedDocumentsHistory()">Atualizar</button>
+      </div>
+      <div id="generatedDocumentsHistory" class="docs-history-list"></div>
+    </div>
+    <details class="card docs-secondary" style="margin-top:16px">
+      <summary>Documentos externos e guias</summary>
+      <div class="grid grid-2" style="margin-top:16px">
+        <div>
         <div class="section-title"><div><div class="eyebrow">Documentos do paciente</div><h3>Links e anexos externos</h3></div></div>
         <div class="grid grid-2">
           <input id="patientDocumentTitle" placeholder="Título do documento">
@@ -355,8 +402,8 @@
           <button class="btn primary" onclick="saveUnifiedPatientDocument()">Salvar documento do paciente</button>
         </div>
         <div id="documentsListUnified" class="list" style="margin-top:12px"></div>
-      </div>
-      <div class="card">
+        </div>
+        <div>
         <div class="section-title"><div><div class="eyebrow">Guias</div><h3>Convênios e controle de sessões</h3></div></div>
         <div class="grid grid-2">
           <input id="guiaConvenio" placeholder="Convênio">
@@ -372,12 +419,9 @@
           <button class="btn primary" onclick="saveUnifiedGuia()">Salvar guia</button>
         </div>
         <div id="guiasListUnified" class="list" style="margin-top:12px"></div>
+        </div>
       </div>
-    </div>
-    <div class="card" style="margin-top:16px">
-      <div class="section-title"><div><div class="eyebrow">Histórico de documentos</div><h3>Registros gerados no sistema unificado</h3></div></div>
-      <div id="generatedDocumentsHistory" class="list"></div>
-    </div>
+    </details>
   </section>
 
   <section class="panel" id="panel-historico">
@@ -711,6 +755,16 @@
         <div id="recFields" class="hidden rec-fields-refined">
           <div class="muted small rec-help">
             Marque os dias desejados e informe o horário de cada dia. O sistema tentará criar até o total informado acima.
+          </div>
+          <div class="rec-suggestion-panel">
+            <div class="rec-suggestion-head">
+              <div>
+                <strong>Assistente de recorrência</strong>
+                <span>Encontra combinações com menos conflitos antes de salvar.</span>
+              </div>
+              <button class="btn primary" type="button" onclick="suggestRecurringOptions()">Sugerir melhores dias e horários</button>
+            </div>
+            <div id="recSuggestionList" class="rec-suggestion-list"></div>
           </div>
           <div class="rec-grid rec-grid-compact" id="recDays"></div>
         </div>
