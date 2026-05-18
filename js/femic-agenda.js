@@ -229,7 +229,7 @@ CREATE POLICY "authenticated_full_access_assistant_tasks" ON assistant_tasks FOR
 CREATE POLICY "authenticated_full_access_clinical_anamneses" ON clinical_anamneses FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_clinical_evolutions" ON clinical_evolutions FOR ALL TO authenticated USING (true) WITH CHECK (true);
 NOTIFY pgrst, 'reload schema';`;
-const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],movements=[],clinicRules=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();let editingServiceId='';let loadedAppointmentQuery='';const appointmentSearchSelected=new Set();
+const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],movements=[],clinicRules=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();let editingServiceId='';let loadedAppointmentQuery='',aiRadarQuery='',aiRadarAppointments=[],aiRadarLoaded=false,aiRadarLastWeeks=[];const appointmentSearchSelected=new Set();
 const packageScheduleCache=new Map();
 const dayAppointmentCache=new Map();
 const CLINIC_RULES_STORAGE_KEY='femic_agenda_clinic_rules';
@@ -302,7 +302,7 @@ async function refreshReportMonthIfNeeded(month){
     toast('Erro ao carregar relatório mensal: ' + e.message, 'error');
   }
 }
-async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const apQuery=appointmentWindowQuery();const [pa,hi,sv,pk,ap,mv,st,cr]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api(apQuery),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];loadedAppointmentQuery=apQuery;movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});packageScheduleCache.clear();dayAppointmentCache.clear();syncForms();renderActivePanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);toast('Erro ao carregar: '+e.message,'error')}}
+async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const apQuery=appointmentWindowQuery();const [pa,hi,sv,pk,ap,mv,st,cr]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api(apQuery),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];loadedAppointmentQuery=apQuery;aiRadarQuery='';aiRadarLoaded=false;movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});packageScheduleCache.clear();dayAppointmentCache.clear();syncForms();renderActivePanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);toast('Erro ao carregar: '+e.message,'error')}}
 function toggleSidebar(){
   $('sidebar')?.classList.toggle('show');
   $('overlay')?.classList.toggle('show');
@@ -461,6 +461,9 @@ function renderPanel(name){
     case 'reminders':
       renderReminders();
       break;
+    case 'ai':
+      renderAIRadar();
+      break;
     case 'report':
       renderReport();
       break;
@@ -486,7 +489,7 @@ function showPanel(name){
   closeSidebar();
   renderPanel(name);
 }
-function renderAll(){renderAgenda();renderDay();renderReminders();renderReport();renderLists();renderBackupPanel();renderAppointmentSearch();if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks()}function patientById(id){return patients.find(p=>String(p.id)===String(id))||{}}function serviceById(id){return services.find(s=>String(s.id)===String(id))||{}}function payerName(id){return (payers.find(p=>String(p.id)===String(id))||{}).name||'Particular'}function patientName(id){return patientById(id).name||'Paciente'}function serviceName(id){return serviceById(id).name||'Sem serviço'}
+function renderAll(){renderAgenda();renderDay();renderReminders();renderAIRadar();renderReport();renderLists();renderBackupPanel();renderAppointmentSearch();if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks()}function patientById(id){return patients.find(p=>String(p.id)===String(id))||{}}function serviceById(id){return services.find(s=>String(s.id)===String(id))||{}}function payerName(id){return (payers.find(p=>String(p.id)===String(id))||{}).name||'Particular'}function patientName(id){return patientById(id).name||'Paciente'}function serviceName(id){return serviceById(id).name||'Sem serviço'}
 function assistantPeriodMatches(start,period){const p=String(period||'').toLowerCase();const m=timeToMin(start);if(p==='manha')return m<12*60;if(p==='tarde')return m>=12*60&&m<18*60;if(p==='noite')return m>=18*60;return true}
 function assistantAppointmentPayload(input={}){const sid=input.service_id||input.serviceId,pid=input.patient_id||input.patientId,date=input.appointment_date||input.date,start=normalizeTime(input.start_time||input.start);if(!pid)throw new Error('Paciente não identificado.');if(!sid)throw new Error('Serviço não identificado.');if(!date)throw new Error('Data não informada.');if(!start)throw new Error('Horário inicial não informado.');const s=serviceById(sid);if(!s||!s.id)throw new Error('Serviço não encontrado.');const duration=Number(input.duration_minutes||s.duration_minutes||45);const end=normalizeTime(input.end_time||input.end||addMinutes(start,duration));return{patient_id:pid,service_id:sid,appointment_date:date,start_time:start,end_time:end,duration_minutes:duration,status:input.status||'agendado',service_price_at_time:Number(input.service_price_at_time!=null?input.service_price_at_time:getServiceDefaultPrice(sid))}}
 async function validateAssistantAppointment(input={}){const payload=assistantAppointmentPayload(input);if(timeToMin(payload.end_time)<=timeToMin(payload.start_time))return{valid:false,reason:'O horário final precisa ser maior que o inicial.',payload};if(!isTodayDate(payload.appointment_date)&&!isWorking(payload.appointment_date))return{valid:false,reason:'Dia fora do expediente.',payload};if(!isInsideWorkingTime(payload.appointment_date,payload.start_time,payload.end_time))return{valid:false,reason:'Horário fora dos períodos de expediente configurados.',payload};let rows=appointments.filter(a=>a.appointment_date===payload.appointment_date);try{rows=await fetchAppointmentsForDate(payload.appointment_date)}catch(e){}const conflict=conflictInAppointmentList(payload,rows,input.ignore_id||input.ignoreId||null);if(conflict)return{valid:false,reason:conflict,payload};return{valid:true,reason:'Horário disponível.',payload,patient:patientById(payload.patient_id),service:serviceById(payload.service_id)}}
@@ -771,6 +774,194 @@ function dueAutomaticReminders(){
     })
   ).sort((x,y)=>x.due-y.due);
 }
+function aiRadarWeekStartValue(){
+  const input=$('aiRadarStart');
+  const raw=input&&input.value?input.value:todayIso();
+  const start=weekStart(new Date(raw+'T00:00:00'));
+  const value=isoDate(start);
+  if(input&&input.value!==value)input.value=value;
+  return value;
+}
+function aiRadarRange(startValue){
+  const start=weekStart(new Date(startValue+'T00:00:00'));
+  const end=new Date(start);
+  end.setDate(start.getDate()+27);
+  return {from:isoDate(start),to:isoDate(end)};
+}
+function aiRadarQueryFor(startValue){
+  const range=aiRadarRange(startValue);
+  return 'appointments?select=*&appointment_date=gte.'+range.from+'&appointment_date=lte.'+range.to+'&order=appointment_date.asc,start_time.asc';
+}
+function getAIRadarPeriod(){
+  return $('aiRadarPeriod')?$('aiRadarPeriod').value:'all';
+}
+function getAIRadarPatientId(){
+  return $('aiRadarPatient')?$('aiRadarPatient').value:'';
+}
+function aiRadarPeriodLabel(period){
+  return {manha:'manhã',tarde:'tarde',noite:'noite'}[period]||'todos os períodos';
+}
+function aiRadarSlotShift(start){
+  const m=timeToMin(start);
+  if(m<12*60)return 'manha';
+  if(m<18*60)return 'tarde';
+  return 'noite';
+}
+async function loadAIRadarAppointments(startValue,force=false){
+  const query=aiRadarQueryFor(startValue);
+  if(!force&&query===aiRadarQuery&&aiRadarLoaded)return aiRadarAppointments;
+  if(!base()||!key()||!sessionStorage.getItem('femic_jwt')){
+    aiRadarQuery=query;
+    aiRadarAppointments=appointments.filter(a=>{
+      const range=aiRadarRange(startValue);
+      return String(a.appointment_date||'')>=range.from&&String(a.appointment_date||'')<=range.to;
+    });
+    aiRadarLoaded=true;
+    return aiRadarAppointments;
+  }
+  aiRadarAppointments=await api(query)||[];
+  aiRadarQuery=query;
+  aiRadarLoaded=true;
+  return aiRadarAppointments;
+}
+function aiRadarSlotStatus(date,start,end,rows){
+  const max=Number(settings.max_patients_per_slot||4);
+  const startMin=timeToMin(start),endMin=timeToMin(end);
+  const overlaps=rows.filter(a=>a.status!=='cancelado'&&timeToMin(normalizeTime(a.start_time))<endMin&&timeToMin(normalizeTime(a.end_time))>startMin);
+  const hasIndividual=overlaps.some(a=>(serviceById(a.service_id).appointment_mode||'grupo')==='individual');
+  const occupied=overlaps.length;
+  const remaining=hasIndividual?0:Math.max(0,max-occupied);
+  const names=overlaps.slice(0,3).map(a=>patientName(a.patient_id));
+  let cls='open',label='Livre',rank=2;
+  if(hasIndividual||remaining<=0){cls='full';label=hasIndividual?'Individual':'Lotado';rank=0}
+  else if(remaining===1){cls='almost';label='1 vaga';rank=1}
+  else if(occupied>0){cls='best';label='Melhor encaixe';rank=4}
+  return {date,start,end,occupied,remaining,max,hasIndividual,patients:names,extra:Math.max(0,overlaps.length-names.length),cls,label,rank};
+}
+function buildAIRadarWeeks(rows,startValue){
+  const start=weekStart(new Date(startValue+'T00:00:00'));
+  const period=getAIRadarPeriod();
+  const slotList=slots().filter(slot=>period==='all'||assistantPeriodMatches(slot,period));
+  const weeks=[];
+  for(let w=0;w<4;w++){
+    const weekStartDate=new Date(start);
+    weekStartDate.setDate(start.getDate()+(w*7));
+    const week={start:isoDate(weekStartDate),days:[],counts:{best:0,open:0,almost:0,full:0,total:0}};
+    for(let d=0;d<7;d++){
+      const day=new Date(weekStartDate);
+      day.setDate(weekStartDate.getDate()+d);
+      const ds=isoDate(day);
+      const dayRows=rows.filter(a=>a.appointment_date===ds);
+      const daySlots=isWorking(ds)?slotList.map(slot=>{
+        const end=addMinutes(slot,Number(settings.slot_interval_minutes||30));
+        const item=aiRadarSlotStatus(ds,slot,end,dayRows);
+        week.counts[item.cls]++;
+        week.counts.total++;
+        return item;
+      }):[];
+      week.days.push({date:ds,closed:!isWorking(ds),slots:daySlots});
+    }
+    weeks.push(week);
+  }
+  return weeks;
+}
+function aiRadarTotals(weeks){
+  return weeks.reduce((acc,week)=>{
+    ['best','open','almost','full','total'].forEach(k=>acc[k]+=week.counts[k]||0);
+    return acc;
+  },{best:0,open:0,almost:0,full:0,total:0});
+}
+function aiRadarOpenSlots(weeks){
+  return (weeks||[]).flatMap(week=>week.days.flatMap(day=>day.slots.map(slot=>Object.assign({},slot,{dow:dateDay(slot.date)}))))
+    .filter(slot=>slot.remaining>0&&!slot.hasIndividual)
+    .sort((a,b)=>b.rank-a.rank||String(a.date).localeCompare(String(b.date))||String(a.start).localeCompare(String(b.start)));
+}
+function aiRadarFutureOpenSlots(weeks){
+  const now=Date.now();
+  return aiRadarOpenSlots(weeks).filter(slot=>new Date(slot.date+'T'+slot.start+':00').getTime()>now);
+}
+function aiRadarSummaryData(weeks){
+  const open=aiRadarOpenSlots(weeks);
+  const future=aiRadarFutureOpenSlots(weeks);
+  const byDay={},byShift={},almostDays=[],freeDays=[];
+  (weeks||[]).forEach(week=>week.days.forEach(day=>{
+    const slots=day.slots||[];
+    const available=slots.filter(slot=>slot.remaining>0&&!slot.hasIndividual).length;
+    const almost=slots.filter(slot=>slot.cls==='almost').length;
+    const full=slots.filter(slot=>slot.cls==='full').length;
+    const best=slots.filter(slot=>slot.cls==='best').length;
+    if(slots.length){
+      byDay[day.date]=(byDay[day.date]||0)+(best*3)+available;
+      if(almost+full>=Math.max(3,Math.ceil(slots.length*.45)))almostDays.push(day.date);
+      if(available>=Math.max(4,Math.ceil(slots.length*.65)))freeDays.push(day.date);
+    }
+  }));
+  open.forEach(slot=>{
+    const shift=aiRadarSlotShift(slot.start);
+    byShift[shift]=(byShift[shift]||0)+(slot.cls==='best'?3:1);
+  });
+  const bestDay=Object.keys(byDay).sort((a,b)=>byDay[b]-byDay[a])[0]||'';
+  const bestShift=Object.keys(byShift).sort((a,b)=>byShift[b]-byShift[a])[0]||'';
+  return {future,bestDay,bestShift,almostDays:[...new Set(almostDays)].slice(0,3),freeDays:[...new Set(freeDays)].slice(0,3)};
+}
+function renderAIRadarSummary(weeks){
+  const target=$('aiRadarSummary');
+  if(!target)return;
+  const data=aiRadarSummaryData(weeks);
+  const cards=[
+    {label:'Melhor dia',value:data.bestDay?fmtWeekday(data.bestDay):'Sem dados',note:data.bestDay?fmtDate(data.bestDay):'Carregue a agenda para analisar'},
+    {label:'Melhor período',value:data.bestShift?aiRadarPeriodLabel(data.bestShift):'Sem destaque',note:'Baseado nos encaixes disponíveis'},
+    {label:'Quase lotados',value:data.almostDays.length?data.almostDays.map(fmtDate).join(', '):'Nenhum alerta',note:'Dias com pouca folga'},
+    {label:'Mais livres',value:data.freeDays.length?data.freeDays.map(fmtDate).join(', '):'Sem excesso',note:'Dias com bastante espaço'}
+  ];
+  target.innerHTML=cards.map(card=>`<div class="ai-summary-card"><span>${esc(card.label)}</span><strong>${esc(card.value)}</strong><small>${esc(card.note)}</small></div>`).join('');
+}
+function aiRadarBestSlotText(slot){
+  return fmtWeekday(slot.date).replace('-feira','').toLowerCase()+' '+normalizeTime(slot.start);
+}
+async function copyAIRadarBestSlots(){
+  if(!aiRadarLastWeeks.length){
+    await renderAIRadar(false);
+  }
+  const slots=aiRadarFutureOpenSlots(aiRadarLastWeeks).slice(0,5);
+  if(!slots.length){
+    toast('Nenhum horário disponível para copiar nesse filtro.','warning');
+    return;
+  }
+  const period=getAIRadarPeriod();
+  const msg='Tenho disponibilidade '+(period==='all'?'':'no período da '+aiRadarPeriodLabel(period)+' ')+'em '+slots.map(aiRadarBestSlotText).join(', ')+'.';
+  try{
+    await navigator.clipboard.writeText(msg);
+    toast('Melhores horários copiados para o WhatsApp.','success');
+  }catch(e){
+    window.prompt('Copie os melhores horários:',msg);
+  }
+}
+async function renderAIRadar(force=false){
+  if(!$('aiRadarWeeks'))return;
+  const startValue=aiRadarWeekStartValue();
+  if(force){aiRadarQuery='';aiRadarLoaded=false}
+  $('aiRadarWeeks').innerHTML='<div class="card muted">Carregando radar de horários...</div>';
+  try{
+    const rows=await loadAIRadarAppointments(startValue,force);
+    const weeks=buildAIRadarWeeks(rows,startValue);
+    aiRadarLastWeeks=weeks;
+    const totals=aiRadarTotals(weeks);
+    renderAIRadarSummary(weeks);
+    const idealFocus=$('aiRadarIdealFocus')&&$('aiRadarIdealFocus').checked;
+    $('aiRadarKpis').innerHTML=`<div class="kpi"><div class="small muted">Melhores encaixes</div><strong>${totals.best}</strong></div><div class="kpi"><div class="small muted">Livres</div><strong>${totals.open}</strong></div><div class="kpi"><div class="small muted">Com 1 vaga</div><strong>${totals.almost}</strong></div><div class="kpi"><div class="small muted">Lotados/bloqueados</div><strong>${totals.full}</strong></div>`;
+    $('aiRadarWeeks').innerHTML=weeks.map(week=>{
+      const weekEnd=addDaysIso(week.start,6);
+      return `<section class="card ai-radar-week"><div class="section-title"><div><div class="eyebrow">Semana</div><h3>${fmtDate(week.start)} a ${fmtDate(weekEnd)}</h3></div><span class="muted small">${week.counts.best} encaixe(s) bons · ${week.counts.almost} com 1 vaga</span></div><div class="ai-radar-days">${week.days.map(day=>{
+        const weekend=dateDay(day.date)===0||dateDay(day.date)===6?' weekend':'';
+        if(day.closed)return `<div class="ai-radar-day closed${weekend}"><div class="ai-radar-day-head"><strong>${fmtWeekday(day.date)}</strong><span>${fmtDate(day.date)}</span></div><div class="muted small">Sem expediente</div></div>`;
+        return `<div class="ai-radar-day${weekend}"><div class="ai-radar-day-head"><strong>${fmtWeekday(day.date)}</strong><span>${fmtDate(day.date)}</span></div><div class="ai-radar-slots">${day.slots.map(slot=>`<div class="ai-radar-slot ${slot.cls}${idealFocus&&slot.cls==='best'?' ideal-focus':''}"><div><strong>${slot.start}</strong><span>${slot.label}</span></div><div class="ai-slot-meta"><span>${slot.occupied}/${slot.max}</span><span>${slot.remaining} vaga(s)</span></div>${slot.patients.length?`<div class="ai-slot-patients">${esc(slot.patients.join(', '))}${slot.extra?' +'+slot.extra:''}</div>`:''}${slot.remaining>0?`<button class="btn small" type="button" onclick="openAppt('${slot.date}',null,'${slot.start}')">Agendar</button>`:''}</div>`).join('')}</div></div>`;
+      }).join('')}</div></section>`;
+    }).join('');
+  }catch(e){
+    $('aiRadarWeeks').innerHTML='<div class="card"><strong>Não foi possível carregar o radar.</strong><div class="muted small">'+esc(e.message||e)+'</div></div>';
+  }
+}
 function renderReminders(){
   const kind=$('reminderType')?$('reminderType').value:'appointment';
   const date=$('reminderDate').value||isoDate(new Date(Date.now()+86400000));
@@ -780,12 +971,12 @@ function renderReminders(){
   $('reminderTitle').textContent=kind==='form'?'Formulários pós-atendimento':'Lembretes de sessão';
   const pending=list.filter(a=>!reminderFlag(a,kind)&&reminderPhoneOk(a));
   const sent=list.filter(a=>reminderFlag(a,kind));
-  const no=list.filter(a=>!reminderPhoneOk(a));
+  const no=list.filter(a=>!reminderFlag(a,kind)&&!reminderPhoneOk(a));
   const due=pending.filter(a=>{const d=reminderDueAt(a,kind);return d&&d.getTime()<=Date.now();});
   $('reminderKpis').innerHTML=`<div class="kpi"><div class="small muted">Pendentes</div><strong>${pending.length}</strong></div><div class="kpi"><div class="small muted">Vencidos agora</div><strong>${due.length}</strong></div><div class="kpi"><div class="small muted">Enviados</div><strong>${sent.length}</strong></div><div class="kpi"><div class="small muted">Sem WhatsApp</div><strong>${no.length}</strong></div>`;
   $('reminderList').innerHTML=list.length?list.map(a=>{
     const p=patientById(a.patient_id),sentFlag=reminderFlag(a,kind),phoneOk=reminderPhoneOk(a),dueText=sentFlag?'Enviado':reminderDueLabel(a,kind),cls=sentFlag?'reminder-enviado':phoneOk?'reminder-pendente':'reminder-semwhats';
-    return `<div class="item ${cls}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)} — ${esc(p.name||'Paciente')}</strong><div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(serviceName(a.service_id))} · <span class="status-chip ${a.status}">${a.status}</span> · ${esc(dueText)}</div></div><div class="toolbar"><button class="btn primary" onclick="sendWhatsapp('${a.id}',true,'${kind}')">Enviar</button>${!sentFlag?`<button class="btn" onclick="markReminder('${a.id}','${kind}')">Marcar enviado</button>`:''}</div></div></div>`;
+    return `<div class="item ${cls}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)} — ${esc(p.name||'Paciente')}</strong><div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(serviceName(a.service_id))} · <span class="status-chip ${a.status}">${a.status}</span> · <span class="reminder-state ${cls}">${esc(dueText)}</span></div></div><div class="toolbar">${sentFlag?'<span class="status-chip concluido">Enviado</span>':phoneOk?`<button class="btn primary" onclick="sendWhatsapp('${a.id}',true,'${kind}')">Enviar</button><button class="btn" onclick="markReminder('${a.id}','${kind}')">Marcar enviado</button>`:'<span class="status-chip cancelado">Sem WhatsApp</span>'}</div></div></div>`;
   }).join(''):'<div class="muted">Nenhum lembrete nesta data.</div>';
 }
 async function markReminder(id,kind='appointment'){
@@ -795,6 +986,7 @@ async function markReminder(id,kind='appointment'){
     : {appointment_reminder_sent:true,appointment_reminder_sent_at:now,reminder_sent:true,reminder_sent_at:now};
   await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});
   await loadAll(true);
+  renderReminders();
   toast('Lembrete marcado como enviado.','success');
 }
 async function sendWhatsapp(id,mark=false,kind='appointment'){
