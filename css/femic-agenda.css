@@ -5622,3 +5622,323 @@ textarea{
     justify-content:center;
   }
 }
+
+/* IA operacional: radar de horários */
+.ai-radar-head{
+  display:grid;
+  gap:12px;
+}
+
+.ai-radar-legend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+}
+
+.ai-radar-toggle{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:#fff;
+  color:var(--primary);
+  padding:9px 11px;
+  font-size:.82rem;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.ai-radar-toggle input{
+  width:auto;
+  margin:0;
+}
+
+.ai-radar-legend span{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:#fff;
+  padding:7px 10px;
+  color:var(--muted);
+  font-size:.78rem;
+  font-weight:800;
+}
+
+.ai-dot{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  display:inline-block;
+}
+
+.ai-dot.best{background:#10b981}
+.ai-dot.open{background:#86efac}
+.ai-dot.almost{background:#f59e0b}
+.ai-dot.full{background:#ef4444}
+
+.ai-radar-weeks{
+  display:grid;
+  gap:16px;
+}
+
+.ai-radar-summary{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+}
+
+.ai-summary-card{
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:linear-gradient(180deg,#fff,#f8fbfd);
+  padding:12px;
+  min-height:96px;
+  display:grid;
+  align-content:start;
+  gap:5px;
+}
+
+.ai-summary-card span{
+  color:var(--muted);
+  font-size:.72rem;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+
+.ai-summary-card strong{
+  color:var(--primary);
+  font-size:.96rem;
+  line-height:1.2;
+}
+
+.ai-summary-card small{
+  color:var(--muted);
+  font-size:.74rem;
+}
+
+.ai-radar-week{
+  display:grid;
+  gap:12px;
+}
+
+.ai-radar-days{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(190px,1.2fr)) repeat(2,minmax(118px,.68fr));
+  gap:10px;
+  overflow:auto;
+}
+
+.ai-radar-day{
+  min-width:190px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#f8fbfd;
+  padding:10px;
+}
+
+.ai-radar-day.weekend{
+  min-width:118px;
+  padding:8px;
+}
+
+.ai-radar-day.closed{
+  background:repeating-linear-gradient(135deg,#f1f5f9,#f1f5f9 8px,#e9eef5 8px,#e9eef5 16px);
+  opacity:.72;
+}
+
+.ai-radar-day-head{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  align-items:flex-start;
+  margin-bottom:8px;
+}
+
+.ai-radar-day-head strong{
+  color:var(--primary);
+  font-size:.86rem;
+}
+
+.ai-radar-day-head span{
+  color:var(--muted);
+  font-size:.72rem;
+  font-weight:800;
+}
+
+.ai-radar-day.weekend .ai-radar-day-head{
+  display:grid;
+  gap:2px;
+}
+
+.ai-radar-day.weekend .ai-radar-day-head strong{
+  font-size:.78rem;
+}
+
+.ai-radar-slots{
+  display:grid;
+  gap:7px;
+  max-height:520px;
+  overflow:auto;
+  padding-right:2px;
+}
+
+.ai-radar-slot{
+  display:grid;
+  gap:6px;
+  border:1px solid var(--line);
+  border-left:6px solid #94a3b8;
+  border-radius:13px;
+  background:#fff;
+  padding:8px;
+}
+
+.ai-radar-slot strong{
+  color:var(--primary);
+  font-size:.9rem;
+}
+
+.ai-radar-slot span{
+  color:var(--muted);
+  font-size:.72rem;
+  font-weight:800;
+}
+
+.ai-radar-slot.best{
+  border-left-color:#10b981;
+  background:linear-gradient(180deg,#ecfdf5,#fff);
+}
+
+.ai-radar-slot.best.ideal-focus{
+  border-color:rgba(16,185,129,.45);
+  border-left-color:#059669;
+  box-shadow:0 12px 26px rgba(16,185,129,.18);
+  transform:translateY(-1px);
+}
+
+.ai-radar-slot.best.ideal-focus::before{
+  content:'Encaixe ideal';
+  color:#047857;
+  background:#dcfce7;
+  border:1px solid rgba(16,185,129,.24);
+  border-radius:999px;
+  width:max-content;
+  padding:2px 7px;
+  font-size:.66rem;
+  font-weight:900;
+}
+
+.ai-radar-slot.open{
+  border-left-color:#86efac;
+  background:linear-gradient(180deg,#f0fdf4,#fff);
+}
+
+.ai-radar-slot.almost{
+  border-left-color:#f59e0b;
+  background:linear-gradient(180deg,#fff7ed,#fff);
+}
+
+.ai-radar-slot.full{
+  border-left-color:#ef4444;
+  background:linear-gradient(180deg,#fef2f2,#fff);
+}
+
+.ai-slot-meta{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+}
+
+.ai-slot-patients{
+  color:var(--text);
+  font-size:.72rem;
+  line-height:1.25;
+}
+
+.ai-radar-slot .btn{
+  justify-content:center;
+  padding:7px 9px;
+  border-radius:10px;
+  font-size:.72rem;
+}
+
+.ai-radar-day.weekend .ai-radar-slot{
+  padding:7px;
+}
+
+.ai-radar-day.weekend .ai-slot-meta{
+  display:grid;
+  gap:2px;
+}
+
+/* Lembretes: estados visuais depois do envio */
+.reminder-pendente{
+  border-left:7px solid var(--warning);
+  background:linear-gradient(180deg,#fff8e6,#fff);
+}
+
+.reminder-enviado{
+  border-left:7px solid var(--success);
+  background:linear-gradient(180deg,#ecfdf5,#fff);
+}
+
+.reminder-semwhats{
+  border-left:7px solid var(--danger);
+  background:linear-gradient(180deg,#fef2f2,#fff);
+}
+
+.reminder-state{
+  border-radius:999px;
+  padding:2px 7px;
+}
+
+.reminder-state.reminder-pendente{
+  border-left:0;
+  background:#fff7ed;
+  color:#92400e;
+}
+
+.reminder-state.reminder-enviado{
+  border-left:0;
+  background:#dcfce7;
+  color:#047857;
+}
+
+.reminder-state.reminder-semwhats{
+  border-left:0;
+  background:#fee2e2;
+  color:#b91c1c;
+}
+
+@media(max-width:980px){
+  .ai-radar-summary{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .ai-radar-days{
+    grid-template-columns:repeat(2,minmax(180px,1fr));
+  }
+
+  .ai-radar-day,
+  .ai-radar-day.weekend{
+    min-width:180px;
+  }
+}
+
+@media(max-width:640px){
+  .ai-radar-summary{
+    grid-template-columns:1fr;
+  }
+
+  .ai-radar-days{
+    grid-template-columns:1fr;
+  }
+
+  .ai-radar-slots{
+    max-height:none;
+  }
+}

@@ -131,6 +131,7 @@
       <div class="nav-link" data-panel="patients" onclick="showPanel('patients')"><span class="icon">👥</span><span>Pacientes</span></div>
       <div class="nav-link" data-panel="prontuario" onclick="showPanel('prontuario')"><span class="icon">🩺</span><span>Prontuário</span></div>
       <div class="nav-link" data-panel="packages" onclick="showPanel('packages')"><span class="icon">🎟️</span><span>Pacotes</span></div>
+      <div class="nav-link" data-panel="ai" onclick="showPanel('ai')"><span class="icon">✨</span><span>IA</span></div>
       <div class="nav-link" data-panel="reminders" onclick="showPanel('reminders')"><span class="icon">📲</span><span>Lembretes</span></div>
       <div class="nav-link" data-panel="report" onclick="showPanel('report')"><span class="icon">💰</span><span>Relatório</span></div>
       <div class="nav-link" data-panel="pendencias" onclick="showPanel('pendencias')"><span class="icon">🗂️</span><span>Pendências</span><span class="pending-nav-badge hidden" id="pendingNavBadge">0</span></div>
@@ -276,6 +277,35 @@
       </div>
       </div>
     </div>
+  </section>
+
+  <section class="panel" id="panel-ai">
+    <div class="card ai-radar-head">
+      <div class="section-title">
+        <div><div class="eyebrow">IA operacional</div><h3>Radar de horários</h3></div>
+        <div class="toolbar">
+          <input type="date" id="aiRadarStart" onchange="renderAIRadar(true)" style="max-width:190px">
+          <select id="aiRadarPeriod" onchange="renderAIRadar(false)" style="max-width:150px">
+            <option value="all">Todos</option>
+            <option value="manha">Manhã</option>
+            <option value="tarde">Tarde</option>
+            <option value="noite">Noite</option>
+          </select>
+          <label class="ai-radar-toggle"><input type="checkbox" id="aiRadarIdealFocus" onchange="renderAIRadar(false)"> Encaixe ideal</label>
+          <button class="btn primary" type="button" onclick="copyAIRadarBestSlots()">Copiar melhores horários</button>
+          <button class="btn" type="button" onclick="renderAIRadar(true)">Atualizar</button>
+        </div>
+      </div>
+      <div class="ai-radar-legend">
+        <span><i class="ai-dot best"></i>Melhores encaixes</span>
+        <span><i class="ai-dot open"></i>Livre</span>
+        <span><i class="ai-dot almost"></i>1 vaga</span>
+        <span><i class="ai-dot full"></i>Lotado</span>
+      </div>
+    </div>
+    <div class="grid grid-4" id="aiRadarKpis" style="margin-top:16px"></div>
+    <div id="aiRadarSummary" class="ai-radar-summary" style="margin-top:16px"></div>
+    <div id="aiRadarWeeks" class="ai-radar-weeks" style="margin-top:16px"></div>
   </section>
 
   <section class="panel" id="panel-reminders"><div class="card"><div class="section-title"><div><div class="eyebrow">Lembretes</div><h3>Fila de WhatsApp</h3></div><div id="reminderModeBadge" class="mode-badge manual">Manual</div></div><div class="toolbar"><input type="date" id="reminderDate" onchange="renderReminders()" style="max-width:190px"><button class="btn primary" onclick="sendNextReminder()">Enviar próximo pendente</button><button class="btn" onclick="renderReminders()">Atualizar</button></div><div class="reminder-mode-panel" style="margin-top:12px"><div><strong>Modo de envio</strong><div class="muted small" id="reminderAutoStatus">Manual: você escolhe quando enviar.</div></div><div class="toolbar"><button class="btn primary" id="manualModeBtn" onclick="setReminderMode('manual')">Manual</button><button class="btn" id="autoModeBtn" onclick="setReminderMode('auto')">Automático</button></div></div><div class="quick-note small" style="margin-top:12px">Os lembretes automáticos verificam os atendimentos futuros enquanto o navegador estiver aberto.</div></div><div class="grid grid-4" id="reminderKpis" style="margin-top:16px"></div><div class="card" style="margin-top:16px"><div class="eyebrow" id="reminderTitle">Lembretes</div><div class="list" id="reminderList"></div></div></section>
