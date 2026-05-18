@@ -241,14 +241,15 @@
   function getGeneratedDocuments(){ return safeArrayParse(STORAGE.generatedDocs).filter(function(x){ return x && x.patient_id; }); }
   function saveGeneratedDocuments(list){ saveArray(STORAGE.generatedDocs, list || []); }
   function getDocumentSettings(){
+    var defaults = { professionalName:'FEMIC Fisioterapia', professionalNote:'', showStamp:'yes', logoData:'logo.png', signatureData:'', stampData:'' };
     try{
-      return Object.assign({ professionalName:'FEMIC Fisioterapia', professionalNote:'', showStamp:'yes' }, JSON.parse(localStorage.getItem(STORAGE.documentSettings) || '{}'));
+      return Object.assign(defaults, JSON.parse(localStorage.getItem(STORAGE.documentSettings) || '{}'));
     }catch(e){
-      return { professionalName:'FEMIC Fisioterapia', professionalNote:'', showStamp:'yes' };
+      return defaults;
     }
   }
   function saveDocumentSettings(obj){
-    localStorage.setItem(STORAGE.documentSettings, JSON.stringify(obj || {}));
+    localStorage.setItem(STORAGE.documentSettings, JSON.stringify(Object.assign(getDocumentSettings(), obj || {})));
   }
   function normName(value){
     return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
@@ -414,6 +415,9 @@
     if(el('professionalNoteInput') && !el('professionalNoteInput').value) el('professionalNoteInput').value = settings.professionalNote || '';
     if(el('showStampSelect') && !el('showStampSelect').value) el('showStampSelect').value = settings.showStamp || 'yes';
     populateDocPresets();
+    renderDocQuickModels();
+    renderDocumentAssetPreviews();
+    setDocumentStep(getDocumentStep());
     renderUnifiedDocumentPreview();
     renderUnifiedPatientDocumentsList(pid);
     renderUnifiedGuiasList(pid);
@@ -447,10 +451,84 @@
   function renderGeneratedDocumentsHistory(pid){
     var target = el('generatedDocumentsHistory');
     if(!target) return;
-    var list = pid ? getGeneratedDocumentsByPatient(pid) : getGeneratedDocuments().slice().sort(function(a,b){ return String(b.created_at || '').localeCompare(String(a.created_at || '')); }).slice(0,10);
+    pid = pid || getSelectedPatientId();
+    var query = normalizeText(el('generatedDocSearch') ? el('generatedDocSearch').value : '');
+    var typeFilter = el('generatedDocTypeFilter') ? el('generatedDocTypeFilter').value : '';
+    var list = pid ? getGeneratedDocumentsByPatient(pid) : getGeneratedDocuments().slice().sort(function(a,b){ return String(b.created_at || '').localeCompare(String(a.created_at || '')); });
+    list = list.filter(function(doc){
+      if(typeFilter && String(doc.type || '') !== typeFilter) return false;
+      if(!query) return true;
+      return normalizeText([doc.patient_name, doc.title, doc.type_label, doc.body, doc.date].join(' ')).indexOf(query) !== -1;
+    }).slice(0, 80);
     target.innerHTML = list.length ? list.map(function(doc){
-      return '<div class="item"><div><strong>' + escHtml(doc.title || 'Documento') + '</strong><div class="muted small">' + escHtml(doc.patient_name || '-') + ' · ' + fmtDateSafe(doc.date) + ' · ' + escHtml(doc.type_label || doc.type || '') + '</div></div><div class="toolbar"><button class="btn" onclick="loadGeneratedDocument(\'' + escHtml(doc.id) + '\')">Carregar</button><button class="btn danger" onclick="deleteGeneratedDocument(\'' + escHtml(doc.id) + '\')">Remover</button></div></div>';
+      var snippet = String(doc.body || '').replace(/\s+/g, ' ').trim().slice(0, 180);
+      return '<div class="doc-history-card"><div class="doc-history-main"><span>' + escHtml(doc.type_label || doc.type || 'Documento') + '</span><strong>' + escHtml(doc.title || 'Documento') + '</strong><div class="muted small">' + escHtml(doc.patient_name || '-') + ' · ' + fmtDateSafe(doc.date) + '</div><p>' + escHtml(snippet || 'Sem texto salvo.') + '</p></div><div class="doc-history-actions"><button class="btn primary" onclick="duplicateGeneratedDocument(\'' + escHtml(doc.id) + '\')">Duplicar como novo</button><button class="btn" onclick="loadGeneratedDocument(\'' + escHtml(doc.id) + '\')">Consultar</button><button class="btn danger" onclick="deleteGeneratedDocument(\'' + escHtml(doc.id) + '\')">Remover</button></div></div>';
     }).join('') : '<div class="muted">Nenhum documento salvo ainda.</div>';
+  }
+
+  function normalizeText(value){
+    return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+  }
+
+  function getDocumentStep(){
+    var raw = Number(localStorage.getItem('femic_document_step') || 1);
+    return raw >= 1 && raw <= 4 ? raw : 1;
+  }
+
+  function setDocumentStep(step){
+    step = Math.max(1, Math.min(4, Number(step || 1)));
+    localStorage.setItem('femic_document_step', String(step));
+    document.querySelectorAll('.doc-step').forEach(function(btn){
+      btn.classList.toggle('active', Number(btn.getAttribute('data-doc-step')) === step);
+    });
+    var stage = el('panel-documentos');
+    if(stage) stage.setAttribute('data-doc-step', String(step));
+  }
+
+  function getSelectedDocPreset(){
+    var type = el('docTypeSelect') ? el('docTypeSelect').value : 'attendance';
+    var presetId = el('docPresetSelect') ? el('docPresetSelect').value : '';
+    return (DOC_PRESETS[type] || []).find(function(item){ return item.id === presetId; }) || (DOC_PRESETS[type] || [])[0] || { title:'DOCUMENTO', label:'Documento' };
+  }
+
+  function renderDocQuickModels(){
+    var target = el('docQuickModels');
+    if(!target) return;
+    var items = [
+      { type:'attendance', label:'Atestado' },
+      { type:'declaration', label:'Declaração' },
+      { type:'exam', label:'Pedido exame' },
+      { type:'report', label:'Laudo' },
+      { type:'summary', label:'Resumo' }
+    ];
+    var active = el('docTypeSelect') ? el('docTypeSelect').value : 'attendance';
+    target.innerHTML = items.map(function(item){
+      return '<button class="doc-quick-model ' + (item.type === active ? 'active' : '') + '" type="button" onclick="selectDocQuickModel(\'' + item.type + '\')">' + escHtml(item.label) + '</button>';
+    }).join('');
+  }
+
+  function documentAssetPreviewMap(){
+    return {
+      logoData: 'docLogoPreview',
+      signatureData: 'docSignaturePreview',
+      stampData: 'docStampPreview'
+    };
+  }
+
+  function renderDocumentAssetPreviews(){
+    var settings = getDocumentSettings();
+    var map = documentAssetPreviewMap();
+    Object.keys(map).forEach(function(key){
+      var img = el(map[key]);
+      if(!img) return;
+      var src = settings[key] || '';
+      img.src = src || '';
+      img.classList.toggle('empty', !src);
+    });
+  }
+
+  function renderDocumentImage(src, className, alt){
+    return src ? '<img class="' + className + '" src="' + escHtml(src) + '" alt="' + escHtml(alt || '') + '">' : '';
   }
 
   function getDocumentContext(pid){
@@ -488,6 +566,8 @@
     target.innerHTML = presets.map(function(item){
       return '<option value="' + escHtml(item.id) + '">' + escHtml(item.label) + '</option>';
     }).join('');
+    renderDocQuickModels();
+    renderUnifiedDocumentPreview();
   }
 
   function renderUnifiedDocumentPreview(){
@@ -499,24 +579,26 @@
       preview.innerHTML = '<div class="unified-empty-state">Selecione um paciente para montar o documento.</div>';
       return;
     }
-    var settings = {
+    var settings = Object.assign(getDocumentSettings(), {
       professionalName: (el('professionalNameInput') && el('professionalNameInput').value.trim()) || 'FEMIC Fisioterapia',
       professionalNote: (el('professionalNoteInput') && el('professionalNoteInput').value.trim()) || '',
       showStamp: (el('showStampSelect') && el('showStampSelect').value) || 'yes'
-    };
+    });
     saveDocumentSettings(settings);
     var type = el('docTypeSelect') ? el('docTypeSelect').value : 'attendance';
+    var preset = getSelectedDocPreset();
     var body = (el('docBodyInput') && el('docBodyInput').value.trim()) || 'Use o botão "Gerar texto" para preencher um documento com base no contexto clínico do paciente.';
     preview.innerHTML =
-      '<div class="document-sheet">' +
-        '<h2>' + escHtml((DOC_PRESETS[type] && DOC_PRESETS[type][0] && DOC_PRESETS[type][0].title) || 'DOCUMENTO') + '</h2>' +
+      '<div class="document-sheet document-sheet-premium">' +
+        '<div class="doc-brand"><div class="doc-brand-main">' + (settings.logoData ? renderDocumentImage(settings.logoData, 'doc-logo-img', 'Logo') : '<span>FEMIC</span>') + '<strong>Fisioterapia e cuidado clínico</strong></div><small>Documento gerado no sistema FEMIC</small></div>' +
+        '<h2>' + escHtml(preset.title || 'DOCUMENTO') + '</h2>' +
         '<div class="doc-meta">' +
           '<div class="meta-box"><div class="small muted">Paciente</div><strong>' + escHtml(patient.name || '-') + '</strong></div>' +
           '<div class="meta-box"><div class="small muted">Data</div><strong>' + escHtml(fmtDateSafe(el('docDateInput') ? el('docDateInput').value : todayIsoSafe())) + '</strong></div>' +
           '<div class="meta-box"><div class="small muted">Patologia</div><strong>' + escHtml(patient.pathology || '-') + '</strong></div>' +
         '</div>' +
         '<div class="doc-body">' + escHtml(body).replace(/\n/g, '<br>') + '</div>' +
-        '<div class="doc-sign"><strong>' + escHtml(settings.professionalName) + '</strong>' + (settings.professionalNote ? '<br>' + escHtml(settings.professionalNote) : '') + '</div>' +
+        (settings.showStamp === 'yes' ? '<div class="doc-sign doc-sign-premium"><div class="doc-signature-block">' + renderDocumentImage(settings.signatureData, 'doc-signature-img', 'Assinatura') + '<strong>' + escHtml(settings.professionalName) + '</strong>' + (settings.professionalNote ? '<br>' + escHtml(settings.professionalNote) : '') + '</div>' + renderDocumentImage(settings.stampData, 'doc-stamp-img', 'Carimbo') + '</div>' : '') +
       '</div>';
   }
 
@@ -1031,9 +1113,7 @@
   window.generateUnifiedDocument = function(){
     var pid = ensurePatientSelected();
     if(!pid) return;
-    var type = el('docTypeSelect') ? el('docTypeSelect').value : 'attendance';
-    var presetId = el('docPresetSelect') ? el('docPresetSelect').value : '';
-    var preset = (DOC_PRESETS[type] || []).find(function(item){ return item.id === presetId; }) || (DOC_PRESETS[type] || [])[0];
+    var preset = getSelectedDocPreset();
     if(!preset){
       if(typeof toast === 'function') toast('Nenhum modelo disponível para este tipo.', 'warning');
       return;
@@ -1041,6 +1121,7 @@
     var ctx = getDocumentContext(pid);
     if(el('docBodyInput')) el('docBodyInput').value = preset.body(ctx);
     renderUnifiedDocumentPreview();
+    setDocumentStep(3);
     if(typeof toast === 'function') toast('Documento gerado a partir do contexto do paciente.', 'success');
   };
 
@@ -1049,7 +1130,7 @@
     if(!pid) return;
     var patient = getPatientById(pid);
     var type = el('docTypeSelect') ? el('docTypeSelect').value : 'attendance';
-    var preset = (DOC_PRESETS[type] || [])[0] || { title:'DOCUMENTO' };
+    var preset = getSelectedDocPreset();
     var entry = {
       id: generateId('gd'),
       patient_id: pid,
@@ -1066,6 +1147,7 @@
     saveGeneratedDocuments(list.slice(0, 120));
     var cloudResult = await saveGeneratedDocumentToCloud(entry);
     renderGeneratedDocumentsHistory(pid);
+    setDocumentStep(4);
     if(typeof toast === 'function'){
       toast(cloudResult.ok === false ? 'Documento salvo localmente. A tabela em nuvem não está pronta.' : 'Documento salvo no histórico.', cloudResult.ok === false ? 'warning' : 'success');
     }
@@ -1077,7 +1159,7 @@
     if(!preview) return;
     var printWindow = window.open('', '_blank', 'width=900,height=700');
     if(!printWindow) return;
-    printWindow.document.write('<html><head><title>Documento FEMIC</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#183043} h2{color:#0b3c6f} .doc-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}.meta-box{border:1px solid #dbe5ea;border-radius:12px;padding:10px}.doc-body{white-space:pre-wrap;line-height:1.65}.doc-sign{margin-top:28px;padding-top:16px;border-top:1px dashed #c9d6de;color:#64748b}</style></head><body>' + preview.innerHTML + '</body></html>');
+    printWindow.document.write('<html><head><title>Documento FEMIC</title><style>@page{size:A4;margin:18mm}body{font-family:Arial,sans-serif;color:#183043;background:#fff}h2{color:#0b3c6f;letter-spacing:.03em;margin:0 0 18px}.document-sheet{max-width:820px;margin:0 auto}.doc-brand{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid #dbe5ea;padding-bottom:14px;margin-bottom:22px}.doc-brand-main{display:grid;gap:6px}.doc-logo-img{max-width:170px;max-height:78px;object-fit:contain}.doc-brand span{display:block;color:#0b3c6f;font-size:1.35rem;font-weight:900;letter-spacing:.08em}.doc-brand strong,.doc-brand small{color:#64748b}.doc-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}.meta-box{border:1px solid #dbe5ea;border-radius:12px;padding:10px}.doc-body{white-space:pre-wrap;line-height:1.68;font-size:12.5pt;min-height:310px}.doc-sign{margin-top:34px;padding-top:18px;border-top:1px dashed #c9d6de;color:#64748b}.doc-sign-premium{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}.doc-signature-block{min-width:260px}.doc-signature-img{display:block;max-width:230px;max-height:92px;object-fit:contain;margin-bottom:6px}.doc-stamp-img{max-width:150px;max-height:150px;object-fit:contain;opacity:.92}@media print{body{padding:0}.document-sheet{max-width:none}}</style></head><body>' + preview.innerHTML + '</body></html>');
     printWindow.document.close();
     printWindow.focus();
     setTimeout(function(){ printWindow.print(); }, 300);
@@ -1158,8 +1240,72 @@
     if(el('docDateInput')) el('docDateInput').value = doc.date || todayIsoSafe();
     if(el('docTypeSelect')) el('docTypeSelect').value = doc.type || 'attendance';
     populateDocPresets();
+    setDocumentStep(4);
     renderUnifiedAll();
   };
+
+  window.duplicateGeneratedDocument = function(documentId){
+    var doc = getGeneratedDocuments().find(function(item){ return String(item.id) === String(documentId); });
+    if(!doc) return;
+    setCurrentPatient(doc.patient_id);
+    if(typeof showPanel === 'function') showPanel('documentos');
+    if(el('docBodyInput')) el('docBodyInput').value = doc.body || '';
+    if(el('docDateInput')) el('docDateInput').value = todayIsoSafe();
+    if(el('docTypeSelect')) el('docTypeSelect').value = doc.type || 'attendance';
+    populateDocPresets();
+    setDocumentStep(3);
+    renderUnifiedAll();
+    if(typeof toast === 'function') toast('Documento duplicado como novo rascunho. O original foi preservado.', 'success');
+  };
+
+  window.selectDocQuickModel = function(type){
+    if(el('docTypeSelect')) el('docTypeSelect').value = type || 'attendance';
+    populateDocPresets();
+    setDocumentStep(2);
+  };
+
+  window.handleDocumentAssetUpload = function(keyName, input){
+    var file = input && input.files && input.files[0];
+    if(!file) return;
+    if(file.type !== 'image/png'){
+      if(typeof toast === 'function') toast('Use uma imagem PNG para logo, assinatura ou carimbo.', 'warning');
+      input.value = '';
+      return;
+    }
+    if(file.size > 1500 * 1024){
+      if(typeof toast === 'function') toast('Imagem muito grande. Use PNG com até 1,5 MB para não pesar o sistema.', 'warning');
+      input.value = '';
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var patch = {};
+        patch[keyName] = String(reader.result || '');
+        saveDocumentSettings(patch);
+        renderDocumentAssetPreviews();
+        renderUnifiedDocumentPreview();
+        if(typeof toast === 'function') toast('Imagem do documento salva.', 'success');
+      }catch(e){
+        if(typeof toast === 'function') toast('Não foi possível salvar a imagem. Tente um arquivo menor.', 'error');
+      }
+      input.value = '';
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.clearDocumentAsset = function(keyName){
+    var patch = {};
+    patch[keyName] = '';
+    saveDocumentSettings(patch);
+    renderDocumentAssetPreviews();
+    renderUnifiedDocumentPreview();
+    if(typeof toast === 'function') toast('Imagem removida da identidade do documento.', 'info');
+  };
+
+  window.setDocumentStep = setDocumentStep;
+  window.renderUnifiedDocumentPreview = renderUnifiedDocumentPreview;
+  window.renderGeneratedDocumentsHistory = function(){ renderGeneratedDocumentsHistory(getSelectedPatientId()); };
 
   window.deleteGeneratedDocument = function(documentId){
     if(!confirm('Remover este documento do histórico?')) return;
