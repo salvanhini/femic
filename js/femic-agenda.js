@@ -652,7 +652,9 @@ function renderMonth(){
   html+='</div>';
   $('monthCalendar').innerHTML=`<div class="month-agenda-kpis"><div><span>Total no mês</span><strong>${totalAppointments}</strong></div><div><span>Confirmados</span><strong>${totalConfirmed}</strong></div><div><span>Concluídos</span><strong>${totalDone}</strong></div><div><span>Dias exibidos</span><strong>${rendered}</strong></div></div>`+html;
 }
-function saldoBadge(pid,sid){const pk=packages.find(p=>String(p.patient_id)===String(pid)&&String(p.service_id)===String(sid)&&p.active!==false);if(!pk)return '<div class="small muted">Sem pacote</div>';const total=Number(pk.total_sessions||0),r=Number(pk.remaining_sessions||0),used=Math.max(0,total-r);return `<div class="small ${r===0?'saldo-zero':r<=3?'saldo-low':'muted'}"><span class="used-counter">${used}/${total} sessões usadas</span> · saldo ${r}</div>`}
+function activePackageForService(pid,sid){return packages.find(p=>String(p.patient_id)===String(pid)&&String(p.service_id)===String(sid)&&p.active!==false)||null}
+function packageSaldoInfo(pid,sid){const pk=activePackageForService(pid,sid);if(!pk)return null;const total=Number(pk.total_sessions||0),remaining=Number(pk.remaining_sessions??pk.saldo??0),used=Math.max(0,total-remaining);return {package:pk,total,remaining,used,cls:remaining===0?'saldo-zero':(remaining<=3?'saldo-low':'muted')}}
+function saldoBadge(pid,sid){const info=packageSaldoInfo(pid,sid);if(!info)return '<div class="small muted">Sem pacote</div>';return `<div class="small ${info.cls}"><span class="used-counter">${info.used}/${info.total} sessões usadas</span> · saldo ${info.remaining}</div>`}
 function getServiceDefaultPrice(sid){const s=serviceById(sid);return Number(s.price||0)}
 function setAppointmentPriceFromService(force=false){const input=$('apptPrice');if(!input)return;const current=String(input.value||'').trim();if(force||!current){input.value=String(getServiceDefaultPrice($('apptService').value)||0)}}
 function openAppt(date=null,id=null,slot=null){$('apptId').value=id||'';$('rescheduleOriginId').value='';$('rescheduleCancelOriginal').value='';$('recurring').checked=false;toggleRecurrence();recurringSuggestionCache=[];if($('recSuggestionList'))$('recSuggestionList').innerHTML='';$('deleteApptBtn').style.display=id?'inline-flex':'none';if(id){const a=appointments.find(x=>String(x.id)===String(id));if(!a)return;$('apptPatient').value=a.patient_id;$('apptService').value=a.service_id;$('apptStatus').value=a.status;$('apptDate').value=a.appointment_date;$('apptStart').value=normalizeTime(a.start_time);$('apptEnd').value=normalizeTime(a.end_time);$('apptPrice').value=Number(a.service_price_at_time!=null?a.service_price_at_time:getServiceDefaultPrice(a.service_id));$('apptTitle').textContent='Editar agendamento'}else{$('apptPatient').value='';$('apptService').value='';$('apptStatus').value='agendado';$('apptDate').value=date||todayIso();$('apptStart').value=slot||(parsePeriods()[0]?.start)||settings.start_time||'08:00';$('apptEnd').value='';$('apptPrice').value='';$('apptTitle').textContent='Novo agendamento'}showSaldoInfo();$('apptModal').classList.add('show')}
@@ -757,9 +759,6 @@ function useRecurringSuggestion(index){
 async function persistAppointment(id,payload){try{return id?(await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify(payload)}))[0]:(await api('appointments',{method:'POST',body:JSON.stringify(payload)}))[0]}catch(e){if(String(e.message||'').includes('service_price_at_time')){const clone={...payload};delete clone.service_price_at_time;toast('Campo service_price_at_time ausente no banco. Salvando sem ele. Rode o patch SQL v1.4.28 depois.','warning');return id?(await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify(clone)}))[0]:(await api('appointments',{method:'POST',body:JSON.stringify(clone)}))[0]}throw e}}
 async function saveAppointment(){const saveBtn=$('saveApptBtn');try{if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Salvando...'}const id=$('apptId').value;if(!$('apptPatient').value){toast('Selecione o paciente antes de salvar.','warning');$('apptPatient').focus();return}if(!$('apptService').value){toast('Selecione o serviço antes de salvar.','warning');$('apptService').focus();return}if(!$('apptDate').value){toast('Informe a data do atendimento.','warning');$('apptDate').focus();return}if(!$('apptStart').value){toast('Informe o horário inicial.','warning');$('apptStart').focus();return}const s=serviceById($('apptService').value);if(!$('apptEnd').value) $('apptEnd').value=addMinutes($('apptStart').value,Number(s.duration_minutes||45));const agreedPrice=Number(String($('apptPrice')?.value||'0').replace(',','.'));if(!Number.isFinite(agreedPrice)||agreedPrice<0){toast('Informe um valor válido para a sessão.','warning');$('apptPrice')?.focus();return}const basePayload={patient_id:$('apptPatient').value,service_id:$('apptService').value,appointment_date:$('apptDate').value,start_time:$('apptStart').value,end_time:$('apptEnd').value,duration_minutes:Number(s.duration_minutes||45),status:$('apptStatus').value,service_price_at_time:agreedPrice};if(timeToMin(basePayload.end_time)<=timeToMin(basePayload.start_time)){toast('O horário final precisa ser maior que o inicial.','warning');return}if(!isTodayDate(basePayload.appointment_date)&&!isWorking(basePayload.appointment_date)){toast('Dia fora do expediente.','warning');return}if(!isInsideWorkingTime(basePayload.appointment_date,basePayload.start_time,basePayload.end_time)){toast('Horário fora dos períodos de expediente configurados.','warning');return}if($('recurring').checked&&!id){await saveRecurring(basePayload);return}const msg=hasConflict(basePayload,id);if(msg){toast(msg,'warning');return}let old=id?appointments.find(a=>String(a.id)===String(id)):null;let saved=await persistAppointment(id,basePayload);await handlePackageMovement(old,saved);if(!id&&$('rescheduleOriginId').value){await finalizeReschedule($('rescheduleOriginId').value,$('rescheduleCancelOriginal').value==='true')}closeModal('apptModal');await loadAll(true);toast('Agendamento salvo.','success')}catch(e){toast('Erro ao salvar: '+e.message,'error')}finally{if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='Salvar agendamento'}}}
 async function saveRecurring(payload){const selected=[...document.querySelectorAll('.recDay:checked')].map(x=>Number(x.value));const count=Number($('recCount').value||1);if(!selected.length){toast('Selecione ao menos um dia da semana.','warning');return}const s=serviceById(payload.service_id);const dayTimes={};selected.forEach(d=>{dayTimes[d]=($('recTime'+d)?.value||payload.start_time||'08:00')});let created=0,conflicts=0,date=new Date(payload.appointment_date+'T00:00:00'),tries=0;while(created<count&&tries<370){const ds=isoDate(date),dow=date.getDay();if(selected.includes(dow)&&(isTodayDate(ds)||isWorking(ds))){const st=dayTimes[dow]||payload.start_time;const cand={...payload,appointment_date:ds,start_time:st,end_time:addMinutes(st,Number(s.duration_minutes||payload.duration_minutes||45)),duration_minutes:Number(s.duration_minutes||payload.duration_minutes||45)};let dayRows=appointments.filter(a=>a.appointment_date===ds);try{dayRows=await fetchAppointmentsForDate(ds)}catch(e){}const msg=conflictInAppointmentList(cand,dayRows);if(msg||!isInsideWorkingTime(cand.appointment_date,cand.start_time,cand.end_time))conflicts++;else{const saved=await persistAppointment(null,cand);dayRows.push(saved);created++}}date.setDate(date.getDate()+1);tries++}closeModal('apptModal');await loadAll(true);toast(`${created} agendamentos criados. ${conflicts} conflitos ignorados.`,'success')}
-async function handlePackageMovement(oldA,newA){if(!newA)return;if(oldA&&oldA.status==='concluido'&&oldA.package_consumed&&newA.status!=='concluido'){await refundPackage(oldA);return}if(newA.status==='concluido'&&!newA.package_consumed){await consumePackage(newA)}}
-async function consumePackage(a){const pk=packages.find(p=>String(p.patient_id)===String(a.patient_id)&&String(p.service_id)===String(a.service_id)&&p.active!==false);if(!pk){toast('Concluído, mas sem pacote para consumir.','warning');return}if(Number(pk.remaining_sessions||0)<=0){toast('Concluído, mas pacote sem saldo.','warning');return}await api('session_packages?id=eq.'+pk.id,{method:'PATCH',body:JSON.stringify({remaining_sessions:Number(pk.remaining_sessions)-1})});await api('appointments?id=eq.'+a.id,{method:'PATCH',body:JSON.stringify({package_consumed:true,session_package_id:pk.id})});await api('session_movements',{method:'POST',body:JSON.stringify({patient_id:a.patient_id,appointment_id:a.id,session_package_id:pk.id,type:'consumo',quantity:-1})})}
-async function refundPackage(a){const pk=packages.find(p=>String(p.id)===String(a.session_package_id));if(pk){await api('session_packages?id=eq.'+pk.id,{method:'PATCH',body:JSON.stringify({remaining_sessions:Number(pk.remaining_sessions||0)+1})});await api('session_movements',{method:'POST',body:JSON.stringify({patient_id:a.patient_id,appointment_id:a.id,session_package_id:pk.id,type:'estorno',quantity:1})})}await api('appointments?id=eq.'+a.id,{method:'PATCH',body:JSON.stringify({package_consumed:false,session_package_id:null})})}
 async function finalizeReschedule(originId,cancelOriginal){const old=appointments.find(a=>String(a.id)===String(originId));if(!old||!cancelOriginal)return;if(old.status==='concluido'&&old.package_consumed)await refundPackage(old);await api('appointments?id=eq.'+originId,{method:'PATCH',body:JSON.stringify({status:'cancelado'})});}
 function rescheduleAppointment(id){const a=appointments.find(x=>String(x.id)===String(id));if(!a)return;const cancelOriginal=confirm('Remarcar cancelando o agendamento original? Clique em OK para cancelar o original e criar um novo. Clique em Cancelar para criar novo sem cancelar o original.');openAppt(a.appointment_date,null,normalizeTime(a.start_time));$('apptPatient').value=a.patient_id;$('apptService').value=a.service_id;$('apptStatus').value='agendado';$('apptDate').value=a.appointment_date;$('apptStart').value=normalizeTime(a.start_time);onServiceChange();$('rescheduleOriginId').value=id;$('rescheduleCancelOriginal').value=cancelOriginal?'true':'false';$('apptTitle').textContent='Remarcar atendimento';toast(cancelOriginal?'Escolha novo horário. O original será cancelado ao salvar.':'Escolha novo horário. O original será mantido.','info')}
 async function deleteAppointment(){const id=$('apptId').value;if(!id||!confirm('Remover este agendamento?'))return;try{await api('appointments?id=eq.'+id,{method:'DELETE'});closeModal('apptModal');await loadAll(true);toast('Agendamento removido.','success')}catch(e){toast('Erro ao remover: '+e.message,'error')}}
@@ -1152,19 +1151,6 @@ function statusButtons(a){
     <button class="btn danger status-mini" ${a.status==='cancelado'?'disabled':''} onclick="quickStatus('${id}','cancelado')">✕ Cancelar</button>
   </div>`;
 }
-async function quickStatus(id,newStatus){
-  const old=appointments.find(a=>String(a.id)===String(id));
-  if(!old) return;
-  if(old.status===newStatus){toast('Este agendamento já está com esse status.','info');return;}
-  const label={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[newStatus]||newStatus;
-  if(!confirm('Alterar status para '+label+'?')) return;
-  try{
-    const updated=(await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify({status:newStatus})}))[0] || {...old,status:newStatus};
-    await handlePackageMovement(old,updated);
-    await loadAll(true);
-    toast('Status atualizado para '+label+'.','success');
-  }catch(e){console.error(e);toast('Erro ao alterar status: '+e.message,'error')}
-}
 function renderReport(){const month=$('reportMonth').value||new Date().toISOString().slice(0,7);$('reportMonth').value=month;refreshReportMonthIfNeeded(month);const done=appointments.filter(a=>a.status==='concluido'&&String(a.appointment_date).startsWith(month));const groups={};done.forEach(a=>{const s=serviceById(a.service_id),key=(s.health_insurance_id||'')+'|'+(s.id||'')+'|'+Number(a.service_price_at_time||s.price||0);if(!groups[key])groups[key]={payer:payerName(s.health_insurance_id),service:s.name||'Sem serviço',q:0,price:Number(a.service_price_at_time||s.price||0)};groups[key].q++});const rows=Object.values(groups),total=rows.reduce((a,r)=>a+r.q*r.price,0);$('reportKpis').innerHTML=`<div class="kpi"><div class="small muted">Concluídos</div><strong>${done.length}</strong></div><div class="kpi"><div class="small muted">Total</div><strong>${brl(total)}</strong></div><div class="kpi"><div class="small muted">Cancelados</div><strong>${appointments.filter(a=>a.status==='cancelado'&&String(a.appointment_date).startsWith(month)).length}</strong></div><div class="kpi"><div class="small muted">Agendados</div><strong>${appointments.filter(a=>['agendado','confirmado'].includes(a.status)&&String(a.appointment_date).startsWith(month)).length}</strong></div>`;$('reportBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.payer)}</td><td>${esc(r.service)}</td><td>${r.q}</td><td>${brl(r.price)}</td><td><strong>${brl(r.q*r.price)}</strong></td></tr>`).join(''):'<tr><td colspan="5" class="muted">Sem atendimentos concluídos.</td></tr>'}
 function exportCsv(){const rows=[['Pagador','Serviço','Quantidade','Valor','Total']];document.querySelectorAll('#reportBody tr').forEach(tr=>{const cells=[...tr.children].map(td=>td.innerText);if(cells.length===5)rows.push(cells)});const csv=rows.map(r=>r.map(c=>'"'+String(c).replaceAll('"','""')+'"').join(';')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='relatorio_agenda_femic.csv';a.click()}
 
@@ -1259,7 +1245,7 @@ function packageScheduleSummaryHtml(p,list){
   const st=packageScheduleStats(p,list);
   const cls=st.alert?'package-schedule-alert':'package-schedule-ok';
   const alertText=st.alert?(st.futureCount?'Última sessão futura':'Sem futuras marcadas'):'Agenda suficiente para o saldo atual';
-  const action=st.toSchedule>0&&p.active!==false?`<button class="btn ghost package-complete-btn" onclick="completePackageBalance('${p.id}')">Completar saldo</button>`:'';
+  const action=st.toSchedule>0&&p.active!==false?`<button class="btn ghost package-plan-btn" onclick="planPackageRecurrence('${p.id}')">Planejar recorrência</button>`:'';
   return `<div class="package-schedule ${cls}"><div><strong>${esc(alertText)}</strong><span>${esc(packageScheduleLine(st.lastFuture))} · futuras ${st.futureCount} · faltam agendar ${st.toSchedule}</span></div>${action}</div>`;
 }
 async function hydratePackageScheduleSummaries(){
@@ -1304,57 +1290,24 @@ function fillRecurringFromPackage(p,count,pattern,startDate){
   });
   onServiceChange(true);
 }
-async function completePackageBalance(id){
+async function planPackageRecurrence(id){
   const p=packages.find(x=>String(x.id)===String(id));
   if(!p){toast('Pacote não encontrado.','warning');return}
   try{
-    toast('Analisando saldo e agenda do pacote...','info');
+    toast('Preparando recorrência do pacote...','info');
     const rows=await fetchPackageAppointments(p,true);
-    const stats=packageScheduleStats(p,rows);
-    if(stats.toSchedule<=0){toast('Este pacote já tem futuras suficientes para o saldo atual.','success');return}
+    const st=packageScheduleStats(p,rows);
     const pattern=inferRecentPackagePattern(rows);
-    const startBase=stats.lastFuture?addDaysIso(stats.lastFuture.appointment_date,1):(stats.lastAny?addDaysIso(stats.lastAny.appointment_date,1):todayIso());
+    const startBase=st.lastFuture?addDaysIso(st.lastFuture.appointment_date,1):(st.lastAny?addDaysIso(st.lastAny.appointment_date,1):todayIso());
     const startDate=String(startBase)<todayIso()?todayIso():startBase;
-    if(!pattern.length){
-      fillRecurringFromPackage(p,stats.toSchedule,[],startDate);
-      toast('Não achei padrão recente. Complete os dias manualmente no agendamento recorrente.','warning');
-      return;
-    }
-    const patternLabel=pattern.map(x=>['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'][x.weekday]+' '+x.time).join(', ');
-    const ok=confirm('Completar saldo deste pacote?\n\nPaciente: '+patientName(p.patient_id)+'\nServiço: '+serviceName(p.service_id)+'\nSaldo: '+stats.remain+'\nFuturas marcadas: '+stats.futureCount+'\nNovas sessões: '+stats.toSchedule+'\nÚltima futura: '+packageScheduleLine(stats.lastFuture)+'\nPadrão: '+patternLabel);
-    if(!ok)return;
-    const service=serviceById(p.service_id);
-    const duration=Number(service.duration_minutes||45);
-    const dayTimes=pattern.reduce((acc,item)=>{if(!acc[item.weekday])acc[item.weekday]=[];acc[item.weekday].push(item.time);return acc},{});
-    let created=0,conflicts=0,tries=0,date=new Date(startDate+'T00:00:00');
-    while(created<stats.toSchedule&&tries<370){
-      const ds=isoDate(date),wd=date.getDay(),times=dayTimes[wd]||[];
-      for(const st of times){
-        if(created>=stats.toSchedule)break;
-        const cand={patient_id:p.patient_id,service_id:p.service_id,appointment_date:ds,start_time:st,end_time:addMinutes(st,duration),duration_minutes:duration,status:'agendado',service_price_at_time:Number(service.price||0)};
-        if((!isTodayDate(ds)&&!isWorking(ds))||!isInsideWorkingTime(ds,cand.start_time,cand.end_time)){conflicts++;continue}
-        const dayRows=await fetchAppointmentsForDate(ds);
-        const msg=conflictInAppointmentList(cand,dayRows);
-        if(msg){conflicts++;continue}
-        const saved=await persistAppointment(null,cand);
-        dayRows.push(saved);
-        rows.push(saved);
-        created++;
-      }
-      date.setDate(date.getDate()+1);
-      tries++;
-    }
-    packageScheduleCache.delete(packageScheduleKey(p));
-    closeModal('apptModal');
-    await loadAll(true);
-    toast(created+' sessão(ões) criada(s). '+conflicts+' encaixe(s) ignorado(s).',created?'success':'warning');
+    fillRecurringFromPackage(p,Math.max(1,st.toSchedule||st.remain||1),pattern,startDate);
+    if(pattern.length)toast('Recorrência preparada pelo padrão recente. Revise e salve.','success');
+    else toast('Recorrência aberta. Escolha os dias ou use o assistente de recorrência.','warning');
   }catch(e){
-    console.error(e);
-    toast('Erro ao completar saldo: '+e.message,'error');
+    toast('Erro ao preparar recorrência: '+e.message,'error');
   }
 }
 function patientCard(p){const linked=appointments.some(a=>String(a.patient_id)===String(p.id))||packages.some(pk=>String(pk.patient_id)===String(p.id))||movements.some(m=>String(m.patient_id)===String(p.id));const archived=p.archived===true;return `<div class="item patient-card ${archived?'archived':''}"><div class="item-top"><div><strong>${esc(p.name||'Sem nome')}</strong>${archived?' <span class="muted small">(inativo)</span>':''}<div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(p.pathology||'Sem patologia')}</div></div><div class="toolbar"><button class="btn" onclick="openPatient('${p.id}')">Ficha</button><button class="btn ghost" onclick="openEditPatient('${p.id}')">✏️ Editar</button>${archived?`<button class="btn success" onclick="reactivatePatient('${p.id}')">Reativar</button>`:`<button class="btn warning" onclick="archivePatient('${p.id}')">Inativar</button>`}<button class="btn danger" onclick="deletePatientSafe('${p.id}')">Apagar</button></div></div>${linked?'<div class="muted small" style="margin-top:8px">Possui vínculo: apagar será bloqueado; use inativar.</div>':''}</div>`}
-function renderLists(){$('payerList').innerHTML=payers.map(p=>`<div class="item"><div class="item-top"><strong>${esc(p.name)}</strong><button class="btn danger" onclick="removePayer('${p.id}')">Remover</button></div></div>`).join('')||'<div class="muted">Nenhum pagador.</div>';$('serviceList').innerHTML=services.map(s=>`<div class="item"><div class="item-top"><div><strong>${esc(s.name)}</strong><div class="muted small">${payerName(s.health_insurance_id)} · ${brl(s.price)} · ${s.duration_minutes}min · ${s.appointment_mode}</div></div><button class="btn danger" onclick="removeService('${s.id}')">Remover</button></div></div>`).join('')||'<div class="muted">Nenhum serviço.</div>';const activePk=packages.filter(p=>p.active!==false),inactivePk=packages.filter(p=>p.active===false);if($('packageListActive')){$('packagesActiveCount').textContent=activePk.length+' ativo(s)';$('packagesInactiveCount').textContent=inactivePk.length+' inativo(s)';$('packageListActive').innerHTML=activePk.length?activePk.map(packageCard).join(''):'<div class="muted">Nenhum pacote ativo.</div>';$('packageListInactive').innerHTML=inactivePk.length?inactivePk.map(packageCard).join(''):'<div class="muted">Nenhum pacote inativo.</div>'}else if($('packageList')){$('packageList').innerHTML=packages.length?packages.map(packageCard).join(''):'<div class="muted">Nenhum pacote.</div>'}const activePatients=patients.filter(p=>p.archived!==true),archivedPatients=patients.filter(p=>p.archived===true);if($('patientListActive')){$('patientsActiveCount').textContent=activePatients.length+' ativo(s)';$('patientsArchivedCount').textContent=archivedPatients.length+' inativo(s)';$('patientListActive').innerHTML=activePatients.length?activePatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente ativo.</div>';$('patientListArchived').innerHTML=archivedPatients.length?archivedPatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente inativo.</div>'}}
 function formatWhatsappInput(input){let v=input.value.replace(/\D/g,'').slice(0,11);if(v.length>6)input.value=`(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;else if(v.length>2)input.value=`(${v.slice(0,2)}) ${v.slice(2)}`;else if(v.length>0)input.value=`(${v}`;}
 function makePatientId(){return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 async function savePatient(){const name=$('newPatientName').value.trim();const whatsapp=$('newPatientWhatsapp').value.trim();const pathology=$('newPatientPathology').value.trim();if(!name){toast('Informe o nome do paciente.','warning');return}if(!/^\(\d{2}\)\s\d{5}-\d{4}$/.test(whatsapp)){toast('Digite o WhatsApp no formato (99) 99999-9999.','warning');return}const phone=cleanPhone(whatsapp);const dup=patients.find(p=>p.archived!==true&&(cleanPhone(p.whatsapp)===phone||String(p.name||'').trim().toLowerCase()===name.toLowerCase()));if(dup&&!confirm('Já existe paciente com nome ou WhatsApp parecido. Deseja cadastrar mesmo assim?'))return;const payload={id:makePatientId(),name,pathology,whatsapp,archived:false,archived_at:null};try{await api('patients',{method:'POST',body:JSON.stringify(payload)});$('newPatientName').value='';$('newPatientWhatsapp').value='';$('newPatientPathology').value='';await loadAll(true);toast('Paciente salvo no Supabase e disponível na agenda.','success')}catch(e){toast('Erro ao salvar paciente: '+e.message,'error')}}
@@ -1953,7 +1906,10 @@ function renderLists(){
     $('patientListActive').innerHTML=activePatients.length?activePatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente encontrado.</div>';
     $('patientListArchived').innerHTML=archivedPatients.length?archivedPatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente inativo.</div>';
   }
-  hydratePackageScheduleSummaries();
+  const packagesPanelActive=$('panel-packages')?.classList.contains('active');
+  if(packagesPanelActive){
+    hydratePackageScheduleSummaries();
+  }
 }
 
 
@@ -2163,17 +2119,6 @@ function renderWeek(){
 }
 
 
-/* FEMIC v1.4.36 — fallbacks seguros para aba Dia */
-if(typeof weekdayShort !== 'function'){
-  function weekdayShort(dateStr){
-    if(!dateStr) return '';
-    const d = new Date(String(dateStr) + 'T00:00:00');
-    const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-    return dias[d.getDay()] || '';
-  }
-}
-
-
 function getAgendaTheme(){
   return localStorage.getItem('femic_agenda_theme') || localStorage.getItem('femic_theme') || 'light';
 }
@@ -2202,30 +2147,20 @@ function toggleTheme(){
   toggleAgendaTheme();
 }
 
-if(typeof getNextStatuses !== 'function'){
-  function getNextStatuses(current){
-    const all = [
-      { value:'concluido', label:'Concluído' },
-      { value:'cancelado', label:'Cancelado' }
-    ];
-    return all.filter(s => s.value !== current);
-  }
+function getNextStatuses(current){
+  const all = [
+    { value:'concluido', label:'Concluído' },
+    { value:'cancelado', label:'Cancelado' }
+  ];
+  return all.filter(s => s.value !== current);
 }
 
 if(typeof saldoBadgeInline !== 'function'){
   function saldoBadgeInline(patientId, serviceId){
     try{
-      if(!Array.isArray(packages)) return '';
-      const pk = packages.find(p =>
-        String(p.patient_id) === String(patientId) &&
-        String(p.service_id) === String(serviceId) &&
-        p.active !== false
-      );
-      if(!pk) return '';
-      const remaining = Number(pk.remaining_sessions ?? pk.saldo ?? 0);
-      const total = Number(pk.total_sessions ?? 0);
-      if(total <= 0) return '';
-      return ` · saldo ${remaining}`;
+      const info=packageSaldoInfo(patientId,serviceId);
+      if(!info||info.total<=0) return '';
+      return ` · saldo ${info.remaining}`;
     }catch(e){
       return '';
     }
@@ -2385,14 +2320,3 @@ setInterval(()=>{
   if(base()&&key()&&sessionStorage.getItem('femic_jwt')&&!hasOpenModal()) loadAll(true);
   processAutomaticReminders();
 },60000);
-
-/* FEMIC v1.4.32 — fallback seguro para status rápidos */
-if(typeof getNextStatuses !== 'function'){
-  function getNextStatuses(current){
-    const all = [
-      { value:'concluido', label:'Concluído' },
-      { value:'cancelado', label:'Cancelado' }
-    ];
-    return all.filter(s => s.value !== current);
-  }
-}
