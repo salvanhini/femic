@@ -5603,7 +5603,7 @@ textarea{
   border-color:rgba(16,185,129,.24);
 }
 
-.package-complete-btn{
+.package-plan-btn{
   padding:7px 9px;
   min-height:32px;
   border-radius:10px;
@@ -5617,7 +5617,7 @@ textarea{
     flex-direction:column;
   }
 
-  .package-complete-btn{
+  .package-plan-btn{
     width:100%;
     justify-content:center;
   }
