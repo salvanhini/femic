@@ -237,6 +237,7 @@
       <div class="section-title">
         <div><div class="eyebrow">Prontuário</div><h3>Preencher, revisar e salvar o registro clínico</h3><p class="muted small prontuario-intro">Use a IA só para rascunho. O texto continua sob revisão profissional antes do salvamento.</p></div>
         <div class="toolbar prontuario-toolbar">
+          <button class="btn primary" type="button" onclick="openClinicalAIAssistant()">Assistente IA</button>
           <select id="prontuarioPatientSelect" onchange="selectUnifiedPatient(this.value,'prontuario')" style="min-width:260px"></select>
         </div>
       </div>
@@ -244,7 +245,7 @@
     </div>
     <div class="grid grid-2 prontuario-main-grid" style="margin-top:16px">
       <div class="card prontuario-anamnese-card">
-        <div class="section-title"><div><div class="eyebrow">Anamnese</div><h3>Base clínica do paciente</h3><p class="muted small prontuario-card-note">IA sugere o texto inicial. Revise e salve quando estiver pronto.</p></div><div class="toolbar"><button class="btn" type="button" onclick="fillAnamneseWithAI()">IA anamnese</button></div></div>
+        <div class="section-title"><div><div class="eyebrow">Anamnese</div><h3>Base clínica do paciente</h3><p class="muted small prontuario-card-note">Use o Assistente IA no topo para criar um rascunho inicial. Revise e salve quando estiver pronto.</p></div></div>
         <div class="grid" style="gap:12px">
           <div class="field"><label>Queixa principal</label><textarea id="anamChief" rows="3"></textarea></div>
           <div class="field"><label>História atual</label><textarea id="anamHistory" rows="4"></textarea></div>
@@ -260,7 +261,7 @@
       </div>
       <div class="prontuario-side-stack">
       <div class="card prontuario-evolucao-card">
-        <div class="section-title"><div><div class="eyebrow">Evolução clínica</div><h3>Registro clínico e orientação</h3><p class="muted small prontuario-card-note">IA resume conduta e orientação a partir do seu contexto, sem salvar sozinha.</p></div><div class="toolbar"><button class="btn" type="button" onclick="fillEvolutionWithAI()">IA evolução</button></div></div>
+        <div class="section-title"><div><div class="eyebrow">Evolução clínica</div><h3>Registro clínico e orientação</h3><p class="muted small prontuario-card-note">O Assistente IA pode registrar a sessão ou planejar tratamento, sempre como rascunho revisável.</p></div></div>
         <div class="grid" style="gap:12px">
           <div class="field"><label>Data</label><input id="evolutionDate" type="date"></div>
           <div class="field"><label>Evolução clínica</label><textarea id="evolutionConduct" rows="4"></textarea></div>
@@ -338,7 +339,7 @@
           <div class="field"><label>Modelo</label><select id="docPresetSelect" onchange="renderUnifiedDocumentPreview()"></select></div>
           <div class="field"><label>Data do documento</label><input id="docDateInput" type="date" onchange="renderUnifiedDocumentPreview()"></div>
           <div class="field"><label>Nome profissional</label><input id="professionalNameInput" placeholder="FEMIC Fisioterapia" oninput="renderUnifiedDocumentPreview()"></div>
-          <div class="field"><label>Observação/assinatura</label><input id="professionalNoteInput" placeholder="CREFITO, observação institucional ou cargo" oninput="renderUnifiedDocumentPreview()"></div>
+          <div class="field"><label>Conselho profissional</label><input id="professionalNoteInput" placeholder="CREFITO-3 000000-F" oninput="renderUnifiedDocumentPreview()"></div>
           <div class="field"><label>Mostrar carimbo</label><select id="showStampSelect" onchange="renderUnifiedDocumentPreview()"><option value="yes">Sim</option><option value="no">Não</option></select></div>
           </div>
           <details class="docs-identity-panel">
@@ -845,15 +846,21 @@
     <div class="modal-body">
       <input type="hidden" id="clinicalAiMode">
       <div class="quick-note small" id="clinicalAiModalHelper">Descreva o caso em texto livre ou dite pelo microfone. A IA usará esse contexto para preencher a ficha e você revisa antes de salvar.</div>
-      <div class="toolbar clinical-ai-toolbar" style="margin-top:12px">
+      <div class="clinical-ai-choices hidden" id="clinicalAiChoices"></div>
+      <div class="toolbar clinical-ai-toolbar" id="clinicalAiInputToolbar" style="margin-top:12px">
         <button class="btn" type="button" id="clinicalAiMicBtn" onclick="toggleClinicalAIMicrophone()">Usar microfone</button>
         <button class="btn ghost" type="button" onclick="clearClinicalAIPrompt()">Limpar texto</button>
       </div>
-      <div class="field" style="margin-top:12px">
+      <div class="field" id="clinicalAiPromptField" style="margin-top:12px">
         <label>Contexto clínico para a IA</label>
         <textarea id="clinicalAiPrompt" rows="10" placeholder="Exemplo: paciente com dor lombar há 3 semanas, piora ao ficar sentado, irradiação leve, limitação para abaixar e objetivo de voltar às atividades sem dor."></textarea>
       </div>
       <div class="muted small" id="clinicalAiModalStatus" style="margin-top:10px">Você pode digitar, colar observações ou usar voz para montar o resumo.</div>
+      <div class="clinical-treatment-draft hidden" id="clinicalTreatmentDraft"></div>
+      <div class="toolbar clinical-treatment-actions hidden" id="clinicalTreatmentActions">
+        <button class="btn" type="button" onclick="copyTreatmentDraft()">Copiar</button>
+        <button class="btn primary" type="button" onclick="applyTreatmentDraftToEvolution()">Aplicar em evolução</button>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn" type="button" onclick="closeClinicalAIModal()">Cancelar</button>

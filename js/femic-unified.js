@@ -241,9 +241,13 @@
   function getGeneratedDocuments(){ return safeArrayParse(STORAGE.generatedDocs).filter(function(x){ return x && x.patient_id; }); }
   function saveGeneratedDocuments(list){ saveArray(STORAGE.generatedDocs, list || []); }
   function getDocumentSettings(){
-    var defaults = { professionalName:'FEMIC Fisioterapia', professionalNote:'', showStamp:'yes', logoData:'logo.png', signatureData:'', stampData:'' };
+    var defaults = { professionalName:'FEMIC Fisioterapia', professionalNote:'', professionalCouncil:'', showStamp:'yes', logoData:'logo.png', signatureData:'', stampData:'' };
     try{
-      return Object.assign(defaults, JSON.parse(localStorage.getItem(STORAGE.documentSettings) || '{}'));
+      var saved = JSON.parse(localStorage.getItem(STORAGE.documentSettings) || '{}') || {};
+      var merged = Object.assign(defaults, saved);
+      merged.professionalCouncil = merged.professionalCouncil || merged.professionalNote || '';
+      merged.professionalNote = merged.professionalCouncil;
+      return merged;
     }catch(e){
       return defaults;
     }
@@ -283,6 +287,7 @@
     ['prontuarioPatientSelect','docsPatientSelect'].forEach(function(id){
       if(el(id)) el(id).value = runtime.currentPatientId;
     });
+    if(window.syncPatientPickers) window.syncPatientPickers();
   }
   function getAnamneseByPatient(pid){
     return getLoadedCloudAnamnese(pid) || getAnamneses().find(function(item){ return String(item.patient_id) === String(pid); }) || null;
@@ -322,10 +327,12 @@
     })).join('');
     ['prontuarioPatientSelect','docsPatientSelect'].forEach(function(id){
       if(el(id)) el(id).innerHTML = options;
+      if(window.enhancePatientSelect) window.enhancePatientSelect(id);
     });
     if(runtime.currentPatientId){
       setCurrentPatient(runtime.currentPatientId);
     }
+    if(window.syncPatientPickers) window.syncPatientPickers();
   }
 
   function renderPatientHub(){
@@ -412,7 +419,7 @@
     if(el('docDateInput') && !el('docDateInput').value) el('docDateInput').value = todayIsoSafe();
     var settings = getDocumentSettings();
     if(el('professionalNameInput') && !el('professionalNameInput').value) el('professionalNameInput').value = settings.professionalName || 'FEMIC Fisioterapia';
-    if(el('professionalNoteInput') && !el('professionalNoteInput').value) el('professionalNoteInput').value = settings.professionalNote || '';
+    if(el('professionalNoteInput') && !el('professionalNoteInput').value) el('professionalNoteInput').value = settings.professionalCouncil || settings.professionalNote || '';
     if(el('showStampSelect') && !el('showStampSelect').value) el('showStampSelect').value = settings.showStamp || 'yes';
     populateDocPresets();
     renderDocQuickModels();
@@ -581,9 +588,10 @@
     }
     var settings = Object.assign(getDocumentSettings(), {
       professionalName: (el('professionalNameInput') && el('professionalNameInput').value.trim()) || 'FEMIC Fisioterapia',
-      professionalNote: (el('professionalNoteInput') && el('professionalNoteInput').value.trim()) || '',
+      professionalCouncil: (el('professionalNoteInput') && el('professionalNoteInput').value.trim()) || '',
       showStamp: (el('showStampSelect') && el('showStampSelect').value) || 'yes'
     });
+    settings.professionalNote = settings.professionalCouncil;
     saveDocumentSettings(settings);
     var type = el('docTypeSelect') ? el('docTypeSelect').value : 'attendance';
     var preset = getSelectedDocPreset();
@@ -598,7 +606,7 @@
           '<div class="meta-box"><div class="small muted">Patologia</div><strong>' + escHtml(patient.pathology || '-') + '</strong></div>' +
         '</div>' +
         '<div class="doc-body">' + escHtml(body).replace(/\n/g, '<br>') + '</div>' +
-        (settings.showStamp === 'yes' ? '<div class="doc-sign doc-sign-premium"><div class="doc-signature-block">' + renderDocumentImage(settings.signatureData, 'doc-signature-img', 'Assinatura') + '<strong>' + escHtml(settings.professionalName) + '</strong>' + (settings.professionalNote ? '<br>' + escHtml(settings.professionalNote) : '') + '</div>' + renderDocumentImage(settings.stampData, 'doc-stamp-img', 'Carimbo') + '</div>' : '') +
+        '<div class="doc-sign doc-sign-premium"><div class="doc-signature-block">' + renderDocumentImage(settings.signatureData, 'doc-signature-img', 'Assinatura') + '<div class="doc-sign-line"></div><strong class="doc-professional-name">' + escHtml(settings.professionalName) + '</strong>' + (settings.professionalCouncil ? '<span class="doc-professional-council">' + escHtml(settings.professionalCouncil) + '</span>' : '') + '</div>' + (settings.showStamp === 'yes' ? renderDocumentImage(settings.stampData, 'doc-stamp-img', 'Carimbo') : '') + '</div>' +
       '</div>';
   }
 
@@ -1159,7 +1167,7 @@
     if(!preview) return;
     var printWindow = window.open('', '_blank', 'width=900,height=700');
     if(!printWindow) return;
-    printWindow.document.write('<html><head><title>Documento FEMIC</title><style>@page{size:A4;margin:18mm}body{font-family:Arial,sans-serif;color:#183043;background:#fff}h2{color:#0b3c6f;letter-spacing:.03em;margin:0 0 18px}.document-sheet{max-width:820px;margin:0 auto}.doc-brand{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid #dbe5ea;padding-bottom:14px;margin-bottom:22px}.doc-brand-main{display:grid;gap:6px}.doc-logo-img{max-width:170px;max-height:78px;object-fit:contain}.doc-brand span{display:block;color:#0b3c6f;font-size:1.35rem;font-weight:900;letter-spacing:.08em}.doc-brand strong,.doc-brand small{color:#64748b}.doc-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}.meta-box{border:1px solid #dbe5ea;border-radius:12px;padding:10px}.doc-body{white-space:pre-wrap;line-height:1.68;font-size:12.5pt;min-height:310px}.doc-sign{margin-top:34px;padding-top:18px;border-top:1px dashed #c9d6de;color:#64748b}.doc-sign-premium{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}.doc-signature-block{min-width:260px}.doc-signature-img{display:block;max-width:230px;max-height:92px;object-fit:contain;margin-bottom:6px}.doc-stamp-img{max-width:150px;max-height:150px;object-fit:contain;opacity:.92}@media print{body{padding:0}.document-sheet{max-width:none}}</style></head><body>' + preview.innerHTML + '</body></html>');
+    printWindow.document.write('<html><head><title>Documento FEMIC</title><style>@page{size:A4;margin:18mm}body{font-family:Arial,sans-serif;color:#183043;background:#fff}h2{color:#0b3c6f;letter-spacing:.03em;margin:0 0 18px}.document-sheet{max-width:820px;margin:0 auto}.doc-brand{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid #dbe5ea;padding-bottom:14px;margin-bottom:22px}.doc-brand-main{display:grid;gap:6px}.doc-logo-img{max-width:170px;max-height:78px;object-fit:contain}.doc-brand span{display:block;color:#0b3c6f;font-size:1.35rem;font-weight:900;letter-spacing:.08em}.doc-brand strong,.doc-brand small{color:#64748b}.doc-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}.meta-box{border:1px solid #dbe5ea;border-radius:12px;padding:10px}.doc-body{white-space:pre-wrap;line-height:1.68;font-size:12.5pt;min-height:310px}.doc-sign{margin-top:34px;padding-top:18px;border-top:1px dashed #c9d6de;color:#64748b}.doc-sign-premium{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}.doc-signature-block{min-width:280px;text-align:center;color:#183043}.doc-signature-img{display:block;max-width:230px;max-height:92px;object-fit:contain;margin:0 auto 6px}.doc-sign-line{border-top:1px solid #8da2b3;margin:2px auto 8px;width:260px}.doc-professional-name{display:block;color:#0b3c6f;font-size:11.5pt}.doc-professional-council{display:block;margin-top:3px;color:#64748b;font-size:10pt;font-weight:700}.doc-stamp-img{max-width:150px;max-height:150px;object-fit:contain;opacity:.92}@media print{body{padding:0}.document-sheet{max-width:none}}</style></head><body>' + preview.innerHTML + '</body></html>');
     printWindow.document.close();
     printWindow.focus();
     setTimeout(function(){ printWindow.print(); }, 300);
