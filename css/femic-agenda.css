@@ -6322,6 +6322,8 @@ textarea{
 
 #panel-documentos .document-sheet-premium .doc-signature-block{
   min-width:220px;
+  text-align:center;
+  color:var(--text);
 }
 
 #panel-documentos .document-sheet-premium .doc-signature-img{
@@ -6329,7 +6331,29 @@ textarea{
   max-width:230px;
   max-height:92px;
   object-fit:contain;
-  margin-bottom:6px;
+  margin:0 auto 6px;
+}
+
+#panel-documentos .document-sheet-premium .doc-sign-line{
+  border-top:1px solid rgba(11,60,111,.34);
+  width:240px;
+  max-width:100%;
+  margin:2px auto 8px;
+}
+
+#panel-documentos .document-sheet-premium .doc-professional-name{
+  display:block;
+  color:var(--primary);
+  font-size:.94rem;
+  line-height:1.25;
+}
+
+#panel-documentos .document-sheet-premium .doc-professional-council{
+  display:block;
+  margin-top:3px;
+  color:var(--muted);
+  font-size:.82rem;
+  font-weight:800;
 }
 
 #panel-documentos .document-sheet-premium .doc-stamp-img{
@@ -6337,6 +6361,205 @@ textarea{
   max-height:145px;
   object-fit:contain;
   opacity:.92;
+}
+
+.patient-select-native{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  padding:0!important;
+  margin:0!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
+
+.patient-picker{
+  position:relative;
+  width:min(100%, 360px);
+  min-width:260px;
+}
+
+.patient-picker-input{
+  padding-right:74px;
+  background:#fff;
+  border-color:rgba(11,60,111,.16);
+}
+
+.patient-picker-clear{
+  position:absolute;
+  right:6px;
+  top:6px;
+  border:1px solid rgba(11,60,111,.12);
+  background:#eef6fb;
+  color:var(--primary);
+  border-radius:10px;
+  padding:6px 9px;
+  font-size:.76rem;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.patient-picker-list{
+  position:absolute;
+  z-index:180;
+  left:0;
+  right:0;
+  top:calc(100% + 6px);
+  display:grid;
+  gap:6px;
+  max-height:300px;
+  overflow:auto;
+  padding:8px;
+  border:1px solid rgba(11,60,111,.16);
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 18px 38px rgba(11,60,111,.16);
+}
+
+.patient-picker-option{
+  display:grid;
+  gap:2px;
+  width:100%;
+  text-align:left;
+  border:1px solid transparent;
+  background:#fff;
+  border-radius:11px;
+  padding:9px 10px;
+  color:var(--text);
+  cursor:pointer;
+}
+
+.patient-picker-option:hover,
+.patient-picker-option:focus{
+  border-color:rgba(31,182,233,.36);
+  background:#f1fbff;
+  outline:none;
+}
+
+.patient-picker-option strong{
+  color:var(--primary);
+  font-size:.9rem;
+}
+
+.patient-picker-option span,
+.patient-picker-empty{
+  color:var(--muted);
+  font-size:.78rem;
+  line-height:1.35;
+}
+
+.patient-picker-empty{
+  padding:10px;
+}
+
+.clinical-treatment-draft{
+  margin-top:14px;
+  border:1px solid rgba(11,60,111,.14);
+  border-radius:16px;
+  background:#f8fbfd;
+  padding:14px;
+}
+
+.clinical-ai-choices{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+
+.clinical-ai-choice{
+  min-height:132px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  gap:10px;
+  text-align:left;
+  border:1px solid rgba(11,60,111,.14);
+  border-radius:16px;
+  background:#fff;
+  color:var(--text);
+  padding:14px;
+  cursor:pointer;
+  box-shadow:0 10px 22px rgba(11,60,111,.06);
+}
+
+.clinical-ai-choice:hover,
+.clinical-ai-choice:focus{
+  transform:translateY(-1px);
+  border-color:rgba(31,182,233,.38);
+  box-shadow:0 16px 30px rgba(11,60,111,.10);
+  outline:none;
+}
+
+.clinical-ai-choice strong{
+  color:var(--primary);
+  font-size:.96rem;
+}
+
+.clinical-ai-choice span{
+  color:var(--muted);
+  font-size:.83rem;
+  line-height:1.4;
+}
+
+.clinical-ai-choice.start{
+  border-top:4px solid var(--primary2);
+}
+
+.clinical-ai-choice.session{
+  border-top:4px solid #2563eb;
+}
+
+.clinical-ai-choice.plan{
+  border-top:4px solid var(--success);
+}
+
+.clinical-treatment-title{
+  color:var(--primary);
+  font-weight:900;
+  margin-bottom:8px;
+}
+
+.clinical-treatment-text{
+  max-height:340px;
+  overflow:auto;
+  color:var(--text);
+  line-height:1.55;
+  background:#fff;
+  border:1px solid rgba(11,60,111,.10);
+  border-radius:12px;
+  padding:12px;
+}
+
+.clinical-treatment-actions{
+  margin-top:10px;
+  justify-content:flex-end;
+}
+
+body{
+  background:linear-gradient(180deg,#f7fbff,#eef6fb 54%,#f8fbff);
+}
+
+.card{
+  box-shadow:0 12px 28px rgba(11,60,111,.08);
+}
+
+.card:hover,
+.item:hover{
+  box-shadow:0 16px 34px rgba(11,60,111,.10)!important;
+}
+
+.modal{
+  box-shadow:0 22px 52px rgba(11,60,111,.22);
+}
+
+.btn:focus-visible,
+.tab:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible{
+  outline:3px solid rgba(31,182,233,.22);
+  outline-offset:2px;
 }
 
 #panel-documentos .docs-history-filters{
@@ -6545,5 +6768,23 @@ textarea{
 
   .rec-suggestion-card .btn{
     justify-content:center;
+  }
+
+  .patient-picker{
+    min-width:0;
+    width:100%;
+  }
+
+  .prontuario-toolbar,
+  .prontuario-toolbar .patient-picker{
+    width:100%;
+  }
+
+  .clinical-ai-choices{
+    grid-template-columns:1fr;
+  }
+
+  .clinical-ai-choice{
+    min-height:0;
   }
 }
