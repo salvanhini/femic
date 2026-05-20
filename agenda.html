@@ -16,7 +16,7 @@ window.location.replace('index.html');
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/femic-agenda.css?v=theme-refactor-7">
+<link rel="stylesheet" href="css/femic-agenda.css?v=theme-refactor-8">
 </head>
 <body>
 <div class="mobile-topbar">
@@ -288,7 +288,7 @@ window.location.replace('index.html');
         <button class="btn" onclick="resetClinicRulesToDefaults()">Restaurar defaults</button>
       </div>
     </div>
-    <div class="card" style="margin-top:16px"><div class="eyebrow">Modelos WhatsApp</div><div class="grid grid-2"><div class="field"><label>Lembrete de sessão</label><textarea id="tplReminder" rows="5"></textarea></div><div class="field"><label>Formulário pós-atendimento</label><textarea id="tplFormReminder" rows="5"></textarea></div></div><div class="field" style="margin-top:12px"><label>Link do formulário de respostas</label><input id="formLinkInput" placeholder="https://... formulário do paciente"></div><button class="btn primary" style="margin-top:12px" onclick="saveTemplates()">Salvar modelos</button></div>
+    <div class="card" style="margin-top:16px"><div class="eyebrow">Modelos WhatsApp</div><div class="field"><label>Lembrete de sessão</label><textarea id="tplReminder" rows="5"></textarea></div><button class="btn primary" style="margin-top:12px" onclick="saveTemplates()">Salvar modelo</button></div>
     <div class="card" style="margin-top:16px"><div class="section-title"><div><div class="eyebrow">WhatsApp API</div><h3>Preparação segura para Meta Cloud API</h3></div><span class="mode-badge manual" id="whatsappProviderBadge">wa.me</span></div><p class="muted small" style="margin-top:0">O envio real desta versão continua pelo link seguro wa.me. A opção de API apenas guarda a URL pública de uma futura Supabase Edge Function; o token da Meta nunca deve ficar neste navegador.</p><div class="grid grid-2"><div class="field"><label>Provedor de envio</label><select id="whatsappProvider" onchange="renderWhatsappProviderBadge()"><option value="wa_me">Link WhatsApp seguro</option><option value="api">API preparada via Supabase Edge Function</option></select></div><div class="field"><label>Endpoint da Edge Function futura</label><input id="whatsappEndpoint" placeholder="https://SEU-PROJETO.functions.supabase.co/send-whatsapp-reminder"></div><div class="field"><label>Template Meta: sessão</label><input id="whatsappTplAppointment" placeholder="lembrete_sessao"></div><div class="field"><label>Template Meta: formulário</label><input id="whatsappTplForm" placeholder="formulario_pos_sessao"></div></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" onclick="saveWhatsappApiConfig()">Salvar preparação da API</button><button class="btn" onclick="testWhatsappApiConfig()">Testar configuração local</button></div></div>
     <div class="card" style="margin-top:16px" id="assistantAiConfigCard">
       <div class="section-title">
@@ -602,7 +602,7 @@ if ('caches' in window) {
   });
 }
 </script>
-<script src="js/femic-agenda.js?v=secure-cloud-4"></script>
+<script src="js/femic-agenda.js?v=secure-cloud-5"></script>
 <script src="js/femic-ai-center.js?v=ai-center-3"></script>
 <script src="js/femic-assistant-rules.js?v=assistant-rules-4"></script>
 <script src="js/femic-assistant.js?v=assistant-ui-5"></script>
