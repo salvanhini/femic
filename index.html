@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/femic-agenda.css?v=theme-refactor-8">
+<link rel="stylesheet" href="css/femic-agenda.css?v=theme-refactor-9">
 <link rel="stylesheet" href="css/femic-unified.css?v=unified-1">
 </head>
 <body>
@@ -321,12 +321,6 @@
             <select id="docsPatientSelect" onchange="selectUnifiedPatient(this.value,'documentos')" style="min-width:260px"></select>
             <button class="btn" onclick="renderUnifiedDocuments()">Atualizar</button>
           </div>
-        </div>
-        <div class="docs-steps">
-          <button class="doc-step active" type="button" data-doc-step="1" onclick="setDocumentStep(1)"><span>1</span>Paciente e tipo</button>
-          <button class="doc-step" type="button" data-doc-step="2" onclick="setDocumentStep(2)"><span>2</span>Modelo</button>
-          <button class="doc-step" type="button" data-doc-step="3" onclick="setDocumentStep(3)"><span>3</span>Texto</button>
-          <button class="doc-step" type="button" data-doc-step="4" onclick="setDocumentStep(4)"><span>4</span>Revisão</button>
         </div>
         <div class="docs-premium-stage">
           <div class="grid grid-2">
@@ -912,7 +906,7 @@ if ('caches' in window) {
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js"></script>
 <script src="js/femic-agenda.js?v=secure-cloud-5"></script>
-<script src="js/femic-unified.js?v=secure-cloud-5"></script>
+<script src="js/femic-unified.js?v=secure-cloud-6"></script>
 <script src="js/femic-ai-center.js?v=ai-center-2"></script>
 </body>
 </html>

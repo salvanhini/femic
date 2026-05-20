@@ -6123,48 +6123,6 @@ textarea{
   border-radius:18px;
 }
 
-#panel-documentos .docs-steps{
-  display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:8px;
-  margin:14px 0;
-}
-
-#panel-documentos .doc-step{
-  border:1px solid var(--line);
-  border-radius:14px;
-  background:#fff;
-  color:var(--muted);
-  padding:9px 10px;
-  font-size:.78rem;
-  font-weight:900;
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  gap:7px;
-}
-
-#panel-documentos .doc-step span{
-  width:22px;
-  height:22px;
-  border-radius:999px;
-  display:inline-grid;
-  place-items:center;
-  background:#eef6fb;
-  color:var(--primary);
-}
-
-#panel-documentos .doc-step.active{
-  color:#fff;
-  border-color:transparent;
-  background:linear-gradient(135deg,var(--primary),#0d5ea8,var(--primary2));
-}
-
-#panel-documentos .doc-step.active span{
-  background:rgba(255,255,255,.22);
-  color:#fff;
-}
-
 #panel-documentos .docs-premium-stage{
   border:1px solid var(--line);
   border-radius:18px;
@@ -6802,7 +6760,6 @@ textarea:focus-visible{
 }
 
 @media(max-width:760px){
-  #panel-documentos .docs-steps,
   #panel-documentos .docs-quick-models,
   #panel-documentos .docs-identity-grid,
   #panel-documentos .docs-history-filters{
