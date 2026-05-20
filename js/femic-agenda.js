@@ -1995,11 +1995,13 @@ function toggleArchivedPatients(){
   showArchivedPatients=!showArchivedPatients;
   renderLists();
 }
+window.toggleArchivedPatients=toggleArchivedPatients;
 
 function toggleInactivePackages(){
   showInactivePackages=!showInactivePackages;
   renderLists();
 }
+window.toggleInactivePackages=toggleInactivePackages;
 
 async function reactivatePackage(id){
   try{
@@ -2014,6 +2016,7 @@ async function reactivatePackage(id){
     toast('Erro ao reativar pacote: ' + e.message,'error');
   }
 }
+window.reactivatePackage=reactivatePackage;
 
 function renderLists(){
   $('payerList').innerHTML=payers.map(p=>`<div class="item"><div class="item-top"><strong>${esc(p.name)}</strong><button class="btn danger" onclick="removePayer('${p.id}')">Remover</button></div></div>`).join('')||'<div class="muted">Nenhum pagador.</div>';

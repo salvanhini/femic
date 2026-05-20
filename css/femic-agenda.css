@@ -6871,6 +6871,47 @@ textarea:focus-visible{
   overflow:auto;
 }
 
+.settings-compact-details{
+  overflow:hidden;
+}
+
+.settings-compact-details > summary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  cursor:pointer;
+  color:var(--primary);
+  font-weight:900;
+  list-style:none;
+  margin:-2px 0 12px;
+}
+
+.settings-compact-details > summary::-webkit-details-marker{
+  display:none;
+}
+
+.settings-compact-details > summary::after{
+  content:"+";
+  display:grid;
+  place-items:center;
+  width:28px;
+  height:28px;
+  border-radius:999px;
+  background:#eef6fb;
+  color:var(--primary);
+  flex:0 0 auto;
+}
+
+.settings-compact-details[open] > summary::after{
+  content:"-";
+}
+
+.settings-compact-details > summary strong{
+  display:block;
+  font-size:1rem;
+}
+
 #assistantAiConfigCard,
 #clinicRulesCard{
   grid-column:1 / -1;

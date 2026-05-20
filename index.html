@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/femic-agenda.css?v=theme-refactor-3">
+<link rel="stylesheet" href="css/femic-agenda.css?v=theme-refactor-4">
 <link rel="stylesheet" href="css/femic-unified.css?v=unified-1">
 </head>
 <body>
@@ -520,13 +520,12 @@
   <section class="panel" id="panel-settings">
     <div class="grid grid-2"><div class="card"><div class="section-title"><div><div class="eyebrow">Supabase</div><h3>Conexão</h3></div></div><div class="grid grid-2"><div class="field"><label>URL</label><input id="sbUrl" placeholder="https://xxxx.supabase.co"></div><div class="field"><label>Anon key</label><input id="sbKey" placeholder="anon key"></div></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" onclick="saveConfig();loadAll()">Salvar e carregar</button><button class="btn" onclick="testConnection()">Testar conexão</button></div></div><div class="card"><div class="section-title"><div><div class="eyebrow">Expediente</div><h3>Horários da clínica</h3></div></div><div class="grid grid-3"><div class="field"><label>Início geral</label><input id="setStart" type="time" value="08:00"></div><div class="field"><label>Fim geral</label><input id="setEnd" type="time" value="20:00"></div><div class="field"><label>Intervalo grade</label><select id="setInterval"><option>15</option><option selected>30</option><option>45</option><option>60</option></select></div></div><div class="field" style="margin-top:12px"><label>Períodos de atendimento</label><input id="setPeriods" placeholder="08:00-12:00,16:00-20:00" value="08:00-12:00,16:00-20:00"><div class="period-help small">Use vírgula para separar períodos. A agenda só mostrará horários dentro dessas janelas.</div></div><div class="toolbar" id="workDays" style="margin-top:12px"></div><button class="btn primary" style="margin-top:12px" onclick="saveSettings()">Salvar expediente</button></div></div>
     <div class="grid grid-2" style="margin-top:16px"><div class="card"><div class="section-title"><div><div class="eyebrow">Pagadores</div><h3>Convênios e particulares</h3></div></div><div class="toolbar"><input id="payerName" placeholder="Nome do pagador" style="max-width:260px"><button class="btn primary" onclick="savePayer()">Adicionar</button></div><div class="list" id="payerList" style="margin-top:12px"></div></div><div class="card"><div class="section-title"><div><div class="eyebrow">Serviços</div><h3>Valores, duração e modo</h3></div></div><div class="grid grid-2"><input id="svcName" placeholder="Nome do serviço"><select id="svcPayer"></select><input id="svcPrice" type="number" placeholder="Valor"><select id="svcDur"><option>30</option><option selected>45</option><option>60</option><option>90</option></select><select id="svcMode"><option value="grupo">Grupo</option><option value="individual">Individual</option></select><input id="svcMax" type="number" value="4" placeholder="Limite"></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" id="saveServiceBtn" onclick="saveService()">Adicionar serviço</button><button class="btn" id="cancelServiceEditBtn" style="display:none" onclick="cancelServiceEdit()">Cancelar edição</button></div><div class="list" id="serviceList" style="margin-top:12px"></div></div></div>
-    <div class="card" style="margin-top:16px"><div class="eyebrow">Modelos WhatsApp</div><div class="grid grid-2"><div class="field"><label>Lembrete de sessão</label><textarea id="tplReminder" rows="5"></textarea></div><div class="field"><label>Formulário pós-atendimento</label><textarea id="tplFormReminder" rows="5"></textarea></div></div><div class="field" style="margin-top:12px"><label>Link do formulário de respostas</label><input id="formLinkInput" placeholder="https://... formulário do paciente"></div><button class="btn primary" style="margin-top:12px" onclick="saveTemplates()">Salvar modelos</button></div>
-    <div class="card" style="margin-top:16px"><div class="section-title"><div><div class="eyebrow">WhatsApp API</div><h3>Preparação segura para Meta Cloud API</h3></div><span class="mode-badge manual" id="whatsappProviderBadge">wa.me</span></div><p class="muted small" style="margin-top:0">O envio real desta versão continua pelo link seguro wa.me. A opção de API apenas guarda a URL pública de uma futura Supabase Edge Function; o token da Meta nunca deve ficar neste navegador.</p><div class="grid grid-2"><div class="field"><label>Provedor de envio</label><select id="whatsappProvider" onchange="renderWhatsappProviderBadge()"><option value="wa_me">Link WhatsApp seguro</option><option value="api">API preparada via Supabase Edge Function</option></select></div><div class="field"><label>Endpoint da Edge Function futura</label><input id="whatsappEndpoint" placeholder="https://SEU-PROJETO.functions.supabase.co/send-whatsapp-reminder"></div><div class="field"><label>Template Meta: sessão</label><input id="whatsappTplAppointment" placeholder="lembrete_sessao"></div><div class="field"><label>Template Meta: formulário</label><input id="whatsappTplForm" placeholder="formulario_pos_sessao"></div></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" onclick="saveWhatsappApiConfig()">Salvar preparação da API</button><button class="btn" onclick="testWhatsappApiConfig()">Testar configuração local</button></div></div>
-    <div class="card" style="margin-top:16px" id="assistantAiConfigCard">
-      <div class="section-title">
+    <details class="card settings-compact-details" style="margin-top:16px" open><summary><span><span class="eyebrow">Modelos</span><strong>WhatsApp</strong></span></summary><div class="grid grid-2"><div class="field"><label>Lembrete de sessão</label><textarea id="tplReminder" rows="4"></textarea></div><div class="field"><label>Formulário pós-atendimento</label><textarea id="tplFormReminder" rows="4"></textarea></div></div><div class="field" style="margin-top:12px"><label>Link do formulário de respostas</label><input id="formLinkInput" placeholder="https://... formulário do paciente"></div><button class="btn primary" style="margin-top:12px" onclick="saveTemplates()">Salvar modelos</button></details>
+    <details class="card settings-compact-details" style="margin-top:16px"><summary><span><span class="eyebrow">WhatsApp API</span><strong>Preparação Meta Cloud API</strong></span><span class="mode-badge manual" id="whatsappProviderBadge">wa.me</span></summary><p class="muted small" style="margin-top:0">O envio real desta versão continua pelo link seguro wa.me. A opção de API apenas guarda a URL pública de uma futura Supabase Edge Function; o token da Meta nunca deve ficar neste navegador.</p><div class="grid grid-2"><div class="field"><label>Provedor de envio</label><select id="whatsappProvider" onchange="renderWhatsappProviderBadge()"><option value="wa_me">Link WhatsApp seguro</option><option value="api">API preparada via Supabase Edge Function</option></select></div><div class="field"><label>Endpoint da Edge Function futura</label><input id="whatsappEndpoint" placeholder="https://SEU-PROJETO.functions.supabase.co/send-whatsapp-reminder"></div><div class="field"><label>Template Meta: sessão</label><input id="whatsappTplAppointment" placeholder="lembrete_sessao"></div><div class="field"><label>Template Meta: formulário</label><input id="whatsappTplForm" placeholder="formulario_pos_sessao"></div></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" onclick="saveWhatsappApiConfig()">Salvar preparação da API</button><button class="btn" onclick="testWhatsappApiConfig()">Testar configuração local</button></div></details>
+    <details class="card settings-compact-details" style="margin-top:16px" id="assistantAiConfigCard"><summary>
         <div><div class="eyebrow">IA clínica</div><h3>Configuração avançada de rascunhos</h3></div>
         <span class="mode-badge manual" id="assistantAiProviderBadge">gemini</span>
-      </div>
+      </summary>
       <p class="muted small" style="margin-top:0">Esse bloco afeta apenas os rascunhos de anamnese e evolução do prontuário. Pendências, agenda e WhatsApp seguem independentes desta configuração.</p>
       <div class="grid grid-2">
         <div class="field">
@@ -583,7 +582,7 @@
         <button class="btn" onclick="testAssistantAiConfig()">Testar configuração</button>
       </div>
       <div class="muted small ai-center-debug" id="aiCenterDebug" style="margin-top:12px">IA clínica iniciando…</div>
-    </div>
+    </details>
   </section>
 
 
@@ -892,8 +891,8 @@ if ('caches' in window) {
 }
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js"></script>
-<script src="js/femic-agenda.js?v=secure-cloud-1"></script>
-<script src="js/femic-unified.js?v=secure-cloud-1"></script>
+<script src="js/femic-agenda.js?v=secure-cloud-2"></script>
+<script src="js/femic-unified.js?v=secure-cloud-2"></script>
 <script src="js/femic-ai-center.js?v=ai-center-2"></script>
 </body>
 </html>
