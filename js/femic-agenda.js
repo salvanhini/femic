@@ -231,6 +231,7 @@ CREATE POLICY "authenticated_full_access_clinical_evolutions" ON clinical_evolut
 NOTIFY pgrst, 'reload schema';`;
 const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],movements=[],clinicRules=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();let editingServiceId='';let loadedAppointmentQuery='',aiRadarQuery='',aiRadarAppointments=[],aiRadarLoaded=false,aiRadarLastWeeks=[],recurringSuggestionCache=[];const appointmentSearchSelected=new Set();
 const packageScheduleCache=new Map();
+let showArchivedPatients=false,showInactivePackages=false;
 const dayAppointmentCache=new Map();
 const CLINIC_RULES_STORAGE_KEY='femic_agenda_clinic_rules';
 function toast(msg,type='info'){const el=document.createElement('div');el.className='toast '+type;el.textContent=msg;$('toastWrap').appendChild(el);setTimeout(()=>el.remove(),3600)}
@@ -1906,7 +1907,7 @@ function packageCard(p){
       </div>
       <div class="package-actions">
         <button class="btn" onclick="editPackage('${p.id}')">Editar</button>
-        <button class="btn danger" onclick="removePackage('${p.id}')">Remover</button>
+        ${inactive?`<button class="btn success" onclick="reactivatePackage('${p.id}')">Reativar</button>`:`<button class="btn danger" onclick="removePackage('${p.id}')">Remover</button>`}
       </div>
     </div>
     <div class="small"><span class="used-counter">${used}/${total} sessões usadas</span> · <span class="${cls}">saldo ${remain}</span></div>
@@ -1990,6 +1991,30 @@ async function editPackage(id){
   }
 }
 
+function toggleArchivedPatients(){
+  showArchivedPatients=!showArchivedPatients;
+  renderLists();
+}
+
+function toggleInactivePackages(){
+  showInactivePackages=!showInactivePackages;
+  renderLists();
+}
+
+async function reactivatePackage(id){
+  try{
+    await api('session_packages?id=eq.' + encodeURIComponent(id), {
+      method:'PATCH',
+      body: JSON.stringify({active:true})
+    });
+    showInactivePackages=false;
+    await loadAll(true);
+    toast('Pacote reativado.','success');
+  }catch(e){
+    toast('Erro ao reativar pacote: ' + e.message,'error');
+  }
+}
+
 function renderLists(){
   $('payerList').innerHTML=payers.map(p=>`<div class="item"><div class="item-top"><strong>${esc(p.name)}</strong><button class="btn danger" onclick="removePayer('${p.id}')">Remover</button></div></div>`).join('')||'<div class="muted">Nenhum pagador.</div>';
 
@@ -2007,19 +2032,24 @@ function renderLists(){
       return patName.includes(pkQuery) || svcName.includes(pkQuery);
     };
     const filteredActivePk   = activePk.filter(filterPk);
-    const filteredInactivePk = inactivePk.filter(filterPk);
+    const filteredInactivePk = showInactivePackages ? inactivePk.filter(filterPk) : [];
     const totalActive = activePk.length;
     $('packagesActiveCount').textContent   = pkQuery ? `${filteredActivePk.length}/${totalActive} encontrado(s)` : `${activePk.length} ativo(s)`;
     $('packagesInactiveCount').textContent = inactivePk.length+' inativo(s)';
     $('packageListActive').innerHTML   = filteredActivePk.length   ? filteredActivePk.map(packageCard).join('')   : `<div class="muted">${pkQuery ? 'Nenhum pacote encontrado.' : 'Nenhum pacote ativo.'}</div>`;
-    $('packageListInactive').innerHTML = filteredInactivePk.length ? filteredInactivePk.map(packageCard).join('') : `<div class="muted">${pkQuery ? 'Nenhum pacote encontrado.' : 'Nenhum pacote inativo.'}</div>`;
+    if($('toggleInactivePackagesBtn')) $('toggleInactivePackagesBtn').textContent = showInactivePackages ? 'Ocultar pacotes inativos' : 'Ver pacotes inativos';
+    if($('packageInactivePanel')) $('packageInactivePanel').classList.toggle('hidden', !showInactivePackages);
+    if($('packageListInactive')) $('packageListInactive').innerHTML = showInactivePackages
+      ? (filteredInactivePk.length ? filteredInactivePk.map(packageCard).join('') : `<div class="muted">${pkQuery ? 'Nenhum pacote inativo encontrado.' : 'Nenhum pacote inativo.'}</div>`)
+      : '';
   }else if($('packageList')){
     $('packageList').innerHTML=packages.length?packages.map(packageCard).join(''):'<div class="muted">Nenhum pacote.</div>';
   }
 
   const query = $('patientActiveSearch') ? cleanPhone($('patientActiveSearch').value).toLowerCase() || $('patientActiveSearch').value.trim().toLowerCase() : '';
+  const archivedQuery = $('patientArchivedSearch') ? cleanPhone($('patientArchivedSearch').value).toLowerCase() || $('patientArchivedSearch').value.trim().toLowerCase() : '';
   let activePatients=patients.filter(p=>p.archived!==true);
-  const archivedPatients=patients.filter(p=>p.archived===true);
+  let archivedPatients=patients.filter(p=>p.archived===true);
 
   if(query){
     activePatients = activePatients.filter(p=>{
@@ -2029,13 +2059,26 @@ function renderLists(){
       return name.includes(query) || phone.includes(query) || pathology.includes(query);
     });
   }
+  if(showArchivedPatients&&archivedQuery){
+    archivedPatients = archivedPatients.filter(p=>{
+      const name = String(p.name||'').toLowerCase();
+      const phone = cleanPhone(p.whatsapp||'');
+      const pathology = String(p.pathology||'').toLowerCase();
+      return name.includes(archivedQuery) || phone.includes(archivedQuery) || pathology.includes(archivedQuery);
+    });
+  }
 
   if($('patientListActive')){
     const totalActive = patients.filter(p=>p.archived!==true).length;
+    const totalArchived = patients.filter(p=>p.archived===true).length;
     $('patientsActiveCount').textContent = query ? `${activePatients.length}/${totalActive} encontrado(s)` : `${activePatients.length} ativo(s)`;
-    $('patientsArchivedCount').textContent=archivedPatients.length+' inativo(s)';
+    $('patientsArchivedCount').textContent=totalArchived+' inativo(s)';
     $('patientListActive').innerHTML=activePatients.length?activePatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente encontrado.</div>';
-    $('patientListArchived').innerHTML=archivedPatients.length?archivedPatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente inativo.</div>';
+    if($('toggleArchivedPatientsBtn')) $('toggleArchivedPatientsBtn').textContent = showArchivedPatients ? 'Ocultar pacientes inativos' : 'Ver pacientes inativos';
+    if($('patientArchivedPanel')) $('patientArchivedPanel').classList.toggle('hidden', !showArchivedPatients);
+    if($('patientListArchived')) $('patientListArchived').innerHTML=showArchivedPatients
+      ? (archivedPatients.length?archivedPatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente inativo encontrado.</div>')
+      : '';
   }
   const packagesPanelActive=$('panel-packages')?.classList.contains('active');
   if(packagesPanelActive){

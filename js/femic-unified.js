@@ -336,6 +336,7 @@
   }
 
   function renderPatientHub(){
+    return;
     var target = el('patientHubContent');
     var status = el('patientHubStatus');
     if(!target || !status) return;
@@ -780,7 +781,6 @@
 
   function renderUnifiedAll(){
     populateUnifiedPatientSelects();
-    renderPatientHub();
     renderUnifiedProntuario();
     renderUnifiedDocuments();
     renderUnifiedBackupSummary();
@@ -1384,7 +1384,7 @@
     var daysHtml = includeDays
       ? (appointments.length
         ? appointments.map(function(item){
-            return '<li>' + escHtml(fmtWeekdaySafe(item.appointment_date) + ' · ' + fmtDateSafe(item.appointment_date) + ' · ' + String(item.start_time || '').slice(0,5) + ' · ' + (window.serviceName ? serviceName(item.service_id) : 'Serviço')) + '</li>';
+            return '<li><strong>' + escHtml(fmtDateSafe(item.appointment_date)) + '</strong><span>' + escHtml(fmtWeekdaySafe(item.appointment_date) + ' · ' + String(item.start_time || '').slice(0,5) + ' · ' + (window.serviceName ? serviceName(item.service_id) : 'Serviço')) + '</span></li>';
           }).join('')
         : '<li>Nenhum atendimento concluído na agenda.</li>')
       : '';
@@ -1396,16 +1396,17 @@
     return '' +
       '<div class="clinical-export-doc">' +
         '<header class="clinical-export-header">' +
-          '<div><div class="eyebrow">FEMIC</div><h2>Ficha clínica do paciente</h2></div>' +
+          '<div class="clinical-export-brand"><div><span>FEMIC</span><strong>Fisioterapia Especializada</strong></div><small>Ficha clínica do paciente<br>Emitida em ' + escHtml(fmtDateSafe(todayIsoSafe())) + '</small></div>' +
+          '<div class="clinical-export-title"><div class="eyebrow">Ficha F</div><h2>Ficha clínica do paciente</h2></div>' +
           '<div class="clinical-export-meta"><div><strong>Paciente</strong><span>' + escHtml(patient.name || '-') + '</span></div><div><strong>WhatsApp</strong><span>' + escHtml(formatWhatsapp(patient.whatsapp || '-')) + '</span></div><div><strong>Patologia</strong><span>' + escHtml(patient.pathology || 'Sem patologia registrada') + '</span></div></div>' +
         '</header>' +
         '<section class="clinical-export-section"><h3>Anamnese</h3><div class="clinical-export-grid">' +
-          '<div><strong>Queixa principal</strong><p>' + escHtml(anamnese.chief_complaint || 'Não registrada') + '</p></div>' +
-          '<div><strong>História atual</strong><p>' + escHtml(anamnese.history || 'Não registrada') + '</p></div>' +
-          '<div><strong>Diagnóstico / hipótese</strong><p>' + escHtml(anamnese.diagnosis || 'Não registrado') + '</p></div>' +
-          '<div><strong>Limitações funcionais</strong><p>' + escHtml(anamnese.limitations || 'Não registradas') + '</p></div>' +
-          '<div><strong>Objetivos</strong><p>' + escHtml(anamnese.goals || 'Não registrados') + '</p></div>' +
-          '<div><strong>Observações</strong><p>' + escHtml(anamnese.obs || 'Sem observações') + '</p></div>' +
+          '<div class="clinical-export-field"><strong>Queixa principal</strong><p>' + escHtml(anamnese.chief_complaint || 'Não registrada') + '</p></div>' +
+          '<div class="clinical-export-field"><strong>História atual</strong><p>' + escHtml(anamnese.history || 'Não registrada') + '</p></div>' +
+          '<div class="clinical-export-field"><strong>Diagnóstico / hipótese</strong><p>' + escHtml(anamnese.diagnosis || 'Não registrado') + '</p></div>' +
+          '<div class="clinical-export-field"><strong>Limitações funcionais</strong><p>' + escHtml(anamnese.limitations || 'Não registradas') + '</p></div>' +
+          '<div class="clinical-export-field"><strong>Objetivos</strong><p>' + escHtml(anamnese.goals || 'Não registrados') + '</p></div>' +
+          '<div class="clinical-export-field"><strong>Observações</strong><p>' + escHtml(anamnese.obs || 'Sem observações') + '</p></div>' +
         '</div></section>' +
         '<section class="clinical-export-section"><h3>Evoluções clínicas</h3>' + evolutionHtml + '</section>' +
         (includeDays ? '<section class="clinical-export-section"><h3>Dias atendidos</h3><ul class="clinical-export-days">' + daysHtml + '</ul></section>' : '') +
@@ -1487,7 +1488,36 @@
     if(!html) return;
     var printWindow = window.open('', '_blank', 'width=980,height=760');
     if(!printWindow) return;
-    printWindow.document.write('<html><head><title>Ficha clínica FEMIC</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#183043;background:#f8fbff}.clinical-export-doc{max-width:920px;margin:0 auto;background:#fff;border:1px solid #d9e6ef;border-radius:22px;padding:28px 30px}.clinical-export-header{display:grid;gap:18px;margin-bottom:24px}.clinical-export-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.clinical-export-meta div,.clinical-export-block,.clinical-export-section{border:1px solid #d9e6ef;border-radius:16px;background:#fff;padding:14px 16px}.clinical-export-section{margin-top:16px}.clinical-export-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.clinical-export-grid p,.clinical-export-block p{margin:8px 0 0;white-space:pre-wrap;line-height:1.55}.clinical-export-days{margin:0;padding-left:20px}.clinical-export-days li{margin:0 0 6px}.eyebrow{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:#5b7a93}h2,h3,h4{margin:0;color:#0b3c6f}@media print{body{background:#fff;padding:0}.clinical-export-doc{border:none;border-radius:0;padding:0}}</style></head><body>' + html + '</body></html>');
+    var style = [
+      '@page{size:A4;margin:16mm}',
+      '*{box-sizing:border-box}',
+      'body{font-family:Arial,sans-serif;color:#183043;background:#fff;margin:0;padding:22px}',
+      '.clinical-export-doc{max-width:820px;margin:0 auto;background:#fff}',
+      '.clinical-export-header{display:grid;gap:16px;margin-bottom:20px}',
+      '.clinical-export-brand{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;border-bottom:2px solid #dbe5ea;padding-bottom:14px}',
+      '.clinical-export-brand span{display:block;color:#0b3c6f;font-size:21px;font-weight:900;letter-spacing:.08em}',
+      '.clinical-export-brand strong,.clinical-export-brand small{color:#64748b;font-size:10.5pt;line-height:1.35}',
+      '.clinical-export-brand small{text-align:right}',
+      '.clinical-export-title h2{margin:2px 0 0;color:#0b3c6f;font-size:20pt}',
+      '.eyebrow{font-size:8.5pt;letter-spacing:.08em;text-transform:uppercase;color:#0f5c5c;font-weight:900}',
+      '.clinical-export-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}',
+      '.clinical-export-meta div{border:1px solid #dbe5ea;border-radius:10px;padding:9px 10px;background:#f8fbfd}',
+      '.clinical-export-meta strong,.clinical-export-field strong{display:block;color:#0b3c6f;font-size:8.5pt;text-transform:uppercase;letter-spacing:.04em}',
+      '.clinical-export-meta span{display:block;margin-top:4px;font-size:10.5pt}',
+      '.clinical-export-section{margin-top:14px;border-top:1px solid #dbe5ea;padding-top:13px;break-inside:avoid}',
+      '.clinical-export-section h3{margin:0 0 10px;color:#0b3c6f;font-size:13.5pt}',
+      '.clinical-export-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}',
+      '.clinical-export-field,.clinical-export-block{border:1px solid #dbe5ea;border-radius:10px;padding:10px 11px;background:#fff;break-inside:avoid}',
+      '.clinical-export-field p,.clinical-export-block p{margin:7px 0 0;white-space:pre-wrap;line-height:1.5;font-size:10.5pt}',
+      '.clinical-export-block{margin-bottom:8px}',
+      '.clinical-export-block h4{margin:0;color:#0b3c6f;font-size:11pt}',
+      '.clinical-export-days{list-style:none;margin:0;padding:0;display:grid;gap:6px}',
+      '.clinical-export-days li{border:1px solid #dbe5ea;border-radius:9px;padding:8px 10px;display:flex;justify-content:space-between;gap:10px;font-size:10pt}',
+      '.clinical-export-days span{color:#64748b}',
+      '@media(max-width:760px){body{padding:14px}.clinical-export-meta,.clinical-export-grid{grid-template-columns:1fr}.clinical-export-brand{display:grid}.clinical-export-brand small{text-align:left}}',
+      '@media print{body{padding:0}.clinical-export-doc{max-width:none}.clinical-export-meta div,.clinical-export-field,.clinical-export-block,.clinical-export-days li{background:#fff}}'
+    ].join('');
+    printWindow.document.write('<html><head><title>Ficha clínica FEMIC</title><style>' + style + '</style></head><body>' + html + '</body></html>');
     printWindow.document.close();
     printWindow.focus();
     setTimeout(function(){ printWindow.print(); }, 300);
