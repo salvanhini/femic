@@ -492,9 +492,6 @@
   function setDocumentStep(step){
     step = Math.max(1, Math.min(4, Number(step || 1)));
     localStorage.setItem('femic_document_step', String(step));
-    document.querySelectorAll('.doc-step').forEach(function(btn){
-      btn.classList.toggle('active', Number(btn.getAttribute('data-doc-step')) === step);
-    });
     var stage = el('panel-documentos');
     if(stage) stage.setAttribute('data-doc-step', String(step));
   }
