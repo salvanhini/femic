@@ -545,8 +545,8 @@ NOTIFY pgrst, 'reload schema';
 ### 4) Histórico de documentos na nuvem
 ```sql
 create table if not exists public.femic_generated_documents (
-  id uuid primary key default gen_random_uuid(),
-  patient_id text,
+  id text primary key,
+  patient_id text references public.patients(id) on delete set null,
   patient_name text,
   document_type text,
   document_title text,
@@ -568,22 +568,16 @@ create index if not exists idx_femic_gendocs_created_at
 
 alter table public.femic_generated_documents enable row level security;
 
-drop policy if exists "Allow anon read generated documents" on public.femic_generated_documents;
-drop policy if exists "Allow anon insert generated documents" on public.femic_generated_documents;
-drop policy if exists "Allow anon update generated documents" on public.femic_generated_documents;
+grant select, insert, update, delete on public.femic_generated_documents to authenticated;
 
-create policy "Authenticated read"
-  on public.femic_generated_documents for select
-  using (auth.role() = 'authenticated');
+drop policy if exists "authenticated_full_access_femic_generated_documents" on public.femic_generated_documents;
 
-create policy "Authenticated insert"
-  on public.femic_generated_documents for insert
-  with check (auth.role() = 'authenticated');
-
-create policy "Authenticated update"
-  on public.femic_generated_documents for update
+create policy "authenticated_full_access_femic_generated_documents"
+  on public.femic_generated_documents for all
   using (auth.role() = 'authenticated')
   with check (auth.role() = 'authenticated');
+
+notify pgrst, 'reload schema';
 ```
 
 ### 5) Templates clínicos

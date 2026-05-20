@@ -469,7 +469,13 @@
       return normalizeText([doc.patient_name, doc.title, doc.type_label, doc.body, doc.date].join(' ')).indexOf(query) !== -1;
     }).slice(0, 80);
     target.innerHTML = list.length ? list.map(function(doc){
-      var snippet = String(doc.body || '').replace(/\s+/g, ' ').trim().slice(0, 180);
+      var snippet = String(doc.body_text || '').trim();
+      if(!snippet && doc.body){
+        var box = document.createElement('div');
+        box.innerHTML = doc.body;
+        snippet = box.innerText || String(doc.body || '');
+      }
+      snippet = snippet.replace(/\s+/g, ' ').trim().slice(0, 180);
       return '<div class="doc-history-card"><div class="doc-history-main"><span>' + escHtml(doc.type_label || doc.type || 'Documento') + '</span><strong>' + escHtml(doc.title || 'Documento') + '</strong><div class="muted small">' + escHtml(doc.patient_name || '-') + ' · ' + fmtDateSafe(doc.date) + '</div><p>' + escHtml(snippet || 'Sem texto salvo.') + '</p></div><div class="doc-history-actions"><button class="btn primary" onclick="duplicateGeneratedDocument(\'' + escHtml(doc.id) + '\')">Duplicar como novo</button><button class="btn" onclick="loadGeneratedDocument(\'' + escHtml(doc.id) + '\')">Consultar</button><button class="btn danger" onclick="deleteGeneratedDocument(\'' + escHtml(doc.id) + '\')">Remover</button></div></div>';
     }).join('') : '<div class="muted">Nenhum documento salvo ainda.</div>';
   }
@@ -539,6 +545,119 @@
     return src ? '<img class="' + className + '" src="' + escHtml(src) + '" alt="' + escHtml(alt || '') + '">' : '';
   }
 
+  function textToDocumentHtml(text){
+    return escHtml(text || '').replace(/\n/g, '<br>');
+  }
+
+  function sanitizeDocumentHtml(html){
+    var box = document.createElement('div');
+    box.innerHTML = String(html || '');
+    box.querySelectorAll('script,style,iframe,object,embed,link,meta').forEach(function(node){ node.remove(); });
+    box.querySelectorAll('*').forEach(function(node){
+      var allowed = ['B','STRONG','I','EM','U','BR','P','DIV','SPAN','UL','OL','LI'];
+      if(allowed.indexOf(node.tagName) === -1){
+        node.replaceWith(document.createTextNode(node.textContent || ''));
+        return;
+      }
+      Array.from(node.attributes).forEach(function(attr){
+        if(attr.name !== 'style') node.removeAttribute(attr.name);
+      });
+      if(node.getAttribute('style')){
+        var style = node.getAttribute('style');
+        var keep = [];
+        var align = style.match(/text-align\s*:\s*(left|right|center|justify)/i);
+        var size = style.match(/font-size\s*:\s*(10pt|12pt|14pt|16pt|18pt)/i);
+        var transform = style.match(/text-transform\s*:\s*uppercase/i);
+        if(align) keep.push('text-align:' + align[1].toLowerCase());
+        if(size) keep.push('font-size:' + size[1].toLowerCase());
+        if(transform) keep.push('text-transform:uppercase');
+        if(keep.length) node.setAttribute('style', keep.join(';'));
+        else node.removeAttribute('style');
+      }
+    });
+    return box.innerHTML.trim();
+  }
+
+  function looksLikeHtml(value){
+    return /<\/?[a-z][\s\S]*>/i.test(String(value || ''));
+  }
+
+  function getDocumentBodyHtml(){
+    var editor = el('docBodyEditor');
+    if(editor) return sanitizeDocumentHtml(editor.innerHTML);
+    var raw = el('docBodyInput') ? el('docBodyInput').value.trim() : '';
+    return sanitizeDocumentHtml(looksLikeHtml(raw) ? raw : textToDocumentHtml(raw));
+  }
+
+  function getDocumentBodyText(){
+    var editor = el('docBodyEditor');
+    if(editor) return editor.innerText.trim();
+    var raw = el('docBodyInput') ? el('docBodyInput').value.trim() : '';
+    if(!looksLikeHtml(raw)) return raw;
+    var box = document.createElement('div');
+    box.innerHTML = raw;
+    return box.innerText.trim();
+  }
+
+  function setDocumentBodyContent(value){
+    var html = looksLikeHtml(value) ? sanitizeDocumentHtml(value) : textToDocumentHtml(value || '');
+    if(el('docBodyEditor')) el('docBodyEditor').innerHTML = html;
+    if(el('docBodyInput')) el('docBodyInput').value = html;
+  }
+
+  function syncDocumentBodyInput(){
+    if(el('docBodyEditor') && el('docBodyInput')){
+      el('docBodyInput').value = getDocumentBodyHtml();
+    }
+  }
+
+  window.syncDocumentEditorFromInput = function(){
+    if(el('docBodyInput')) setDocumentBodyContent(el('docBodyInput').value || '');
+  };
+
+  function wrapDocumentSelection(styleText){
+    var editor = el('docBodyEditor');
+    if(!editor) return;
+    editor.focus();
+    var selection = window.getSelection();
+    if(!selection || !selection.rangeCount) return;
+    var range = selection.getRangeAt(0);
+    if(!editor.contains(range.commonAncestorContainer)) return;
+    var span = document.createElement('span');
+    span.setAttribute('style', styleText);
+    if(range.collapsed){
+      span.appendChild(document.createTextNode('\u200b'));
+      range.insertNode(span);
+      range.setStart(span.firstChild, 1);
+      range.collapse(true);
+    }else{
+      span.appendChild(range.extractContents());
+      range.insertNode(span);
+      range.selectNodeContents(span);
+    }
+    selection.removeAllRanges();
+    selection.addRange(range);
+    syncDocumentBodyInput();
+    renderUnifiedDocumentPreview();
+  }
+
+  window.formatDocumentBody = function(command, value){
+    var editor = el('docBodyEditor');
+    if(!editor) return;
+    editor.focus();
+    if(command === 'uppercase'){
+      wrapDocumentSelection('text-transform:uppercase');
+      return;
+    }
+    if(command === 'fontSize' && value){
+      wrapDocumentSelection('font-size:' + value);
+      return;
+    }
+    try{ document.execCommand(command, false, null); }catch(e){}
+    syncDocumentBodyInput();
+    renderUnifiedDocumentPreview();
+  };
+
   function getDocumentContext(pid){
     var patient = getPatientById(pid) || {};
     var anamnese = getAnamneseByPatient(pid) || {};
@@ -596,7 +715,7 @@
     saveDocumentSettings(settings);
     var type = el('docTypeSelect') ? el('docTypeSelect').value : 'attendance';
     var preset = getSelectedDocPreset();
-    var body = (el('docBodyInput') && el('docBodyInput').value.trim()) || 'Use o botão "Gerar texto" para preencher um documento com base no contexto clínico do paciente.';
+    var body = getDocumentBodyHtml() || textToDocumentHtml('Use o botão "Gerar texto" para preencher um documento com base no contexto clínico do paciente.');
     preview.innerHTML =
       '<div class="document-sheet document-sheet-premium">' +
         '<div class="doc-brand"><div class="doc-brand-main">' + (settings.logoData ? renderDocumentImage(settings.logoData, 'doc-logo-img', 'Logo') : '<span>FEMIC</span>') + '<strong>Fisioterapia e cuidado clínico</strong></div><small>Documento gerado no sistema FEMIC</small></div>' +
@@ -606,7 +725,7 @@
           '<div class="meta-box"><div class="small muted">Data</div><strong>' + escHtml(fmtDateSafe(el('docDateInput') ? el('docDateInput').value : todayIsoSafe())) + '</strong></div>' +
           '<div class="meta-box"><div class="small muted">Patologia</div><strong>' + escHtml(patient.pathology || '-') + '</strong></div>' +
         '</div>' +
-        '<div class="doc-body">' + escHtml(body).replace(/\n/g, '<br>') + '</div>' +
+        '<div class="doc-body">' + body + '</div>' +
         '<div class="doc-sign doc-sign-premium"><div class="doc-signature-block">' + renderDocumentImage(settings.signatureData, 'doc-signature-img', 'Assinatura') + '<div class="doc-sign-line"></div><strong class="doc-professional-name">' + escHtml(settings.professionalName) + '</strong>' + (settings.professionalCouncil ? '<span class="doc-professional-council">' + escHtml(settings.professionalCouncil) + '</span>' : '') + '</div>' + (settings.showStamp === 'yes' ? renderDocumentImage(settings.stampData, 'doc-stamp-img', 'Carimbo') : '') + '</div>' +
       '</div>';
   }
@@ -624,6 +743,8 @@
           document_title: doc.title,
           document_body: doc.body,
           document_date: doc.date,
+          rendered_html: doc.body,
+          metadata: { body_text: doc.body_text || '' },
           source: 'femic_unified'
         })
       });
@@ -1127,7 +1248,7 @@
       return;
     }
     var ctx = getDocumentContext(pid);
-    if(el('docBodyInput')) el('docBodyInput').value = preset.body(ctx);
+    setDocumentBodyContent(preset.body(ctx));
     renderUnifiedDocumentPreview();
     setDocumentStep(3);
     if(typeof toast === 'function') toast('Documento gerado a partir do contexto do paciente.', 'success');
@@ -1146,7 +1267,8 @@
       type: type,
       type_label: preset.title || 'DOCUMENTO',
       title: preset.title || 'DOCUMENTO',
-      body: el('docBodyInput') ? el('docBodyInput').value.trim() : '',
+      body: getDocumentBodyHtml(),
+      body_text: getDocumentBodyText(),
       date: el('docDateInput') && el('docDateInput').value ? el('docDateInput').value : todayIsoSafe(),
       created_at: new Date().toISOString()
     };
@@ -1244,7 +1366,7 @@
     if(!doc) return;
     setCurrentPatient(doc.patient_id);
     if(typeof showPanel === 'function') showPanel('documentos');
-    if(el('docBodyInput')) el('docBodyInput').value = doc.body || '';
+    setDocumentBodyContent(doc.body || doc.body_text || '');
     if(el('docDateInput')) el('docDateInput').value = doc.date || todayIsoSafe();
     if(el('docTypeSelect')) el('docTypeSelect').value = doc.type || 'attendance';
     populateDocPresets();
@@ -1257,7 +1379,7 @@
     if(!doc) return;
     setCurrentPatient(doc.patient_id);
     if(typeof showPanel === 'function') showPanel('documentos');
-    if(el('docBodyInput')) el('docBodyInput').value = doc.body || '';
+    setDocumentBodyContent(doc.body || doc.body_text || '');
     if(el('docDateInput')) el('docDateInput').value = todayIsoSafe();
     if(el('docTypeSelect')) el('docTypeSelect').value = doc.type || 'attendance';
     populateDocPresets();
@@ -1572,6 +1694,13 @@
     document.addEventListener('femic:state-updated', function(){ offerLocalClinicalMigration().catch(function(e){ console.error(e); }); });
     document.addEventListener('femic:unified-state-updated', renderUnifiedAll);
     if(el('docBodyInput')) el('docBodyInput').addEventListener('input', renderUnifiedDocumentPreview);
+    if(el('docBodyEditor')){
+      el('docBodyEditor').addEventListener('input', function(){
+        syncDocumentBodyInput();
+        renderUnifiedDocumentPreview();
+      });
+      if(el('docBodyInput') && el('docBodyInput').value) setDocumentBodyContent(el('docBodyInput').value);
+    }
     if(el('professionalNameInput')) el('professionalNameInput').addEventListener('input', renderUnifiedDocumentPreview);
     if(el('professionalNoteInput')) el('professionalNoteInput').addEventListener('input', renderUnifiedDocumentPreview);
     if(el('showStampSelect')) el('showStampSelect').addEventListener('change', renderUnifiedDocumentPreview);
