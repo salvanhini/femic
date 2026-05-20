@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS session_packages CASCADE;
 DROP TABLE IF EXISTS appointments CASCADE;
 DROP TABLE IF EXISTS clinical_evolutions CASCADE;
 DROP TABLE IF EXISTS clinical_anamneses CASCADE;
+DROP TABLE IF EXISTS femic_generated_documents CASCADE;
 DROP TABLE IF EXISTS clinic_rules CASCADE;
 DROP TABLE IF EXISTS assistant_tasks CASCADE;
 DROP TABLE IF EXISTS services CASCADE;
@@ -105,6 +106,23 @@ CREATE TABLE clinical_evolutions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+-- HISTÓRICO DE DOCUMENTOS GERADOS
+CREATE TABLE femic_generated_documents (
+  id TEXT PRIMARY KEY,
+  patient_id TEXT REFERENCES patients(id) ON DELETE SET NULL,
+  patient_name TEXT,
+  document_type TEXT,
+  document_title TEXT,
+  document_body TEXT,
+  document_date DATE,
+  rendered_html TEXT,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  status TEXT DEFAULT 'active',
+  source TEXT DEFAULT 'femic_unified',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
 -- HISTÓRICO DE MOVIMENTOS DE SESSÃO
 CREATE TABLE session_movements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -194,6 +212,8 @@ CREATE INDEX idx_appointments_patient ON appointments(patient_id);
 CREATE INDEX idx_session_packages_patient ON session_packages(patient_id);
 CREATE INDEX idx_movements_patient ON session_movements(patient_id);
 CREATE INDEX idx_clinical_evolutions_patient_date ON clinical_evolutions(patient_id, date DESC);
+CREATE INDEX idx_femic_generated_documents_patient ON femic_generated_documents(patient_id);
+CREATE INDEX idx_femic_generated_documents_created ON femic_generated_documents(created_at DESC);
 CREATE INDEX idx_assistant_tasks_status_updated ON assistant_tasks(status, updated_at DESC);
 CREATE INDEX idx_assistant_tasks_origin ON assistant_tasks(origin);
 CREATE INDEX idx_assistant_tasks_fingerprint ON assistant_tasks(extension_fingerprint);
@@ -210,6 +230,7 @@ ALTER TABLE clinic_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assistant_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinical_anamneses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinical_evolutions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE femic_generated_documents ENABLE ROW LEVEL SECURITY;
 
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon;
@@ -228,6 +249,7 @@ CREATE POLICY "authenticated_full_access_clinic_rules" ON clinic_rules FOR ALL T
 CREATE POLICY "authenticated_full_access_assistant_tasks" ON assistant_tasks FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_clinical_anamneses" ON clinical_anamneses FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_clinical_evolutions" ON clinical_evolutions FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_full_access_femic_generated_documents" ON femic_generated_documents FOR ALL TO authenticated USING (true) WITH CHECK (true);
 NOTIFY pgrst, 'reload schema';`;
 const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],movements=[],clinicRules=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();let editingServiceId='';let loadedAppointmentQuery='',aiRadarQuery='',aiRadarAppointments=[],aiRadarLoaded=false,aiRadarLastWeeks=[],recurringSuggestionCache=[];const appointmentSearchSelected=new Set();
 const packageScheduleCache=new Map();
@@ -1899,20 +1921,35 @@ function packageCard(p){
   const cls=remain<=0?'saldo-zero':(remain<=3?'saldo-low':'');
   const inactive=p.active===false;
 
+  if(inactive){
+    return `<div class="item package-card inactive package-card-compact">
+      <div class="item-top">
+        <div>
+          <strong>${esc(patientName(p.patient_id))}</strong> <span class="muted small">(inativo)</span>
+          <div class="muted small">${esc(serviceName(p.service_id))} · ${used}/${total} sessões usadas · saldo ${remain}</div>
+        </div>
+        <div class="package-actions">
+          <button class="btn" onclick="editPackage('${p.id}')">Editar</button>
+          <button class="btn success" onclick="reactivatePackage('${p.id}')">Reativar</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
   return `<div class="item package-card ${inactive?'inactive':''}">
     <div class="item-top">
       <div>
-        <strong>${esc(patientName(p.patient_id))}</strong>${inactive?' <span class="muted small">(inativo)</span>':''}
+        <strong>${esc(patientName(p.patient_id))}</strong>
         <div class="muted small">${esc(serviceName(p.service_id))}</div>
       </div>
       <div class="package-actions">
         <button class="btn" onclick="editPackage('${p.id}')">Editar</button>
-        ${inactive?`<button class="btn success" onclick="reactivatePackage('${p.id}')">Reativar</button>`:`<button class="btn danger" onclick="removePackage('${p.id}')">Remover</button>`}
+        <button class="btn danger" onclick="removePackage('${p.id}')">Remover</button>
       </div>
     </div>
     <div class="small"><span class="used-counter">${used}/${total} sessões usadas</span> · <span class="${cls}">saldo ${remain}</span></div>
     <div class="package-progress"><span style="width:${pct}%"></span></div>
-    ${inactive?'':`<div class="package-schedule-placeholder" data-package-schedule-id="${esc(p.id)}">Verificando agenda do pacote...</div>`}
+    <div class="package-schedule-placeholder" data-package-schedule-id="${esc(p.id)}">Verificando agenda do pacote...</div>
     ${packagePatternSummary(p)}
   </div>`;
 }
