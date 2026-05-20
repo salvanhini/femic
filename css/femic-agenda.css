@@ -6333,21 +6333,23 @@ textarea{
 #panel-documentos .document-sheet-premium .doc-brand{
   display:flex;
   justify-content:space-between;
-  align-items:flex-start;
-  gap:12px;
-  border-bottom:1px solid rgba(11,60,111,.12);
-  padding-bottom:14px;
-  margin-bottom:18px;
+  align-items:center;
+  gap:18px;
+  border-bottom:2px solid rgba(11,60,111,.16);
+  padding:0 0 18px;
+  margin-bottom:22px;
+  background:linear-gradient(180deg,#fff,#f8fbfd);
 }
 
 #panel-documentos .document-sheet-premium .doc-brand-main{
   display:grid;
-  gap:6px;
+  gap:8px;
+  align-items:center;
 }
 
 #panel-documentos .document-sheet-premium .doc-logo-img{
-  max-width:170px;
-  max-height:78px;
+  max-width:260px;
+  max-height:118px;
   object-fit:contain;
 }
 
@@ -6368,6 +6370,7 @@ textarea{
   color:var(--muted);
   font-weight:800;
   text-align:right;
+  line-height:1.45;
 }
 
 #panel-documentos .document-sheet-premium .doc-sign-premium{

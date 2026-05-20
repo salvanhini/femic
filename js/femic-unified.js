@@ -733,21 +733,31 @@
   async function saveGeneratedDocumentToCloud(doc){
     if(typeof api !== 'function' || !base() || !key()) return { skipped:true };
     try{
-      await api('femic_generated_documents', {
-        method:'POST',
-        body:JSON.stringify({
-          id: doc.id,
-          patient_id: doc.patient_id,
-          patient_name: doc.patient_name,
-          document_type: doc.type,
-          document_title: doc.title,
-          document_body: doc.body,
-          document_date: doc.date,
-          rendered_html: doc.body,
-          metadata: { body_text: doc.body_text || '' },
-          source: 'femic_unified'
-        })
-      });
+      var payload = {
+        id: doc.id,
+        patient_id: doc.patient_id,
+        patient_name: doc.patient_name,
+        document_type: doc.type,
+        document_title: doc.title,
+        document_body: doc.body,
+        document_date: doc.date,
+        rendered_html: doc.body,
+        metadata: { body_text: doc.body_text || '', local_id: doc.id },
+        source: 'femic_unified'
+      };
+      try{
+        await api('femic_generated_documents', {
+          method:'POST',
+          body:JSON.stringify(payload)
+        });
+      }catch(firstError){
+        if(!/uuid|invalid input syntax/i.test(String(firstError && firstError.message || ''))) throw firstError;
+        delete payload.id;
+        await api('femic_generated_documents', {
+          method:'POST',
+          body:JSON.stringify(payload)
+        });
+      }
       return { ok:true };
     }catch(e){
       return { ok:false, error:e };
@@ -1279,7 +1289,11 @@
     renderGeneratedDocumentsHistory(pid);
     setDocumentStep(4);
     if(typeof toast === 'function'){
-      toast(cloudResult.ok === false ? 'Documento salvo localmente. A tabela em nuvem não está pronta.' : 'Documento salvo no histórico.', cloudResult.ok === false ? 'warning' : 'success');
+      var msg = 'Documento salvo no histórico.';
+      if(cloudResult.ok === false){
+        msg = 'Documento salvo localmente. Nuvem não salvou: ' + ((cloudResult.error && cloudResult.error.message) || 'verifique a tabela femic_generated_documents.');
+      }
+      toast(msg, cloudResult.ok === false ? 'warning' : 'success');
     }
   };
 
@@ -1289,7 +1303,7 @@
     if(!preview) return;
     var printWindow = window.open('', '_blank', 'width=900,height=700');
     if(!printWindow) return;
-    printWindow.document.write('<html><head><title>Documento FEMIC</title><style>@page{size:A4;margin:18mm}body{font-family:Arial,sans-serif;color:#183043;background:#fff}h2{color:#0b3c6f;letter-spacing:.03em;margin:0 0 18px}.document-sheet{max-width:820px;margin:0 auto}.doc-brand{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid #dbe5ea;padding-bottom:14px;margin-bottom:22px}.doc-brand-main{display:grid;gap:6px}.doc-logo-img{max-width:170px;max-height:78px;object-fit:contain}.doc-brand span{display:block;color:#0b3c6f;font-size:1.35rem;font-weight:900;letter-spacing:.08em}.doc-brand strong,.doc-brand small{color:#64748b}.doc-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}.meta-box{border:1px solid #dbe5ea;border-radius:12px;padding:10px}.doc-body{white-space:pre-wrap;line-height:1.68;font-size:12.5pt;min-height:310px}.doc-sign{margin-top:34px;padding-top:18px;border-top:1px dashed #c9d6de;color:#64748b}.doc-sign-premium{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}.doc-signature-block{min-width:280px;text-align:center;color:#183043}.doc-signature-img{display:block;max-width:230px;max-height:92px;object-fit:contain;margin:0 auto 6px}.doc-sign-line{border-top:1px solid #8da2b3;margin:2px auto 8px;width:260px}.doc-professional-name{display:block;color:#0b3c6f;font-size:11.5pt}.doc-professional-council{display:block;margin-top:3px;color:#64748b;font-size:10pt;font-weight:700}.doc-stamp-img{max-width:150px;max-height:150px;object-fit:contain;opacity:.92}@media print{body{padding:0}.document-sheet{max-width:none}}</style></head><body>' + preview.innerHTML + '</body></html>');
+    printWindow.document.write('<html><head><title>Documento FEMIC</title><style>@page{size:A4;margin:18mm}body{font-family:Arial,sans-serif;color:#183043;background:#fff}h2{color:#0b3c6f;letter-spacing:.03em;margin:0 0 18px}.document-sheet{max-width:820px;margin:0 auto}.doc-brand{display:flex;justify-content:space-between;align-items:center;gap:18px;border-bottom:2px solid #dbe5ea;padding:0 0 18px;margin-bottom:24px;background:#fff}.doc-brand-main{display:grid;gap:8px}.doc-logo-img{max-width:260px;max-height:118px;object-fit:contain}.doc-brand span{display:block;color:#0b3c6f;font-size:1.55rem;font-weight:900;letter-spacing:.08em}.doc-brand strong,.doc-brand small{color:#64748b}.doc-brand small{text-align:right;line-height:1.45}.doc-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}.meta-box{border:1px solid #dbe5ea;border-radius:12px;padding:10px}.doc-body{white-space:pre-wrap;line-height:1.68;font-size:12.5pt;min-height:310px}.doc-sign{margin-top:34px;padding-top:18px;border-top:1px dashed #c9d6de;color:#64748b}.doc-sign-premium{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}.doc-signature-block{min-width:280px;text-align:center;color:#183043}.doc-signature-img{display:block;max-width:230px;max-height:92px;object-fit:contain;margin:0 auto 6px}.doc-sign-line{border-top:1px solid #8da2b3;margin:2px auto 8px;width:260px}.doc-professional-name{display:block;color:#0b3c6f;font-size:11.5pt}.doc-professional-council{display:block;margin-top:3px;color:#64748b;font-size:10pt;font-weight:700}.doc-stamp-img{max-width:150px;max-height:150px;object-fit:contain;opacity:.92}@media print{body{padding:0}.document-sheet{max-width:none}}</style></head><body>' + preview.innerHTML + '</body></html>');
     printWindow.document.close();
     printWindow.focus();
     setTimeout(function(){ printWindow.print(); }, 300);
