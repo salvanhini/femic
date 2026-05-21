@@ -476,7 +476,7 @@
         snippet = box.innerText || String(doc.body || '');
       }
       snippet = snippet.replace(/\s+/g, ' ').trim().slice(0, 180);
-      return '<div class="doc-history-card"><div class="doc-history-main"><span>' + escHtml(doc.type_label || doc.type || 'Documento') + '</span><strong>' + escHtml(doc.title || 'Documento') + '</strong><div class="muted small">' + escHtml(doc.patient_name || '-') + ' · ' + fmtDateSafe(doc.date) + '</div><p>' + escHtml(snippet || 'Sem texto salvo.') + '</p></div><div class="doc-history-actions"><button class="btn primary" onclick="duplicateGeneratedDocument(\'' + escHtml(doc.id) + '\')">Duplicar como novo</button><button class="btn" onclick="loadGeneratedDocument(\'' + escHtml(doc.id) + '\')">Consultar</button><button class="btn danger" onclick="deleteGeneratedDocument(\'' + escHtml(doc.id) + '\')">Remover</button></div></div>';
+      return '<div class="doc-history-card"><div class="doc-history-main"><span>' + escHtml(doc.type_label || doc.type || 'Documento') + '</span><strong>' + escHtml(doc.title || 'Documento') + '</strong><div class="muted small">' + escHtml(doc.patient_name || '-') + ' · ' + fmtDateSafe(doc.date) + '</div><p>' + escHtml(snippet || 'Sem texto salvo.') + '</p></div><div class="doc-history-actions"><button class="btn primary" onclick="openGeneratedDocument(\'' + escHtml(doc.id) + '\')">Consultar</button><button class="btn" onclick="duplicateGeneratedDocument(\'' + escHtml(doc.id) + '\')">Duplicar como novo</button><button class="btn danger" onclick="deleteGeneratedDocument(\'' + escHtml(doc.id) + '\')">Remover</button></div></div>';
     }).join('') : '<div class="muted">Nenhum documento salvo ainda.</div>';
   }
 
@@ -725,6 +725,24 @@
         '<div class="doc-body">' + body + '</div>' +
         '<div class="doc-sign doc-sign-premium"><div class="doc-signature-block">' + renderDocumentImage(settings.signatureData, 'doc-signature-img', 'Assinatura') + '<div class="doc-sign-line"></div><strong class="doc-professional-name">' + escHtml(settings.professionalName) + '</strong>' + (settings.professionalCouncil ? '<span class="doc-professional-council">' + escHtml(settings.professionalCouncil) + '</span>' : '') + '</div>' + (settings.showStamp === 'yes' ? renderDocumentImage(settings.stampData, 'doc-stamp-img', 'Carimbo') : '') + '</div>' +
       '</div>';
+  }
+
+  function renderSavedDocumentSheet(doc){
+    var settings = getDocumentSettings();
+    var patient = getPatientById(doc.patient_id) || { name: doc.patient_name || 'Paciente', pathology: '' };
+    var body = doc.body ? sanitizeDocumentHtml(doc.body) : textToDocumentHtml(doc.body_text || 'Sem texto salvo.');
+    var title = doc.title || doc.type_label || 'DOCUMENTO';
+    return '<div class="document-sheet document-sheet-premium">' +
+      '<div class="doc-brand"><div class="doc-brand-main">' + (settings.logoData ? renderDocumentImage(settings.logoData, 'doc-logo-img', 'Logo') : '<span>FEMIC</span>') + '<strong>Fisioterapia e cuidado clínico</strong></div><small>Documento salvo no histórico FEMIC</small></div>' +
+      '<h2>' + escHtml(title) + '</h2>' +
+      '<div class="doc-meta">' +
+        '<div class="meta-box"><div class="small muted">Paciente</div><strong>' + escHtml(patient.name || doc.patient_name || '-') + '</strong></div>' +
+        '<div class="meta-box"><div class="small muted">Data</div><strong>' + escHtml(fmtDateSafe(doc.date)) + '</strong></div>' +
+        '<div class="meta-box"><div class="small muted">Patologia</div><strong>' + escHtml(patient.pathology || '-') + '</strong></div>' +
+      '</div>' +
+      '<div class="doc-body">' + body + '</div>' +
+      '<div class="doc-sign doc-sign-premium"><div class="doc-signature-block">' + renderDocumentImage(settings.signatureData, 'doc-signature-img', 'Assinatura') + '<div class="doc-sign-line"></div><strong class="doc-professional-name">' + escHtml(settings.professionalName || 'FEMIC Fisioterapia') + '</strong>' + (settings.professionalCouncil ? '<span class="doc-professional-council">' + escHtml(settings.professionalCouncil) + '</span>' : '') + '</div>' + (settings.showStamp === 'yes' ? renderDocumentImage(settings.stampData, 'doc-stamp-img', 'Carimbo') : '') + '</div>' +
+    '</div>';
   }
 
   async function saveGeneratedDocumentToCloud(doc){
@@ -1370,6 +1388,28 @@
     if(!confirm('Remover esta guia?')) return;
     saveGuias(getGuias().filter(function(item){ return String(item.id) !== String(guiaId); }));
     if(typeof toast === 'function') toast('Guia removida.', 'warning');
+  };
+
+  window.openGeneratedDocument = function(documentId){
+    var doc = getGeneratedDocuments().find(function(item){ return String(item.id) === String(documentId); });
+    if(!doc) return;
+    var title = el('generatedDocumentModalTitle');
+    var body = el('generatedDocumentModalBody');
+    var modal = el('generatedDocumentModal');
+    if(title) title.textContent = doc.title || doc.type_label || 'Consulta do documento';
+    if(body) body.innerHTML = renderSavedDocumentSheet(doc);
+    if(modal) modal.classList.add('show');
+  };
+
+  window.printGeneratedDocumentFromModal = function(){
+    var body = el('generatedDocumentModalBody');
+    if(!body || !body.innerHTML.trim()) return;
+    var printWindow = window.open('', '_blank', 'width=900,height=700');
+    if(!printWindow) return;
+    printWindow.document.write('<html><head><title>Documento FEMIC</title><style>@page{size:A4;margin:18mm}body{font-family:Arial,sans-serif;color:#183043;background:#fff}.document-sheet{max-width:820px;margin:0 auto}.doc-brand{display:flex;justify-content:space-between;align-items:center;gap:18px;border-bottom:2px solid #dbe5ea;padding:0 0 18px;margin-bottom:24px;background:#fff}.doc-brand-main{display:grid;gap:8px}.doc-logo-img{max-width:260px;max-height:118px;object-fit:contain}.doc-brand span{display:block;color:#0b3c6f;font-size:1.55rem;font-weight:900;letter-spacing:.08em}.doc-brand strong,.doc-brand small{color:#64748b}.doc-brand small{text-align:right;line-height:1.45}h2{color:#0b3c6f;letter-spacing:.03em;margin:0 0 18px}.doc-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}.meta-box{border:1px solid #dbe5ea;border-radius:12px;padding:10px}.small{font-size:.88rem}.muted{color:#64748b}.doc-body{white-space:pre-wrap;line-height:1.68;font-size:12.5pt;min-height:310px}.doc-sign{margin-top:34px;padding-top:18px;border-top:1px dashed #c9d6de;color:#64748b}.doc-sign-premium{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}.doc-signature-block{min-width:280px;text-align:center;color:#183043}.doc-signature-img{display:block;max-width:230px;max-height:92px;object-fit:contain;margin:0 auto 6px}.doc-sign-line{border-top:1px solid #8da2b3;margin:2px auto 8px;width:260px}.doc-professional-name{display:block;color:#0b3c6f;font-size:11.5pt}.doc-professional-council{display:block;margin-top:3px;color:#64748b;font-size:10pt;font-weight:700}.doc-stamp-img{max-width:150px;max-height:150px;object-fit:contain;opacity:.92}@media print{body{padding:0}.document-sheet{max-width:none}}</style></head><body>' + body.innerHTML + '</body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(function(){ printWindow.print(); }, 300);
   };
 
   window.loadGeneratedDocument = function(documentId){

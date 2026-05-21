@@ -6381,6 +6381,145 @@ textarea{
   opacity:.92;
 }
 
+.generated-document-modal{
+  width:min(980px,100%);
+}
+
+.generated-document-reader{
+  background:linear-gradient(180deg,#eef6fb,#f8fbfd);
+  border-radius:18px;
+  padding:16px;
+}
+
+.generated-document-reader .document-sheet-premium{
+  background:#fff;
+  border-radius:16px;
+  border:1px solid rgba(11,60,111,.14);
+  box-shadow:0 18px 36px rgba(11,60,111,.10);
+  padding:28px;
+}
+
+.generated-document-reader .doc-brand{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:18px;
+  border-bottom:2px solid rgba(11,60,111,.16);
+  padding:0 0 18px;
+  margin-bottom:22px;
+}
+
+.generated-document-reader .doc-brand-main{
+  display:grid;
+  gap:8px;
+  align-items:center;
+}
+
+.generated-document-reader .doc-logo-img{
+  max-width:260px;
+  max-height:118px;
+  object-fit:contain;
+}
+
+.generated-document-reader .doc-brand span{
+  display:block;
+  color:var(--primary);
+  font-size:1.35rem;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+
+.generated-document-reader .doc-brand strong,
+.generated-document-reader .doc-brand small{
+  color:var(--muted);
+  font-weight:800;
+}
+
+.generated-document-reader .doc-brand small{
+  text-align:right;
+  line-height:1.45;
+}
+
+.generated-document-reader h2{
+  color:var(--primary);
+  margin:0 0 18px;
+}
+
+.generated-document-reader .doc-meta{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin-bottom:22px;
+}
+
+.generated-document-reader .meta-box{
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px;
+}
+
+.generated-document-reader .doc-body{
+  white-space:pre-wrap;
+  line-height:1.68;
+  font-size:1rem;
+  min-height:260px;
+}
+
+.generated-document-reader .doc-sign{
+  margin-top:34px;
+  padding-top:18px;
+  border-top:1px dashed rgba(11,60,111,.22);
+}
+
+.generated-document-reader .doc-sign-premium{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:20px;
+}
+
+.generated-document-reader .doc-signature-block{
+  min-width:220px;
+  text-align:center;
+}
+
+.generated-document-reader .doc-signature-img{
+  display:block;
+  max-width:230px;
+  max-height:92px;
+  object-fit:contain;
+  margin:0 auto 6px;
+}
+
+.generated-document-reader .doc-sign-line{
+  border-top:1px solid rgba(11,60,111,.34);
+  width:240px;
+  max-width:100%;
+  margin:2px auto 8px;
+}
+
+.generated-document-reader .doc-professional-name{
+  display:block;
+  color:var(--primary);
+  font-size:.94rem;
+  line-height:1.25;
+}
+
+.generated-document-reader .doc-professional-council{
+  display:block;
+  margin-top:3px;
+  color:var(--muted);
+  font-size:.82rem;
+  font-weight:800;
+}
+
+.generated-document-reader .doc-stamp-img{
+  max-width:145px;
+  max-height:145px;
+  object-fit:contain;
+  opacity:.92;
+}
+
 .patient-select-native{
   position:absolute!important;
   width:1px!important;
@@ -6772,6 +6911,24 @@ textarea:focus-visible{
 
   #panel-documentos .doc-history-actions{
     justify-content:flex-start;
+  }
+
+  .generated-document-reader{
+    padding:10px;
+  }
+
+  .generated-document-reader .document-sheet-premium{
+    padding:18px;
+  }
+
+  .generated-document-reader .doc-brand,
+  .generated-document-reader .doc-sign-premium{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .generated-document-reader .doc-meta{
+    grid-template-columns:1fr;
   }
 
   .rec-suggestion-head,
