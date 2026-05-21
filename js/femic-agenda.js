@@ -909,7 +909,47 @@ function useRecurringSuggestion(index){
   toast('Recorrência preenchida. Revise e clique em salvar.','success');
 }
 async function persistAppointment(id,payload){try{return id?(await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify(payload)}))[0]:(await api('appointments',{method:'POST',body:JSON.stringify(payload)}))[0]}catch(e){if(String(e.message||'').includes('service_price_at_time')){const clone={...payload};delete clone.service_price_at_time;toast('Campo service_price_at_time ausente no banco. Salvando sem ele. Rode o patch SQL v1.4.28 depois.','warning');return id?(await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify(clone)}))[0]:(await api('appointments',{method:'POST',body:JSON.stringify(clone)}))[0]}throw e}}
-async function saveAppointment(){const saveBtn=$('saveApptBtn');try{if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Salvando...'}const id=$('apptId').value;if(!$('apptPatient').value){toast('Selecione o paciente antes de salvar.','warning');focusPatientPicker('apptPatient');return}if(!$('apptService').value){toast('Selecione o serviço antes de salvar.','warning');$('apptService').focus();return}if(!$('apptDate').value){toast('Informe a data do atendimento.','warning');$('apptDate').focus();return}if(!$('apptStart').value){toast('Informe o horário inicial.','warning');$('apptStart').focus();return}const s=serviceById($('apptService').value);if(!$('apptEnd').value) $('apptEnd').value=addMinutes($('apptStart').value,Number(s.duration_minutes||45));const agreedPrice=Number(String($('apptPrice')?.value||'0').replace(',','.'));if(!Number.isFinite(agreedPrice)||agreedPrice<0){toast('Informe um valor válido para a sessão.','warning');$('apptPrice')?.focus();return}const basePayload={patient_id:$('apptPatient').value,service_id:$('apptService').value,appointment_date:$('apptDate').value,start_time:$('apptStart').value,end_time:$('apptEnd').value,duration_minutes:Number(s.duration_minutes||45),status:$('apptStatus').value,service_price_at_time:agreedPrice};if(timeToMin(basePayload.end_time)<=timeToMin(basePayload.start_time)){toast('O horário final precisa ser maior que o inicial.','warning');return}if(!isTodayDate(basePayload.appointment_date)&&!isWorking(basePayload.appointment_date)){toast('Dia fora do expediente.','warning');return}if(!isInsideWorkingTime(basePayload.appointment_date,basePayload.start_time,basePayload.end_time)){toast('Horário fora dos períodos de expediente configurados.','warning');return}if($('recurring').checked&&!id){await saveRecurring(basePayload);return}const msg=hasConflict(basePayload,id);if(msg){toast(msg,'warning');return}let old=id?appointments.find(a=>String(a.id)===String(id)):null;let saved=await persistAppointment(id,basePayload);await handlePackageMovement(old,saved);if(!id&&$('rescheduleOriginId').value){await finalizeReschedule($('rescheduleOriginId').value,$('rescheduleCancelOriginal').value==='true')}closeModal('apptModal');await loadAll(true);toast('Agendamento salvo.','success')}catch(e){toast('Erro ao salvar: '+e.message,'error')}finally{if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='Salvar agendamento'}}}
+function confirmOutsideWorkingHours(payload){
+  const warnings=[];
+  if(!isTodayDate(payload.appointment_date)&&!isWorking(payload.appointment_date))warnings.push('O dia escolhido está fora do expediente.');
+  if(!isInsideWorkingTime(payload.appointment_date,payload.start_time,payload.end_time))warnings.push('O horário está fora dos períodos de expediente configurados.');
+  if(!warnings.length)return true;
+  const ok=confirm(warnings.join('\n')+'\n\nDeseja marcar mesmo assim? Use esta opção apenas para emergências ou encaixes autorizados.');
+  if(!ok)toast('Agendamento fora do expediente cancelado.','info');
+  return ok;
+}
+async function saveAppointment(){
+  const saveBtn=$('saveApptBtn');
+  try{
+    if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Salvando...'}
+    const id=$('apptId').value;
+    if(!$('apptPatient').value){toast('Selecione o paciente antes de salvar.','warning');focusPatientPicker('apptPatient');return}
+    if(!$('apptService').value){toast('Selecione o serviço antes de salvar.','warning');$('apptService').focus();return}
+    if(!$('apptDate').value){toast('Informe a data do atendimento.','warning');$('apptDate').focus();return}
+    if(!$('apptStart').value){toast('Informe o horário inicial.','warning');$('apptStart').focus();return}
+    const s=serviceById($('apptService').value);
+    if(!$('apptEnd').value)$('apptEnd').value=addMinutes($('apptStart').value,Number(s.duration_minutes||45));
+    const agreedPrice=Number(String($('apptPrice')?.value||'0').replace(',','.'));
+    if(!Number.isFinite(agreedPrice)||agreedPrice<0){toast('Informe um valor válido para a sessão.','warning');$('apptPrice')?.focus();return}
+    const basePayload={patient_id:$('apptPatient').value,service_id:$('apptService').value,appointment_date:$('apptDate').value,start_time:$('apptStart').value,end_time:$('apptEnd').value,duration_minutes:Number(s.duration_minutes||45),status:$('apptStatus').value,service_price_at_time:agreedPrice};
+    if(timeToMin(basePayload.end_time)<=timeToMin(basePayload.start_time)){toast('O horário final precisa ser maior que o inicial.','warning');return}
+    if(!confirmOutsideWorkingHours(basePayload))return;
+    if($('recurring').checked&&!id){await saveRecurring(basePayload);return}
+    const msg=hasConflict(basePayload,id);
+    if(msg){toast(msg,'warning');return}
+    let old=id?appointments.find(a=>String(a.id)===String(id)):null;
+    let saved=await persistAppointment(id,basePayload);
+    await handlePackageMovement(old,saved);
+    if(!id&&$('rescheduleOriginId').value)await finalizeReschedule($('rescheduleOriginId').value,$('rescheduleCancelOriginal').value==='true');
+    closeModal('apptModal');
+    await loadAll(true);
+    toast('Agendamento salvo.','success');
+  }catch(e){
+    toast('Erro ao salvar: '+e.message,'error');
+  }finally{
+    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='Salvar agendamento'}
+  }
+}
 async function saveRecurring(payload){const selected=[...document.querySelectorAll('.recDay:checked')].map(x=>Number(x.value));const count=Number($('recCount').value||1);if(!selected.length){toast('Selecione ao menos um dia da semana.','warning');return}const s=serviceById(payload.service_id);const dayTimes={};selected.forEach(d=>{dayTimes[d]=($('recTime'+d)?.value||payload.start_time||'08:00')});let created=0,conflicts=0,date=new Date(payload.appointment_date+'T00:00:00'),tries=0;while(created<count&&tries<370){const ds=isoDate(date),dow=date.getDay();if(selected.includes(dow)&&(isTodayDate(ds)||isWorking(ds))){const st=dayTimes[dow]||payload.start_time;const cand={...payload,appointment_date:ds,start_time:st,end_time:addMinutes(st,Number(s.duration_minutes||payload.duration_minutes||45)),duration_minutes:Number(s.duration_minutes||payload.duration_minutes||45)};let dayRows=appointments.filter(a=>a.appointment_date===ds);try{dayRows=await fetchAppointmentsForDate(ds)}catch(e){}const msg=conflictInAppointmentList(cand,dayRows);if(msg||!isInsideWorkingTime(cand.appointment_date,cand.start_time,cand.end_time))conflicts++;else{const saved=await persistAppointment(null,cand);dayRows.push(saved);created++}}date.setDate(date.getDate()+1);tries++}closeModal('apptModal');await loadAll(true);toast(`${created} agendamentos criados. ${conflicts} conflitos ignorados.`,'success')}
 async function finalizeReschedule(originId,cancelOriginal){const old=appointments.find(a=>String(a.id)===String(originId));if(!old||!cancelOriginal)return;if(old.status==='concluido'&&old.package_consumed)await refundPackage(old);await api('appointments?id=eq.'+originId,{method:'PATCH',body:JSON.stringify({status:'cancelado'})});}
 function rescheduleAppointment(id){const a=appointments.find(x=>String(x.id)===String(id));if(!a)return;const cancelOriginal=confirm('Remarcar cancelando o agendamento original? Clique em OK para cancelar o original e criar um novo. Clique em Cancelar para criar novo sem cancelar o original.');openAppt(a.appointment_date,null,normalizeTime(a.start_time));$('apptPatient').value=a.patient_id;$('apptService').value=a.service_id;$('apptStatus').value='agendado';$('apptDate').value=a.appointment_date;$('apptStart').value=normalizeTime(a.start_time);syncPatientPickers();onServiceChange();$('rescheduleOriginId').value=id;$('rescheduleCancelOriginal').value=cancelOriginal?'true':'false';$('apptTitle').textContent='Remarcar atendimento';toast(cancelOriginal?'Escolha novo horário. O original será cancelado ao salvar.':'Escolha novo horário. O original será mantido.','info')}
