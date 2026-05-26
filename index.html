@@ -13,6 +13,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/femic-agenda.css?v=theme-refactor-9">
+<link rel="stylesheet" href="css/femic-tokens.css?v=design-system-1">
+<link rel="stylesheet" href="css/femic-layout.css?v=design-system-1">
+<link rel="stylesheet" href="css/femic-components.css?v=design-system-1">
 <link rel="stylesheet" href="css/femic-unified.css?v=unified-1">
 </head>
 <body>
@@ -532,6 +535,20 @@
   </section>
 
   <section class="panel" id="panel-settings">
+    <div class="card system-health-card">
+      <div class="section-title">
+        <div>
+          <div class="eyebrow">Saúde do sistema</div>
+          <h3>Diagnóstico operacional</h3>
+        </div>
+        <div class="toolbar">
+          <button class="btn" type="button" onclick="runSystemHealthCheck()">Verificar agora</button>
+        </div>
+      </div>
+      <div class="system-health-grid" id="systemHealthGrid">
+        <div class="health-item neutral"><strong>Aguardando verificação</strong><span>Abra as configurações ou clique em verificar.</span></div>
+      </div>
+    </div>
     <div class="grid grid-2"><div class="card"><div class="section-title"><div><div class="eyebrow">Supabase</div><h3>Conexão</h3></div></div><div class="grid grid-2"><div class="field"><label>URL</label><input id="sbUrl" placeholder="https://xxxx.supabase.co"></div><div class="field"><label>Anon key</label><input id="sbKey" placeholder="anon key"></div></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" onclick="saveConfig();loadAll()">Salvar e carregar</button><button class="btn" onclick="testConnection()">Testar conexão</button></div></div><div class="card"><div class="section-title"><div><div class="eyebrow">Expediente</div><h3>Horários da clínica</h3></div></div><div class="grid grid-3"><div class="field"><label>Início geral</label><input id="setStart" type="time" value="08:00"></div><div class="field"><label>Fim geral</label><input id="setEnd" type="time" value="20:00"></div><div class="field"><label>Intervalo grade</label><select id="setInterval"><option>15</option><option selected>30</option><option>45</option><option>60</option></select></div></div><div class="field" style="margin-top:12px"><label>Períodos de atendimento</label><input id="setPeriods" placeholder="08:00-12:00,16:00-20:00" value="08:00-12:00,16:00-20:00"><div class="period-help small">Use vírgula para separar períodos. A agenda só mostrará horários dentro dessas janelas.</div></div><div class="toolbar" id="workDays" style="margin-top:12px"></div><button class="btn primary" style="margin-top:12px" onclick="saveSettings()">Salvar expediente</button></div></div>
     <div class="grid grid-2" style="margin-top:16px"><div class="card"><div class="section-title"><div><div class="eyebrow">Pagadores</div><h3>Convênios e particulares</h3></div></div><div class="toolbar"><input id="payerName" placeholder="Nome do pagador" style="max-width:260px"><button class="btn primary" onclick="savePayer()">Adicionar</button></div><div class="list" id="payerList" style="margin-top:12px"></div></div><div class="card"><div class="section-title"><div><div class="eyebrow">Serviços</div><h3>Valores, duração e modo</h3></div></div><div class="grid grid-2"><input id="svcName" placeholder="Nome do serviço"><select id="svcPayer"></select><input id="svcPrice" type="number" placeholder="Valor"><select id="svcDur"><option>30</option><option selected>45</option><option>60</option><option>90</option></select><select id="svcMode"><option value="grupo">Grupo</option><option value="individual">Individual</option></select><input id="svcMax" type="number" value="4" placeholder="Limite"></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" id="saveServiceBtn" onclick="saveService()">Adicionar serviço</button><button class="btn" id="cancelServiceEditBtn" style="display:none" onclick="cancelServiceEdit()">Cancelar edição</button></div><div class="list" id="serviceList" style="margin-top:12px"></div></div></div>
     <details class="card settings-compact-details" style="margin-top:16px" open><summary><span><span class="eyebrow">Modelos</span><strong>WhatsApp</strong></span></summary><div class="field"><label>Lembrete de sessão</label><textarea id="tplReminder" rows="4"></textarea></div><button class="btn primary" style="margin-top:12px" onclick="saveTemplates()">Salvar modelo</button></details>

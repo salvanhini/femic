@@ -17,6 +17,9 @@ window.location.replace('index.html');
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/femic-agenda.css?v=theme-refactor-9">
+<link rel="stylesheet" href="css/femic-tokens.css?v=design-system-1">
+<link rel="stylesheet" href="css/femic-layout.css?v=design-system-1">
+<link rel="stylesheet" href="css/femic-components.css?v=design-system-1">
 </head>
 <body>
 <div class="mobile-topbar">
@@ -231,6 +234,13 @@ window.location.replace('index.html');
         <div class="card kpi"><div class="eyebrow">Concluídas</div><strong>0</strong><span class="muted small">já resolvidas</span></div>
         <div class="card kpi"><div class="eyebrow">Canceladas</div><strong>0</strong><span class="muted small">descartadas</span></div>
       </div>
+      <section class="card pending-card">
+        <div class="section-title">
+          <div><div class="eyebrow">Agendamento público</div><h3>Solicitações do sistema separado</h3></div>
+          <button class="btn" onclick="loadAll(true)">Atualizar</button>
+        </div>
+        <div class="pending-task-list" id="appointmentRequestList"></div>
+      </section>
       <section class="card pending-card">
         <div class="section-title">
           <div><div class="eyebrow">WhatsApp e voz</div><h3>Tarefas recebidas para revisão</h3></div>

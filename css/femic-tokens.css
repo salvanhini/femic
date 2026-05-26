@@ -1,0 +1,60 @@
+/* FEMIC design tokens: colors, theme, shadows and typography */
+:root{
+  --primary:#123f63;
+  --primary2:#1aa6c8;
+  --accent:#14b8a6;
+  --bg:#f5f7fa;
+  --card:#ffffff;
+  --text:#172536;
+  --muted:#667789;
+  --line:rgba(18,63,99,.12);
+  --shadow-sm:0 10px 26px rgba(18,63,99,.06);
+  --shadow:0 18px 42px rgba(18,63,99,.09);
+  --shadow-md:0 24px 60px rgba(18,63,99,.12);
+  --shadow-lg:0 26px 70px rgba(18,63,99,.16);
+  --radius-sm:12px;
+  --radius-md:18px;
+  --radius-lg:26px;
+  --radius:18px;
+  --transition:.2s cubic-bezier(.4,0,.2,1);
+}
+
+html[data-theme="dark"]{
+  --bg:#101820;
+  --card:#172331;
+  --text:#e7eef5;
+  --muted:#9fb0bf;
+  --line:rgba(231,238,245,.13);
+  --shadow-sm:0 10px 28px rgba(0,0,0,.18);
+  --shadow:0 20px 50px rgba(0,0,0,.24);
+  --shadow-md:0 28px 70px rgba(0,0,0,.32);
+}
+
+body{
+  color:var(--text);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.74), rgba(255,255,255,0) 260px),
+    linear-gradient(135deg, #f8fafc 0%, var(--bg) 52%, #eef6f8 100%);
+  letter-spacing:0;
+}
+
+html[data-theme="dark"] body{
+  background:linear-gradient(135deg,#0f1720 0%,#101820 58%,#13242b 100%);
+}
+
+.brand h1{
+  font-family:'DM Sans',sans-serif;
+  font-size:1.35rem;
+  font-weight:900;
+  color:var(--text);
+}
+
+.brand p{
+  color:var(--muted);
+}
+
+.eyebrow{
+  color:#177c91;
+  font-size:.7rem;
+  letter-spacing:.08em;
+}
