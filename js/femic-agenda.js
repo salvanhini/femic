@@ -1,6 +1,7 @@
 const SQL_SCHEMA = `-- FEMIC Agenda v1.5.0 - Supabase seguro + prontuário em nuvem
 -- ATENÇÃO: este SQL reseta as tabelas operacionais deste Supabase.
 -- Faça backup JSON antes de rodar em um banco com dados reais.
+DROP TABLE IF EXISTS appointment_requests CASCADE;
 DROP TABLE IF EXISTS session_movements CASCADE;
 DROP TABLE IF EXISTS session_packages CASCADE;
 DROP TABLE IF EXISTS appointments CASCADE;
@@ -175,6 +176,26 @@ CREATE TABLE assistant_tasks (
   completed_at TIMESTAMP WITH TIME ZONE
 );
 
+-- SOLICITACOES DO SISTEMA SEPARADO DE AGENDAMENTO
+CREATE TABLE appointment_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id TEXT REFERENCES patients(id) ON DELETE SET NULL,
+  patient_name TEXT NOT NULL,
+  patient_whatsapp TEXT NOT NULL,
+  service_id UUID REFERENCES services(id) ON DELETE SET NULL,
+  appointment_date DATE NOT NULL,
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  duration_minutes INTEGER DEFAULT 45,
+  status TEXT DEFAULT 'pendente',
+  origin TEXT DEFAULT 'public_scheduler',
+  preferred_period TEXT,
+  notes TEXT,
+  approved_appointment_id UUID REFERENCES appointments(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
 -- CONFIGURAÇÕES DA AGENDA
 CREATE TABLE schedule_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -217,6 +238,7 @@ CREATE INDEX idx_femic_generated_documents_created ON femic_generated_documents(
 CREATE INDEX idx_assistant_tasks_status_updated ON assistant_tasks(status, updated_at DESC);
 CREATE INDEX idx_assistant_tasks_origin ON assistant_tasks(origin);
 CREATE INDEX idx_assistant_tasks_fingerprint ON assistant_tasks(extension_fingerprint);
+CREATE INDEX idx_appointment_requests_status_created ON appointment_requests(status, created_at DESC);
 
 -- SEGURANÇA: anon não acessa dados. Usuários autenticados da clínica acessam tudo.
 ALTER TABLE patients ENABLE ROW LEVEL SECURITY;
@@ -228,6 +250,7 @@ ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE session_movements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinic_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assistant_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE appointment_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinical_anamneses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinical_evolutions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE femic_generated_documents ENABLE ROW LEVEL SECURITY;
@@ -247,11 +270,12 @@ CREATE POLICY "authenticated_full_access_appointments" ON appointments FOR ALL T
 CREATE POLICY "authenticated_full_access_session_movements" ON session_movements FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_clinic_rules" ON clinic_rules FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_assistant_tasks" ON assistant_tasks FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_full_access_appointment_requests" ON appointment_requests FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_clinical_anamneses" ON clinical_anamneses FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_clinical_evolutions" ON clinical_evolutions FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_femic_generated_documents" ON femic_generated_documents FOR ALL TO authenticated USING (true) WITH CHECK (true);
 NOTIFY pgrst, 'reload schema';`;
-const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],movements=[],clinicRules=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();let editingServiceId='';let loadedAppointmentQuery='',aiRadarQuery='',aiRadarAppointments=[],aiRadarLoaded=false,aiRadarLastWeeks=[],recurringSuggestionCache=[];const appointmentSearchSelected=new Set();
+const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],movements=[],clinicRules=[],appointmentRequests=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();let editingServiceId='';let loadedAppointmentQuery='',aiRadarQuery='',aiRadarAppointments=[],aiRadarLoaded=false,aiRadarLastWeeks=[],recurringSuggestionCache=[];const appointmentSearchSelected=new Set();
 const packageScheduleCache=new Map();
 let showArchivedPatients=false,showInactivePackages=false;
 const dayAppointmentCache=new Map();
@@ -325,7 +349,8 @@ async function refreshReportMonthIfNeeded(month){
     toast('Erro ao carregar relatório mensal: ' + e.message, 'error');
   }
 }
-async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const apQuery=appointmentWindowQuery();const [pa,hi,sv,pk,ap,mv,st,cr]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api(apQuery),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];loadedAppointmentQuery=apQuery;aiRadarQuery='';aiRadarLoaded=false;movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});packageScheduleCache.clear();dayAppointmentCache.clear();syncForms();renderActivePanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);toast('Erro ao carregar: '+e.message,'error')}}
+async function loadAppointmentRequestsCollection(){try{return await api('appointment_requests?select=*&order=created_at.desc&limit=80')||[]}catch(e){if(/appointment_requests|relation .* does not exist|Could not find the table/i.test(String(e&&e.message||e||'')))return[];throw e}}
+async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const apQuery=appointmentWindowQuery();const [pa,hi,sv,pk,ap,mv,st,cr,ar]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api(apQuery),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection(),loadAppointmentRequestsCollection()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];appointmentRequests=ar||[];loadedAppointmentQuery=apQuery;aiRadarQuery='';aiRadarLoaded=false;movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});packageScheduleCache.clear();dayAppointmentCache.clear();syncForms();recordSystemLoad(true);renderActivePanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);recordSystemLoad(false,e.message);toast('Erro ao carregar: '+e.message,'error')}}
 function toggleSidebar(){
   $('sidebar')?.classList.toggle('show');
   $('overlay')?.classList.toggle('show');
@@ -466,6 +491,69 @@ function resetClinicRulesToDefaults(){
   toast('Regras padrão restauradas localmente. Clique em salvar para enviar ao Supabase.','info');
 }
 
+function recordSystemLoad(ok,message=''){
+  localStorage.setItem('femic_last_load_status', ok ? 'ok' : 'error');
+  localStorage.setItem('femic_last_load_at', new Date().toISOString());
+  if(message) localStorage.setItem('femic_last_load_message', String(message));
+}
+
+function healthItemHtml(status,title,detail){
+  return `<div class="health-item ${esc(status)}"><strong>${esc(title)}</strong><span>${esc(detail)}</span></div>`;
+}
+
+function renderSystemHealth(items){
+  const target=$('systemHealthGrid');if(!target)return;
+  const lastAt=localStorage.getItem('femic_last_load_at');
+  const fallback=[
+    {status:base()&&key()?'ok':'warn',title:'Configuração Supabase',detail:base()&&key()?'URL e anon key preenchidas.':'Preencha URL e anon key para carregar dados.'},
+    {status:hasValidSession()?'ok':'warn',title:'Sessão',detail:hasValidSession()?'Sessão autenticada ativa.':'Faça login para acessar o Supabase.'},
+    {status:lastAt?'ok':'neutral',title:'Última atualização',detail:lastAt?new Date(lastAt).toLocaleString('pt-BR'):'Ainda sem carregamento registrado.'}
+  ];
+  target.innerHTML=(items||fallback).map(item=>healthItemHtml(item.status,item.title,item.detail)).join('');
+}
+
+function scriptVersionLabel(name){
+  const node=[...document.scripts].find(s=>String(s.src||'').includes(name));
+  if(!node)return 'Não encontrado no HTML.';
+  const query=String(node.src).split('?')[1]||'sem versão na URL';
+  return query;
+}
+
+async function checkOptionalTable(table){
+  try{
+    await api(table+'?select=id&limit=1');
+    return {status:'ok',title:table,detail:'Tabela acessível.'};
+  }catch(e){
+    if(/relation .* does not exist|Could not find the table|schema cache|does not exist/i.test(String(e&&e.message||e||''))){
+      return {status:'warn',title:table,detail:'Opcional ausente. Rode o patch incremental se precisar deste recurso.'};
+    }
+    return {status:'danger',title:table,detail:String(e.message||e).slice(0,120)};
+  }
+}
+
+async function runSystemHealthCheck(){
+  const target=$('systemHealthGrid');
+  if(target)target.innerHTML=healthItemHtml('neutral','Verificando','Conferindo sessão, scripts, cache e tabelas opcionais.');
+  const items=[
+    {status:base()&&key()?'ok':'warn',title:'Configuração Supabase',detail:base()&&key()?'URL e anon key preenchidas.':'Configuração incompleta.'},
+    {status:hasValidSession()?'ok':'warn',title:'Sessão',detail:hasValidSession()?'Sessão autenticada ativa.':'Sessão ausente ou expirada.'},
+    {status:'ok',title:'Agenda JS',detail:scriptVersionLabel('femic-agenda.js')},
+    {status:'ok',title:'Prontuário JS',detail:scriptVersionLabel('femic-unified.js')},
+    {status:'ok',title:'Central IA JS',detail:scriptVersionLabel('femic-ai-center.js')},
+    {status:'neutral',title:'Service worker/cache',detail:'Limpeza automática configurada no carregamento do sistema.'}
+  ];
+  const lastAt=localStorage.getItem('femic_last_load_at');
+  if(lastAt)items.push({status:localStorage.getItem('femic_last_load_status')==='error'?'danger':'ok',title:'Última atualização',detail:new Date(lastAt).toLocaleString('pt-BR')+(localStorage.getItem('femic_last_load_message')?' · '+localStorage.getItem('femic_last_load_message'):'')});
+  if(base()&&key()&&hasValidSession()){
+    const optional=['clinical_anamneses','clinical_evolutions','assistant_tasks','appointment_requests','clinic_rules'];
+    const checked=await Promise.all(optional.map(checkOptionalTable));
+    items.push(...checked);
+  }else{
+    items.push({status:'warn',title:'Tabelas opcionais',detail:'Faça login para verificar Supabase.'});
+  }
+  renderSystemHealth(items);
+}
+
 function renderPanel(name){
   switch(name){
     case 'agenda':
@@ -480,6 +568,7 @@ function renderPanel(name){
     case 'settings':
       renderLists();
       renderClinicRulesEditor();
+      if(name==='settings') renderSystemHealth();
       break;
     case 'reminders':
       renderReminders();
@@ -494,6 +583,7 @@ function renderPanel(name){
       renderBackupPanel();
       break;
     case 'pendencias':
+      renderAppointmentRequests();
       if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();
       break;
     default:
@@ -512,12 +602,69 @@ function showPanel(name){
   closeSidebar();
   renderPanel(name);
 }
-function renderAll(){renderAgenda();renderDay();renderReminders();renderAIRadar();renderReport();renderLists();renderBackupPanel();renderAppointmentSearch();if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks()}function patientById(id){return patients.find(p=>String(p.id)===String(id))||{}}function serviceById(id){return services.find(s=>String(s.id)===String(id))||{}}function payerName(id){return (payers.find(p=>String(p.id)===String(id))||{}).name||'Particular'}function patientName(id){return patientById(id).name||'Paciente'}function serviceName(id){return serviceById(id).name||'Sem serviço'}
+function renderAll(){renderAgenda();renderDay();renderReminders();renderAIRadar();renderReport();renderLists();renderBackupPanel();renderAppointmentSearch();renderAppointmentRequests();if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks()}function patientById(id){return patients.find(p=>String(p.id)===String(id))||{}}function serviceById(id){return services.find(s=>String(s.id)===String(id))||{}}function payerName(id){return (payers.find(p=>String(p.id)===String(id))||{}).name||'Particular'}function patientName(id){return patientById(id).name||'Paciente'}function serviceName(id){return serviceById(id).name||'Sem serviço'}
 function assistantPeriodMatches(start,period){const p=String(period||'').toLowerCase();const m=timeToMin(start);if(p==='manha')return m<12*60;if(p==='tarde')return m>=12*60&&m<18*60;if(p==='noite')return m>=18*60;return true}
 function assistantAppointmentPayload(input={}){const sid=input.service_id||input.serviceId,pid=input.patient_id||input.patientId,date=input.appointment_date||input.date,start=normalizeTime(input.start_time||input.start);if(!pid)throw new Error('Paciente não identificado.');if(!sid)throw new Error('Serviço não identificado.');if(!date)throw new Error('Data não informada.');if(!start)throw new Error('Horário inicial não informado.');const s=serviceById(sid);if(!s||!s.id)throw new Error('Serviço não encontrado.');const duration=Number(input.duration_minutes||s.duration_minutes||45);const end=normalizeTime(input.end_time||input.end||addMinutes(start,duration));return{patient_id:pid,service_id:sid,appointment_date:date,start_time:start,end_time:end,duration_minutes:duration,status:input.status||'agendado',service_price_at_time:Number(input.service_price_at_time!=null?input.service_price_at_time:getServiceDefaultPrice(sid))}}
 async function validateAssistantAppointment(input={}){const payload=assistantAppointmentPayload(input);if(timeToMin(payload.end_time)<=timeToMin(payload.start_time))return{valid:false,reason:'O horário final precisa ser maior que o inicial.',payload};if(!isTodayDate(payload.appointment_date)&&!isWorking(payload.appointment_date))return{valid:false,reason:'Dia fora do expediente.',payload};if(!isInsideWorkingTime(payload.appointment_date,payload.start_time,payload.end_time))return{valid:false,reason:'Horário fora dos períodos de expediente configurados.',payload};let rows=appointments.filter(a=>a.appointment_date===payload.appointment_date);try{rows=await fetchAppointmentsForDate(payload.appointment_date)}catch(e){}const conflict=conflictInAppointmentList(payload,rows,input.ignore_id||input.ignoreId||null);if(conflict)return{valid:false,reason:conflict,payload};return{valid:true,reason:'Horário disponível.',payload,patient:patientById(payload.patient_id),service:serviceById(payload.service_id)}}
 async function suggestAssistantAppointmentSlots(input={}){const sid=input.service_id||input.serviceId,pid=input.patient_id||input.patientId;if(!pid)return{slots:[],reason:'Paciente não identificado.'};if(!sid)return{slots:[],reason:'Serviço não identificado.'};const s=serviceById(sid);if(!s||!s.id)return{slots:[],reason:'Serviço não encontrado.'};const duration=Number(input.duration_minutes||s.duration_minutes||45);const dates=(Array.isArray(input.dates)?input.dates:[input.appointment_date||input.date]).filter(Boolean).slice(0,8);if(!dates.length)return{slots:[],reason:'Informe ao menos uma data para buscar horários.'};const slotsFound=[];let lastReason='Nenhum horário disponível nas datas sugeridas.';for(const date of dates){if(slotsFound.length>=5)break;if(!isTodayDate(date)&&!isWorking(date)){lastReason='Dia fora do expediente.';continue}let dayRows=appointments.filter(a=>a.appointment_date===date);try{dayRows=await fetchAppointmentsForDate(date)}catch(e){}for(const period of parsePeriods()){for(let minute=timeToMin(period.start);minute+duration<=timeToMin(period.end);minute+=Number(settings.slot_interval_minutes||30)){if(slotsFound.length>=5)break;const start=minToTime(minute);if(!assistantPeriodMatches(start,input.requested_period||input.period))continue;const payload={patient_id:pid,service_id:sid,appointment_date:date,start_time:start,end_time:addMinutes(start,duration),duration_minutes:duration,status:'agendado',service_price_at_time:Number(getServiceDefaultPrice(sid))};const conflict=conflictInAppointmentList(payload,dayRows,input.ignore_id||input.ignoreId||null);if(conflict){lastReason=conflict;continue}slotsFound.push({patient_id:pid,service_id:sid,date,appointment_date:date,start,start_time:start,end:payload.end_time,end_time:payload.end_time,duration_minutes:duration,service_price_at_time:payload.service_price_at_time,load:dayRows.filter(a=>a.status!=='cancelado'&&timeToMin(normalizeTime(a.start_time))<timeToMin(payload.end_time)&&timeToMin(normalizeTime(a.end_time))>timeToMin(start)).length})}}}return{slots:slotsFound,reason:slotsFound.length?'Horários encontrados.':lastReason}}
 async function confirmAssistantAppointmentProposal(input={}){const checked=await validateAssistantAppointment(input);if(!checked.valid)throw new Error(checked.reason);const saved=await persistAppointment(null,checked.payload);await loadAll(true);return{saved,patient:patientById(saved.patient_id),service:serviceById(saved.service_id)}}
+function appointmentRequestStatusLabel(status){return {pendente:'Pendente',aprovado:'Aprovada',recusado:'Recusada'}[status]||status||'Pendente'}
+function appointmentRequestCard(r){
+  const status=String(r.status||'pendente');
+  const chosen=`${fmtWeekday(r.appointment_date)}, ${fmtDate(r.appointment_date)} · ${normalizeTime(r.start_time)}-${normalizeTime(r.end_time)}`;
+  return `<div class="item appointment-request ${status}">
+    <div class="item-top">
+      <div>
+        <strong>${esc(r.patient_name||patientName(r.patient_id))}</strong>
+        <div class="muted small">${esc(r.patient_whatsapp||'Sem WhatsApp')} · ${esc(serviceName(r.service_id))}</div>
+        <div class="muted small">${esc(chosen)}${r.preferred_period?` · preferência: ${esc(r.preferred_period)}`:''}</div>
+        ${r.notes?`<div class="muted small">${esc(r.notes)}</div>`:''}
+      </div>
+      <span class="status-chip ${status==='aprovado'?'concluido':status==='recusado'?'cancelado':'agendado'}">${esc(appointmentRequestStatusLabel(status))}</span>
+    </div>
+    ${status==='pendente'?`<div class="toolbar" style="margin-top:10px"><button class="btn primary" onclick="approveAppointmentRequest('${r.id}')">Aprovar e agendar</button><button class="btn danger" onclick="rejectAppointmentRequest('${r.id}')">Recusar</button></div>`:''}
+  </div>`;
+}
+function renderAppointmentRequests(){
+  const list=$('appointmentRequestList');if(!list)return;
+  const rows=(appointmentRequests||[]).filter(r=>String(r.status||'pendente')==='pendente');
+  list.innerHTML=rows.length?rows.map(appointmentRequestCard).join(''):'<div class="item"><strong>Nenhuma solicitação pública pendente.</strong><div class="muted small">Pedidos do app separado de agendamento aparecerão aqui.</div></div>';
+}
+async function findOrCreateRequestPatient(r){
+  if(r.patient_id)return r.patient_id;
+  const phone=cleanPhone(r.patient_whatsapp);
+  const existing=patients.find(p=>p.archived!==true&&phone&&cleanPhone(p.whatsapp).endsWith(phone.slice(-8)));
+  if(existing)return existing.id;
+  const payload={id:makePatientId(),name:String(r.patient_name||'Paciente').trim(),whatsapp:r.patient_whatsapp||'',pathology:'Cadastro criado por solicitação pública de agendamento',archived:false,archived_at:null};
+  const saved=(await api('patients',{method:'POST',body:JSON.stringify(payload)}))[0]||payload;
+  patients.push(saved);
+  return saved.id;
+}
+async function approveAppointmentRequest(id){
+  const req=(appointmentRequests||[]).find(r=>String(r.id)===String(id));
+  if(!req){toast('Solicitação não encontrada.','warning');return}
+  try{
+    const patientId=await findOrCreateRequestPatient(req);
+    const service=serviceById(req.service_id);
+    const payload={patient_id:patientId,service_id:req.service_id,appointment_date:req.appointment_date,start_time:normalizeTime(req.start_time),end_time:normalizeTime(req.end_time),duration_minutes:Number(req.duration_minutes||service.duration_minutes||45),status:'agendado',service_price_at_time:Number(getServiceDefaultPrice(req.service_id)),notes:'Criado a partir do sistema separado de agendamento.'};
+    const checked=await validateAssistantAppointment(payload);
+    if(!checked.valid){toast('Horário indisponível agora: '+checked.reason,'warning');return}
+    const saved=await persistAppointment(null,payload);
+    await api('appointment_requests?id=eq.'+id,{method:'PATCH',body:JSON.stringify({status:'aprovado',patient_id:patientId,approved_appointment_id:saved.id,updated_at:new Date().toISOString()})});
+    await loadAll(true);
+    toast('Solicitação aprovada e agendamento criado.','success');
+  }catch(e){toast('Não foi possível aprovar: '+e.message,'error')}
+}
+async function rejectAppointmentRequest(id){
+  const reason=prompt('Motivo da recusa (opcional):')||'';
+  try{
+    const payload={status:'recusado',updated_at:new Date().toISOString()};
+    if(reason)payload.notes=reason;
+    await api('appointment_requests?id=eq.'+id,{method:'PATCH',body:JSON.stringify(payload)});
+    await loadAll(true);
+    toast('Solicitação recusada.','success');
+  }catch(e){toast('Não foi possível recusar: '+e.message,'error')}
+}
 function findPatientFutureAppointments(patientId, types){
   if(!patientId) return [];
   types = types || ['agendado','confirmado'];

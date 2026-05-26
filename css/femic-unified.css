@@ -210,3 +210,57 @@
     max-width:none;
   }
 }
+
+/* Premium refinements for prontuario, documentos and historico */
+.document-preview,
+.hub-card,
+.timeline-soft .event,
+.pending-item,
+.log-line,
+.settings-advanced-block{
+  border-radius:16px;
+  border-color:var(--line);
+  box-shadow:0 10px 26px rgba(18,63,99,.06);
+}
+
+.document-preview{
+  background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(248,251,252,.96));
+}
+
+html[data-theme="dark"] .document-preview,
+html[data-theme="dark"] .hub-card,
+html[data-theme="dark"] .timeline-soft .event,
+html[data-theme="dark"] .pending-item,
+html[data-theme="dark"] .log-line,
+html[data-theme="dark"] .settings-advanced-block{
+  background:#172331;
+}
+
+.document-sheet h2,
+.hub-card h4{
+  font-family:'DM Sans',sans-serif;
+  font-weight:900;
+  color:var(--text);
+}
+
+.document-sheet .doc-meta .meta-box,
+.meta-pill{
+  border-radius:12px;
+  background:rgba(18,63,99,.035);
+}
+
+html[data-theme="dark"] .document-sheet .doc-meta .meta-box,
+html[data-theme="dark"] .meta-pill{
+  background:rgba(255,255,255,.04);
+}
+
+.pending-actions .btn,
+.history-toolbar .btn{
+  min-height:42px;
+}
+
+.unified-empty-state{
+  border-radius:16px;
+  background:rgba(26,166,200,.06);
+  border-color:rgba(26,166,200,.22);
+}
