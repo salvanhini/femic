@@ -718,8 +718,6 @@
       return '<div class="doc-meta doc-meta-receipt">' +
         '<div class="meta-box"><div class="small muted">Paciente</div><strong>' + escHtml(patient.name || '-') + '</strong></div>' +
         '<div class="meta-box"><div class="small muted">Data</div><strong>' + escHtml(fmtDateSafe(dateValue)) + '</strong></div>' +
-        '<div class="meta-box"><div class="small muted">Valor</div><strong>' + escHtml(ctx.receiptAmount || 'R$ __________') + '</strong></div>' +
-        '<div class="meta-box"><div class="small muted">Referência</div><strong>' + escHtml((ctx.receiptServiceText || '').replace(/^ de /, '') || 'Atendimento fisioterapêutico') + '</strong></div>' +
       '</div>';
     }
     return '<div class="doc-meta">' +
