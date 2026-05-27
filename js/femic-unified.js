@@ -54,6 +54,12 @@
 
   function el(id){ return document.getElementById(id); }
   function escHtml(v){ return typeof esc === 'function' ? esc(v) : String(v == null ? '' : v).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); }); }
+  function safeExternalUrl(value){
+    var url = String(value || '').trim();
+    if(!url) return '';
+    if(/^https:\/\//i.test(url)) return url;
+    return '';
+  }
   function safeArrayParse(key){
     try{
       var raw = JSON.parse(localStorage.getItem(key) || '[]');
@@ -444,7 +450,8 @@
     if(!target) return;
     var docs = pid ? getDocumentsByPatient(pid) : [];
     target.innerHTML = docs.length ? docs.map(function(doc){
-      return '<div class="item"><div><strong>' + escHtml(doc.title || 'Documento') + '</strong><div class="muted small">' + escHtml(doc.category || 'Sem categoria') + (doc.obs ? ' · ' + escHtml(doc.obs) : '') + '</div></div><div class="toolbar"><a class="btn" href="' + escHtml(doc.drive_url || '#') + '" target="_blank" rel="noopener">Abrir</a><button class="btn danger" onclick="deleteUnifiedPatientDocument(\'' + escHtml(doc.id) + '\')">Remover</button></div></div>';
+      var url = safeExternalUrl(doc.drive_url);
+      return '<div class="item"><div><strong>' + escHtml(doc.title || 'Documento') + '</strong><div class="muted small">' + escHtml(doc.category || 'Sem categoria') + (doc.obs ? ' · ' + escHtml(doc.obs) : '') + '</div></div><div class="toolbar">' + (url ? '<a class="btn" href="' + escHtml(url) + '" target="_blank" rel="noopener">Abrir</a>' : '<span class="muted small">Link inválido</span>') + '<button class="btn danger" onclick="deleteUnifiedPatientDocument(\'' + escHtml(doc.id) + '\')">Remover</button></div></div>';
     }).join('') : '<div class="muted">Nenhum documento do paciente cadastrado.</div>';
   }
 
@@ -456,7 +463,8 @@
       var auth = Number(g.sessoes_auth || 0);
       var used = Number(g.sessoes_usadas || 0);
       var remaining = auth - used;
-      return '<div class="item"><div><strong>' + escHtml(g.convenio || 'Convênio') + '</strong><div class="muted small">Guia ' + escHtml(g.numero || '-') + ' · ' + used + '/' + auth + ' usadas · saldo ' + remaining + '</div></div><div class="toolbar">' + (g.drive_url ? '<a class="btn" href="' + escHtml(g.drive_url) + '" target="_blank" rel="noopener">Drive</a>' : '') + '<button class="btn danger" onclick="deleteUnifiedGuia(\'' + escHtml(g.id) + '\')">Remover</button></div></div>';
+      var guiaUrl = safeExternalUrl(g.drive_url);
+      return '<div class="item"><div><strong>' + escHtml(g.convenio || 'Convênio') + '</strong><div class="muted small">Guia ' + escHtml(g.numero || '-') + ' · ' + used + '/' + auth + ' usadas · saldo ' + remaining + '</div></div><div class="toolbar">' + (guiaUrl ? '<a class="btn" href="' + escHtml(guiaUrl) + '" target="_blank" rel="noopener">Drive</a>' : '') + '<button class="btn danger" onclick="deleteUnifiedGuia(\'' + escHtml(g.id) + '\')">Remover</button></div></div>';
     }).join('') : '<div class="muted">Nenhuma guia cadastrada para este paciente.</div>';
   }
 
@@ -1343,10 +1351,10 @@
     if(!pid) return;
     var title = el('patientDocumentTitle') ? el('patientDocumentTitle').value.trim() : '';
     var category = el('patientDocumentCategory') ? el('patientDocumentCategory').value.trim() : '';
-    var driveUrl = el('patientDocumentUrl') ? el('patientDocumentUrl').value.trim() : '';
+    var driveUrl = safeExternalUrl(el('patientDocumentUrl') ? el('patientDocumentUrl').value : '');
     var obs = el('patientDocumentObs') ? el('patientDocumentObs').value.trim() : '';
     if(!title || !driveUrl){
-      if(typeof toast === 'function') toast('Informe título e link do documento.', 'warning');
+      if(typeof toast === 'function') toast('Informe título e um link https:// válido do documento.', 'warning');
       return;
     }
     var list = getPatientDocuments();
@@ -1379,6 +1387,11 @@
       if(typeof toast === 'function') toast('Informe convênio e número da guia.', 'warning');
       return;
     }
+    var guiaUrl = safeExternalUrl(el('guiaDriveUrl') ? el('guiaDriveUrl').value : '');
+    if((el('guiaDriveUrl') && el('guiaDriveUrl').value.trim()) && !guiaUrl){
+      if(typeof toast === 'function') toast('Informe um link https:// válido para a guia, ou deixe em branco.', 'warning');
+      return;
+    }
     var list = getGuias();
     list.unshift({
       id: generateId('g'),
@@ -1389,7 +1402,7 @@
       validade: el('guiaValidade') ? el('guiaValidade').value : '',
       sessoes_auth: clampInt(el('guiaSessoesAuth') && el('guiaSessoesAuth').value, 0, 999) || 0,
       sessoes_usadas: clampInt(el('guiaSessoesUsadas') && el('guiaSessoesUsadas').value, 0, 999) || 0,
-      drive_url: el('guiaDriveUrl') ? el('guiaDriveUrl').value.trim() : '',
+      drive_url: guiaUrl,
       obs: el('guiaObs') ? el('guiaObs').value.trim() : '',
       created_at: new Date().toISOString()
     });

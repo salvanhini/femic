@@ -154,48 +154,6 @@ NOTIFY pgrst, 'reload schema';
 ### Fila compartilhada de pendências
 Rode o SQL atualizado mostrado em `Configurações > Banco de dados` para criar `assistant_tasks`. Essa tabela guarda pedidos vindos do WhatsApp Web e lembretes de voz do mobile com status, paciente, telefone, ação solicitada, datas/turno interpretados, sugestões, candidatos, fingerprint da extensão e carimbos de criação/atualização.
 
-## Sistema separado de agendamento
-- O app fica em `femic-agendamento/` e deve ser enviado por link fixo aos pacientes.
-- Link recomendado: `femic-agendamento/index.html?api=https://SEU-PROJETO.functions.supabase.co/scheduler-api`.
-- O paciente informa nome, WhatsApp, serviço e preferência de período.
-- A Function `scheduler-api` sugere horários com base no Supabase sem expor nomes de pacientes nem a agenda completa.
-- Convênio/grupo prioriza encaixes em horários já ocupados com 1 a 3 pacientes; horários vazios aparecem depois; 4 pacientes bloqueia.
-- Particular/individual mostra apenas horários totalmente livres.
-- A escolha do paciente cria `appointment_requests.status = 'pendente'`; a clínica aprova na aba **Pendências** antes de criar o agendamento real.
-
-SQL incremental para bancos existentes:
-
-```sql
-create table if not exists public.appointment_requests (
-  id uuid primary key default gen_random_uuid(),
-  patient_id text references public.patients(id) on delete set null,
-  patient_name text not null,
-  patient_whatsapp text not null,
-  service_id uuid references public.services(id) on delete set null,
-  appointment_date date not null,
-  start_time time not null,
-  end_time time not null,
-  duration_minutes integer default 45,
-  status text default 'pendente',
-  origin text default 'public_scheduler',
-  preferred_period text,
-  notes text,
-  approved_appointment_id uuid references public.appointments(id) on delete set null,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-create index if not exists idx_appointment_requests_status_created on public.appointment_requests(status, created_at desc);
-
-alter table public.appointment_requests enable row level security;
-grant select, insert, update, delete on public.appointment_requests to authenticated;
-
-drop policy if exists "authenticated_full_access_appointment_requests" on public.appointment_requests;
-create policy "authenticated_full_access_appointment_requests"
-  on public.appointment_requests for all to authenticated
-  using (true) with check (true);
-```
-
 ### Estado atual seguro
 - A agenda envia lembretes pelo WhatsApp usando link `wa.me`, com a mensagem já preenchida.
 - O envio manual continua funcionando como antes.
