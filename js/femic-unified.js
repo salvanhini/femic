@@ -33,8 +33,8 @@
       { id:'summary_short', label:'Resumo curto', title:'RESUMO EVOLUTIVO', body:function(ctx){ return ctx.name + ' encontra-se em acompanhamento por ' + ctx.pathology + ', com ' + ctx.sessionCount + ' sessões registradas.'; } }
     ],
     receipt: [
-      { id:'receipt_session', label:'Recibo de sessão', title:'RECIBO', body:function(ctx){ return 'Recebi de ' + ctx.name + ' a importância de ' + ctx.receiptAmount + ', referente a atendimento fisioterapêutico' + ctx.receiptServiceText + ' realizado em ' + ctx.dateBr + '.\n\nForma de pagamento: ______________________________.\n\nPara maior clareza, firmo o presente recibo.'; } },
-      { id:'receipt_package', label:'Recibo de pacote', title:'RECIBO', body:function(ctx){ return 'Recebi de ' + ctx.name + ' a importância de ' + ctx.receiptAmount + ', referente a pacote de sessões de fisioterapia na FEMIC' + ctx.receiptServiceText + '.\n\nForma de pagamento: ______________________________.\n\nData: ' + ctx.dateBr + '.\n\nPara maior clareza, firmo o presente recibo.'; } }
+      { id:'receipt_session', label:'Recibo de sessão', title:'RECIBO', body:function(ctx){ return 'Recebi de ' + ctx.name + ', em ' + ctx.dateBr + ', referente a atendimento fisioterapêutico realizado na FEMIC.\n\nPara maior clareza, firmo o presente recibo.'; } },
+      { id:'receipt_package', label:'Recibo de pacote', title:'RECIBO', body:function(ctx){ return 'Recebi de ' + ctx.name + ', em ' + ctx.dateBr + ', referente a atendimentos fisioterapêuticos realizados na FEMIC.\n\nPara maior clareza, firmo o presente recibo.'; } }
     ]
   };
 
@@ -54,11 +54,6 @@
 
   function el(id){ return document.getElementById(id); }
   function escHtml(v){ return typeof esc === 'function' ? esc(v) : String(v == null ? '' : v).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); }); }
-  function fmtMoneySafe(value){
-    var n = Number(value || 0);
-    if(!Number.isFinite(n) || n <= 0) return 'R$ __________';
-    return n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-  }
   function safeArrayParse(key){
     try{
       var raw = JSON.parse(localStorage.getItem(key) || '[]');
@@ -667,21 +662,14 @@
 
   function getDocumentContext(pid){
     var patient = getPatientById(pid) || {};
-    var agenda = getAgendaState();
     var anamnese = getAnamneseByPatient(pid) || {};
     var sessions = getPatientSessions(pid);
     var evolutions = getPatientEvolutions(pid);
-    var appointments = getAgendaAppointmentsByPatient(pid);
-    var completedAppointments = appointments.filter(function(item){ return item.status === 'concluido'; });
-    var receiptAppointment = completedAppointments[completedAppointments.length - 1] || appointments[appointments.length - 1] || {};
-    var receiptService = (agenda.services || []).find(function(item){ return String(item.id) === String(receiptAppointment.service_id || ''); }) || {};
     var firstSession = sessions[0] || {};
     var lastSession = sessions[sessions.length - 1] || {};
     var latestEvolution = evolutions[0] || {};
     var firstDate = firstSession.date ? fmtDateSafe(firstSession.date) : '-';
     var lastDate = lastSession.date ? fmtDateSafe(lastSession.date) : '-';
-    var receiptAmount = receiptAppointment.service_price_at_time != null ? receiptAppointment.service_price_at_time : receiptService.price;
-    var receiptServiceText = receiptService.name ? ' de ' + receiptService.name : '';
     return {
       name: patient.name || 'Paciente',
       pathology: patient.pathology || anamnese.diagnosis || 'quadro clínico em acompanhamento',
@@ -695,9 +683,7 @@
       lastConduct: latestEvolution.conduct || 'sem conduta registrada',
       lastGuidance: latestEvolution.guidance || 'sem orientação registrada',
       period: sessions.length ? ('de ' + firstDate + ' a ' + lastDate) : '',
-      reason: anamnese.diagnosis || patient.pathology || 'necessidade de investigação complementar',
-      receiptAmount: fmtMoneySafe(receiptAmount),
-      receiptServiceText: receiptServiceText
+      reason: anamnese.diagnosis || patient.pathology || 'necessidade de investigação complementar'
     };
   }
 
