@@ -713,6 +713,22 @@
     renderUnifiedDocumentPreview();
   }
 
+  function documentMetaHtml(type, patient, dateValue, ctx){
+    if(type === 'receipt'){
+      return '<div class="doc-meta doc-meta-receipt">' +
+        '<div class="meta-box"><div class="small muted">Paciente</div><strong>' + escHtml(patient.name || '-') + '</strong></div>' +
+        '<div class="meta-box"><div class="small muted">Data</div><strong>' + escHtml(fmtDateSafe(dateValue)) + '</strong></div>' +
+        '<div class="meta-box"><div class="small muted">Valor</div><strong>' + escHtml(ctx.receiptAmount || 'R$ __________') + '</strong></div>' +
+        '<div class="meta-box"><div class="small muted">Referência</div><strong>' + escHtml((ctx.receiptServiceText || '').replace(/^ de /, '') || 'Atendimento fisioterapêutico') + '</strong></div>' +
+      '</div>';
+    }
+    return '<div class="doc-meta">' +
+      '<div class="meta-box"><div class="small muted">Paciente</div><strong>' + escHtml(patient.name || '-') + '</strong></div>' +
+      '<div class="meta-box"><div class="small muted">Data</div><strong>' + escHtml(fmtDateSafe(dateValue)) + '</strong></div>' +
+      '<div class="meta-box"><div class="small muted">Patologia</div><strong>' + escHtml(patient.pathology || '-') + '</strong></div>' +
+    '</div>';
+  }
+
   function renderUnifiedDocumentPreview(){
     var preview = el('documentPreview');
     if(!preview) return;
@@ -731,16 +747,14 @@
     saveDocumentSettings(settings);
     var type = el('docTypeSelect') ? el('docTypeSelect').value : 'attendance';
     var preset = getSelectedDocPreset();
+    var ctx = getDocumentContext(pid);
+    var dateValue = el('docDateInput') ? el('docDateInput').value : todayIsoSafe();
     var body = getDocumentBodyHtml() || textToDocumentHtml('Use o botão "Gerar texto" para preencher um documento com base no contexto clínico do paciente.');
     preview.innerHTML =
       '<div class="document-sheet document-sheet-premium">' +
         '<div class="doc-brand"><div class="doc-brand-main">' + (settings.logoData ? renderDocumentImage(settings.logoData, 'doc-logo-img', 'Logo') : '<span>FEMIC</span>') + '<strong>Fisioterapia e cuidado clínico</strong></div><small>Documento gerado no sistema FEMIC</small></div>' +
         '<h2>' + escHtml(preset.title || 'DOCUMENTO') + '</h2>' +
-        '<div class="doc-meta">' +
-          '<div class="meta-box"><div class="small muted">Paciente</div><strong>' + escHtml(patient.name || '-') + '</strong></div>' +
-          '<div class="meta-box"><div class="small muted">Data</div><strong>' + escHtml(fmtDateSafe(el('docDateInput') ? el('docDateInput').value : todayIsoSafe())) + '</strong></div>' +
-          '<div class="meta-box"><div class="small muted">Patologia</div><strong>' + escHtml(patient.pathology || '-') + '</strong></div>' +
-        '</div>' +
+        documentMetaHtml(type, patient, dateValue, ctx) +
         '<div class="doc-body">' + body + '</div>' +
         '<div class="doc-sign doc-sign-premium"><div class="doc-signature-block">' + renderDocumentImage(settings.signatureData, 'doc-signature-img', 'Assinatura') + '<div class="doc-sign-line"></div><strong class="doc-professional-name">' + escHtml(settings.professionalName) + '</strong>' + (settings.professionalCouncil ? '<span class="doc-professional-council">' + escHtml(settings.professionalCouncil) + '</span>' : '') + '</div>' + (settings.showStamp === 'yes' ? renderDocumentImage(settings.stampData, 'doc-stamp-img', 'Carimbo') : '') + '</div>' +
       '</div>';
@@ -751,14 +765,11 @@
     var patient = getPatientById(doc.patient_id) || { name: doc.patient_name || 'Paciente', pathology: '' };
     var body = doc.body ? sanitizeDocumentHtml(doc.body) : textToDocumentHtml(doc.body_text || 'Sem texto salvo.');
     var title = doc.title || doc.type_label || 'DOCUMENTO';
+    var ctx = getDocumentContext(doc.patient_id);
     return '<div class="document-sheet document-sheet-premium">' +
       '<div class="doc-brand"><div class="doc-brand-main">' + (settings.logoData ? renderDocumentImage(settings.logoData, 'doc-logo-img', 'Logo') : '<span>FEMIC</span>') + '<strong>Fisioterapia e cuidado clínico</strong></div><small>Documento salvo no histórico FEMIC</small></div>' +
       '<h2>' + escHtml(title) + '</h2>' +
-      '<div class="doc-meta">' +
-        '<div class="meta-box"><div class="small muted">Paciente</div><strong>' + escHtml(patient.name || doc.patient_name || '-') + '</strong></div>' +
-        '<div class="meta-box"><div class="small muted">Data</div><strong>' + escHtml(fmtDateSafe(doc.date)) + '</strong></div>' +
-        '<div class="meta-box"><div class="small muted">Patologia</div><strong>' + escHtml(patient.pathology || '-') + '</strong></div>' +
-      '</div>' +
+      documentMetaHtml(doc.type, patient, doc.date, ctx) +
       '<div class="doc-body">' + body + '</div>' +
       '<div class="doc-sign doc-sign-premium"><div class="doc-signature-block">' + renderDocumentImage(settings.signatureData, 'doc-signature-img', 'Assinatura') + '<div class="doc-sign-line"></div><strong class="doc-professional-name">' + escHtml(settings.professionalName || 'FEMIC Fisioterapia') + '</strong>' + (settings.professionalCouncil ? '<span class="doc-professional-council">' + escHtml(settings.professionalCouncil) + '</span>' : '') + '</div>' + (settings.showStamp === 'yes' ? renderDocumentImage(settings.stampData, 'doc-stamp-img', 'Carimbo') : '') + '</div>' +
     '</div>';
