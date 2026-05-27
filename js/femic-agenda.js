@@ -897,10 +897,72 @@ function renderAppointmentSearch(){
 function toggleAppointmentSearchSelection(id,checked){if(checked)appointmentSearchSelected.add(String(id));else appointmentSearchSelected.delete(String(id));renderAppointmentSearch()}
 function clearAppointmentSearch(){['apptSearchText','apptSearchFrom','apptSearchTo'].forEach(id=>{if($(id))$(id).value=''});if($('apptSearchStatus'))$('apptSearchStatus').value='all';if($('apptSearchService'))$('apptSearchService').value='all';appointmentSearchSelected.clear();renderAppointmentSearch()}
 async function cancelAppointmentFromSearch(id){if(!confirm('Cancelar este agendamento?'))return;try{await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify({status:'cancelado'})});appointmentSearchSelected.delete(String(id));await loadAll(true);toast('Agendamento cancelado.','success')}catch(e){toast('Erro ao cancelar: '+e.message,'error')}}
-async function deleteAppointmentFromSearch(id){if(!confirm('Apagar definitivamente este agendamento?'))return;try{await api('appointments?id=eq.'+id,{method:'DELETE'});appointmentSearchSelected.delete(String(id));await loadAll(true);toast('Agendamento apagado.','success')}catch(e){toast('Erro ao apagar: '+e.message,'error')}}
+function appointmentFilterById(id){
+  return 'appointments?id=eq.' + encodeURIComponent(String(id || ''));
+}
+async function releaseAppointmentPackageForDelete(a){
+  if(!a || !a.id) return;
+  const appointmentId = String(a.id);
+  const packageId = String(a.session_package_id || '');
+  if(a.status === 'concluido' && a.package_consumed && packageId){
+    const pk = packages.find(p=>String(p.id)===packageId);
+    if(pk){
+      const nextRemaining = Number(pk.remaining_sessions || 0) + 1;
+      await api('session_packages?id=eq.' + encodeURIComponent(packageId), {
+        method:'PATCH',
+        body:JSON.stringify({remaining_sessions:nextRemaining})
+      });
+      pk.remaining_sessions = nextRemaining;
+      try{
+        await api('session_movements', {
+          method:'POST',
+          body:JSON.stringify({
+            patient_id:a.patient_id,
+            appointment_id:null,
+            session_package_id:packageId,
+            type:'estorno',
+            quantity:1
+          })
+        });
+      }catch(e){}
+    }
+  }
+  if(a.package_consumed || packageId){
+    await api(appointmentFilterById(appointmentId), {
+      method:'PATCH',
+      body:JSON.stringify({package_consumed:false,session_package_id:null})
+    });
+  }
+}
+async function removeAppointmentRecord(id){
+  const appointmentId = String(id || '');
+  if(!appointmentId) throw new Error('Agendamento não identificado.');
+  const existing = appointments.find(a=>String(a.id)===appointmentId);
+  if(existing) await releaseAppointmentPackageForDelete(existing);
+  try{
+    await api('session_movements?appointment_id=eq.' + encodeURIComponent(appointmentId), {
+      method:'PATCH',
+      body:JSON.stringify({appointment_id:null})
+    });
+  }catch(e){}
+  try{
+    await api('appointment_requests?approved_appointment_id=eq.' + encodeURIComponent(appointmentId), {
+      method:'PATCH',
+      body:JSON.stringify({approved_appointment_id:null})
+    });
+  }catch(e){}
+  await api(appointmentFilterById(appointmentId), {
+    method:'DELETE',
+    headers:{...headers(), Prefer:'return=minimal'}
+  });
+  appointments = appointments.filter(a=>String(a.id)!==appointmentId);
+  appointmentSearchSelected.delete(appointmentId);
+  dayAppointmentCache.clear();
+}
+async function deleteAppointmentFromSearch(id){if(!confirm('Apagar definitivamente este agendamento?'))return;try{await removeAppointmentRecord(id);await loadAll(true);toast('Agendamento apagado.','success')}catch(e){toast('Erro ao apagar: '+e.message,'error')}}
 function selectedAppointmentIds(){return [...appointmentSearchSelected].filter(id=>appointments.some(a=>String(a.id)===String(id)))}
 async function bulkCancelAppointments(){const ids=selectedAppointmentIds();if(!ids.length){toast('Selecione ao menos um agendamento.','warning');return}if(!confirm('Cancelar '+ids.length+' agendamento(s) selecionado(s)?'))return;try{for(const id of ids){await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify({status:'cancelado'})})}appointmentSearchSelected.clear();await loadAll(true);toast(ids.length+' agendamento(s) cancelado(s).','success')}catch(e){toast('Erro no cancelamento em massa: '+e.message,'error')}}
-async function bulkDeleteAppointments(){const ids=selectedAppointmentIds();if(!ids.length){toast('Selecione ao menos um agendamento.','warning');return}const typed=prompt('Digite APAGAR para excluir definitivamente '+ids.length+' agendamento(s).');if(typed!=='APAGAR')return;try{for(const id of ids){await api('appointments?id=eq.'+id,{method:'DELETE'})}appointmentSearchSelected.clear();await loadAll(true);toast(ids.length+' agendamento(s) apagado(s).','success')}catch(e){toast('Erro ao apagar em massa: '+e.message,'error')}}
+async function bulkDeleteAppointments(){const ids=selectedAppointmentIds();if(!ids.length){toast('Selecione ao menos um agendamento.','warning');return}const typed=prompt('Digite APAGAR para excluir definitivamente '+ids.length+' agendamento(s).');if(typed!=='APAGAR')return;try{for(const id of ids){await removeAppointmentRecord(id)}appointmentSearchSelected.clear();await loadAll(true);toast(ids.length+' agendamento(s) apagado(s).','success')}catch(e){toast('Erro ao apagar em massa: '+e.message,'error')}}
 function updateAgendaViewToggle(){const mode=$('viewMode')?.value||'week';document.querySelectorAll('.view-chip').forEach(btn=>btn.classList.remove('active'));if(mode==='month')$('viewMonthBtn')?.classList.add('active');else $('viewWeekBtn')?.classList.add('active')}
 function setAgendaViewMode(mode){if(!$('viewMode'))return;$('viewMode').value=mode;updateAgendaViewToggle();if(mode==='day'){showPanel('day');return}if(mode==='agenda')showPanel('agenda');renderAgenda()}
 function renderAgenda(){populateAgendaFilters();updateAgendaViewToggle();refreshAppointmentWindowIfNeeded();if($('viewMode').value==='month')renderMonth();else renderWeek()}
@@ -1100,7 +1162,7 @@ async function saveAppointment(){
 async function saveRecurring(payload){const selected=[...document.querySelectorAll('.recDay:checked')].map(x=>Number(x.value));const count=Number($('recCount').value||1);if(!selected.length){toast('Selecione ao menos um dia da semana.','warning');return}const s=serviceById(payload.service_id);const dayTimes={};selected.forEach(d=>{dayTimes[d]=($('recTime'+d)?.value||payload.start_time||'08:00')});let created=0,conflicts=0,date=new Date(payload.appointment_date+'T00:00:00'),tries=0;while(created<count&&tries<370){const ds=isoDate(date),dow=date.getDay();if(selected.includes(dow)&&(isTodayDate(ds)||isWorking(ds))){const st=dayTimes[dow]||payload.start_time;const cand={...payload,appointment_date:ds,start_time:st,end_time:addMinutes(st,Number(s.duration_minutes||payload.duration_minutes||45)),duration_minutes:Number(s.duration_minutes||payload.duration_minutes||45)};let dayRows=appointments.filter(a=>a.appointment_date===ds);try{dayRows=await fetchAppointmentsForDate(ds)}catch(e){}const msg=conflictInAppointmentList(cand,dayRows);if(msg||!isInsideWorkingTime(cand.appointment_date,cand.start_time,cand.end_time))conflicts++;else{const saved=await persistAppointment(null,cand);dayRows.push(saved);created++}}date.setDate(date.getDate()+1);tries++}closeModal('apptModal');await loadAll(true);toast(`${created} agendamentos criados. ${conflicts} conflitos ignorados.`,'success')}
 async function finalizeReschedule(originId,cancelOriginal){const old=appointments.find(a=>String(a.id)===String(originId));if(!old||!cancelOriginal)return;if(old.status==='concluido'&&old.package_consumed)await refundPackage(old);await api('appointments?id=eq.'+originId,{method:'PATCH',body:JSON.stringify({status:'cancelado'})});}
 function rescheduleAppointment(id){const a=appointments.find(x=>String(x.id)===String(id));if(!a)return;const cancelOriginal=confirm('Remarcar cancelando o agendamento original? Clique em OK para cancelar o original e criar um novo. Clique em Cancelar para criar novo sem cancelar o original.');openAppt(a.appointment_date,null,normalizeTime(a.start_time));$('apptPatient').value=a.patient_id;$('apptService').value=a.service_id;$('apptStatus').value='agendado';$('apptDate').value=a.appointment_date;$('apptStart').value=normalizeTime(a.start_time);syncPatientPickers();onServiceChange();$('rescheduleOriginId').value=id;$('rescheduleCancelOriginal').value=cancelOriginal?'true':'false';$('apptTitle').textContent='Remarcar atendimento';toast(cancelOriginal?'Escolha novo horário. O original será cancelado ao salvar.':'Escolha novo horário. O original será mantido.','info')}
-async function deleteAppointment(){const id=$('apptId').value;if(!id||!confirm('Remover este agendamento?'))return;try{await api('appointments?id=eq.'+id,{method:'DELETE'});closeModal('apptModal');await loadAll(true);toast('Agendamento removido.','success')}catch(e){toast('Erro ao remover: '+e.message,'error')}}
+async function deleteAppointment(){const id=$('apptId').value;if(!id||!confirm('Remover este agendamento?'))return;try{await removeAppointmentRecord(id);closeModal('apptModal');await loadAll(true);toast('Agendamento removido.','success')}catch(e){toast('Erro ao remover: '+e.message,'error')}}
 function renderDay(){
   const date=$('dayDate').value||todayIso();$('dayDate').value=date;
   const list=appointments.filter(a=>a.appointment_date===date).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));

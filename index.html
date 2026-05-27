@@ -327,7 +327,7 @@
         </div>
         <div class="docs-premium-stage">
           <div class="grid grid-2">
-          <div class="field"><label>Tipo</label><select id="docTypeSelect" onchange="populateDocPresets()"><option value="attendance">Atestado</option><option value="declaration">Declaração</option><option value="exam">Pedido de exame</option><option value="report">Laudo</option><option value="summary">Resumo evolutivo</option></select></div>
+          <div class="field"><label>Tipo</label><select id="docTypeSelect" onchange="populateDocPresets()"><option value="attendance">Atestado</option><option value="declaration">Declaração</option><option value="exam">Pedido de exame</option><option value="report">Laudo</option><option value="summary">Resumo evolutivo</option><option value="receipt">Recibo</option></select></div>
           <div class="field"><label>Modelo</label><select id="docPresetSelect" onchange="renderUnifiedDocumentPreview()"></select></div>
           <div class="field"><label>Data do documento</label><input id="docDateInput" type="date" onchange="renderUnifiedDocumentPreview()"></div>
           <div class="field"><label>Mostrar carimbo</label><select id="showStampSelect" onchange="renderUnifiedDocumentPreview()"><option value="yes">Sim</option><option value="no">Não</option></select></div>
@@ -395,7 +395,7 @@
       <div class="section-title"><div><div class="eyebrow">Biblioteca</div><h3>Histórico de documentos</h3></div></div>
       <div class="docs-history-filters">
         <input id="generatedDocSearch" placeholder="Buscar por paciente, tipo ou trecho" oninput="renderGeneratedDocumentsHistory()">
-        <select id="generatedDocTypeFilter" onchange="renderGeneratedDocumentsHistory()"><option value="">Todos os tipos</option><option value="attendance">Atestado</option><option value="declaration">Declaração</option><option value="exam">Pedido de exame</option><option value="report">Laudo</option><option value="summary">Resumo evolutivo</option></select>
+        <select id="generatedDocTypeFilter" onchange="renderGeneratedDocumentsHistory()"><option value="">Todos os tipos</option><option value="attendance">Atestado</option><option value="declaration">Declaração</option><option value="exam">Pedido de exame</option><option value="report">Laudo</option><option value="summary">Resumo evolutivo</option><option value="receipt">Recibo</option></select>
         <button class="btn" type="button" onclick="renderGeneratedDocumentsHistory()">Atualizar</button>
       </div>
       <div id="generatedDocumentsHistory" class="docs-history-list"></div>
