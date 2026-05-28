@@ -11,14 +11,40 @@
 <link rel="apple-touch-icon" href="logo.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+window.tailwind = window.tailwind || {};
+window.tailwind.config = {
+  corePlugins: { preflight: false },
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Manrope', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'], display: ['Manrope', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        femic: {
+          ink: '#172536',
+          navy: '#123f63',
+          cyan: '#1aa6c8',
+          teal: '#14b8a6',
+          mist: '#f5f7fa'
+        }
+      },
+      boxShadow: {
+        femic: '0 24px 70px rgba(18,63,99,.14)'
+      }
+    }
+  }
+};
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <link rel="stylesheet" href="css/femic-agenda.css?v=theme-refactor-9">
 <link rel="stylesheet" href="css/femic-tokens.css?v=design-system-1">
 <link rel="stylesheet" href="css/femic-layout.css?v=design-system-1">
 <link rel="stylesheet" href="css/femic-components.css?v=design-system-1">
 <link rel="stylesheet" href="css/femic-unified.css?v=unified-1">
+<link rel="stylesheet" href="css/femic-tailwind-refactor.css?v=tailwind-modern-1">
 </head>
-<body>
+<body class="font-sans antialiased">
 <div class="mobile-topbar">
   <button class="btn-icon" onclick="toggleSidebar()">☰</button>
   <div class="mobile-brand">
@@ -29,87 +55,72 @@
 </div>
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 <!-- ===== FEMIC LOGIN OVERLAY ===== -->
-<div id="femicLoginOverlay" style="
-  position:fixed; inset:0; z-index:9999;
-  background: linear-gradient(135deg, #0b3c6f 0%, #0f5c5c 60%, #1fb6e9 100%);
-  display:flex; align-items:center; justify-content:center; padding:20px;
-">
-  <div style="
-    background:#fff; border-radius:28px; padding:36px 32px;
-    width:min(440px,100%); box-shadow:0 30px 60px rgba(0,0,0,.28);
-  ">
-    <div style="text-align:center; margin-bottom:24px;">
-      <div style="font-size:2.4rem; font-weight:800; letter-spacing:.08em; color:#0b3c6f;">FEMIC</div>
-      <div style="color:#678282; margin-top:6px; font-size:.95rem;">Sistema unificado · Araraquara, SP</div>
+<div id="femicLoginOverlay" class="fixed inset-0 z-[9999] flex items-center justify-center bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,.24),transparent_26%),linear-gradient(135deg,#0d2f4c_0%,#124f66_54%,#1aa6c8_100%)] p-5">
+  <div class="w-full max-w-[440px] rounded-[26px] border border-white/70 bg-white/95 px-6 py-8 shadow-femic backdrop-blur-xl sm:px-8 sm:py-9">
+    <div class="mb-6 text-center">
+      <div class="text-[2.4rem] font-black tracking-[.08em] text-femic-navy">FEMIC</div>
+      <div class="mt-1 text-sm text-slate-500">Sistema unificado · Araraquara, SP</div>
     </div>
 
     <!-- PASSO 1: Configuração Supabase -->
     <div id="loginStep1">
-      <div style="background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:16px; padding:14px 16px; margin-bottom:20px; display:flex; gap:10px;">
-        <span style="font-size:1.3rem">⚙️</span>
+      <div class="mb-5 flex gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
+        <span class="text-xl">⚙️</span>
         <div>
-          <strong style="color:#0369a1; font-size:.9rem;">Primeiro acesso</strong>
-          <div style="color:#0284c7; font-size:.8rem; margin-top:3px;">Informe as credenciais do Supabase. Isso é feito uma única vez.</div>
+          <strong class="text-sm text-sky-800">Primeiro acesso</strong>
+          <div class="mt-1 text-xs text-sky-700">Informe as credenciais do Supabase. Isso é feito uma única vez.</div>
         </div>
       </div>
-      <div style="display:grid; gap:14px;">
+      <div class="grid gap-3.5">
         <div>
-          <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">URL do projeto Supabase</label>
+          <label class="mb-1.5 block text-sm font-bold text-slate-600">URL do projeto Supabase</label>
           <input id="setupUrl" type="url" placeholder="https://xxxx.supabase.co"
-            style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px; font-size:.95rem; outline:none; box-sizing:border-box; transition:.2s;"
+            class="w-full rounded-2xl border border-slate-200 px-3.5 py-3 text-[.95rem] outline-none transition focus:border-femic-cyan focus:shadow-[0_0_0_4px_rgba(26,166,200,.14)]"
             onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
             onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
         </div>
         <div>
-          <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">Chave anônima (anon key)</label>
+          <label class="mb-1.5 block text-sm font-bold text-slate-600">Chave anônima (anon key)</label>
           <input id="setupKey" type="text" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-            style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px; font-size:.78rem; outline:none; box-sizing:border-box; transition:.2s; font-family:monospace;"
+            class="w-full rounded-2xl border border-slate-200 px-3.5 py-3 font-mono text-xs outline-none transition focus:border-femic-cyan focus:shadow-[0_0_0_4px_rgba(26,166,200,.14)]"
             onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
             onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
         </div>
-        <button onclick="femicSaveSetup()" style="
-          padding:14px; background:linear-gradient(135deg,#0b3c6f,#1fb6e9); color:#fff;
-          border:none; border-radius:14px; font-size:1rem; font-weight:700; cursor:pointer;
-          box-shadow:0 10px 24px rgba(11,60,111,.22); transition:.2s;
-        "
+        <button onclick="femicSaveSetup()" class="rounded-2xl border-0 bg-gradient-to-r from-femic-navy to-femic-cyan px-4 py-3.5 font-extrabold text-white shadow-[0_14px_28px_rgba(18,63,99,.22)] transition hover:-translate-y-0.5"
           onmouseover="this.style.transform='translateY(-1px)'"
           onmouseout="this.style.transform=''">
           Salvar e continuar →
         </button>
-        <div id="setupError" style="color:#ef4444; text-align:center; font-size:.88rem; display:none; padding:4px 0;"></div>
+        <div id="setupError" class="hidden py-1 text-center text-sm text-red-500"></div>
       </div>
     </div>
 
     <!-- PASSO 2: Login email + senha -->
     <div id="loginStep2" style="display:none;">
-      <div style="display:grid; gap:14px;">
+      <div class="grid gap-3.5">
         <div>
-          <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">Email</label>
+          <label class="mb-1.5 block text-sm font-bold text-slate-600">Email</label>
           <input id="loginEmail" type="email" placeholder="seu@email.com"
-            style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px; font-size:1rem; outline:none; box-sizing:border-box; transition:.2s;"
+            class="w-full rounded-2xl border border-slate-200 px-3.5 py-3 text-base outline-none transition focus:border-femic-cyan focus:shadow-[0_0_0_4px_rgba(26,166,200,.14)]"
             onkeydown="if(event.key==='Enter')femicLogin()"
             onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
             onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
         </div>
         <div>
-          <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">Senha</label>
+          <label class="mb-1.5 block text-sm font-bold text-slate-600">Senha</label>
           <input id="loginPassword" type="password" placeholder="••••••••"
-            style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px; font-size:1rem; outline:none; box-sizing:border-box; transition:.2s;"
+            class="w-full rounded-2xl border border-slate-200 px-3.5 py-3 text-base outline-none transition focus:border-femic-cyan focus:shadow-[0_0_0_4px_rgba(26,166,200,.14)]"
             onkeydown="if(event.key==='Enter')femicLogin()"
             onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
             onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
         </div>
-        <button id="loginBtn" onclick="femicLogin()" style="
-          padding:14px; background:linear-gradient(135deg,#0b3c6f,#1fb6e9); color:#fff;
-          border:none; border-radius:14px; font-size:1rem; font-weight:700; cursor:pointer;
-          box-shadow:0 10px 24px rgba(11,60,111,.22); transition:.2s;
-        "
+        <button id="loginBtn" onclick="femicLogin()" class="rounded-2xl border-0 bg-gradient-to-r from-femic-navy to-femic-cyan px-4 py-3.5 font-extrabold text-white shadow-[0_14px_28px_rgba(18,63,99,.22)] transition hover:-translate-y-0.5"
           onmouseover="this.style.transform='translateY(-1px)'"
           onmouseout="this.style.transform=''">
           Entrar
         </button>
-        <div id="loginError" style="color:#ef4444; text-align:center; font-size:.88rem; display:none; padding:4px 0;"></div>
-        <button onclick="femicShowSetup()" style="background:none; border:none; color:#94a3b8; font-size:.8rem; cursor:pointer; text-decoration:underline; padding:0;">
+        <div id="loginError" class="hidden py-1 text-center text-sm text-red-500"></div>
+        <button onclick="femicShowSetup()" class="border-0 bg-transparent p-0 text-xs text-slate-400 underline">
           ⚙️ Alterar configuração do Supabase
         </button>
       </div>
@@ -129,23 +140,23 @@
       </div>
     </div>
     <nav>
-      <div class="nav-link active" data-panel="agenda" onclick="showPanel('agenda')"><span class="icon">📅</span><span>Agenda</span></div>
-      <div class="nav-link" data-panel="day" onclick="showPanel('day')"><span class="icon">📋</span><span>Dia</span></div>
-      <div class="nav-link" data-panel="patients" onclick="showPanel('patients')"><span class="icon">👥</span><span>Pacientes</span></div>
-      <div class="nav-link" data-panel="prontuario" onclick="showPanel('prontuario')"><span class="icon">🩺</span><span>Prontuário</span></div>
-      <div class="nav-link" data-panel="packages" onclick="showPanel('packages')"><span class="icon">🎟️</span><span>Pacotes</span></div>
-      <div class="nav-link" data-panel="ai" onclick="showPanel('ai')"><span class="icon">✨</span><span>IA</span></div>
-      <div class="nav-link" data-panel="reminders" onclick="showPanel('reminders')"><span class="icon">📲</span><span>Lembretes</span></div>
-      <div class="nav-link" data-panel="report" onclick="showPanel('report')"><span class="icon">💰</span><span>Relatório</span></div>
-      <div class="nav-link" data-panel="pendencias" onclick="showPanel('pendencias')"><span class="icon">🗂️</span><span>Pendências</span><span class="pending-nav-badge hidden" id="pendingNavBadge">0</span></div>
-      <div class="nav-link" data-panel="documentos" onclick="showPanel('documentos')"><span class="icon">🧾</span><span>Documentos</span></div>
-      <div class="nav-link" data-panel="historico" onclick="showPanel('historico')"><span class="icon">📚</span><span>Histórico</span></div>
-      <div class="nav-link" data-panel="settings" onclick="showPanel('settings')"><span class="icon">⚙️</span><span>Configurações</span></div>
-      <div class="nav-link" data-panel="backup" onclick="showPanel('backup')"><span class="icon">☁️</span><span>Backup</span></div>
+      <div class="nav-link active" data-panel="agenda" onclick="showPanel('agenda')"><span class="icon"><i data-lucide="calendar-days"></i></span><span>Agenda</span></div>
+      <div class="nav-link" data-panel="day" onclick="showPanel('day')"><span class="icon"><i data-lucide="clipboard-list"></i></span><span>Dia</span></div>
+      <div class="nav-link" data-panel="patients" onclick="showPanel('patients')"><span class="icon"><i data-lucide="users-round"></i></span><span>Pacientes</span></div>
+      <div class="nav-link" data-panel="prontuario" onclick="showPanel('prontuario')"><span class="icon"><i data-lucide="stethoscope"></i></span><span>Prontuário</span></div>
+      <div class="nav-link" data-panel="packages" onclick="showPanel('packages')"><span class="icon"><i data-lucide="ticket-check"></i></span><span>Pacotes</span></div>
+      <div class="nav-link" data-panel="ai" onclick="showPanel('ai')"><span class="icon"><i data-lucide="sparkles"></i></span><span>IA</span></div>
+      <div class="nav-link" data-panel="reminders" onclick="showPanel('reminders')"><span class="icon"><i data-lucide="message-circle"></i></span><span>Lembretes</span></div>
+      <div class="nav-link" data-panel="report" onclick="showPanel('report')"><span class="icon"><i data-lucide="chart-column"></i></span><span>Relatório</span></div>
+      <div class="nav-link" data-panel="pendencias" onclick="showPanel('pendencias')"><span class="icon"><i data-lucide="inbox"></i></span><span>Pendências</span><span class="pending-nav-badge hidden" id="pendingNavBadge">0</span></div>
+      <div class="nav-link" data-panel="documentos" onclick="showPanel('documentos')"><span class="icon"><i data-lucide="file-text"></i></span><span>Documentos</span></div>
+      <div class="nav-link" data-panel="historico" onclick="showPanel('historico')"><span class="icon"><i data-lucide="history"></i></span><span>Histórico</span></div>
+      <div class="nav-link" data-panel="settings" onclick="showPanel('settings')"><span class="icon"><i data-lucide="settings-2"></i></span><span>Configurações</span></div>
+      <div class="nav-link" data-panel="backup" onclick="showPanel('backup')"><span class="icon"><i data-lucide="cloud-upload"></i></span><span>Backup</span></div>
     </nav>
     <div class="sidebar-footer">
-      <button class="side-btn" onclick="toggleTheme()">🌓 Alternar tema</button>
-      <button class="side-btn" onclick="femicLogout()" style="border-color:rgba(239,68,68,.25); color:rgba(255,120,120,.94);">🚪 <span id="loginUserLabel">Sair</span></button>
+      <button class="side-btn" onclick="toggleTheme()"><i data-lucide="sun-moon"></i><span>Alternar tema</span></button>
+      <button class="side-btn" onclick="femicLogout()" style="border-color:rgba(239,68,68,.25); color:rgba(255,120,120,.94);"><i data-lucide="log-out"></i><span id="loginUserLabel">Sair</span></button>
     </div>
   </aside>
 
@@ -155,12 +166,12 @@
         <div class="brand">
           <div class="logo"></div>
           <div>
-            <h1>FEMIC Unificado</h1>
-            <p>Agenda, pacientes, prontuário, documentos, histórico e lembretes em um só lugar</p>
+            <h1 id="appContextTitle">Agenda clínica</h1>
+            <p id="appContextSubtitle">Grade semanal, agenda mensal e busca rápida de atendimentos</p>
           </div>
         </div>
         <div class="toolbar">
-          <button class="btn primary" onclick="openAppt()">+ Agendar</button>
+          <button class="btn primary" onclick="openAppt()"><i data-lucide="plus"></i><span>Agendar</span></button>
         </div>
       </div>
     </div>
@@ -807,6 +818,24 @@
 </div>
 <div class="modal-backdrop" id="patientModal"><div class="modal"><div class="modal-head"><h3>Ficha do paciente</h3><button class="btn" onclick="closeModal('patientModal')">✕</button></div><div class="modal-body" id="patientFicha"></div></div></div>
 
+<div class="modal-backdrop" id="slotSummaryModal">
+  <div class="modal sm slot-summary-modal">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow">Horário da agenda</div>
+        <h3 id="slotSummaryTitle">Resumo do horário</h3>
+        <div class="muted small" id="slotSummarySubtitle"></div>
+      </div>
+      <button class="btn" type="button" onclick="closeModal('slotSummaryModal')">✕</button>
+    </div>
+    <div class="modal-body" id="slotSummaryBody"></div>
+    <div class="modal-foot">
+      <button class="btn" type="button" onclick="closeModal('slotSummaryModal')">Fechar</button>
+      <button class="btn primary" type="button" id="slotSummaryAddBtn">Agendar neste horário</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="patientExportModal">
   <div class="modal sm">
     <div class="modal-head">
@@ -944,5 +973,48 @@ if ('caches' in window) {
 <script src="js/femic-agenda.js?v=secure-cloud-5"></script>
 <script src="js/femic-unified.js?v=receipt-docs-2"></script>
 <script src="js/femic-ai-center.js?v=ai-center-2"></script>
+<script>
+(function(){
+  var panelMeta = {
+    agenda: ['Agenda clínica', 'Grade semanal, agenda mensal e busca rápida de atendimentos'],
+    day: ['Dia operacional', 'Acompanhamento dos atendimentos de hoje e mudança rápida de status'],
+    patients: ['Pacientes', 'Cadastro, busca e gestão da base ativa'],
+    prontuario: ['Prontuário', 'Anamnese, evolução clínica e histórico do paciente'],
+    packages: ['Pacotes', 'Sessões, saldos e controle de créditos por paciente'],
+    ai: ['Central de IA', 'Apoio clínico, radar operacional e automações assistidas'],
+    reminders: ['Lembretes', 'Fila de WhatsApp e acompanhamento de envios'],
+    report: ['Relatório financeiro', 'Fechamento mensal, pagadores e exportação'],
+    pendencias: ['Pendências', 'Tarefas vindas da extensão e itens aguardando ação'],
+    documentos: ['Documentos', 'Guias, recibos, declarações e documentos clínicos'],
+    historico: ['Histórico', 'Linha do tempo e indicadores consolidados'],
+    settings: ['Configurações', 'Supabase, expediente, serviços e preferências'],
+    backup: ['Backup', 'Exportação, restauração e integridade dos dados']
+  };
+
+  function applyFemicVisuals(panel){
+    var meta = panelMeta[panel] || panelMeta.agenda;
+    var title = document.getElementById('appContextTitle');
+    var subtitle = document.getElementById('appContextSubtitle');
+    document.body.dataset.activePanel = panel || 'agenda';
+    if(title) title.textContent = meta[0];
+    if(subtitle) subtitle.textContent = meta[1];
+    if(window.lucide && typeof window.lucide.createIcons === 'function'){
+      window.lucide.createIcons();
+    }
+  }
+
+  window.addEventListener('load', function(){
+    var originalShowPanel = window.showPanel;
+    if(typeof originalShowPanel === 'function' && !originalShowPanel.__femicVisualWrapped){
+      window.showPanel = function(name){
+        originalShowPanel(name);
+        applyFemicVisuals(name);
+      };
+      window.showPanel.__femicVisualWrapped = true;
+    }
+    applyFemicVisuals((document.querySelector('.nav-link.active[data-panel]') || {}).dataset && document.querySelector('.nav-link.active[data-panel]').dataset.panel || 'agenda');
+  });
+})();
+</script>
 </body>
 </html>

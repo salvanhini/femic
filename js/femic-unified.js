@@ -744,7 +744,7 @@
     var body = getDocumentBodyHtml() || textToDocumentHtml('Use o botão "Gerar texto" para preencher um documento com base no contexto clínico do paciente.');
     preview.innerHTML =
       '<div class="document-sheet document-sheet-premium">' +
-        '<div class="doc-brand"><div class="doc-brand-main">' + (settings.logoData ? renderDocumentImage(settings.logoData, 'doc-logo-img', 'Logo') : '<span>FEMIC</span>') + '<strong>Fisioterapia e cuidado clínico</strong></div><small>Documento gerado no sistema FEMIC</small></div>' +
+        '<div class="doc-brand"><div class="doc-brand-main">' + (settings.logoData ? renderDocumentImage(settings.logoData, 'doc-logo-img', 'Logo') : '<span>FEMIC</span>') + (settings.logoData && settings.professionalCouncil ? '<div><small>' + escHtml(settings.professionalCouncil) + '</small></div>' : (!settings.logoData && settings.professionalCouncil ? '<div><small>' + escHtml(settings.professionalCouncil) + '</small></div>' : '')) + '</div></div>' +
         '<h2>' + escHtml(preset.title || 'DOCUMENTO') + '</h2>' +
         documentMetaHtml(type, patient, dateValue, ctx) +
         '<div class="doc-body">' + body + '</div>' +
@@ -759,7 +759,7 @@
     var title = doc.title || doc.type_label || 'DOCUMENTO';
     var ctx = getDocumentContext(doc.patient_id);
     return '<div class="document-sheet document-sheet-premium">' +
-      '<div class="doc-brand"><div class="doc-brand-main">' + (settings.logoData ? renderDocumentImage(settings.logoData, 'doc-logo-img', 'Logo') : '<span>FEMIC</span>') + '<strong>Fisioterapia e cuidado clínico</strong></div><small>Documento salvo no histórico FEMIC</small></div>' +
+      '<div class="doc-brand"><div class="doc-brand-main">' + (settings.logoData ? renderDocumentImage(settings.logoData, 'doc-logo-img', 'Logo') : '<span>FEMIC</span>') + (settings.logoData && settings.professionalCouncil ? '<div><small>' + escHtml(settings.professionalCouncil) + '</small></div>' : (!settings.logoData && settings.professionalCouncil ? '<div><small>' + escHtml(settings.professionalCouncil) + '</small></div>' : '')) + '</div></div>' +
       '<h2>' + escHtml(title) + '</h2>' +
       documentMetaHtml(doc.type, patient, doc.date, ctx) +
       '<div class="doc-body">' + body + '</div>' +
