@@ -3309,173 +3309,6 @@ textarea,
   padding:2px 0 12px;
 }
 
-.gcal-week-shell{
-  min-width:1080px;
-  border:1px solid rgba(164,200,228,.45);
-  border-radius:24px;
-  overflow:hidden;
-  background:#fff;
-  box-shadow:0 18px 42px rgba(31,78,132,.12);
-}
-
-.gcal-week-board{
-  display:grid;
-}
-
-.gcal-week-corner{
-  min-height:66px;
-  background:linear-gradient(180deg,#f8fbfe,#f1f7fc);
-  border-right:1px solid rgba(164,200,228,.28);
-  border-bottom:1px solid rgba(164,200,228,.28);
-}
-
-.gcal-week-head{
-  min-height:66px;
-  padding:10px 10px 8px;
-  border-right:1px solid rgba(164,200,228,.28);
-  border-bottom:1px solid rgba(164,200,228,.28);
-  background:linear-gradient(180deg,#f8fbfe,#f1f7fc);
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  gap:2px;
-}
-
-.gcal-week-head.today{
-  background:linear-gradient(180deg,#eaf6ff,#f7fbff);
-}
-
-.gcal-week-head-day{
-  font-size:.72rem;
-  font-weight:900;
-  color:#68839d;
-  text-transform:uppercase;
-}
-
-.gcal-week-head strong{
-  color:var(--primary);
-  font-size:1rem;
-  line-height:1.1;
-}
-
-.gcal-week-head-meta{
-  font-size:.68rem;
-  color:#7a92ab;
-}
-
-.gcal-week-axis,
-.gcal-week-day{
-  position:relative;
-  border-right:1px solid rgba(164,200,228,.22);
-  background-image:
-    linear-gradient(to bottom, rgba(164,200,228,.22) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(164,200,228,.12) 1px, transparent 1px);
-  background-size:100% var(--hour-height),100% calc(var(--hour-height) / 2);
-  background-position:0 0,0 calc(var(--hour-height) / 2);
-}
-
-.gcal-week-axis{
-  background-color:#f8fbfe;
-}
-
-.gcal-week-axis-label{
-  position:absolute;
-  right:10px;
-  transform:translateY(-18%);
-  font-size:.72rem;
-  font-weight:800;
-  color:#6a849d;
-}
-
-.gcal-week-day{
-  background-color:#fff;
-}
-
-.gcal-week-day.today{
-  background-color:#fbfdff;
-}
-
-.gcal-week-day.closed{
-  background-color:#f8fafc;
-  opacity:.8;
-}
-
-.gcal-week-event{
-  position:absolute;
-  z-index:2;
-  border:1px solid rgba(11,60,111,.08);
-  border-left-width:4px;
-  border-radius:12px;
-  background:#fff;
-  padding:6px 7px;
-  text-align:left;
-  box-shadow:0 8px 16px rgba(11,60,111,.08);
-  cursor:pointer;
-  overflow:hidden;
-}
-
-.gcal-week-event span,
-.gcal-week-event strong{
-  display:block;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-.gcal-week-event-time{
-  font-size:.63rem;
-  font-weight:900;
-  color:#4f728f;
-}
-
-.gcal-week-event strong{
-  font-size:.76rem;
-  line-height:1.15;
-  color:var(--primary);
-  margin-top:2px;
-}
-
-.gcal-week-event-service{
-  font-size:.62rem;
-  color:#6b86a0;
-  margin-top:3px;
-}
-
-@media(max-width:980px){
-  .gcal-week-shell{
-    min-width:980px;
-  }
-}
-
-@media(max-width:768px){
-  #monthHead{
-    display:none;
-  }
-
-  .gcal-week-shell{
-    min-width:900px;
-    border-radius:18px;
-  }
-
-  .gcal-week-head{
-    min-height:58px;
-    padding:8px;
-  }
-
-  .gcal-week-event{
-    padding:5px 6px;
-    border-radius:10px;
-  }
-
-  .gcal-week-event strong{
-    font-size:.68rem;
-  }
-
-  .gcal-week-event-time,
-  .gcal-week-event-service{
-    font-size:.58rem;
-  }
-}
 
 /* =========================================================
    FEMIC Agenda v1.4.45 — Ajustes finais de layout
@@ -3697,72 +3530,10 @@ textarea,
   }
 }
 
-/* Estruturas ativas finais: gcal-week, lista mensal e ficha unificada */
+/* Estruturas ativas finais: lista mensal e ficha unificada */
 #weekView{
   overflow:auto;
   padding:2px 0 12px;
-}
-
-.gcal-week-shell{
-  min-width:1080px;
-  border:1px solid rgba(164,200,228,.45);
-  border-radius:24px;
-  overflow:hidden;
-  background:#fff;
-  box-shadow:0 18px 42px rgba(31,78,132,.12);
-}
-
-.gcal-week-board{
-  display:grid;
-}
-
-.gcal-week-head{
-  min-height:66px;
-  padding:10px 10px 8px;
-  border-right:1px solid rgba(164,200,228,.28);
-  border-bottom:1px solid rgba(164,200,228,.28);
-  background:linear-gradient(180deg,#f8fbfe,#f1f7fc);
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  gap:2px;
-}
-
-.gcal-week-axis-label{
-  right:10px;
-  transform:translateY(-18%);
-  font-size:.72rem;
-  font-weight:800;
-  color:#6a849d;
-}
-
-.gcal-week-day{
-  background-color:#fff;
-}
-
-.gcal-week-event{
-  position:absolute;
-  z-index:2;
-  border:1px solid rgba(11,60,111,.08);
-  border-left-width:4px;
-  border-radius:12px;
-  background:#fff;
-  padding:6px 7px;
-  text-align:left;
-  box-shadow:0 8px 16px rgba(11,60,111,.08);
-  cursor:pointer;
-  overflow:hidden;
-}
-
-.gcal-week-event strong{
-  display:block;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  font-size:.76rem;
-  line-height:1.15;
-  color:var(--primary);
-  margin-top:2px;
 }
 
 #monthView{
@@ -3796,18 +3567,7 @@ textarea,
   gap:16px;
 }
 
-@media(max-width:980px){
-  .gcal-week-shell{
-    min-width:980px;
-  }
-}
-
 @media(max-width:768px){
-  .gcal-week-shell{
-    min-width:900px;
-    border-radius:18px;
-  }
-
   #patientModal .modal{
     width:100%;
   }
@@ -6049,7 +5809,7 @@ textarea{
 /* Documentos premium */
 #panel-documentos .docs-premium-shell{
   display:grid;
-  grid-template-columns:minmax(0,1.05fr) minmax(360px,.95fr);
+  grid-template-columns:1fr;
   gap:16px;
   align-items:start;
 }

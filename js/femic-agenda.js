@@ -915,8 +915,7 @@ function renderMonth(){
     html+=list.length?`<div class="month-agenda-items">`+list.map(a=>{
       const patient=patientName(a.patient_id);
       const service=serviceName(a.service_id);
-      const statusLabel={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;
-      return `<button class="month-agenda-item status-${a.status}" type="button" onclick="openAppt('${a.appointment_date}','${a.id}')"><span class="month-agenda-time"><strong>${normalizeTime(a.start_time)}</strong><small>${normalizeTime(a.end_time)}</small></span><span class="month-agenda-main"><strong>${esc(patient)}</strong><small>${esc(service)}</small></span><span class="status-chip ${a.status}">${esc(statusLabel)}</span></button>`;
+      return `<button class="month-agenda-item status-${a.status}" type="button" onclick="openAppt('${a.appointment_date}','${a.id}')"><span class="month-agenda-time"><strong>${normalizeTime(a.start_time)}</strong><small>${normalizeTime(a.end_time)}</small></span><span class="month-agenda-main"><strong>${esc(patient)}</strong><small>${esc(service)}</small></span></button>`;
     }).join('')+`</div>`:`<div class="month-agenda-empty"><span>Sem atendimentos neste dia.</span><button class="btn ghost" type="button" onclick="openAppt('${ds}')">Criar atendimento</button></div>`;
     html+=`</section>`;
   }
@@ -930,7 +929,7 @@ function saldoBadge(pid,sid){const info=packageSaldoInfo(pid,sid);if(!info)retur
 function getServiceDefaultPrice(sid){const s=serviceById(sid);return Number(s.price||0)}
 function setAppointmentPriceFromService(force=false){const input=$('apptPrice');if(!input)return;const current=String(input.value||'').trim();if(force||!current){input.value=String(getServiceDefaultPrice($('apptService').value)||0)}}
 function openAppt(date=null,id=null,slot=null){$('apptId').value=id||'';$('rescheduleOriginId').value='';$('rescheduleCancelOriginal').value='';$('recurring').checked=false;toggleRecurrence();recurringSuggestionCache=[];if($('recSuggestionList'))$('recSuggestionList').innerHTML='';$('deleteApptBtn').style.display=id?'inline-flex':'none';if(id){const a=appointments.find(x=>String(x.id)===String(id));if(!a)return;$('apptPatient').value=a.patient_id;$('apptService').value=a.service_id;$('apptStatus').value=a.status;$('apptDate').value=a.appointment_date;$('apptStart').value=normalizeTime(a.start_time);$('apptEnd').value=normalizeTime(a.end_time);$('apptPrice').value=Number(a.service_price_at_time!=null?a.service_price_at_time:getServiceDefaultPrice(a.service_id));$('apptTitle').textContent='Editar agendamento'}else{$('apptPatient').value='';$('apptService').value='';$('apptStatus').value='agendado';$('apptDate').value=date||todayIso();$('apptStart').value=slot||(parsePeriods()[0]?.start)||settings.start_time||'08:00';$('apptEnd').value='';$('apptPrice').value='';$('apptTitle').textContent='Novo agendamento'}syncPatientPickers();showSaldoInfo();$('apptModal').classList.add('show')}
-function closeModal(id){$(id).classList.remove('show')}function toggleRecurrence(){$('recFields').classList.toggle('hidden',!$('recurring').checked); if($('recurring').checked) syncRecurrenceTimes()}
+function closeModal(id){const el=$(id);if(el) el.classList.remove('show')}function toggleRecurrence(){$('recFields').classList.toggle('hidden',!$('recurring').checked); if($('recurring').checked) syncRecurrenceTimes()}
 function toggleRecDayCard(i){const card=$('recCard'+i);if(card)card.classList.toggle('active',card.querySelector('.recDay')?.checked);previewRecurringEnd(i)}
 function syncRecurrenceTimes(){document.querySelectorAll('.recTime').forEach(inp=>{if(!inp.value)inp.value=$('apptStart').value||'08:00'});document.querySelectorAll('.recDay').forEach(ch=>toggleRecDayCard(ch.value));}
 function previewRecurringEnd(i){const inp=$('recTime'+i),out=$('recEnd'+i),s=serviceById($('apptService').value);if(!inp||!out)return;if(!$('apptService').value){out.textContent='Selecione o serviço';return}const start=inp.value||$('apptStart').value||'08:00';const end=addMinutes(start,Number(s.duration_minutes||45));out.textContent='Fim previsto: '+end;}function onServiceChange(updatePrice=false){const sid=$('apptService').value;if(!sid){$('apptEnd').value='';if(updatePrice)$('apptPrice').value='';showSaldoInfo();document.querySelectorAll('.recDay:checked').forEach(ch=>previewRecurringEnd(ch.value));return}const s=serviceById(sid);$('apptEnd').value=addMinutes($('apptStart').value||settings.start_time,Number(s.duration_minutes||45));if(updatePrice)setAppointmentPriceFromService(true);showSaldoInfo();document.querySelectorAll('.recDay:checked').forEach(ch=>previewRecurringEnd(ch.value))}
@@ -2385,59 +2384,9 @@ function weekdayShort(dateStr){
   return nomes[dateDay(dateStr)] || '';
 }
 function femicClamp(n,min,max){return Math.max(min,Math.min(max,n));}
-function femicWeekBoundsV1434(){
-  const periods=parsePeriods();
-  let start=8*60,end=20*60;
-  if(periods.length){
-    start=Math.min(...periods.map(p=>timeToMin(p.start)));
-    end=Math.max(...periods.map(p=>timeToMin(p.end)));
-  }else{
-    start=timeToMin(settings.start_time||'08:00');
-    end=timeToMin(settings.end_time||'20:00');
-  }
-  if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start){start=8*60;end=20*60;}
-  start=Math.floor(start/60)*60;
-  end=Math.ceil(end/60)*60;
-  return {start,end,total:end-start};
-}
 function femicIntervalsOverlapV1434(a,b){return a.start < b.end && b.start < a.end;}
-function femicLayoutAppointmentsV1434(list,bounds){
-  const items=list.map(a=>{
-    let st=timeToMin(normalizeTime(a.start_time));
-    let en=timeToMin(normalizeTime(a.end_time));
-    if(!Number.isFinite(st)) st=bounds.start;
-    if(!Number.isFinite(en)||en<=st) en=st+Number(a.duration_minutes||serviceById(a.service_id).duration_minutes||45||45);
-    st=femicClamp(st,bounds.start,bounds.end);
-    en=femicClamp(en,bounds.start,bounds.end);
-    if(en<=st) en=Math.min(bounds.end,st+15);
-    return {a,start:st,end:en,col:0,cols:1};
-  }).sort((x,y)=>(x.start-y.start)||(x.end-y.end));
-  const groups=[];
-  items.forEach(it=>{
-    let g=groups.find(gr=>gr.some(o=>femicIntervalsOverlapV1434(it,o)));
-    if(!g){g=[];groups.push(g);}
-    g.push(it);
-  });
-  groups.forEach(group=>{
-    group.sort((x,y)=>(x.start-y.start)||(x.end-y.end));
-    const colEnds=[];
-    group.forEach(it=>{
-      let col=colEnds.findIndex(end=>end<=it.start);
-      if(col<0){col=colEnds.length;colEnds.push(it.end);}else colEnds[col]=it.end;
-      it.col=col;
-    });
-    const totalCols=Math.max(1,colEnds.length);
-    group.forEach(it=>it.cols=totalCols);
-  });
-  return items;
-}
-function femicWeekCardV1434(a,style){
-  const p=patientById(a.patient_id),s=serviceById(a.service_id);
-  const label={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;
-  return `<div class="femic-week-card status-${a.status}" style="${style}" onclick="event.stopPropagation();openAppt('${a.appointment_date}','${a.id}')"><div class="week-card-main"><div class="appt-time">${normalizeTime(a.start_time)}–${normalizeTime(a.end_time)}</div><strong class="appt-name" title="${esc(p.name||'Paciente')}">${esc(p.name||'Paciente')}</strong><div class="week-card-service">${esc(s.name||'Sem serviço')}</div></div><div class="appt-meta"><span class="status-chip ${a.status}">${label}</span></div>${saldoBadge(a.patient_id,a.service_id)}</div>`;
-}
 function femicWeekClickV1434(ev,ds,bounds,pxPerMin){
-  if(ev.target.closest('.femic-week-card')) return;
+  if(ev.target.closest('.week-v3-event')) return;
   const dayEl=ev.currentTarget;
   if(dayEl.classList.contains('closed')) return;
   const rect=dayEl.getBoundingClientRect();
@@ -2447,6 +2396,91 @@ function femicWeekClickV1434(ev,ds,bounds,pxPerMin){
   const minute=femicClamp(raw,bounds.start,bounds.end-step);
   openAppt(ds,null,minToTime(minute));
 }
+function slotSummaryStatusButtons(a){
+  const options=[
+    {value:'agendado',label:'Agendado'},
+    {value:'confirmado',label:'Confirmar'},
+    {value:'concluido',label:'Concluir'},
+    {value:'cancelado',label:'Cancelar'}
+  ].filter(item=>item.value!==a.status);
+  return options.map(item=>`<button class="btn ${item.value==='concluido'?'success':item.value==='cancelado'?'danger':item.value==='confirmado'?'primary':'ghost'}" type="button" onclick="closeModal('slotSummaryModal');quickStatus('${a.id}','${item.value}')">${item.label}</button>`).join('');
+}
+function weekTimelineBounds(){
+  const periods=parsePeriods();
+  const starts=periods.map(p=>timeToMin(p.start)).filter(Number.isFinite);
+  const ends=periods.map(p=>timeToMin(p.end)).filter(Number.isFinite);
+  let start=starts.length?Math.min(...starts):timeToMin(settings.start_time||'08:00');
+  let end=ends.length?Math.max(...ends):timeToMin(settings.end_time||'20:00');
+  if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start){
+    start=8*60;
+    end=20*60;
+  }
+  start=Math.floor(start/60)*60;
+  end=Math.ceil(end/60)*60;
+  return {start,end,total:end-start};
+}
+function weekV3ItemsForDay(ds,bounds){
+  return agendaFiltered(appointments.filter(a=>a.appointment_date===ds)).map(a=>{
+    const st=timeToMin(normalizeTime(a.start_time));
+    let en=timeToMin(normalizeTime(a.end_time));
+    if(!Number.isFinite(st)) return null;
+    if(!Number.isFinite(en)||en<=st){
+      const fallbackDuration=Number(a.duration_minutes||serviceById(a.service_id).duration_minutes||45);
+      en=st+(Number.isFinite(fallbackDuration)&&fallbackDuration>0?fallbackDuration:45);
+    }
+    const start=femicClamp(st,bounds.start,bounds.end);
+    const end=femicClamp(en,bounds.start,bounds.end);
+    if(end<=start) return null;
+    return {date:ds,start,end,startLabel:normalizeTime(a.start_time),endLabel:normalizeTime(a.end_time),appointment:a,col:0,cols:1};
+  }).filter(Boolean).sort((a,b)=>(a.start-b.start)||(a.end-b.end)||patientName(a.appointment.patient_id).localeCompare(patientName(b.appointment.patient_id),'pt-BR'));
+}
+function layoutWeekV3Items(items){
+  const buckets=[];
+  items.forEach(item=>{
+    let bucket=buckets.find(list=>list.some(other=>femicIntervalsOverlapV1434(item,other)));
+    if(!bucket){bucket=[];buckets.push(bucket);}
+    bucket.push(item);
+  });
+  buckets.forEach(bucket=>{
+    bucket.sort((a,b)=>(a.start-b.start)||(a.end-b.end));
+    const colEnds=[];
+    bucket.forEach(item=>{
+      let col=colEnds.findIndex(end=>end<=item.start);
+      if(col<0){col=colEnds.length;colEnds.push(item.end);}else colEnds[col]=item.end;
+      item.col=col;
+    });
+    const cols=Math.max(1,colEnds.length);
+    bucket.forEach(item=>item.cols=cols);
+  });
+  return items;
+}
+function openWeekAppointmentSummary(key){
+  const item=window.FEMICWeekV3Cache&&window.FEMICWeekV3Cache[key];
+  if(!item) return;
+  const a=item.appointment;
+  const patient=patientById(a.patient_id);
+  const statusLabel={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;
+  const title=$('slotSummaryTitle'),subtitle=$('slotSummarySubtitle'),body=$('slotSummaryBody'),addBtn=$('slotSummaryAddBtn');
+  if(title) title.textContent=`${fmtWeekday(item.date)}, ${fmtDate(item.date)} · ${item.startLabel}-${item.endLabel}`;
+  if(subtitle) subtitle.textContent=`${patient.name||'Paciente'} · ${serviceName(a.service_id)} · ${statusLabel}`;
+  if(addBtn) addBtn.onclick=function(){closeModal('slotSummaryModal');openAppt(item.date,null,item.startLabel);};
+  if(body){
+    body.innerHTML='<div class="slot-summary-list">'+
+      `<div class="slot-summary-row status-${a.status}">
+        <div class="slot-summary-main">
+          <strong>${esc(patient.name||'Paciente')}</strong>
+          <span>${normalizeTime(a.start_time)}-${normalizeTime(a.end_time)} · ${esc(serviceName(a.service_id))}</span>
+          <span class="status-chip ${a.status}">${statusLabel}</span>
+        </div>
+        <div class="slot-summary-actions">${slotSummaryStatusButtons(a)}</div>
+      </div>`+
+    '</div>';
+  }
+  $('slotSummaryModal')?.classList.add('show');
+}
+function weekV3StatusClass(status){
+  return status==='concluido'?'done':status==='cancelado'?'cancelled':status==='confirmado'?'confirmed':'scheduled';
+}
 function renderWeek(){
   $('monthView').classList.add('hidden');
   $('weekView').classList.remove('hidden');
@@ -2455,36 +2489,44 @@ function renderWeek(){
   const days=allDays.filter(d=>isWorking(isoDate(d)));
   const visibleDays=days.length?days:allDays;
   $('periodLabel').textContent=`Semana de ${fmtDate(isoDate(visibleDays[0]))} a ${fmtDate(isoDate(visibleDays[visibleDays.length-1]))}`;
-  const bounds=femicWeekBoundsV1434();
-  const pxPerMin=1.22;
+  const bounds=weekTimelineBounds();
+  const pxPerMin=1.42;
   const hourHeight=Math.round(60*pxPerMin);
   const timelineHeight=Math.round(bounds.total*pxPerMin);
-  const slotList=slots();
   const timeMarks=[];
   for(let m=bounds.start;m<=bounds.end;m+=60) timeMarks.push(m);
-  let html=`<div class="gcal-week-shell"><div class="gcal-week-board" style="grid-template-columns:84px repeat(${visibleDays.length}, minmax(180px,1fr));">`;
-  html+=`<div class="gcal-week-corner"></div>`;
+  window.FEMICWeekV3Cache={};
+  let itemIndex=0;
+  let html=`<div class="week-v3-shell"><div class="week-v3-board" style="grid-template-columns:86px repeat(${visibleDays.length}, minmax(220px,1fr));">`;
+  html+=`<div class="week-v3-corner"></div>`;
   visibleDays.forEach(d=>{
     const ds=isoDate(d);
     const openCount=agendaFiltered(appointments.filter(a=>a.appointment_date===ds&&a.status!=='cancelado')).length;
     const weekLabel=d.toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','');
-    html+=`<div class="gcal-week-head ${ds===todayIso()?'today':''}"><span class="gcal-week-head-day">${weekLabel}</span><strong>${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}</strong><span class="gcal-week-head-meta">${openCount} ag.</span></div>`;
+    html+=`<div class="week-v3-head ${ds===todayIso()?'today':''}"><span>${weekLabel}</span><strong>${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}</strong><small>${openCount} ag.</small></div>`;
   });
-  html+=`<div class="gcal-week-axis" style="height:${timelineHeight}px;--hour-height:${hourHeight}px">`;
-  timeMarks.forEach(min=>{ html+=`<div class="gcal-week-axis-label" style="top:${Math.round((min-bounds.start)*pxPerMin)}px">${minToTime(min)}</div>`; });
+  html+=`<div class="week-v3-axis" style="height:${timelineHeight}px;--hour-height:${hourHeight}px">`;
+  timeMarks.forEach(min=>{html+=`<div class="week-v3-axis-label" style="top:${Math.round((min-bounds.start)*pxPerMin)}px">${minToTime(min)}</div>`});
   html+=`</div>`;
   visibleDays.forEach(d=>{
     const ds=isoDate(d);
-    const off=isClosedForView(ds);
-    const dayItems=femicLayoutAppointmentsV1434(agendaFiltered(appointments.filter(a=>a.appointment_date===ds)),bounds);
-    html+=`<div class="gcal-week-day ${ds===todayIso()?'today':''} ${off?'closed':''}" style="height:${timelineHeight}px;--hour-height:${hourHeight}px" onclick="femicWeekClickV1434(event,'${ds}',{start:${bounds.start},end:${bounds.end}},${pxPerMin})">`;
-    dayItems.forEach(it=>{
-      const top=Math.round((it.start-bounds.start)*pxPerMin);
-      const height=Math.max(26,Math.round((it.end-it.start)*pxPerMin));
-      const laneWidth=100/Math.max(it.cols,1);
-      const left=(laneWidth*it.col);
+    const closed=isClosedForView(ds);
+    const items=layoutWeekV3Items(weekV3ItemsForDay(ds,bounds));
+    html+=`<div class="week-v3-day ${ds===todayIso()?'today':''} ${closed?'closed':''}" style="height:${timelineHeight}px;--hour-height:${hourHeight}px" onclick="femicWeekClickV1434(event,'${ds}',{start:${bounds.start},end:${bounds.end}},${pxPerMin})">`;
+    items.forEach(item=>{
+      const key='a'+(itemIndex++);
+      window.FEMICWeekV3Cache[key]=item;
+      const top=Math.round((item.start-bounds.start)*pxPerMin);
+      const height=Math.max(54,Math.round((item.end-item.start)*pxPerMin));
+      const laneWidth=100/Math.max(item.cols,1);
+      const left=laneWidth*item.col;
       const widthStyle=`calc(${laneWidth}% - 8px)`;
-      html+=`<button class="gcal-week-event status-${it.a.status}" style="top:${top}px;height:${height}px;left:calc(${left}% + 4px);width:${widthStyle}" onclick="event.stopPropagation();openAppt('${it.a.appointment_date}','${it.a.id}')"><span class="gcal-week-event-time">${normalizeTime(it.a.start_time)}-${normalizeTime(it.a.end_time)}</span><strong>${esc(patientName(it.a.patient_id))}</strong><span class="gcal-week-event-service">${esc(serviceName(it.a.service_id))}</span></button>`;
+      const a=item.appointment;
+      const status=a.status||'agendado';
+      html+=`<button class="week-v3-event ${weekV3StatusClass(status)} status-${status}" type="button" style="top:${top}px;height:${height}px;left:calc(${left}% + 4px);width:${widthStyle}" onclick="event.stopPropagation();openWeekAppointmentSummary('${key}')">
+        <div class="week-v3-event-time"><span>${item.startLabel}-${item.endLabel}</span></div>
+        <strong class="week-v3-event-name">${esc(patientName(a.patient_id))}</strong>
+      </button>`;
     });
     html+=`</div>`;
   });
