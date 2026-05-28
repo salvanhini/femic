@@ -2497,7 +2497,7 @@ function renderWeek(){
   for(let m=bounds.start;m<=bounds.end;m+=60) timeMarks.push(m);
   window.FEMICWeekV3Cache={};
   let itemIndex=0;
-  let html=`<div class="week-v3-shell"><div class="week-v3-board" style="grid-template-columns:86px repeat(${visibleDays.length}, minmax(220px,1fr));">`;
+  let html=`<div class="week-v3-shell"><div class="week-v3-board" style="grid-template-columns:64px repeat(${visibleDays.length}, minmax(144px,1fr));">`;
   html+=`<div class="week-v3-corner"></div>`;
   visibleDays.forEach(d=>{
     const ds=isoDate(d);
