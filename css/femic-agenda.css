@@ -5827,15 +5827,169 @@ textarea{
   padding:14px;
 }
 
-#panel-documentos .docs-quick-models{
+#panel-documentos .docs-composer-grid{
   display:grid;
-  grid-template-columns:repeat(5,minmax(0,1fr));
+  grid-template-columns:minmax(0,1fr);
+  gap:14px;
+}
+
+#panel-documentos .docs-compose-main{
+  display:grid;
+  gap:14px;
+}
+
+#panel-documentos .docs-ai-panel{
+  border:1px solid rgba(31,182,233,.18);
+  border-radius:18px;
+  background:linear-gradient(180deg,#f7fcff,#fff);
+  padding:14px;
+}
+
+#panel-documentos .docs-ready-models{
+  border:1px solid rgba(11,60,111,.12);
+  border-radius:18px;
+  background:#fff;
+  padding:14px;
+}
+
+#panel-documentos .docs-ready-models-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+
+#panel-documentos .docs-ready-models-head h4{
+  color:var(--primary);
+  margin:4px 0 0;
+}
+
+#panel-documentos .docs-ready-models-helper{
+  margin-top:6px;
+}
+
+#panel-documentos .docs-ai-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+
+#panel-documentos .docs-ai-head h4{
+  color:var(--primary);
+  margin:4px 0 0;
+}
+
+#panel-documentos .docs-ai-badge{
+  display:inline-flex;
+  align-items:center;
+  border-radius:999px;
+  background:rgba(31,182,233,.10);
+  color:var(--primary);
+  padding:5px 10px;
+  font-size:.72rem;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+#panel-documentos .docs-ai-helper,
+#panel-documentos .docs-ai-status,
+#panel-documentos .doc-editor-helper{
+  line-height:1.45;
+}
+
+#panel-documentos .docs-ai-quick-prompts{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
   gap:8px;
   margin-top:12px;
 }
 
-#panel-documentos .docs-identity-panel{
+#panel-documentos .docs-quick-models{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
   margin-top:12px;
+}
+
+#panel-documentos .doc-quick-model{
+  display:block;
+  width:100%;
+  text-align:left;
+  border:1px solid rgba(11,60,111,.12);
+  border-radius:14px;
+  background:#fff;
+  color:var(--text);
+  padding:10px 11px;
+  cursor:pointer;
+}
+
+#panel-documentos .doc-quick-model:hover,
+#panel-documentos .doc-quick-model:focus{
+  border-color:rgba(31,182,233,.34);
+  background:#f5fcff;
+  outline:none;
+}
+
+#panel-documentos .doc-quick-model strong{
+  display:block;
+  color:var(--primary);
+  font-size:.84rem;
+}
+
+#panel-documentos .doc-quick-model span{
+  display:block;
+  margin-top:3px;
+  color:var(--muted);
+  font-size:.76rem;
+  line-height:1.35;
+}
+
+#panel-documentos .doc-quick-model.active{
+  border-color:rgba(31,182,233,.38);
+  background:#eefaff;
+  box-shadow:inset 0 0 0 1px rgba(31,182,233,.12);
+}
+
+#panel-documentos .doc-ai-chip{
+  display:block;
+  width:100%;
+  text-align:left;
+  border:1px solid rgba(11,60,111,.12);
+  border-radius:14px;
+  background:#fff;
+  color:var(--text);
+  padding:10px 11px;
+  cursor:pointer;
+  box-shadow:0 8px 18px rgba(11,60,111,.04);
+}
+
+#panel-documentos .doc-ai-chip:hover,
+#panel-documentos .doc-ai-chip:focus{
+  border-color:rgba(31,182,233,.34);
+  background:#f5fcff;
+  outline:none;
+}
+
+#panel-documentos .doc-ai-chip strong{
+  display:block;
+  color:var(--primary);
+  font-size:.84rem;
+}
+
+#panel-documentos .doc-ai-chip span{
+  display:block;
+  margin-top:3px;
+  color:var(--muted);
+  font-size:.76rem;
+  line-height:1.35;
+}
+
+#panel-documentos .docs-ai-actions .btn{
+  min-height:42px;
+}
+
+#panel-documentos .docs-identity-panel{
   border:1px solid var(--line);
   border-radius:16px;
   background:#fff;
@@ -5896,23 +6050,6 @@ textarea{
   display:none;
 }
 
-#panel-documentos .doc-quick-model{
-  border:1px solid var(--line);
-  border-radius:13px;
-  background:#fff;
-  color:var(--primary);
-  padding:9px 8px;
-  font-size:.78rem;
-  font-weight:900;
-  cursor:pointer;
-}
-
-#panel-documentos .doc-quick-model.active{
-  background:#e8f8ff;
-  border-color:rgba(31,182,233,.35);
-  box-shadow:inset 0 0 0 1px rgba(31,182,233,.12);
-}
-
 #panel-documentos .docs-actions .btn{
   min-height:40px;
 }
@@ -5954,13 +6091,56 @@ textarea{
   min-height:300px;
   max-height:520px;
   overflow:auto;
-  padding:14px 15px;
+  padding:18px 20px;
   border:1px solid var(--line);
   border-radius:15px;
   background:#fff;
   color:var(--text);
   line-height:1.65;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  writing-mode:horizontal-tb!important;
+  text-orientation:mixed!important;
+  direction:ltr;
+  unicode-bidi:plaintext;
+  columns:auto!important;
+  column-count:1!important;
+  column-width:auto!important;
   outline:none;
+}
+
+#panel-documentos .doc-rich-editor p,
+#panel-documentos .doc-rich-editor div,
+#panel-documentos .doc-rich-editor ul,
+#panel-documentos .doc-rich-editor ol,
+#panel-documentos .doc-rich-editor li,
+#panel-documentos .doc-rich-editor span,
+#panel-documentos .doc-rich-editor b,
+#panel-documentos .doc-rich-editor strong,
+#panel-documentos .doc-rich-editor i,
+#panel-documentos .doc-rich-editor em,
+#panel-documentos .doc-rich-editor u,
+#panel-documentos .doc-rich-editor br{
+  max-width:100%;
+  writing-mode:horizontal-tb!important;
+  text-orientation:mixed!important;
+  direction:ltr!important;
+  unicode-bidi:plaintext!important;
+  float:none!important;
+  clear:both;
+  column-count:1!important;
+  column-width:auto!important;
+}
+
+#panel-documentos .doc-rich-editor p,
+#panel-documentos .doc-rich-editor div{
+  margin:0 0 12px;
+}
+
+#panel-documentos .doc-rich-editor p:last-child,
+#panel-documentos .doc-rich-editor div:last-child{
+  margin-bottom:0;
 }
 
 #panel-documentos .doc-rich-editor:focus{
@@ -5971,6 +6151,21 @@ textarea{
 #panel-documentos .docs-preview-card{
   position:sticky;
   top:88px;
+}
+
+#panel-documentos.docs-focus-mode .docs-preview-card,
+#panel-documentos.docs-focus-mode .docs-history-card{
+  display:none;
+}
+
+#panel-documentos.docs-focus-mode .docs-premium-builder{
+  max-width:1120px;
+  margin:0 auto;
+}
+
+#panel-documentos.docs-focus-mode .doc-rich-editor{
+  min-height:65vh;
+  max-height:none;
 }
 
 #panel-documentos .document-preview{
@@ -6597,6 +6792,7 @@ textarea:focus-visible{
 
 @media(max-width:760px){
   #panel-documentos .docs-quick-models,
+  #panel-documentos .docs-ai-quick-prompts,
   #panel-documentos .docs-identity-grid,
   #panel-documentos .docs-history-filters{
     grid-template-columns:1fr;

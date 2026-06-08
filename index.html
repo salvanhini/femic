@@ -330,49 +330,88 @@ window.tailwind.config = {
     <div class="docs-premium-shell">
       <div class="card docs-premium-builder">
         <div class="section-title">
-          <div><div class="eyebrow">Documentos</div><h3>Assistente de documentos clínicos</h3></div>
+          <div><div class="eyebrow">Documentos</div><h3>Redação clínica com apoio da IA</h3><p class="muted small">Defina o documento, gere o rascunho, revise no editor e salve no histórico.</p></div>
           <div class="toolbar">
             <select id="docsPatientSelect" onchange="selectUnifiedPatient(this.value,'documentos')" style="min-width:260px"></select>
+            <button class="btn ghost" id="docsFocusToggleBtn" type="button" onclick="toggleDocumentsFocusMode()">Modo foco</button>
             <button class="btn" onclick="renderUnifiedDocuments()">Atualizar</button>
           </div>
         </div>
         <div class="docs-premium-stage">
-          <div class="grid grid-2">
-          <div class="field"><label>Tipo</label><select id="docTypeSelect" onchange="populateDocPresets()"><option value="attendance">Atestado</option><option value="declaration">Declaração</option><option value="exam">Pedido de exame</option><option value="report">Laudo</option><option value="summary">Resumo evolutivo</option><option value="receipt">Recibo</option></select></div>
-          <div class="field"><label>Modelo</label><select id="docPresetSelect" onchange="renderUnifiedDocumentPreview()"></select></div>
-          <div class="field"><label>Data do documento</label><input id="docDateInput" type="date" onchange="renderUnifiedDocumentPreview()"></div>
-          <div class="field"><label>Mostrar carimbo</label><select id="showStampSelect" onchange="renderUnifiedDocumentPreview()"><option value="yes">Sim</option><option value="no">Não</option></select></div>
-          </div>
-          <details class="docs-identity-panel">
-            <summary>Identidade do documento</summary>
-            <div class="docs-identity-grid">
-              <div class="docs-identity-text">
-                <div class="field"><label>Nome profissional</label><input id="professionalNameInput" placeholder="FEMIC Fisioterapia" oninput="renderUnifiedDocumentPreview()"></div>
-                <div class="field"><label>Conselho profissional</label><input id="professionalNoteInput" placeholder="CREFITO-3 000000-F" oninput="renderUnifiedDocumentPreview()"></div>
+          <div class="docs-composer-grid">
+            <div class="docs-compose-main">
+              <div class="grid grid-2">
+              <div class="field"><label>Tipo</label><select id="docTypeSelect" onchange="populateDocPresets()"><option value="attendance">Atestado</option><option value="declaration">Declaração</option><option value="exam">Pedido de exame</option><option value="report">Laudo</option><option value="summary">Resumo evolutivo</option><option value="receipt">Recibo</option></select></div>
+              <div class="field"><label>Modelo</label><select id="docPresetSelect" onchange="renderUnifiedDocumentPreview()"></select></div>
+              <div class="field"><label>Data do documento</label><input id="docDateInput" type="date" onchange="renderUnifiedDocumentPreview()"></div>
+              <div class="field"><label>Mostrar carimbo</label><select id="showStampSelect" onchange="renderUnifiedDocumentPreview()"><option value="yes">Sim</option><option value="no">Não</option></select></div>
               </div>
-              <div class="docs-asset-field">
-                <label>Logo PNG</label>
-                <div class="docs-asset-preview"><img id="docLogoPreview" alt="Logo do documento"></div>
-                <input type="file" id="docLogoInput" accept="image/png" onchange="handleDocumentAssetUpload('logoData',this)">
-                <button class="btn" type="button" onclick="clearDocumentAsset('logoData')">Remover</button>
+
+              <div class="docs-ready-models">
+                <div class="docs-ready-models-head">
+                  <div>
+                    <div class="eyebrow">Modelos prontos</div>
+                    <h4>Base pronta para todos os tipos</h4>
+                  </div>
+                  <span class="muted small">Use sem depender da IA</span>
+                </div>
+                <div class="muted small docs-ready-models-helper">Escolha um modelo pronto do tipo selecionado para preencher o editor imediatamente.</div>
+                <div class="docs-quick-models" id="docQuickModels"></div>
               </div>
-              <div class="docs-asset-field">
-                <label>Assinatura PNG</label>
-                <div class="docs-asset-preview"><img id="docSignaturePreview" alt="Assinatura do documento"></div>
-                <input type="file" id="docSignatureInput" accept="image/png" onchange="handleDocumentAssetUpload('signatureData',this)">
-                <button class="btn" type="button" onclick="clearDocumentAsset('signatureData')">Remover</button>
+
+              <div class="docs-ai-panel">
+                <div class="docs-ai-head">
+                  <div>
+                    <div class="eyebrow">IA FEMIC</div>
+                    <h4>Pedido para a IA</h4>
+                  </div>
+                  <span class="docs-ai-badge">Rascunho revisável</span>
+                </div>
+                <div class="muted small docs-ai-helper">Descreva o que precisa. A IA usa o paciente, o tipo e o contexto clínico para preencher o editor.</div>
+                <div class="docs-ai-quick-prompts" id="docAiQuickPrompts"></div>
+                <div class="field" style="margin-top:12px">
+                  <label>O que a IA precisa escrever</label>
+                  <textarea id="docAiPromptInput" rows="5" placeholder="Exemplo: elaborar laudo fisioterapêutico formal com histórico funcional, limitações atuais, relação com atividade laboral e conclusão técnica para afastamento temporário."></textarea>
+                </div>
+                <div class="toolbar docs-ai-actions" style="margin-top:12px">
+                  <button class="btn primary" id="docAiGenerateBtn" type="button" onclick="generateUnifiedDocumentWithAI()">Gerar com IA</button>
+                  <button class="btn" type="button" onclick="generateUnifiedDocument()">Preencher modelo</button>
+                  <button class="btn ghost" type="button" onclick="clearDocumentAiPrompt()">Limpar pedido</button>
+                </div>
+                <div class="muted small docs-ai-status" id="docAiStatus">Pronto para gerar. O texto entra no editor para revisão antes de salvar no histórico.</div>
               </div>
-              <div class="docs-asset-field">
-                <label>Carimbo PNG</label>
-                <div class="docs-asset-preview"><img id="docStampPreview" alt="Carimbo do documento"></div>
-                <input type="file" id="docStampInput" accept="image/png" onchange="handleDocumentAssetUpload('stampData',this)">
-                <button class="btn" type="button" onclick="clearDocumentAsset('stampData')">Remover</button>
-              </div>
+              <details class="docs-identity-panel">
+                <summary>Ajustes do documento</summary>
+                <div class="docs-identity-grid">
+                  <div class="docs-identity-text">
+                    <div class="field"><label>Nome profissional</label><input id="professionalNameInput" placeholder="FEMIC Fisioterapia" oninput="renderUnifiedDocumentPreview()"></div>
+                    <div class="field"><label>Conselho profissional</label><input id="professionalNoteInput" placeholder="CREFITO-3 000000-F" oninput="renderUnifiedDocumentPreview()"></div>
+                  </div>
+                  <div class="docs-asset-field">
+                    <label>Logo PNG</label>
+                    <div class="docs-asset-preview"><img id="docLogoPreview" alt="Logo do documento"></div>
+                    <input type="file" id="docLogoInput" accept="image/png" onchange="handleDocumentAssetUpload('logoData',this)">
+                    <button class="btn" type="button" onclick="clearDocumentAsset('logoData')">Remover</button>
+                  </div>
+                  <div class="docs-asset-field">
+                    <label>Assinatura PNG</label>
+                    <div class="docs-asset-preview"><img id="docSignaturePreview" alt="Assinatura do documento"></div>
+                    <input type="file" id="docSignatureInput" accept="image/png" onchange="handleDocumentAssetUpload('signatureData',this)">
+                    <button class="btn" type="button" onclick="clearDocumentAsset('signatureData')">Remover</button>
+                  </div>
+                  <div class="docs-asset-field">
+                    <label>Carimbo PNG</label>
+                    <div class="docs-asset-preview"><img id="docStampPreview" alt="Carimbo do documento"></div>
+                    <input type="file" id="docStampInput" accept="image/png" onchange="handleDocumentAssetUpload('stampData',this)">
+                    <button class="btn" type="button" onclick="clearDocumentAsset('stampData')">Remover</button>
+                  </div>
+                </div>
+              </details>
             </div>
-          </details>
-          <div class="docs-quick-models" id="docQuickModels"></div>
+          </div>
           <div class="field document-editor-field" style="margin-top:12px">
-            <label>Corpo do documento</label>
+            <label>Rascunho do documento</label>
+            <div class="muted small doc-editor-helper">Revise aqui o texto final. Você também pode escrever, ajustar ou colar conteúdo diretamente no editor.</div>
             <div class="doc-editor-toolbar" aria-label="Ferramentas de formatação do documento">
               <button class="btn" type="button" title="Negrito" onclick="formatDocumentBody('bold')">B</button>
               <button class="btn" type="button" title="Itálico" onclick="formatDocumentBody('italic')"><em>I</em></button>
@@ -391,7 +430,6 @@ window.tailwind.config = {
             <textarea id="docBodyInput" class="hidden" rows="12" oninput="syncDocumentEditorFromInput();renderUnifiedDocumentPreview()"></textarea>
           </div>
           <div class="toolbar docs-actions" style="margin-top:12px">
-            <button class="btn primary" onclick="generateUnifiedDocument()">Gerar texto</button>
             <button class="btn" onclick="saveGeneratedDocument()">Salvar no histórico</button>
             <button class="btn ghost" onclick="printUnifiedDocument()">Imprimir / PDF</button>
           </div>

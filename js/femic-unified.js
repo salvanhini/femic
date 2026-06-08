@@ -38,6 +38,42 @@
     ]
   };
 
+  var DOC_LABELS = {
+    attendance: 'Atestado',
+    declaration: 'Declaração',
+    exam: 'Pedido de exame',
+    report: 'Laudo',
+    summary: 'Resumo evolutivo',
+    receipt: 'Recibo'
+  };
+
+  var DOC_AI_PROMPTS = {
+    attendance: [
+      { label:'Comparecimento formal', prompt:'Gerar atestado de comparecimento formal, curto e objetivo, confirmando atendimento na data informada.' },
+      { label:'Presença com contexto', prompt:'Gerar declaração de comparecimento com breve contexto fisioterapêutico e finalidade administrativa.' }
+    ],
+    declaration: [
+      { label:'Acompanhamento em curso', prompt:'Redigir declaração formal informando que a paciente permanece em acompanhamento fisioterapêutico na FEMIC.' },
+      { label:'Uso para trabalho', prompt:'Gerar declaração clínica formal para apresentação em ambiente de trabalho, com linguagem objetiva e profissional.' }
+    ],
+    exam: [
+      { label:'Exame complementar', prompt:'Redigir pedido de exame complementar com justificativa técnica baseada no quadro funcional atual.' },
+      { label:'Investigação clínica', prompt:'Gerar solicitação formal de exame para investigação do quadro, com hipótese clínica e justificativa objetiva.' }
+    ],
+    report: [
+      { label:'Laudo funcional', prompt:'Elaborar laudo fisioterapêutico formal com histórico funcional, limitações atuais, impacto ocupacional e conclusão técnica.' },
+      { label:'Laudo para afastamento', prompt:'Gerar laudo clínico formal para análise de afastamento temporário, com ênfase em limitações e incapacidade funcional atual.' }
+    ],
+    summary: [
+      { label:'Resumo evolutivo', prompt:'Gerar resumo evolutivo claro, técnico e conciso com progresso, limitações persistentes e conduta atual.' },
+      { label:'Síntese para prontuário', prompt:'Montar síntese técnica do acompanhamento fisioterapêutico para registro e compartilhamento clínico interno.' }
+    ],
+    receipt: [
+      { label:'Recibo simples', prompt:'Redigir recibo fisioterapêutico formal, direto e profissional, pronto para assinatura.' },
+      { label:'Recibo detalhado', prompt:'Gerar recibo com referência ao atendimento fisioterapêutico realizado e linguagem administrativa formal.' }
+    ]
+  };
+
   var runtime = {
     currentPatientId: '',
     historyDataset: { source:'empty', patients:[], sessions:[] },
@@ -434,8 +470,11 @@
     if(el('showStampSelect') && !el('showStampSelect').value) el('showStampSelect').value = settings.showStamp || 'yes';
     populateDocPresets();
     renderDocQuickModels();
+    renderDocAiQuickPrompts();
     renderDocumentAssetPreviews();
     setDocumentStep(getDocumentStep());
+    setDocumentsFocusMode(getDocumentsFocusMode());
+    setDocAiStatus('Pronto para gerar. O texto entra no editor para revisão antes de salvar no histórico.', 'neutral');
     renderUnifiedDocumentPreview();
     renderUnifiedPatientDocumentsList(pid);
     renderUnifiedGuiasList(pid);
@@ -501,6 +540,22 @@
     return raw >= 1 && raw <= 4 ? raw : 1;
   }
 
+  function getDocumentsFocusMode(){
+    return localStorage.getItem('femic_documents_focus_mode') === '1';
+  }
+
+  function setDocumentsFocusMode(enabled){
+    enabled = !!enabled;
+    localStorage.setItem('femic_documents_focus_mode', enabled ? '1' : '0');
+    var panel = el('panel-documentos');
+    if(panel) panel.classList.toggle('docs-focus-mode', enabled);
+    var btn = el('docsFocusToggleBtn');
+    if(btn){
+      btn.textContent = enabled ? 'Sair do foco' : 'Modo foco';
+      btn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    }
+  }
+
   function setDocumentStep(step){
     step = Math.max(1, Math.min(4, Number(step || 1)));
     localStorage.setItem('femic_document_step', String(step));
@@ -517,18 +572,33 @@
   function renderDocQuickModels(){
     var target = el('docQuickModels');
     if(!target) return;
-    var items = [
-      { type:'attendance', label:'Atestado' },
-      { type:'declaration', label:'Declaração' },
-      { type:'exam', label:'Pedido exame' },
-      { type:'report', label:'Laudo' },
-      { type:'summary', label:'Resumo' },
-      { type:'receipt', label:'Recibo' }
-    ];
-    var active = el('docTypeSelect') ? el('docTypeSelect').value : 'attendance';
+    var type = el('docTypeSelect') ? el('docTypeSelect').value : 'attendance';
+    var presetId = el('docPresetSelect') ? el('docPresetSelect').value : '';
+    var items = DOC_PRESETS[type] || [];
     target.innerHTML = items.map(function(item){
-      return '<button class="doc-quick-model ' + (item.type === active ? 'active' : '') + '" type="button" onclick="selectDocQuickModel(\'' + item.type + '\')">' + escHtml(item.label) + '</button>';
+      return '<button class="doc-quick-model ' + (item.id === presetId ? 'active' : '') + '" type="button" onclick="selectDocQuickModel(\'' + escHtml(item.id) + '\')"><strong>' + escHtml(item.label) + '</strong><span>' + escHtml(item.title || DOC_LABELS[type] || 'Documento') + '</span></button>';
     }).join('');
+  }
+
+  function getDocAiPromptSuggestions(){
+    var type = el('docTypeSelect') ? el('docTypeSelect').value : 'attendance';
+    return DOC_AI_PROMPTS[type] || DOC_AI_PROMPTS.attendance || [];
+  }
+
+  function renderDocAiQuickPrompts(){
+    var target = el('docAiQuickPrompts');
+    if(!target) return;
+    var items = getDocAiPromptSuggestions();
+    target.innerHTML = items.map(function(item, index){
+      return '<button class="doc-ai-chip" type="button" onclick="applyDocAiPromptSuggestion(' + index + ')"><strong>' + escHtml(item.label) + '</strong><span>' + escHtml(item.prompt) + '</span></button>';
+    }).join('');
+  }
+
+  function setDocAiStatus(message, tone){
+    var target = el('docAiStatus');
+    if(!target) return;
+    target.textContent = message || 'Pronto para gerar. O texto entra no editor para revisão antes de salvar no histórico.';
+    target.dataset.tone = tone || 'neutral';
   }
 
   function documentAssetPreviewMap(){
@@ -615,6 +685,64 @@
     if(el('docBodyInput')) el('docBodyInput').value = html;
   }
 
+  function insertDocumentHtmlAtCursor(html){
+    var editor = el('docBodyEditor');
+    if(!editor) return;
+    editor.focus();
+    try{
+      if(document.queryCommandSupported && document.queryCommandSupported('insertHTML')){
+        document.execCommand('insertHTML', false, html);
+        return;
+      }
+    }catch(e){}
+    var selection = window.getSelection();
+    if(!selection || !selection.rangeCount){
+      editor.innerHTML += html;
+      return;
+    }
+    var range = selection.getRangeAt(0);
+    if(!editor.contains(range.commonAncestorContainer)){
+      editor.innerHTML += html;
+      return;
+    }
+    range.deleteContents();
+    var fragment = range.createContextualFragment(html);
+    var lastNode = fragment.lastChild;
+    range.insertNode(fragment);
+    if(lastNode){
+      range.setStartAfter(lastNode);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+  }
+
+  function normalizePastedDocumentText(text){
+    return String(text || '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF]/g, '')
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+      .replace(/\u00a0/g, ' ')
+      .replace(/\t/g, ' ')
+      .replace(/[ \f\v]+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  function normalizeAiDocumentText(text){
+    return String(text || '')
+      .replace(/^```[a-z]*\s*/gim, '')
+      .replace(/```$/gim, '')
+      .replace(/^\s{0,3}#{1,6}\s*/gm, '')
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/__(.*?)__/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/^\s*[-*]\s+/gm, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
   function syncDocumentBodyInput(){
     if(el('docBodyEditor') && el('docBodyInput')){
       el('docBodyInput').value = getDocumentBodyHtml();
@@ -624,6 +752,36 @@
   window.syncDocumentEditorFromInput = function(){
     if(el('docBodyInput')) setDocumentBodyContent(el('docBodyInput').value || '');
   };
+
+  window.toggleDocumentsFocusMode = function(){
+    setDocumentsFocusMode(!getDocumentsFocusMode());
+  };
+
+  window.clearDocumentAiPrompt = function(){
+    if(el('docAiPromptInput')) el('docAiPromptInput').value = '';
+    setDocAiStatus('Pedido limpo. Informe o que a IA deve redigir.', 'neutral');
+  };
+
+  window.applyDocAiPromptSuggestion = function(index){
+    var items = getDocAiPromptSuggestions();
+    var item = items[index];
+    if(!item || !el('docAiPromptInput')) return;
+    el('docAiPromptInput').value = item.prompt;
+    setDocAiStatus('Sugestão aplicada. Ajuste o texto se precisar e gere o rascunho.', 'neutral');
+  };
+
+  function handleDocumentEditorPaste(event){
+    var editor = el('docBodyEditor');
+    if(!editor) return;
+    event.preventDefault();
+    var clipboard = event.clipboardData || window.clipboardData;
+    var text = clipboard ? (clipboard.getData('text/plain') || '') : '';
+    text = normalizePastedDocumentText(text);
+    if(!text) return;
+    insertDocumentHtmlAtCursor(textToDocumentHtml(text));
+    syncDocumentBodyInput();
+    renderUnifiedDocumentPreview();
+  }
 
   function wrapDocumentSelection(styleText){
     var editor = el('docBodyEditor');
@@ -704,6 +862,7 @@
       return '<option value="' + escHtml(item.id) + '">' + escHtml(item.label) + '</option>';
     }).join('');
     renderDocQuickModels();
+    renderDocAiQuickPrompts();
     renderUnifiedDocumentPreview();
   }
 
@@ -1301,6 +1460,56 @@
     if(typeof toast === 'function') toast('Documento gerado a partir do contexto do paciente.', 'success');
   };
 
+  window.generateUnifiedDocumentWithAI = async function(){
+    var pid = ensurePatientSelected();
+    if(!pid) return;
+    var prompt = el('docAiPromptInput') ? String(el('docAiPromptInput').value || '').trim() : '';
+    if(!prompt){
+      setDocAiStatus('Informe no campo o que a IA deve redigir para este documento.', 'warning');
+      if(typeof toast === 'function') toast('Descreva primeiro o documento que a IA deve escrever.', 'warning');
+      return;
+    }
+    if(!window.FEMICClinicalAI || typeof window.FEMICClinicalAI.generateDocumentDraft !== 'function'){
+      setDocAiStatus('A IA clínica não está disponível na página. Atualize o sistema.', 'error');
+      if(typeof toast === 'function') toast('A IA clínica ainda não foi carregada nesta tela.', 'warning');
+      return;
+    }
+    var button = el('docAiGenerateBtn');
+    var patient = getPatientById(pid) || {};
+    var preset = getSelectedDocPreset();
+    var type = el('docTypeSelect') ? el('docTypeSelect').value : 'attendance';
+    var dateValue = el('docDateInput') ? el('docDateInput').value : todayIsoSafe();
+    var ctx = getDocumentContext(pid);
+    if(button) button.disabled = true;
+    setDocAiStatus('Gerando rascunho com IA...', 'loading');
+    try{
+      var result = await window.FEMICClinicalAI.generateDocumentDraft({
+        patient: patient,
+        context: ctx,
+        documentType: type,
+        documentTypeLabel: DOC_LABELS[type] || preset.title || 'Documento',
+        documentTitle: preset.title || 'DOCUMENTO',
+        documentModelLabel: preset.label || '',
+        documentDate: fmtDateSafe(dateValue),
+        baseText: getDocumentBodyText(),
+        userPrompt: prompt
+      });
+      var cleanText = normalizeAiDocumentText(result.draft);
+      if(!cleanText) throw new Error('A IA retornou um rascunho vazio.');
+      setDocumentBodyContent(cleanText);
+      renderUnifiedDocumentPreview();
+      setDocumentStep(3);
+      var providerName = window.FEMICClinicalAI.providerLabel ? window.FEMICClinicalAI.providerLabel(result.provider) : result.provider;
+      setDocAiStatus('Rascunho gerado via ' + providerName + '. Revise o texto no editor e salve no histórico quando estiver pronto.', 'success');
+      if(typeof toast === 'function') toast('Rascunho do documento gerado com IA.', 'success');
+    }catch(e){
+      setDocAiStatus('Falha ao gerar com IA: ' + ((e && e.message) || 'erro desconhecido'), 'error');
+      if(typeof toast === 'function') toast('Não foi possível gerar o documento com IA: ' + ((e && e.message) || 'erro desconhecido'), 'error');
+    }finally{
+      if(button) button.disabled = false;
+    }
+  };
+
   window.saveGeneratedDocument = async function(){
     var pid = ensurePatientSelected();
     if(!pid) return;
@@ -1467,8 +1676,9 @@
   };
 
   window.selectDocQuickModel = function(type){
-    if(el('docTypeSelect')) el('docTypeSelect').value = type || 'attendance';
-    populateDocPresets();
+    if(el('docPresetSelect')) el('docPresetSelect').value = type || '';
+    renderDocQuickModels();
+    renderUnifiedDocumentPreview();
     setDocumentStep(2);
   };
 
@@ -1777,11 +1987,15 @@
         syncDocumentBodyInput();
         renderUnifiedDocumentPreview();
       });
+      el('docBodyEditor').addEventListener('paste', handleDocumentEditorPaste);
       if(el('docBodyInput') && el('docBodyInput').value) setDocumentBodyContent(el('docBodyInput').value);
     }
     if(el('professionalNameInput')) el('professionalNameInput').addEventListener('input', renderUnifiedDocumentPreview);
     if(el('professionalNoteInput')) el('professionalNoteInput').addEventListener('input', renderUnifiedDocumentPreview);
     if(el('showStampSelect')) el('showStampSelect').addEventListener('change', renderUnifiedDocumentPreview);
+    if(el('docAiPromptInput')) el('docAiPromptInput').addEventListener('input', function(){
+      setDocAiStatus('Pedido atualizado. Gere um novo rascunho quando quiser.', 'neutral');
+    });
     renderUnifiedAll();
     offerLocalClinicalMigration().catch(function(e){ console.error(e); });
   }
