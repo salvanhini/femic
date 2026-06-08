@@ -1142,6 +1142,41 @@
     var external = await callExternalWithFallback(prompt, getConfig().provider);
     return { provider: external.provider, draft: String(external.text || '').trim() };
   }
+  async function generateDocumentDraft(options){
+    options = options || {};
+    var patient = options.patient || {};
+    var context = options.context || {};
+    var prompt = [
+      'Atue como especialista em documentacao clinica de fisioterapia da FEMIC.',
+      'Escreva em portugues do Brasil com tom clinico formal, objetivo e profissional.',
+      'Gere um rascunho revisavel de documento fisioterapeutico.',
+      'Use apenas os dados fornecidos. Nao invente dados ausentes; quando faltar algo, redija de forma segura e neutra.',
+      'Nao use markdown, nao use cercas de codigo, nao use asteriscos, nao use hashtags.',
+      'Entregue somente o corpo do documento, pronto para edicao no prontuario.',
+      'Organize em paragrafos claros. Pode usar titulos simples em caixa alta quando fizer sentido para laudo, declaracao, resumo ou recibo.',
+      '',
+      'Tipo do documento: ' + (options.documentTypeLabel || options.documentType || 'Documento'),
+      'Titulo base: ' + (options.documentTitle || 'DOCUMENTO'),
+      options.documentModelLabel ? 'Modelo base selecionado: ' + options.documentModelLabel : '',
+      'Paciente: ' + (patient.name || 'Paciente'),
+      patient.pathology ? 'Patologia conhecida: ' + patient.pathology : '',
+      context.chief ? 'Queixa principal: ' + context.chief : '',
+      context.history ? 'Historia atual: ' + context.history : '',
+      context.diagnosis ? 'Diagnostico ou hipotese: ' + context.diagnosis : '',
+      context.limitations ? 'Limitacoes funcionais: ' + context.limitations : '',
+      context.goals ? 'Objetivos terapêuticos: ' + context.goals : '',
+      context.sessionCount != null ? 'Total de sessoes registradas: ' + context.sessionCount : '',
+      context.lastConduct ? 'Ultima conduta registrada: ' + context.lastConduct : '',
+      context.lastGuidance ? 'Ultima orientacao registrada: ' + context.lastGuidance : '',
+      options.documentDate ? 'Data de emissao: ' + options.documentDate : '',
+      options.baseText ? 'Texto-base atual para aproveitar, adaptar ou substituir se necessario:\n' + options.baseText : '',
+      '',
+      'Solicitacao do profissional:',
+      String(options.userPrompt || '').trim()
+    ].filter(Boolean).join('\n');
+    var external = await callExternalWithFallback(prompt, getConfig().provider);
+    return { provider: external.provider, draft: String(external.text || '').trim() };
+  }
   async function fillAnamneseWithAI(){
     openClinicalAIModal('anamnese');
   }
@@ -1283,6 +1318,10 @@
   };
   window.fillAnamneseWithAI = fillAnamneseWithAI;
   window.fillEvolutionWithAI = fillEvolutionWithAI;
+  window.FEMICClinicalAI = Object.assign(window.FEMICClinicalAI || {}, {
+    generateDocumentDraft: generateDocumentDraft,
+    providerLabel: providerLabel
+  });
   window.closeClinicalAIModal = closeClinicalAIModal;
   window.clearClinicalAIPrompt = clearClinicalAIPrompt;
   window.toggleClinicalAIMicrophone = toggleClinicalAIMicrophone;
