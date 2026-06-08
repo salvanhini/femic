@@ -56,6 +56,7 @@ CREATE TABLE session_packages (
   total_sessions INTEGER DEFAULT 0,
   remaining_sessions INTEGER DEFAULT 0,
   active BOOLEAN DEFAULT TRUE,
+  ended_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
@@ -251,14 +252,14 @@ CREATE POLICY "authenticated_full_access_clinical_anamneses" ON clinical_anamnes
 CREATE POLICY "authenticated_full_access_clinical_evolutions" ON clinical_evolutions FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_femic_generated_documents" ON femic_generated_documents FOR ALL TO authenticated USING (true) WITH CHECK (true);
 NOTIFY pgrst, 'reload schema';`;
-const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],reportAppointments=[],movements=[],clinicRules=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();let editingServiceId='';let loadedAppointmentQuery='',loadedReportQuery='',aiRadarQuery='',aiRadarAppointments=[],aiRadarLoaded=false,aiRadarLastWeeks=[],recurringSuggestionCache=[];const appointmentSearchSelected=new Set();
+const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],reportAppointments=[],movements=[],clinicRules=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();let editingServiceId='';let loadedAppointmentQuery='',loadedReportQuery='',aiRadarQuery='',aiRadarAppointments=[],aiRadarLoaded=false,aiRadarLastWeeks=[],recurringSuggestionCache=[];let sessionPackagesEndedAtSupported=null;const appointmentSearchSelected=new Set();
 const packageScheduleCache=new Map();
 let showArchivedPatients=false,showInactivePackages=false;
 const dayAppointmentCache=new Map();
 const CLINIC_RULES_STORAGE_KEY='femic_agenda_clinic_rules';
 function toast(msg,type='info'){const el=document.createElement('div');el.className='toast '+type;el.textContent=msg;$('toastWrap').appendChild(el);setTimeout(()=>el.remove(),3600)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function localIsoDate(d){const x=new Date(d);return String(x.getFullYear())+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}function todayIso(){return localIsoDate(new Date())}function isoDate(d){return localIsoDate(d)}function dateDay(dateStr){const [y,m,d]=String(dateStr).split('-').map(Number);return new Date(y,m-1,d).getDay()}function fmtDate(s){if(!s)return'';const [y,m,d]=String(s).split('-');return d+'/'+m+'/'+y}function fmtWeekday(s){if(!s)return'';const [y,m,d]=String(s).split('-').map(Number);const dias=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];return dias[new Date(y,m-1,d).getDay()]||''}function cleanPhone(v){return String(v||'').replace(/\D/g,'')}function brl(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}function normalizeTime(t){return String(t||'').slice(0,5)}function timeToMin(t){const [h,m]=normalizeTime(t).split(':').map(Number);return h*60+(m||0)}function minToTime(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}function addMinutes(t,m){return minToTime(timeToMin(t)+Number(m||0))}function base(){return ($('sbUrl').value||localStorage.femic_agenda_url||'').trim().replace(/\/$/,'')}function key(){return ($('sbKey').value||localStorage.femic_agenda_key||'').trim()}function hasValidSession(){const jwt=sessionStorage.getItem('femic_jwt');const expiry=Number(sessionStorage.getItem('femic_token_expiry')||0);return !!(jwt&&expiry&&Date.now()<expiry)}async function ensureSession(){if(hasValidSession())return true;if(sessionStorage.getItem('femic_refresh_token')&&await femicRefreshToken())return true;throw new Error('Faça login para acessar os dados do Supabase.')}function headers(){
+function localIsoDate(d){const x=new Date(d);return String(x.getFullYear())+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}function todayIso(){return localIsoDate(new Date())}function isoDate(d){return localIsoDate(d)}function dateDay(dateStr){const [y,m,d]=String(dateStr).split('-').map(Number);return new Date(y,m-1,d).getDay()}function fmtDate(s){if(!s)return'';const [y,m,d]=String(s).split('-');return d+'/'+m+'/'+y}function fmtDateTime(value){if(!value)return'';const dt=new Date(value);if(Number.isNaN(dt.getTime()))return fmtDate(String(value).slice(0,10));return dt.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}function fmtWeekday(s){if(!s)return'';const [y,m,d]=String(s).split('-').map(Number);const dias=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];return dias[new Date(y,m-1,d).getDay()]||''}function cleanPhone(v){return String(v||'').replace(/\D/g,'')}function brl(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}function normalizeTime(t){return String(t||'').slice(0,5)}function timeToMin(t){const [h,m]=normalizeTime(t).split(':').map(Number);return h*60+(m||0)}function minToTime(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}function addMinutes(t,m){return minToTime(timeToMin(t)+Number(m||0))}function base(){return ($('sbUrl').value||localStorage.femic_agenda_url||'').trim().replace(/\/$/,'')}function key(){return ($('sbKey').value||localStorage.femic_agenda_key||'').trim()}function hasValidSession(){const jwt=sessionStorage.getItem('femic_jwt');const expiry=Number(sessionStorage.getItem('femic_token_expiry')||0);return !!(jwt&&expiry&&Date.now()<expiry)}async function ensureSession(){if(hasValidSession())return true;if(sessionStorage.getItem('femic_refresh_token')&&await femicRefreshToken())return true;throw new Error('Faça login para acessar os dados do Supabase.')}function headers(){
   const jwt = sessionStorage.getItem('femic_jwt');
   const expiry = Number(sessionStorage.getItem('femic_token_expiry') || 0);
   const tokenValid = jwt && expiry && Date.now() < expiry;
@@ -272,6 +273,49 @@ async function api(path,opt={}){await ensureSession();const res=await fetch(base
 function readClinicRulesCache(){try{const raw=JSON.parse(localStorage.getItem(CLINIC_RULES_STORAGE_KEY)||'[]');return Array.isArray(raw)?raw:[]}catch(e){return[]}}
 function writeClinicRulesCache(list){localStorage.setItem(CLINIC_RULES_STORAGE_KEY,JSON.stringify(Array.isArray(list)?list:[]))}
 function isMissingClinicRulesTableError(err){return /clinic_rules|relation .* does not exist|Could not find the table/i.test(String(err&&err.message||err||''))}
+function isMissingEndedAtColumnError(err){return /ended_at|column .* does not exist|schema cache/i.test(String(err&&err.message||err||''))}
+async function detectSessionPackagesEndedAtSupport(){
+  if(sessionPackagesEndedAtSupported!==null) return sessionPackagesEndedAtSupported;
+  try{
+    await api('session_packages?select=ended_at&limit=1');
+    sessionPackagesEndedAtSupported=true;
+  }catch(e){
+    if(isMissingEndedAtColumnError(e)){
+      sessionPackagesEndedAtSupported=false;
+    }else{
+      throw e;
+    }
+  }
+  return sessionPackagesEndedAtSupported;
+}
+function packageEndedAtPatchValue(value){
+  return sessionPackagesEndedAtSupported ? {ended_at:value} : {};
+}
+function packageHistoryByPatient(patientId){
+  return packages
+    .filter(p=>String(p.patient_id)===String(patientId))
+    .slice()
+    .sort((a,b)=>{
+      const createdCompare=String(a.created_at||'').localeCompare(String(b.created_at||''));
+      if(createdCompare) return createdCompare;
+      return String(a.id||'').localeCompare(String(b.id||''));
+    });
+}
+function packageTimelineMeta(pkg){
+  const history=packageHistoryByPatient(pkg.patient_id);
+  const index=history.findIndex(item=>String(item.id)===String(pkg.id));
+  const position=index>=0?index+1:1;
+  return {
+    position,
+    total:history.length,
+    label:position+'º pacote'
+  };
+}
+function packageTimelineStatus(pkg){
+  if(pkg.active!==false) return 'Em andamento';
+  if(pkg.ended_at) return 'Encerrado em '+fmtDateTime(pkg.ended_at);
+  return 'Inativo sem data registrada';
+}
 async function loadClinicRulesCollection(){try{const rows=await api('clinic_rules?select=*&order=priority.asc,created_at.asc');writeClinicRulesCache(rows||[]);return rows||[]}catch(e){if(isMissingClinicRulesTableError(e))return readClinicRulesCache();throw e}}
 clinicRules=readClinicRulesCache();
 function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊';$('tplReminder').value=tpl;if($('whatsappProvider'))$('whatsappProvider').value=localStorage.femic_whatsapp_provider||'wa_me';if($('whatsappEndpoint'))$('whatsappEndpoint').value=localStorage.femic_whatsapp_endpoint||'';if($('whatsappTplAppointment'))$('whatsappTplAppointment').value=localStorage.femic_whatsapp_tpl_appointment||'lembrete_sessao';if($('whatsappTplForm'))$('whatsappTplForm').value=localStorage.femic_whatsapp_tpl_form||'formulario_pos_sessao';renderWhatsappProviderBadge()}
@@ -325,7 +369,7 @@ async function refreshReportMonthIfNeeded(month){
     toast('Erro ao carregar relatório mensal: ' + e.message, 'error');
   }
 }
-async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const apQuery=appointmentWindowQuery();const [pa,hi,sv,pk,ap,mv,st,cr]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api(apQuery),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];loadedAppointmentQuery=apQuery;loadedReportQuery='';reportAppointments=[];aiRadarQuery='';aiRadarLoaded=false;movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});packageScheduleCache.clear();dayAppointmentCache.clear();syncForms();recordSystemLoad(true);renderActivePanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);recordSystemLoad(false,e.message);toast('Erro ao carregar: '+e.message,'error')}}
+async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const apQuery=appointmentWindowQuery();const [pa,hi,sv,pk,ap,mv,st,cr,endedAtSupport]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api(apQuery),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection(),detectSessionPackagesEndedAtSupport()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];loadedAppointmentQuery=apQuery;loadedReportQuery='';reportAppointments=[];aiRadarQuery='';aiRadarLoaded=false;movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});sessionPackagesEndedAtSupported=endedAtSupport;packageScheduleCache.clear();dayAppointmentCache.clear();syncForms();recordSystemLoad(true);renderActivePanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);recordSystemLoad(false,e.message);toast('Erro ao carregar: '+e.message,'error')}}
 function toggleSidebar(){
   $('sidebar')?.classList.toggle('show');
   $('overlay')?.classList.toggle('show');
@@ -923,7 +967,10 @@ function renderMonth(){
   html+='</div>';
   $('monthCalendar').innerHTML=`<div class="month-agenda-kpis"><div><span>Total no mês</span><strong>${totalAppointments}</strong></div><div><span>Confirmados</span><strong>${totalConfirmed}</strong></div><div><span>Concluídos</span><strong>${totalDone}</strong></div><div><span>Dias exibidos</span><strong>${rendered}</strong></div></div>`+html;
 }
-function activePackageForService(pid,sid){return packages.find(p=>String(p.patient_id)===String(pid)&&String(p.service_id)===String(sid)&&p.active!==false)||null}
+function activePackageForService(pid,sid){
+  const list=packages.filter(p=>String(p.patient_id)===String(pid)&&String(p.service_id)===String(sid)&&p.active!==false);
+  return list.find(p=>Number(p.remaining_sessions||0)>0)||list[0]||null;
+}
 function packageSaldoInfo(pid,sid){const pk=activePackageForService(pid,sid);if(!pk)return null;const total=Number(pk.total_sessions||0),remaining=Number(pk.remaining_sessions??pk.saldo??0),used=Math.max(0,total-remaining);return {package:pk,total,remaining,used,cls:remaining===0?'saldo-zero':(remaining<=3?'saldo-low':'muted')}}
 function saldoBadge(pid,sid){const info=packageSaldoInfo(pid,sid);if(!info)return '<div class="small muted">Sem pacote</div>';return `<div class="small ${info.cls}"><span class="used-counter">${info.used}/${info.total} sessões usadas</span> · saldo ${info.remaining}</div>`}
 function getServiceDefaultPrice(sid){const s=serviceById(sid);return Number(s.price||0)}
@@ -933,7 +980,7 @@ function closeModal(id){const el=$(id);if(el) el.classList.remove('show')}functi
 function toggleRecDayCard(i){const card=$('recCard'+i);if(card)card.classList.toggle('active',card.querySelector('.recDay')?.checked);previewRecurringEnd(i)}
 function syncRecurrenceTimes(){document.querySelectorAll('.recTime').forEach(inp=>{if(!inp.value)inp.value=$('apptStart').value||'08:00'});document.querySelectorAll('.recDay').forEach(ch=>toggleRecDayCard(ch.value));}
 function previewRecurringEnd(i){const inp=$('recTime'+i),out=$('recEnd'+i),s=serviceById($('apptService').value);if(!inp||!out)return;if(!$('apptService').value){out.textContent='Selecione o serviço';return}const start=inp.value||$('apptStart').value||'08:00';const end=addMinutes(start,Number(s.duration_minutes||45));out.textContent='Fim previsto: '+end;}function onServiceChange(updatePrice=false){const sid=$('apptService').value;if(!sid){$('apptEnd').value='';if(updatePrice)$('apptPrice').value='';showSaldoInfo();document.querySelectorAll('.recDay:checked').forEach(ch=>previewRecurringEnd(ch.value));return}const s=serviceById(sid);$('apptEnd').value=addMinutes($('apptStart').value||settings.start_time,Number(s.duration_minutes||45));if(updatePrice)setAppointmentPriceFromService(true);showSaldoInfo();document.querySelectorAll('.recDay:checked').forEach(ch=>previewRecurringEnd(ch.value))}
-function showSaldoInfo(){const pid=$('apptPatient').value,sid=$('apptService').value;if(!pid&&!sid){$('saldoInfo').innerHTML='Selecione paciente e serviço para visualizar pacote e saldo.';return}if(!pid){$('saldoInfo').innerHTML='Selecione o paciente para visualizar pacote e saldo.';return}if(!sid){$('saldoInfo').innerHTML='Selecione o serviço para visualizar pacote e saldo.';return}const pk=packages.find(p=>String(p.patient_id)===String(pid)&&String(p.service_id)===String(sid)&&p.active!==false);const future=appointments.filter(a=>String(a.patient_id)===String(pid)&&String(a.service_id)===String(sid)&&['agendado','confirmado'].includes(a.status)&&String(a.appointment_date||'')>=todayIso()).length;if(!pk)$('saldoInfo').innerHTML='Sem pacote ativo para este paciente/serviço.';else $('saldoInfo').innerHTML=`Pacote: ${pk.total_sessions} sessões · saldo ${pk.remaining_sessions} · futuras agendadas ${future} · disponível aproximado ${Number(pk.remaining_sessions||0)-future}`}
+function showSaldoInfo(){const pid=$('apptPatient').value,sid=$('apptService').value;if(!pid&&!sid){$('saldoInfo').innerHTML='Selecione paciente e serviço para visualizar pacote e saldo.';return}if(!pid){$('saldoInfo').innerHTML='Selecione o paciente para visualizar pacote e saldo.';return}if(!sid){$('saldoInfo').innerHTML='Selecione o serviço para visualizar pacote e saldo.';return}const pk=activePackageForService(pid,sid);const future=appointments.filter(a=>String(a.patient_id)===String(pid)&&String(a.service_id)===String(sid)&&['agendado','confirmado'].includes(a.status)&&String(a.appointment_date||'')>=todayIso()).length;if(!pk)$('saldoInfo').innerHTML='Sem pacote ativo para este paciente/serviço.';else $('saldoInfo').innerHTML=`Pacote: ${pk.total_sessions} sessões · saldo ${pk.remaining_sessions} · futuras agendadas ${future} · disponível aproximado ${Number(pk.remaining_sessions||0)-future}`}
 function conflictInAppointmentList(candidate,list,ignoreId=null){const sNew=serviceById(candidate.service_id);const n1=timeToMin(candidate.start_time),n2=timeToMin(candidate.end_time);const sameDay=(list||[]).filter(a=>a.appointment_date===candidate.appointment_date&&a.status!=='cancelado'&&String(a.id)!==String(ignoreId));const overlaps=sameDay.filter(a=>timeToMin(normalizeTime(a.start_time))<n2 && timeToMin(normalizeTime(a.end_time))>n1);if(!overlaps.length)return null;if((sNew.appointment_mode||'grupo')==='individual')return 'Serviço individual exige horário exclusivo.';if(overlaps.some(a=>(serviceById(a.service_id).appointment_mode||'grupo')==='individual'))return 'Já existe atendimento individual neste intervalo.';const max=Number(sNew.max_patients||settings.max_patients_per_slot||4);if(overlaps.length>=max)return 'Limite de pacientes simultâneos atingido.';return null}
 function hasConflict(candidate,ignoreId=null){return conflictInAppointmentList(candidate,appointments,ignoreId)}
 function recurringWeekdayName(day,short=false){const names=short?['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']:['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];return names[Number(day)]||''}
@@ -1660,7 +1707,7 @@ async function savePayer(){const name=$('payerName').value.trim();if(!name)retur
   const msg = `Confirmar criação do pacote?\n\nPaciente: ${patient.name || '-'}\nServiço: ${service.name || '-'}\nTotal: ${total} sessões\nUsadas: ${used}/${total}\nSaldo inicial: ${remaining}`;
   if(!confirm(msg)) return;
 
-  const payload={patient_id:patientId,service_id:serviceId,total_sessions:total,remaining_sessions:remaining,active:true};
+  const payload={patient_id:patientId,service_id:serviceId,total_sessions:total,remaining_sessions:remaining,active:true,...packageEndedAtPatchValue(null)};
   try{
     await api('session_packages',{method:'POST',body:JSON.stringify(payload)});
     $('pkgPatient').value='';
@@ -1673,7 +1720,7 @@ async function savePayer(){const name=$('payerName').value.trim();if(!name)retur
   }catch(e){
     toast('Erro: '+e.message,'error');
   }
-}async function saveSettings(){const working=[...document.querySelectorAll('.wd:checked')].map(x=>x.value).join(',')||'1,2,3,4,5,6';const payload={start_time:$('setStart').value,end_time:$('setEnd').value,working_periods:$('setPeriods').value.trim()||(($('setStart').value||'08:00')+'-'+($('setEnd').value||'20:00')),slot_interval_minutes:Number($('setInterval').value),working_days:working,max_patients_per_slot:Number(settings.max_patients_per_slot||4)};try{if(settings.id)await api('schedule_settings?id=eq.'+settings.id,{method:'PATCH',body:JSON.stringify(payload)});else await api('schedule_settings',{method:'POST',body:JSON.stringify(payload)});await loadAll(true);toast('Expediente salvo.','success')}catch(e){toast('Erro: '+e.message,'error')}}async function removePackage(id){const p=packages.find(x=>String(x.id)===String(id));if(!p)return;const used=Number(p.total_sessions||0)-Number(p.remaining_sessions||0);const linked=appointments.some(a=>String(a.session_package_id)===String(id))||movements.some(m=>String(m.session_package_id)===String(id));if(used>0||linked){if(confirm('Este pacote já tem uso ou vínculo no histórico. Para preservar os dados, ele será inativado em vez de apagado. Continuar?')){await api('session_packages?id=eq.'+id,{method:'PATCH',body:JSON.stringify({active:false})});await loadAll(true);toast('Pacote inativado.','success')}return}if(confirm('Remover este pacote definitivamente?')){await api('session_packages?id=eq.'+id,{method:'DELETE'});await loadAll(true);toast('Pacote removido.','success')}}async function removeService(id){if(appointments.some(a=>String(a.service_id)===String(id))||packages.some(p=>String(p.service_id)===String(id))){toast('Serviço em uso. Não removi para preservar histórico.','warning');return}if(confirm('Remover serviço?')){await api('services?id=eq.'+id,{method:'DELETE'});await loadAll(true)}}async function removePayer(id){if(services.some(s=>String(s.health_insurance_id)===String(id))){toast('Pagador vinculado a serviço. Remova/inative serviços primeiro.','warning');return}if(confirm('Remover pagador?')){await api('health_insurances?id=eq.'+id,{method:'DELETE'});await loadAll(true)}}
+}async function saveSettings(){const working=[...document.querySelectorAll('.wd:checked')].map(x=>x.value).join(',')||'1,2,3,4,5,6';const payload={start_time:$('setStart').value,end_time:$('setEnd').value,working_periods:$('setPeriods').value.trim()||(($('setStart').value||'08:00')+'-'+($('setEnd').value||'20:00')),slot_interval_minutes:Number($('setInterval').value),working_days:working,max_patients_per_slot:Number(settings.max_patients_per_slot||4)};try{if(settings.id)await api('schedule_settings?id=eq.'+settings.id,{method:'PATCH',body:JSON.stringify(payload)});else await api('schedule_settings',{method:'POST',body:JSON.stringify(payload)});await loadAll(true);toast('Expediente salvo.','success')}catch(e){toast('Erro: '+e.message,'error')}}async function removePackage(id){const p=packages.find(x=>String(x.id)===String(id));if(!p)return;const used=Number(p.total_sessions||0)-Number(p.remaining_sessions||0);const linked=appointments.some(a=>String(a.session_package_id)===String(id))||movements.some(m=>String(m.session_package_id)===String(id));if(used>0||linked){if(confirm('Este pacote já tem uso ou vínculo no histórico. Para preservar os dados, ele será inativado em vez de apagado. Continuar?')){await api('session_packages?id=eq.'+id,{method:'PATCH',body:JSON.stringify({active:false,...packageEndedAtPatchValue(p.ended_at||new Date().toISOString())})});await loadAll(true);toast('Pacote inativado.','success')}return}if(confirm('Remover este pacote definitivamente?')){await api('session_packages?id=eq.'+id,{method:'DELETE'});await loadAll(true);toast('Pacote removido.','success')}}async function removeService(id){if(appointments.some(a=>String(a.service_id)===String(id))||packages.some(p=>String(p.service_id)===String(id))){toast('Serviço em uso. Não removi para preservar histórico.','warning');return}if(confirm('Remover serviço?')){await api('services?id=eq.'+id,{method:'DELETE'});await loadAll(true)}}async function removePayer(id){if(services.some(s=>String(s.health_insurance_id)===String(id))){toast('Pagador vinculado a serviço. Remova/inative serviços primeiro.','warning');return}if(confirm('Remover pagador?')){await api('health_insurances?id=eq.'+id,{method:'DELETE'});await loadAll(true)}}
 
 function renderBackupPanel(){
   if($('bkPatients')) $('bkPatients').textContent = patients.length;
@@ -1855,7 +1902,8 @@ $('sqlBox').textContent=SQL_SCHEMA;loadConfig();checkFemicAuth();$('dayDate').va
 function findPackageForAppointment(a){
   const active = packages.filter(p =>
     String(p.patient_id) === String(a.patient_id) &&
-    p.active !== false
+    p.active !== false &&
+    Number(p.remaining_sessions || 0) > 0
   );
 
   const exact = active.find(p => String(p.service_id) === String(a.service_id));
@@ -1897,10 +1945,15 @@ async function consumePackage(a){
     return false;
   }
 
+  const nextRemaining=remaining-1;
+  const shouldClosePackage=nextRemaining<=0;
+
   await api('session_packages?id=eq.' + pk.id, {
     method:'PATCH',
     body: JSON.stringify({
-      remaining_sessions: remaining - 1
+      remaining_sessions: nextRemaining,
+      active: shouldClosePackage ? false : pk.active!==false,
+      ...packageEndedAtPatchValue(shouldClosePackage ? new Date().toISOString() : null)
     })
   });
 
@@ -1938,10 +1991,13 @@ async function refundPackage(a){
   }
 
   if(pk){
+    const nextRemaining=Number(pk.remaining_sessions || 0) + 1;
     await api('session_packages?id=eq.' + pk.id, {
       method:'PATCH',
       body: JSON.stringify({
-        remaining_sessions: Number(pk.remaining_sessions || 0) + 1
+        remaining_sessions: nextRemaining,
+        active: true,
+        ...packageEndedAtPatchValue(null)
       })
     });
 
@@ -2079,12 +2135,18 @@ function packageCard(p){
   const pct=total?Math.min(100,(used/total)*100):0;
   const cls=remain<=0?'saldo-zero':(remain<=3?'saldo-low':'');
   const inactive=p.active===false;
+  const timeline=packageTimelineMeta(p);
+  const historyBadge=timeline.total>1?`<span class="package-history-badge">Histórico de ${timeline.total} pacotes</span>`:'';
+  const createdAt=p.created_at?fmtDateTime(p.created_at):'Data não registrada';
+  const statusLine=packageTimelineStatus(p);
+  const metaHtml=`<div class="package-meta"><span class="package-order-chip">${esc(timeline.label)}</span>${historyBadge}</div><div class="package-dates muted small">Criado em ${esc(createdAt)} · ${esc(statusLine)}</div>`;
 
   if(inactive){
     return `<div class="item package-card inactive package-card-compact">
       <div class="item-top">
         <div>
           <strong>${esc(patientName(p.patient_id))}</strong> <span class="muted small">(inativo)</span>
+          ${metaHtml}
           <div class="muted small">${esc(serviceName(p.service_id))} · ${used}/${total} sessões usadas · saldo ${remain}</div>
         </div>
         <div class="package-actions">
@@ -2100,6 +2162,7 @@ function packageCard(p){
       <div>
         <strong>${esc(patientName(p.patient_id))}</strong>
         <div class="muted small">${esc(serviceName(p.service_id))}</div>
+        ${metaHtml}
       </div>
       <div class="package-actions">
         <button class="btn" onclick="editPackage('${p.id}')">Editar</button>
@@ -2159,10 +2222,12 @@ async function editPackage(id){
 
   const activeText = p.active === false ? 'inativo' : 'ativo';
   const keepActive = confirm('Este pacote está ' + activeText + '.\n\nClique OK para manter ativo.\nClique Cancelar para deixar/inativar.');
+  const resolvedActive = keepActive && newRemaining > 0;
   const payload = {
     total_sessions: newTotal,
     remaining_sessions: newRemaining,
-    active: keepActive
+    active: resolvedActive,
+    ...packageEndedAtPatchValue(resolvedActive ? null : (p.ended_at || new Date().toISOString()))
   };
 
   const msg =
@@ -2171,7 +2236,7 @@ async function editPackage(id){
     'Serviço: ' + serviceName(p.service_id) + '\n' +
     'Usadas: ' + newUsed + '/' + newTotal + '\n' +
     'Saldo: ' + newRemaining + '\n' +
-    'Status: ' + (keepActive ? 'ativo' : 'inativo');
+    'Status: ' + (resolvedActive ? 'ativo' : 'inativo');
 
   if(!confirm(msg)) return;
 
@@ -2203,7 +2268,7 @@ async function reactivatePackage(id){
   try{
     await api('session_packages?id=eq.' + encodeURIComponent(id), {
       method:'PATCH',
-      body: JSON.stringify({active:true})
+      body: JSON.stringify({active:true,...packageEndedAtPatchValue(null)})
     });
     showInactivePackages=false;
     await loadAll(true);

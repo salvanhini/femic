@@ -468,6 +468,7 @@ CREATE TABLE session_packages (
   total_sessions INTEGER DEFAULT 0,
   remaining_sessions INTEGER DEFAULT 0,
   active BOOLEAN DEFAULT TRUE,
+  ended_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
