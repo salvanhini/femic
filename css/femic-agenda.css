@@ -2137,6 +2137,34 @@ input,select,textarea{
 .package-progress>span{
   background:linear-gradient(90deg,#0a3f68,#16a7d7)!important;
 }
+.package-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:8px;
+}
+.package-order-chip,
+.package-history-badge{
+  display:inline-flex;
+  align-items:center;
+  border-radius:999px;
+  padding:4px 9px;
+  font-size:.72rem;
+  font-weight:900;
+  border:1px solid rgba(10,63,104,.12);
+}
+.package-order-chip{
+  background:#e9f6fb;
+  color:#0a3f68;
+}
+.package-history-badge{
+  background:#fff7e6;
+  color:#9a6700;
+}
+.package-dates{
+  margin-top:7px;
+  line-height:1.35;
+}
 .used-counter{
   color:#0a3f68!important;
   font-weight:900!important;
