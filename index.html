@@ -12,39 +12,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script>
-window.tailwind = window.tailwind || {};
-window.tailwind.config = {
-  corePlugins: { preflight: false },
-  theme: {
-    extend: {
-      fontFamily: { sans: ['Manrope', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'], display: ['Manrope', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
-      colors: {
-        femic: {
-          ink: '#172536',
-          navy: '#123f63',
-          cyan: '#1aa6c8',
-          teal: '#14b8a6',
-          mist: '#f5f7fa'
-        }
-      },
-      boxShadow: {
-        femic: '0 24px 70px rgba(18,63,99,.14)'
-      }
-    }
-  }
-};
-</script>
-<script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <link rel="stylesheet" href="css/femic-agenda.css?v=theme-refactor-9">
 <link rel="stylesheet" href="css/femic-tokens.css?v=design-system-1">
 <link rel="stylesheet" href="css/femic-layout.css?v=design-system-1">
-<link rel="stylesheet" href="css/femic-components.css?v=design-system-1">
+<link rel="stylesheet" href="css/femic-components.css?v=design-system-2">
 <link rel="stylesheet" href="css/femic-unified.css?v=unified-1">
 <link rel="stylesheet" href="css/femic-tailwind-refactor.css?v=tailwind-modern-1">
 </head>
-<body class="font-sans antialiased">
+<body>
 <div class="mobile-topbar">
   <button class="btn-icon" onclick="toggleSidebar()">☰</button>
   <div class="mobile-brand">
@@ -55,74 +31,50 @@ window.tailwind.config = {
 </div>
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 <!-- ===== FEMIC LOGIN OVERLAY ===== -->
-<div id="femicLoginOverlay" class="fixed inset-0 z-[9999] flex items-center justify-center bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,.24),transparent_26%),linear-gradient(135deg,#0d2f4c_0%,#124f66_54%,#1aa6c8_100%)] p-5">
-  <div class="w-full max-w-[440px] rounded-[26px] border border-white/70 bg-white/95 px-6 py-8 shadow-femic backdrop-blur-xl sm:px-8 sm:py-9">
-    <div class="mb-6 text-center">
-      <div class="text-[2.4rem] font-black tracking-[.08em] text-femic-navy">FEMIC</div>
-      <div class="mt-1 text-sm text-slate-500">Sistema unificado · Araraquara, SP</div>
+<div id="femicLoginOverlay" class="femic-auth-overlay">
+  <div class="femic-auth-card">
+    <div class="femic-auth-brand">
+      <div class="femic-auth-wordmark">FEMIC</div>
+      <div class="femic-auth-subtitle">Sistema unificado · Araraquara, SP</div>
     </div>
 
     <!-- PASSO 1: Configuração Supabase -->
     <div id="loginStep1">
-      <div class="mb-5 flex gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
-        <span class="text-xl">⚙️</span>
+      <div class="femic-auth-note">
+        <span class="femic-auth-note-icon">⚙️</span>
         <div>
-          <strong class="text-sm text-sky-800">Primeiro acesso</strong>
-          <div class="mt-1 text-xs text-sky-700">Informe as credenciais do Supabase. Isso é feito uma única vez.</div>
+          <strong>Primeiro acesso</strong>
+          <div>Informe as credenciais do Supabase. Isso é feito uma única vez.</div>
         </div>
       </div>
-      <div class="grid gap-3.5">
-        <div>
-          <label class="mb-1.5 block text-sm font-bold text-slate-600">URL do projeto Supabase</label>
-          <input id="setupUrl" type="url" placeholder="https://xxxx.supabase.co"
-            class="w-full rounded-2xl border border-slate-200 px-3.5 py-3 text-[.95rem] outline-none transition focus:border-femic-cyan focus:shadow-[0_0_0_4px_rgba(26,166,200,.14)]"
-            onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
-            onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+      <div class="femic-auth-form">
+        <div class="femic-auth-field">
+          <label>URL do projeto Supabase</label>
+          <input id="setupUrl" type="url" placeholder="https://xxxx.supabase.co">
         </div>
-        <div>
-          <label class="mb-1.5 block text-sm font-bold text-slate-600">Chave anônima (anon key)</label>
-          <input id="setupKey" type="text" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-            class="w-full rounded-2xl border border-slate-200 px-3.5 py-3 font-mono text-xs outline-none transition focus:border-femic-cyan focus:shadow-[0_0_0_4px_rgba(26,166,200,.14)]"
-            onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
-            onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+        <div class="femic-auth-field">
+          <label>Chave anônima (anon key)</label>
+          <input id="setupKey" class="mono" type="text" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
         </div>
-        <button onclick="femicSaveSetup()" class="rounded-2xl border-0 bg-gradient-to-r from-femic-navy to-femic-cyan px-4 py-3.5 font-extrabold text-white shadow-[0_14px_28px_rgba(18,63,99,.22)] transition hover:-translate-y-0.5"
-          onmouseover="this.style.transform='translateY(-1px)'"
-          onmouseout="this.style.transform=''">
-          Salvar e continuar →
-        </button>
-        <div id="setupError" class="hidden py-1 text-center text-sm text-red-500"></div>
+        <button onclick="femicSaveSetup()" class="femic-auth-submit" type="button">Salvar e continuar</button>
+        <div id="setupError" class="femic-auth-error"></div>
       </div>
     </div>
 
     <!-- PASSO 2: Login email + senha -->
     <div id="loginStep2" style="display:none;">
-      <div class="grid gap-3.5">
-        <div>
-          <label class="mb-1.5 block text-sm font-bold text-slate-600">Email</label>
-          <input id="loginEmail" type="email" placeholder="seu@email.com"
-            class="w-full rounded-2xl border border-slate-200 px-3.5 py-3 text-base outline-none transition focus:border-femic-cyan focus:shadow-[0_0_0_4px_rgba(26,166,200,.14)]"
-            onkeydown="if(event.key==='Enter')femicLogin()"
-            onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
-            onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+      <div class="femic-auth-form">
+        <div class="femic-auth-field">
+          <label>Email</label>
+          <input id="loginEmail" type="email" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')femicLogin()">
         </div>
-        <div>
-          <label class="mb-1.5 block text-sm font-bold text-slate-600">Senha</label>
-          <input id="loginPassword" type="password" placeholder="••••••••"
-            class="w-full rounded-2xl border border-slate-200 px-3.5 py-3 text-base outline-none transition focus:border-femic-cyan focus:shadow-[0_0_0_4px_rgba(26,166,200,.14)]"
-            onkeydown="if(event.key==='Enter')femicLogin()"
-            onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
-            onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+        <div class="femic-auth-field">
+          <label>Senha</label>
+          <input id="loginPassword" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')femicLogin()">
         </div>
-        <button id="loginBtn" onclick="femicLogin()" class="rounded-2xl border-0 bg-gradient-to-r from-femic-navy to-femic-cyan px-4 py-3.5 font-extrabold text-white shadow-[0_14px_28px_rgba(18,63,99,.22)] transition hover:-translate-y-0.5"
-          onmouseover="this.style.transform='translateY(-1px)'"
-          onmouseout="this.style.transform=''">
-          Entrar
-        </button>
-        <div id="loginError" class="hidden py-1 text-center text-sm text-red-500"></div>
-        <button onclick="femicShowSetup()" class="border-0 bg-transparent p-0 text-xs text-slate-400 underline">
-          ⚙️ Alterar configuração do Supabase
-        </button>
+        <button id="loginBtn" onclick="femicLogin()" class="femic-auth-submit" type="button">Entrar</button>
+        <div id="loginError" class="femic-auth-error"></div>
+        <button onclick="femicShowSetup()" class="femic-auth-link" type="button">Alterar configuração do Supabase</button>
       </div>
     </div>
 
@@ -545,6 +497,19 @@ window.tailwind.config = {
         <div class="card kpi"><div class="eyebrow">Concluídas</div><strong>0</strong><span class="muted small">já resolvidas</span></div>
         <div class="card kpi"><div class="eyebrow">Canceladas</div><strong>0</strong><span class="muted small">descartadas</span></div>
       </div>
+      <section class="card pending-card assistant-booking-card">
+        <div class="section-title">
+          <div><div class="eyebrow">Cadastro + agenda assistida</div><h3>Descreva o paciente e eu proponho a melhor grade</h3></div>
+          <button class="btn" id="assistantBookingVoiceBtn" type="button">🎤 Ditar pedido</button>
+        </div>
+        <p class="muted small">Exemplo: "nova paciente Ana, terça e quinta de manhã, 2x por semana, 10 sessões de pilates". A gravação final continua manual: primeiro revisamos, depois confirmamos paciente e grade.</p>
+        <textarea id="assistantBookingInput" rows="4" placeholder="Escreva ou dite o pedido do paciente em linguagem natural"></textarea>
+        <div class="assistant-composer-actions">
+          <button class="btn primary" id="assistantBookingStartBtn" type="button">Nova solicitação assistida</button>
+        </div>
+        <div id="assistantBookingReview"></div>
+        <div id="assistantBookingPlans"></div>
+      </section>
       <section class="card pending-card">
         <div class="section-title">
           <div><div class="eyebrow">WhatsApp e voz</div><h3>Tarefas recebidas para revisão</h3></div>
@@ -1008,9 +973,9 @@ if ('caches' in window) {
 }
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js"></script>
-<script src="js/femic-agenda.js?v=secure-cloud-5"></script>
+<script src="js/femic-agenda.js?v=secure-cloud-9"></script>
 <script src="js/femic-unified.js?v=receipt-docs-2"></script>
-<script src="js/femic-ai-center.js?v=ai-center-2"></script>
+<script src="js/femic-ai-center.js?v=ai-center-5"></script>
 <script>
 (function(){
   var panelMeta = {

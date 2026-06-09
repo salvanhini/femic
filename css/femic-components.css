@@ -282,6 +282,150 @@ html[data-theme="dark"] .health-item{
   background:rgba(20,184,166,.08);
 }
 
+.femic-auth-overlay{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255,255,255,.24), transparent 26%),
+    linear-gradient(135deg,#0d2f4c 0%,#124f66 54%,#1aa6c8 100%);
+}
+
+.femic-auth-card{
+  width:min(440px,100%);
+  padding:32px 28px;
+  border:1px solid rgba(255,255,255,.76);
+  border-radius:26px;
+  background:rgba(255,255,255,.95);
+  box-shadow:0 24px 70px rgba(18,63,99,.14);
+  backdrop-filter:blur(18px);
+}
+
+.femic-auth-brand{
+  margin-bottom:24px;
+  text-align:center;
+}
+
+.femic-auth-wordmark{
+  font-size:2.4rem;
+  font-weight:900;
+  letter-spacing:.08em;
+  color:#123f63;
+}
+
+.femic-auth-subtitle{
+  margin-top:4px;
+  font-size:.92rem;
+  color:#64748b;
+}
+
+.femic-auth-note{
+  display:flex;
+  gap:12px;
+  margin-bottom:18px;
+  padding:14px 16px;
+  border:1px solid #bae6fd;
+  border-radius:18px;
+  background:#f0f9ff;
+  color:#075985;
+}
+
+.femic-auth-note strong{
+  display:block;
+  margin-bottom:4px;
+  font-size:.92rem;
+}
+
+.femic-auth-note div:last-child{
+  font-size:.8rem;
+  line-height:1.45;
+}
+
+.femic-auth-note-icon{
+  font-size:1.15rem;
+}
+
+.femic-auth-form{
+  display:grid;
+  gap:14px;
+}
+
+.femic-auth-field{
+  display:grid;
+  gap:6px;
+}
+
+.femic-auth-field label{
+  font-size:.88rem;
+  font-weight:800;
+  color:#475569;
+}
+
+.femic-auth-field input{
+  width:100%;
+  min-height:48px;
+  padding:12px 14px;
+  border:1px solid #dbe4ee;
+  border-radius:18px;
+  background:#fff;
+  font-size:.95rem;
+  outline:none;
+}
+
+.femic-auth-field input:focus{
+  border-color:#1aa6c8;
+  box-shadow:0 0 0 4px rgba(26,166,200,.14);
+}
+
+.femic-auth-submit{
+  min-height:52px;
+  border:0;
+  border-radius:18px;
+  background:linear-gradient(90deg,#123f63,#1aa6c8);
+  color:#fff;
+  font-weight:900;
+  font-size:.98rem;
+  cursor:pointer;
+  box-shadow:0 14px 28px rgba(18,63,99,.22);
+}
+
+.femic-auth-submit:hover{
+  transform:translateY(-1px);
+}
+
+.femic-auth-link{
+  border:0;
+  background:transparent;
+  padding:0;
+  font-size:.8rem;
+  color:#64748b;
+  text-decoration:underline;
+  cursor:pointer;
+}
+
+.femic-auth-error{
+  display:none;
+  padding-top:2px;
+  text-align:center;
+  color:#ef4444;
+  font-size:.84rem;
+}
+
+@media(max-width:640px){
+  .femic-auth-card{
+    padding:26px 20px;
+    border-radius:22px;
+  }
+
+  .femic-auth-wordmark{
+    font-size:2.15rem;
+  }
+}
+
 .health-item.warn{
   border-color:rgba(245,158,11,.34);
   background:rgba(245,158,11,.09);
