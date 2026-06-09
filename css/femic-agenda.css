@@ -4441,14 +4441,43 @@ textarea{
   border-bottom:1px solid rgba(11,60,111,.08);
 }
 
-#panel-agenda-assistida .assistant-booking-card textarea{
-  min-height:124px;
-  margin-top:8px;
-  padding:14px 16px;
-  line-height:1.55;
-  resize:vertical;
-  border-color:rgba(11,60,111,.14);
-  box-shadow:inset 0 1px 3px rgba(18,63,99,.04);
+#panel-agenda-assistida .assistant-form-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  margin-top:14px;
+}
+
+#panel-agenda-assistida .assistant-subcard{
+  padding:18px;
+  border:1px solid rgba(11,60,111,.10);
+  border-radius:18px;
+  background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,251,253,.95));
+  box-shadow:0 12px 24px rgba(11,60,111,.06);
+}
+
+#panel-agenda-assistida .assistant-subcard-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+
+#panel-agenda-assistida .assistant-subcard-head h4{
+  margin:0;
+  color:var(--femic-blue,#0b3c6f);
+  font-size:1rem;
+}
+
+#panel-agenda-assistida .assistant-inline-note{
+  margin-top:10px;
+}
+
+#panel-agenda-assistida .assistant-new-patient{
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px dashed rgba(11,60,111,.14);
 }
 
 #panel-agenda-assistida .assistant-composer-actions{
@@ -4512,6 +4541,33 @@ textarea{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
   gap:12px;
+}
+
+#panel-agenda-assistida .assistant-summary-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+  gap:12px;
+}
+
+#panel-agenda-assistida .assistant-summary-grid div{
+  padding:12px 14px;
+  border:1px solid rgba(11,60,111,.10);
+  border-radius:16px;
+  background:rgba(255,255,255,.86);
+}
+
+#panel-agenda-assistida .assistant-summary-grid span{
+  display:block;
+  margin-bottom:6px;
+  font-size:.76rem;
+  color:#60778c;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.03em;
+}
+
+#panel-agenda-assistida .assistant-summary-grid strong{
+  color:var(--femic-blue,#0b3c6f);
 }
 
 #panel-agenda-assistida .assistant-review-grid label,
@@ -5190,6 +5246,14 @@ textarea{
 
   #panel-agenda-assistida .assistant-guide-notes{
     margin:0 16px 16px;
+  }
+
+  #panel-agenda-assistida .assistant-form-grid{
+    grid-template-columns:1fr;
+  }
+
+  #panel-agenda-assistida .assistant-subcard{
+    padding:16px;
   }
 
   #panel-agenda-assistida .assistant-review-head,

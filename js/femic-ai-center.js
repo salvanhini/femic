@@ -564,7 +564,14 @@
     return window.FEMICAgendaRuntime || null;
   }
   function listAssistantServices(){
-    return (getAgendaState().services || []).filter(function(service){ return service.active !== false; });
+    return (getAgendaState().services || []).filter(function(service){ return service.active !== false; }).sort(function(a,b){
+      return String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR');
+    });
+  }
+  function listAssistantPatients(){
+    return (getAgendaState().patients || []).filter(function(patient){ return patient.archived !== true; }).sort(function(a,b){
+      return String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR');
+    });
   }
   function weekdayLabel(day){
     return ['Dom','Seg','Ter','Qua','Qui','Sex','Sab'][Number(day)] || '';
@@ -609,6 +616,17 @@
     }).slice(0, 8).map(function(patient){
       return { id: patient.id, name: patient.name || 'Paciente sem nome', whatsapp: patient.whatsapp || '', pathology: patient.pathology || '' };
     });
+  }
+  function resolveAssistantExistingPatientId(data, candidates){
+    if(data && data.patient_id) return String(data.patient_id);
+    candidates = Array.isArray(candidates) ? candidates : [];
+    if(candidates.length === 1) return String(candidates[0].id || '');
+    var phone = cleanPhone(data && data.patient_phone || '');
+    var name = norm(data && data.patient_name || '');
+    var exact = candidates.find(function(item){
+      return (!!phone && cleanPhone(item.whatsapp || '') === phone) || (!!name && norm(item.name || '') === name);
+    });
+    return exact ? String(exact.id || '') : '';
   }
   function assistantDefaultStartDate(days){
     days = Array.isArray(days) ? days : [];
@@ -674,25 +692,101 @@
     if(data.total_sessions) bits.push(data.total_sessions + ' sessoes');
     return bits.join(' · ');
   }
+  function assistantServiceLabel(service){
+    if(!service) return 'Servico nao selecionado';
+    var mode = service.appointment_mode === 'individual' ? 'individual' : 'grupo';
+    return [service.name || 'Servico', mode, (service.duration_minutes || 45) + ' min'].join(' · ');
+  }
+  function renderAssistantPatientSelect(selectedId){
+    var select = el('assistantPatientSelect');
+    if(!select) return;
+    var options = ['<option value="">Selecione um paciente já cadastrado</option>'].concat(listAssistantPatients().map(function(patient){
+      var extra = patient.whatsapp ? ' · ' + formatPatientPhone(patient.whatsapp) : '';
+      return '<option value="' + esc(patient.id) + '"' + (String(patient.id) === String(selectedId || '') ? ' selected' : '') + '>' + esc((patient.name || 'Paciente sem nome') + extra) + '</option>';
+    }));
+    select.innerHTML = options.join('');
+  }
+  function renderAssistantServiceSelect(selectedId){
+    var select = el('assistantServiceSelect');
+    if(!select) return;
+    var options = ['<option value="">Selecione o serviço</option>'].concat(listAssistantServices().map(function(service){
+      var mode = service.appointment_mode === 'individual' ? 'Individual' : 'Grupo';
+      return '<option value="' + esc(service.id) + '"' + (String(service.id) === String(selectedId || '') ? ' selected' : '') + '>' + esc((service.name || 'Servico') + ' · ' + mode) + '</option>';
+    }));
+    select.innerHTML = options.join('');
+  }
+  function setAssistantInlineStatus(message){
+    if(el('assistantPatientInlineStatus')) el('assistantPatientInlineStatus').textContent = message || '';
+  }
+  function setAssistantNewPatientMode(enabled){
+    enabled = !!enabled;
+    var box = el('assistantNewPatientFields');
+    var select = el('assistantPatientSelect');
+    var btn = el('assistantTogglePatientModeBtn');
+    if(box) box.classList.toggle('hidden', !enabled);
+    if(btn) btn.textContent = enabled ? 'Usar paciente cadastrado' : 'Novo paciente';
+    if(enabled){
+      if(select) select.value = '';
+      setAssistantInlineStatus('Preencha nome, WhatsApp e observacao para criar um novo paciente.');
+    }else{
+      setAssistantInlineStatus('Selecione um paciente já cadastrado. Se não encontrar, abra o cadastro inline.');
+    }
+  }
+  function syncAssistantPatientModeFromForm(){
+    var selectedId = el('assistantPatientSelect') ? el('assistantPatientSelect').value : '';
+    var hasNewName = !!(el('assistantNewPatientName') && el('assistantNewPatientName').value.trim());
+    var hasNewPhone = !!(el('assistantNewPatientPhone') && cleanPhone(el('assistantNewPatientPhone').value));
+    setAssistantNewPatientMode(!selectedId && (hasNewName || hasNewPhone || !selectedId && !el('assistantNewPatientFields')?.classList.contains('hidden')));
+    if(selectedId) setAssistantNewPatientMode(false);
+  }
+  function clearAssistantNewPatientFields(){
+    if(el('assistantNewPatientName')) el('assistantNewPatientName').value = '';
+    if(el('assistantNewPatientPhone')) el('assistantNewPatientPhone').value = '';
+    if(el('assistantNewPatientPathology')) el('assistantNewPatientPathology').value = '';
+  }
+  function populateAssistantBookingForm(task){
+    var data = task && task.assistant_data ? Object.assign({}, task.assistant_data) : {};
+    var selectedPatientId = resolveAssistantExistingPatientId(data, task && task.assistant_patient_candidates);
+    var newPatientMode = data.patient_mode === 'new' || (!selectedPatientId && (!!data.patient_name || !!data.patient_phone || !!data.patient_pathology));
+    renderAssistantPatientSelect(selectedPatientId);
+    renderAssistantServiceSelect(data.service_id || '');
+    if(el('assistantStartDate')) el('assistantStartDate').value = data.start_date || '';
+    if(el('assistantPeriod')) el('assistantPeriod').value = data.period || '';
+    if(el('assistantFrequency')) el('assistantFrequency').value = data.frequency_per_week || '';
+    if(el('assistantTotalSessions')) el('assistantTotalSessions').value = data.total_sessions || '';
+    if(el('assistantNewPatientName')) el('assistantNewPatientName').value = newPatientMode ? (data.patient_name || '') : '';
+    if(el('assistantNewPatientPhone')) el('assistantNewPatientPhone').value = newPatientMode ? assistantFormatPhone(data.patient_phone || '') : '';
+    if(el('assistantNewPatientPathology')) el('assistantNewPatientPathology').value = newPatientMode ? (data.patient_pathology || '') : '';
+    document.querySelectorAll('[data-assistant-weekday]').forEach(function(input){
+      input.checked = Array.isArray(data.weekdays) && data.weekdays.indexOf(Number(input.value)) !== -1;
+    });
+    setAssistantNewPatientMode(newPatientMode);
+    renderAssistantReviewDayState();
+  }
   function readAssistantReviewForm(){
     var weekdays = [];
     document.querySelectorAll('[data-assistant-weekday]').forEach(function(input){
       if(input.checked) weekdays.push(Number(input.value));
     });
+    var selectedPatientId = el('assistantPatientSelect') ? el('assistantPatientSelect').value : '';
+    var selectedPatient = listAssistantPatients().find(function(item){ return String(item.id) === String(selectedPatientId); }) || null;
+    var isNewPatient = !selectedPatientId && !el('assistantNewPatientFields')?.classList.contains('hidden');
+    var serviceId = el('assistantServiceSelect') ? el('assistantServiceSelect').value : '';
+    var selectedService = listAssistantServices().find(function(item){ return String(item.id) === String(serviceId); }) || null;
     return {
-      patient_mode: el('assistantPatientMode') ? el('assistantPatientMode').value : 'unknown',
-      patient_id: el('assistantPatientCandidate') ? el('assistantPatientCandidate').value : '',
-      patient_name: el('assistantPatientName') ? el('assistantPatientName').value.trim() : '',
-      patient_phone: el('assistantPatientPhone') ? cleanPhone(el('assistantPatientPhone').value) : '',
-      patient_pathology: el('assistantPatientPathology') ? el('assistantPatientPathology').value.trim() : '',
-      service_id: el('assistantService') ? el('assistantService').value : '',
-      service_name: (listAssistantServices().find(function(item){ return String(item.id) === String(el('assistantService') ? el('assistantService').value : ''); }) || {}).name || '',
+      patient_mode: selectedPatient ? 'existing' : (isNewPatient ? 'new' : 'unknown'),
+      patient_id: selectedPatient ? selectedPatient.id : '',
+      patient_name: selectedPatient ? (selectedPatient.name || '') : (el('assistantNewPatientName') ? el('assistantNewPatientName').value.trim() : ''),
+      patient_phone: selectedPatient ? cleanPhone(selectedPatient.whatsapp || '') : (el('assistantNewPatientPhone') ? cleanPhone(el('assistantNewPatientPhone').value) : ''),
+      patient_pathology: selectedPatient ? (selectedPatient.pathology || '') : (el('assistantNewPatientPathology') ? el('assistantNewPatientPathology').value.trim() : ''),
+      service_id: serviceId,
+      service_name: selectedService ? selectedService.name || '' : '',
       weekdays: weekdays,
       period: el('assistantPeriod') ? el('assistantPeriod').value : '',
       frequency_per_week: Number(el('assistantFrequency') ? el('assistantFrequency').value || 0 : 0),
       total_sessions: Number(el('assistantTotalSessions') ? el('assistantTotalSessions').value || 0 : 0),
       start_date: el('assistantStartDate') ? el('assistantStartDate').value : '',
-      notes: el('assistantBookingInput') ? el('assistantBookingInput').value.trim() : ''
+      notes: ''
     };
   }
   function assistantMissingFields(data){
@@ -733,7 +827,7 @@
     });
     task.assistant_plans = result.plans || [];
     task.suggestion_reason = result.reason || '';
-    task.needs_review = !task.assistant_plans.length || !!task.assistant_patient_candidates.length;
+    task.needs_review = !task.assistant_patient_confirmed || !task.assistant_plans.length;
     task.status = 'em_andamento';
     task.updated_at = new Date().toISOString();
     upsertTask(task);
@@ -742,20 +836,6 @@
   }
   function latestAssistantTask(){
     return getExtensionTasks().find(function(task){ return task.origin === 'assistant_booking' && task.status !== 'cancelada'; }) || null;
-  }
-  function assistantPatientCandidateOptions(task){
-    var selected = task && task.assistant_data ? String(task.assistant_data.patient_id || '') : '';
-    var list = Array.isArray(task && task.assistant_patient_candidates) ? task.assistant_patient_candidates : [];
-    var base = '<option value="">Selecionar paciente existente</option>';
-    return base + list.map(function(item){
-      return '<option value="' + esc(item.id) + '"' + (String(item.id) === selected ? ' selected' : '') + '>' + esc(item.name + (item.whatsapp ? ' · ' + item.whatsapp : '')) + '</option>';
-    }).join('');
-  }
-  function assistantServiceOptions(task){
-    var selected = task && task.assistant_data ? String(task.assistant_data.service_id || '') : '';
-    return '<option value="">Selecionar servico</option>' + listAssistantServices().map(function(service){
-      return '<option value="' + esc(service.id) + '"' + (String(service.id) === selected ? ' selected' : '') + '>' + esc(service.name) + '</option>';
-    }).join('');
   }
   function renderAssistantReview(task){
     var target = el('assistantBookingReview');
@@ -766,32 +846,31 @@
     }
     var data = task.assistant_data || {};
     var missing = Array.isArray(task.assistant_missing_fields) ? task.assistant_missing_fields : [];
+    var selectedPatient = data.patient_id ? listAssistantPatients().find(function(item){ return String(item.id) === String(data.patient_id); }) : null;
+    var selectedService = data.service_id ? listAssistantServices().find(function(item){ return String(item.id) === String(data.service_id); }) : null;
+    var patientLabel = selectedPatient ? (selectedPatient.name || 'Paciente') : (data.patient_name || 'Paciente nao informado');
+    var patientStatus = task.assistant_patient_confirmed ? 'Paciente pronto para agenda.' : (data.patient_mode === 'new' ? 'Paciente novo ainda precisa ser confirmado.' : 'Escolha ou confirme o paciente.');
+    var summaryLines = [
+      '<div><span>Paciente</span><strong>' + esc(patientLabel) + '</strong></div>',
+      '<div><span>WhatsApp</span><strong>' + esc(assistantFormatPhone(data.patient_phone || '') || 'Nao informado') + '</strong></div>',
+      '<div><span>Servico</span><strong>' + esc(assistantServiceLabel(selectedService)) + '</strong></div>',
+      '<div><span>Dias</span><strong>' + esc(Array.isArray(data.weekdays) && data.weekdays.length ? data.weekdays.map(weekdayLabel).join(' / ') : 'Nao informado') + '</strong></div>',
+      '<div><span>Periodo</span><strong>' + esc(data.period ? String(data.period).replace(/^./, function(letter){ return letter.toUpperCase(); }) : 'Qualquer periodo') + '</strong></div>',
+      '<div><span>Ritmo</span><strong>' + esc((data.frequency_per_week || 0) ? (data.frequency_per_week + 'x por semana') : 'Nao informado') + '</strong></div>',
+      '<div><span>Sessoes</span><strong>' + esc((data.total_sessions || 0) ? String(data.total_sessions) : 'Nao informado') + '</strong></div>',
+      '<div><span>Inicio</span><strong>' + esc(data.start_date ? fmtDate(data.start_date) : 'Nao informado') + '</strong></div>'
+    ];
     target.innerHTML =
       '<div class="assistant-review-card">' +
         '<div class="assistant-review-head">' +
-          '<div><span class="assistant-chip">Revisao guiada</span><strong>' + esc(assistantTaskSummary(task) || 'Pedido em construcao') + '</strong></div>' +
-          '<div class="muted small">' + esc(task.assistant_patient_confirmed ? 'Paciente pronto para agenda' : 'Paciente ainda precisa de confirmacao') + '</div>' +
+          '<div><span class="assistant-chip">Resumo</span><strong>' + esc(assistantTaskSummary(task) || 'Preencha os dados para montar a grade') + '</strong></div>' +
+          '<div class="muted small">' + esc(patientStatus) + '</div>' +
         '</div>' +
         (missing.length ? '<div class="assistant-warning">Faltando: ' + esc(missing.join(' · ')) + '</div>' : '') +
-        '<div class="assistant-review-grid">' +
-          '<label><span>Modo do paciente</span><select id="assistantPatientMode"><option value="new"' + (data.patient_mode === 'new' ? ' selected' : '') + '>Paciente novo</option><option value="existing"' + (data.patient_mode === 'existing' ? ' selected' : '') + '>Paciente existente</option><option value="unknown"' + (data.patient_mode === 'unknown' ? ' selected' : '') + '>Ainda nao definido</option></select></label>' +
-          '<label><span>Paciente localizado</span><select id="assistantPatientCandidate">' + assistantPatientCandidateOptions(task) + '</select></label>' +
-          '<label><span>Nome</span><input id="assistantPatientName" value="' + esc(data.patient_name || '') + '" placeholder="Nome do paciente"></label>' +
-          '<label><span>WhatsApp</span><input id="assistantPatientPhone" value="' + esc(data.patient_phone || '') + '" placeholder="11999998888"></label>' +
-          '<label><span>Patologia</span><input id="assistantPatientPathology" value="' + esc(data.patient_pathology || '') + '" placeholder="Opcional"></label>' +
-          '<label><span>Servico</span><select id="assistantService">' + assistantServiceOptions(task) + '</select></label>' +
-          '<label><span>Periodo</span><select id="assistantPeriod"><option value="">Qualquer periodo</option><option value="manha"' + (data.period === 'manha' ? ' selected' : '') + '>Manha</option><option value="tarde"' + (data.period === 'tarde' ? ' selected' : '') + '>Tarde</option><option value="noite"' + (data.period === 'noite' ? ' selected' : '') + '>Noite</option></select></label>' +
-          '<label><span>Frequencia semanal</span><input id="assistantFrequency" type="number" min="1" max="6" value="' + esc(data.frequency_per_week || '') + '"></label>' +
-          '<label><span>Total de sessoes</span><input id="assistantTotalSessions" type="number" min="1" value="' + esc(data.total_sessions || '') + '"></label>' +
-          '<label><span>Data inicial</span><input id="assistantStartDate" type="date" value="' + esc(data.start_date || '') + '"></label>' +
-        '</div>' +
-        '<div class="assistant-weekdays">' + [1,2,3,4,5,6].map(function(day){
-          var checked = Array.isArray(data.weekdays) && data.weekdays.indexOf(day) !== -1;
-          return '<label class="assistant-day' + (checked ? ' active' : '') + '"><input data-assistant-weekday type="checkbox" value="' + day + '"' + (checked ? ' checked' : '') + ' onchange="renderAssistantReviewDayState()"> <span>' + esc(weekdayLabel(day)) + '</span></label>';
-        }).join('') + '</div>' +
+        '<div class="assistant-summary-grid">' + summaryLines.join('') + '</div>' +
         '<div class="assistant-review-actions">' +
-          '<button class="btn primary" type="button" onclick="recalculateAssistantBooking()">Atualizar sugestoes</button>' +
-          '<button class="btn" type="button" onclick="confirmAssistantBookingPatient()">Confirmar paciente</button>' +
+          '<button class="btn primary" type="button" onclick="recalculateAssistantBooking()">Atualizar melhores opcoes</button>' +
+          '<button class="btn" type="button" onclick="confirmAssistantBookingPatient()">' + (task.assistant_patient_confirmed ? 'Paciente confirmado' : 'Confirmar paciente') + '</button>' +
           '<button class="btn ghost" type="button" onclick="saveAssistantBookingAsPending()">Salvar como pendencia</button>' +
         '</div>' +
       '</div>';
@@ -825,6 +904,7 @@
     }
     if(!task) task = latestAssistantTask();
     if(task) state.assistantBookingTaskId = task.id;
+    populateAssistantBookingForm(task);
     renderAssistantReview(task);
     renderAssistantPlans(task);
   }
@@ -1726,61 +1806,57 @@
       label.classList.toggle('active', !!(input && input.checked));
     });
   };
-  window.startAssistantBooking = async function(){
-    var input = el('assistantBookingInput');
-    var text = input ? input.value.trim() : '';
-    if(!text){
-      if(typeof window.toast === 'function') window.toast('Descreva o pedido do paciente para eu montar a sugestao.', 'warning');
-      return;
-    }
-    var parsed = parseAssistantBookingText(text);
-    var task = upsertTask({
-      title: 'Cadastro + agenda assistida · ' + (parsed.data.patient_name || 'Paciente em revisao'),
+  function normalizeAssistantTaskFromForm(task){
+    var data = readAssistantReviewForm();
+    var patientCandidates = (data.patient_mode === 'new' || !data.patient_name) ? [] : findAssistantPatientCandidates(data.patient_name, data.patient_phone);
+    var taskId = task && task.id ? task.id : makeTaskId();
+    return Object.assign({}, task || {}, {
+      id: taskId,
+      title: 'Cadastro + agenda assistida · ' + (data.patient_name || 'Paciente em revisao'),
       type: 'marcacao',
-      status: 'em_andamento',
+      status: task && task.status ? task.status : 'em_andamento',
       priority: 'normal',
-      patient_id: parsed.data.patient_id || '',
-      patient_name: parsed.data.patient_name || '',
-      service_id: parsed.data.service_id || '',
-      service_name: parsed.data.service_name || '',
-      phone: parsed.data.patient_phone || '',
+      patient_id: data.patient_id || '',
+      patient_name: data.patient_name || '',
+      service_id: data.service_id || '',
+      service_name: data.service_name || '',
+      phone: data.patient_phone || '',
       origin: 'assistant_booking',
       requested_action: 'marcacao',
-      notes: text,
+      notes: task && task.notes ? task.notes : '',
       assistant_kind: 'booking',
-      assistant_data: parsed.data,
-      assistant_plans: [],
-      assistant_missing_fields: parsed.missing,
-      assistant_patient_candidates: parsed.patient_candidates,
-      assistant_patient_confirmed: parsed.patient_confirmed,
-      assistant_selected_plan: -1,
-      needs_review: true,
-      created_at: new Date().toISOString()
+      assistant_data: data,
+      assistant_plans: task && Array.isArray(task.assistant_plans) ? task.assistant_plans : [],
+      assistant_missing_fields: assistantMissingFields(data),
+      assistant_patient_candidates: patientCandidates,
+      assistant_patient_confirmed: !!(data.patient_id && data.patient_mode === 'existing'),
+      assistant_selected_plan: task && Number.isFinite(Number(task.assistant_selected_plan)) ? Number(task.assistant_selected_plan) : -1,
+      updated_at: new Date().toISOString(),
+      created_at: task && task.created_at ? task.created_at : new Date().toISOString()
     });
+  }
+  window.startAssistantBooking = async function(){
+    var current = readTasks().find(function(item){ return item.id === state.assistantBookingTaskId; }) || latestAssistantTask();
+    var task = normalizeAssistantTaskFromForm(current);
+    task.status = 'em_andamento';
+    task.needs_review = true;
+    task.assistant_plans = [];
+    task.assistant_selected_plan = -1;
+    task = upsertTask(task);
     state.assistantBookingTaskId = task.id;
     try{
       await recalcAssistantTask(task);
-      if(typeof window.toast === 'function') window.toast('Pedido interpretado. Revise os dados e escolha a grade.', 'success');
+      if(typeof window.toast === 'function') window.toast('Melhores opcoes calculadas para a grade.', 'success');
     }catch(error){
       renderAssistantBookingWorkspace(task.id);
-      if(typeof window.toast === 'function') window.toast('Consegui montar a revisao, mas nao calcular a grade: ' + (error.message || error), 'warning');
+      if(typeof window.toast === 'function') window.toast('Nao consegui calcular a grade: ' + (error.message || error), 'warning');
     }
   };
   window.recalculateAssistantBooking = async function(){
     var task = readTasks().find(function(item){ return item.id === state.assistantBookingTaskId; }) || latestAssistantTask();
     if(!task) return;
-    task.assistant_data = Object.assign({}, task.assistant_data || {}, readAssistantReviewForm());
-    task.patient_id = task.assistant_data.patient_id || '';
-    task.patient_name = task.assistant_data.patient_name || '';
-    task.service_id = task.assistant_data.service_id || '';
-    task.service_name = task.assistant_data.service_name || '';
-    task.phone = task.assistant_data.patient_phone || '';
-    task.notes = task.assistant_data.notes || task.notes || '';
-    task.assistant_patient_candidates = findAssistantPatientCandidates(task.assistant_data.patient_name, task.assistant_data.patient_phone);
-    task.assistant_patient_confirmed = false;
-    if(task.assistant_data.patient_id){
-      task.assistant_patient_confirmed = task.assistant_patient_candidates.some(function(item){ return String(item.id) === String(task.assistant_data.patient_id); });
-    }
+    task = normalizeAssistantTaskFromForm(task);
+    task.assistant_patient_confirmed = !!(task.assistant_data.patient_id && task.assistant_data.patient_mode === 'existing');
     await recalcAssistantTask(task);
   };
   window.selectAssistantBookingPlan = function(index){
@@ -1796,18 +1872,28 @@
     var list = readTasks();
     var task = list.find(function(item){ return item.id === state.assistantBookingTaskId; }) || latestAssistantTask();
     if(!task) return;
-    task.assistant_data = Object.assign({}, task.assistant_data || {}, readAssistantReviewForm());
-    task.assistant_patient_candidates = findAssistantPatientCandidates(task.assistant_data.patient_name, task.assistant_data.patient_phone);
+    task = normalizeAssistantTaskFromForm(task);
     var runtime = assistantRuntime();
     try{
       if(task.assistant_data.patient_mode === 'new'){
         if(!runtime || typeof runtime.createPatient !== 'function') throw new Error('Criacao de paciente ainda indisponivel.');
         var created = await runtime.createPatient({ name: task.assistant_data.patient_name, whatsapp: task.assistant_data.patient_phone, pathology: task.assistant_data.patient_pathology });
         task.assistant_data.patient_id = created.id;
+        task.assistant_data.patient_mode = 'existing';
         task.patient_id = created.id;
         task.patient_name = created.name || task.assistant_data.patient_name;
+        task.phone = cleanPhone(created.whatsapp || task.assistant_data.patient_phone || '');
+        task.assistant_patient_candidates = [{ id: created.id, name: created.name || task.patient_name, whatsapp: created.whatsapp || '', pathology: created.pathology || '' }];
       }else{
         if(!task.assistant_data.patient_id) throw new Error('Selecione o paciente existente antes de confirmar.');
+        var patient = listAssistantPatients().find(function(item){ return String(item.id) === String(task.assistant_data.patient_id); });
+        if(!patient) throw new Error('Paciente selecionado nao foi encontrado.');
+        task.patient_id = patient.id;
+        task.patient_name = patient.name || task.assistant_data.patient_name;
+        task.phone = cleanPhone(patient.whatsapp || '');
+        task.assistant_data.patient_name = patient.name || task.assistant_data.patient_name;
+        task.assistant_data.patient_phone = cleanPhone(patient.whatsapp || '');
+        task.assistant_data.patient_pathology = patient.pathology || task.assistant_data.patient_pathology || '';
       }
       task.assistant_patient_confirmed = true;
       task.updated_at = new Date().toISOString();
@@ -1850,10 +1936,12 @@
   };
   window.saveAssistantBookingAsPending = function(){
     var task = readTasks().find(function(item){ return item.id === state.assistantBookingTaskId; }) || latestAssistantTask();
-    if(!task) return;
+    task = normalizeAssistantTaskFromForm(task);
     task.status = 'aberta';
+    task.needs_review = true;
     task.updated_at = new Date().toISOString();
     upsertTask(task);
+    state.assistantBookingTaskId = task.id;
     if(typeof window.toast === 'function') window.toast('Solicitacao salva como pendencia para seguir depois.', 'success');
   };
   window.FEMICAssistantTasks = {
@@ -1866,9 +1954,6 @@
   var voiceRec = null;
   var voiceListening = false;
   var voiceText = '';
-  var assistantVoiceRec = null;
-  var assistantVoiceListening = false;
-  var assistantVoiceText = '';
 
   function startVoiceTask() {
     var Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1957,50 +2042,8 @@
     if (typeof window.toast === 'function') window.toast('Lembrete por voz criado: ' + task.title, 'success');
     setDebug('Lembrete por voz: ' + task.title);
   }
-  function toggleAssistantBookingVoice(){
-    var Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if(!Ctor){
-      if(typeof window.toast === 'function') window.toast('Microfone nao disponivel neste navegador.', 'warning');
-      return;
-    }
-    var btn = el('assistantBookingVoiceBtn');
-    var input = el('assistantBookingInput');
-    if(assistantVoiceListening){
-      try{ assistantVoiceRec.stop(); }catch(e){}
-      assistantVoiceListening = false;
-      if(btn){ btn.textContent = '🎤 Ditar pedido'; btn.classList.remove('is-recording'); }
-      return;
-    }
-    assistantVoiceText = '';
-    assistantVoiceRec = new Ctor();
-    assistantVoiceRec.lang = 'pt-BR';
-    assistantVoiceRec.interimResults = true;
-    assistantVoiceRec.continuous = true;
-    assistantVoiceRec.onstart = function(){
-      assistantVoiceListening = true;
-      if(btn){ btn.textContent = '🔴 Gravando...'; btn.classList.add('is-recording'); }
-    };
-    assistantVoiceRec.onresult = function(event){
-      var text = '';
-      for(var i = event.resultIndex; i < event.results.length; i += 1){
-        text += event.results[i][0].transcript + ' ';
-      }
-      assistantVoiceText = text.trim();
-      if(input && assistantVoiceText) input.value = assistantVoiceText;
-    };
-    assistantVoiceRec.onerror = function(){
-      assistantVoiceListening = false;
-      if(btn){ btn.textContent = '🎤 Ditar pedido'; btn.classList.remove('is-recording'); }
-    };
-    assistantVoiceRec.onend = function(){
-      assistantVoiceListening = false;
-      if(btn){ btn.textContent = '🎤 Ditar pedido'; btn.classList.remove('is-recording'); }
-    };
-    assistantVoiceRec.start();
-  }
 
   window.startVoiceTask = startVoiceTask;
-  window.toggleAssistantBookingVoice = toggleAssistantBookingVoice;
 
   document.addEventListener('FEMIC_EXTENSION_EVENT_CHANNEL', function(event){
     var data = event && event.detail;
@@ -2019,13 +2062,28 @@
     fillConfigInputs();
     renderAssistantAiProviderBadge();
     renderExtensionPendingTasks();
+    renderAssistantBookingWorkspace(state.assistantBookingTaskId);
     loadTasksFromCloud(true);
     var voiceBtn = el('voiceTaskBtn');
     if (voiceBtn) voiceBtn.addEventListener('click', startVoiceTask);
-    var assistantVoiceBtn = el('assistantBookingVoiceBtn');
-    if (assistantVoiceBtn) assistantVoiceBtn.addEventListener('click', toggleAssistantBookingVoice);
+    var assistantToggleBtn = el('assistantTogglePatientModeBtn');
+    if(assistantToggleBtn) assistantToggleBtn.addEventListener('click', function(){
+      var showingNew = !(el('assistantNewPatientFields') && el('assistantNewPatientFields').classList.contains('hidden'));
+      if(!showingNew) clearAssistantNewPatientFields();
+      setAssistantNewPatientMode(!showingNew);
+      renderAssistantReviewDayState();
+    });
+    var assistantPatientSelect = el('assistantPatientSelect');
+    if(assistantPatientSelect) assistantPatientSelect.addEventListener('change', function(){
+      if(this.value){
+        clearAssistantNewPatientFields();
+        setAssistantNewPatientMode(false);
+      }
+    });
     var assistantStartBtn = el('assistantBookingStartBtn');
     if (assistantStartBtn) assistantStartBtn.addEventListener('click', window.startAssistantBooking);
+    var assistantSavePendingBtn = el('assistantSavePendingBtn');
+    if(assistantSavePendingBtn) assistantSavePendingBtn.addEventListener('click', window.saveAssistantBookingAsPending);
     setDebug('IA clinica pronta para apoiar o prontuario. Cadastros assistidos ficam na Agenda assistida e tarefas na fila de Pendencias.');
   }
 
