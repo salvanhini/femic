@@ -7657,7 +7657,7 @@ textarea:focus-visible{
 
 #weekView .week-v3-event.status-concluido::after,
 #weekView .week-v3-event.done::after{
-  content:"Concluido";
+  content:"Concluído";
 }
 
 #weekView .week-v3-event.status-cancelado,
