@@ -375,7 +375,7 @@ async function refreshReportMonthIfNeeded(month){
     toast('Erro ao carregar relatório mensal: ' + e.message, 'error');
   }
 }
-async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const apQuery=appointmentWindowQuery();const [pa,hi,sv,pk,ap,mv,st,cr,endedAtSupport]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api(apQuery),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection(),detectSessionPackagesEndedAtSupport()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];loadedAppointmentQuery=apQuery;loadedReportQuery='';reportAppointments=[];aiRadarQuery='';aiRadarLoaded=false;movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});sessionPackagesEndedAtSupported=endedAtSupport;packageScheduleCache.clear();packageHistoryCache.clear();packagePatternCache.clear();dayAppointmentCache.clear();syncForms();recordSystemLoad(true);renderActivePanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);recordSystemLoad(false,e.message);toast('Erro ao carregar: '+e.message,'error')}}
+async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const apQuery=appointmentWindowQuery();const [pa,hi,sv,pk,ap,mv,st,cr,endedAtSupport]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api(apQuery),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection(),detectSessionPackagesEndedAtSupport()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];loadedAppointmentQuery=apQuery;loadedReportQuery='';reportAppointments=[];aiRadarQuery='';aiRadarLoaded=false;movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});sessionPackagesEndedAtSupported=endedAtSupport;patientPickerItemsCache=null;packageScheduleCache.clear();packageHistoryCache.clear();packagePatternCache.clear();dayAppointmentCache.clear();syncForms();recordSystemLoad(true);renderActivePanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);recordSystemLoad(false,e.message);toast('Erro ao carregar: '+e.message,'error')}}
 function toggleSidebar(){
   $('sidebar')?.classList.toggle('show');
   $('overlay')?.classList.toggle('show');
@@ -716,6 +716,7 @@ window.FEMICAgendaRuntime={
 };
 
 const patientPickerState = {};
+let patientPickerItemsCache = null;
 function normalizePatientSearch(value){
   return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
 }
@@ -726,7 +727,8 @@ function formatPatientPhone(value){
   return value || 'Sem WhatsApp';
 }
 function patientPickerItems(){
-  return patients
+  if(patientPickerItemsCache) return patientPickerItemsCache;
+  patientPickerItemsCache = patients
     .filter(p=>p.archived!==true)
     .slice()
     .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'pt-BR'))
@@ -737,6 +739,7 @@ function patientPickerItems(){
       pathology:p.pathology || 'Sem patologia',
       haystack:normalizePatientSearch([p.name, p.whatsapp, cleanPhone(p.whatsapp), p.pathology].join(' '))
     }));
+  return patientPickerItemsCache;
 }
 function patientPickerLabel(item){
   return item ? `${item.name} · ${item.phone}` : '';
@@ -1689,7 +1692,9 @@ async function sendWhatsapp(id,mark=false,kind='appointment'){
 function sendNextReminder(){
   const kind=$('reminderType')?$('reminderType').value:'appointment';
   const date=$('reminderDate').value;
-  const next=reminderListFor(kind,date).filter(a=>!reminderFlag(a,kind)&&reminderPhoneOk(a)).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)))[0];
+  const patientsById=Object.create(null);
+  patients.forEach(patient=>{patientsById[String(patient.id)]=patient});
+  const next=reminderListFor(kind,date).filter(a=>!reminderFlag(a,kind)&&cleanPhone((patientsById[String(a.patient_id)]||{}).whatsapp).length>=10).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)))[0];
   if(!next)toast('Nenhum lembrete pendente.','info');else sendWhatsapp(next.id,true,kind);
 }
 function renderWhatsappProviderBadge(){
@@ -1726,7 +1731,7 @@ function statusButtons(a){
     <button class="btn danger status-mini" ${a.status==='cancelado'?'disabled':''} onclick="quickStatus('${id}','cancelado')">✕ Cancelar</button>
   </div>`;
 }
-function renderReport(skipRefresh=false){const month=$('reportMonth').value||new Date().toISOString().slice(0,7);$('reportMonth').value=month;if(!skipRefresh)refreshReportMonthIfNeeded(month);const query=appointmentReportQuery(month);const source=loadedReportQuery===query?reportAppointments:appointments.filter(a=>String(a.appointment_date).startsWith(month));const done=source.filter(a=>a.status==='concluido');const groups={};done.forEach(a=>{const s=serviceById(a.service_id),key=(s.health_insurance_id||'')+'|'+(s.id||'')+'|'+Number(a.service_price_at_time||s.price||0);if(!groups[key])groups[key]={payer:payerName(s.health_insurance_id),service:s.name||'Sem serviço',q:0,price:Number(a.service_price_at_time||s.price||0)};groups[key].q++});const rows=Object.values(groups),total=rows.reduce((a,r)=>a+r.q*r.price,0);$('reportKpis').innerHTML=`<div class="kpi"><div class="small muted">Concluídos</div><strong>${done.length}</strong></div><div class="kpi"><div class="small muted">Total</div><strong>${brl(total)}</strong></div><div class="kpi"><div class="small muted">Cancelados</div><strong>${source.filter(a=>a.status==='cancelado').length}</strong></div><div class="kpi"><div class="small muted">Agendados</div><strong>${source.filter(a=>['agendado','confirmado'].includes(a.status)).length}</strong></div>`;$('reportBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.payer)}</td><td>${esc(r.service)}</td><td>${r.q}</td><td>${brl(r.price)}</td><td><strong>${brl(r.q*r.price)}</strong></td></tr>`).join(''):'<tr><td colspan="5" class="muted">Sem atendimentos concluídos.</td></tr>'}
+function renderReport(skipRefresh=false){const month=$('reportMonth').value||new Date().toISOString().slice(0,7);$('reportMonth').value=month;if(!skipRefresh)refreshReportMonthIfNeeded(month);const query=appointmentReportQuery(month);const source=loadedReportQuery===query?reportAppointments:appointments.filter(a=>String(a.appointment_date).startsWith(month));const servicesById=Object.create(null);const payersById=Object.create(null);let doneCount=0,cancelledCount=0,scheduledCount=0;const groups={};services.forEach(service=>{servicesById[String(service.id)]=service});payers.forEach(payer=>{payersById[String(payer.id)]=payer});source.forEach(a=>{if(a.status==='concluido'){doneCount++;const s=servicesById[String(a.service_id)]||{};const price=Number(a.service_price_at_time||s.price||0);const key=(s.health_insurance_id||'')+'|'+(s.id||'')+'|'+price;if(!groups[key])groups[key]={payer:(payersById[String(s.health_insurance_id)]||{}).name||'Particular',service:s.name||'Sem serviço',q:0,price};groups[key].q++;}else if(a.status==='cancelado'){cancelledCount++;}else if(a.status==='agendado'||a.status==='confirmado'){scheduledCount++;}});const rows=Object.values(groups),total=rows.reduce((a,r)=>a+r.q*r.price,0);$('reportKpis').innerHTML=`<div class="kpi"><div class="small muted">Concluídos</div><strong>${doneCount}</strong></div><div class="kpi"><div class="small muted">Total</div><strong>${brl(total)}</strong></div><div class="kpi"><div class="small muted">Cancelados</div><strong>${cancelledCount}</strong></div><div class="kpi"><div class="small muted">Agendados</div><strong>${scheduledCount}</strong></div>`;$('reportBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.payer)}</td><td>${esc(r.service)}</td><td>${r.q}</td><td>${brl(r.price)}</td><td><strong>${brl(r.q*r.price)}</strong></td></tr>`).join(''):'<tr><td colspan="5" class="muted">Sem atendimentos concluídos.</td></tr>'}
 function exportCsv(){const rows=[['Pagador','Serviço','Quantidade','Valor','Total']];document.querySelectorAll('#reportBody tr').forEach(tr=>{const cells=[...tr.children].map(td=>td.innerText);if(cells.length===5)rows.push(cells)});const csv=rows.map(r=>r.map(c=>'"'+String(c).replaceAll('"','""')+'"').join(';')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='relatorio_agenda_femic.csv';a.click()}
 
 
