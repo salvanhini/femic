@@ -1877,7 +1877,7 @@ async function planPackageRecurrence(id){
     toast('Erro ao preparar recorrência: '+e.message,'error');
   }
 }
-function patientCard(p){const linked=appointments.some(a=>String(a.patient_id)===String(p.id))||packages.some(pk=>String(pk.patient_id)===String(p.id))||movements.some(m=>String(m.patient_id)===String(p.id));const archived=p.archived===true;return `<div class="item patient-card ${archived?'archived':''}"><div class="item-top"><div><strong>${esc(p.name||'Sem nome')}</strong>${archived?' <span class="muted small">(inativo)</span>':''}<div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(p.pathology||'Sem patologia')}</div></div><div class="toolbar"><button class="btn" onclick="openPatient('${p.id}')">Ficha</button><button class="btn ghost" onclick="openEditPatient('${p.id}')">✏️ Editar</button>${archived?`<button class="btn success" onclick="reactivatePatient('${p.id}')">Reativar</button>`:`<button class="btn warning" onclick="archivePatient('${p.id}')">Inativar</button>`}<button class="btn danger" onclick="deletePatientSafe('${p.id}')">Apagar</button></div></div>${linked?'<div class="muted small" style="margin-top:8px">Possui vínculo: apagar será bloqueado; use inativar.</div>':''}</div>`}
+function patientCard(p,linkedSet){const linked=linkedSet?linkedSet.has(String(p.id)):(appointments.some(a=>String(a.patient_id)===String(p.id))||packages.some(pk=>String(pk.patient_id)===String(p.id))||movements.some(m=>String(m.patient_id)===String(p.id)));const archived=p.archived===true;return `<div class="item patient-card ${archived?'archived':''}"><div class="item-top"><div><strong>${esc(p.name||'Sem nome')}</strong>${archived?' <span class="muted small">(inativo)</span>':''}<div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(p.pathology||'Sem patologia')}</div></div><div class="toolbar"><button class="btn" onclick="openPatient('${p.id}')">Ficha</button><button class="btn ghost" onclick="openEditPatient('${p.id}')">✏️ Editar</button>${archived?`<button class="btn success" onclick="reactivatePatient('${p.id}')">Reativar</button>`:`<button class="btn warning" onclick="archivePatient('${p.id}')">Inativar</button>`}<button class="btn danger" onclick="deletePatientSafe('${p.id}')">Apagar</button></div></div>${linked?'<div class="muted small" style="margin-top:8px">Possui vínculo: apagar será bloqueado; use inativar.</div>':''}</div>`}
 function formatWhatsappInput(input){let v=input.value.replace(/\D/g,'').slice(0,11);if(v.length>6)input.value=`(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;else if(v.length>2)input.value=`(${v.slice(0,2)}) ${v.slice(2)}`;else if(v.length>0)input.value=`(${v}`;}
 function makePatientId(){return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 async function savePatient(){const name=$('newPatientName').value.trim();const whatsapp=$('newPatientWhatsapp').value.trim();const pathology=$('newPatientPathology').value.trim();if(!name){toast('Informe o nome do paciente.','warning');return}if(!/^\(\d{2}\)\s\d{5}-\d{4}$/.test(whatsapp)){toast('Digite o WhatsApp no formato (99) 99999-9999.','warning');return}const phone=cleanPhone(whatsapp);const dup=patients.find(p=>p.archived!==true&&(cleanPhone(p.whatsapp)===phone||String(p.name||'').trim().toLowerCase()===name.toLowerCase()));if(dup&&!confirm('Já existe paciente com nome ou WhatsApp parecido. Deseja cadastrar mesmo assim?'))return;const payload={id:makePatientId(),name,pathology,whatsapp,archived:false,archived_at:null};try{await api('patients',{method:'POST',body:JSON.stringify(payload)});$('newPatientName').value='';$('newPatientWhatsapp').value='';$('newPatientPathology').value='';await loadAll(true);toast('Paciente salvo no Supabase e disponível na agenda.','success')}catch(e){toast('Erro ao salvar paciente: '+e.message,'error')}}
@@ -2339,7 +2339,10 @@ async function saveEditPatient(){
    FEMIC Agenda v1.4.36 - Ficha com dia da semana — Correção de layout semanal + busca + edição de pacotes
    ========================================================= */
 
-function packageCard(p){
+function packageCard(p,context){
+  context=context||{};
+  const patientNames=context.patientNames||null;
+  const serviceNames=context.serviceNames||null;
   const total=Number(p.total_sessions||0);
   const remain=Number(p.remaining_sessions||0);
   const used=Math.max(0,total-remain);
@@ -2356,9 +2359,9 @@ function packageCard(p){
     return `<div class="item package-card inactive package-card-compact">
       <div class="item-top">
         <div>
-          <strong>${esc(patientName(p.patient_id))}</strong> <span class="muted small">(inativo)</span>
+          <strong>${esc((patientNames&&patientNames[String(p.patient_id)])||patientName(p.patient_id))}</strong> <span class="muted small">(inativo)</span>
           ${metaHtml}
-          <div class="muted small">${esc(serviceName(p.service_id))} · ${used}/${total} sessões usadas · saldo ${remain}</div>
+          <div class="muted small">${esc((serviceNames&&serviceNames[String(p.service_id)])||serviceName(p.service_id))} · ${used}/${total} sessões usadas · saldo ${remain}</div>
         </div>
         <div class="package-actions">
           <button class="btn" onclick="editPackage('${p.id}')">Editar</button>
@@ -2371,8 +2374,8 @@ function packageCard(p){
   return `<div class="item package-card ${inactive?'inactive':''}">
     <div class="item-top">
       <div>
-        <strong>${esc(patientName(p.patient_id))}</strong>
-        <div class="muted small">${esc(serviceName(p.service_id))}</div>
+        <strong>${esc((patientNames&&patientNames[String(p.patient_id)])||patientName(p.patient_id))}</strong>
+        <div class="muted small">${esc((serviceNames&&serviceNames[String(p.service_id)])||serviceName(p.service_id))}</div>
         ${metaHtml}
       </div>
       <div class="package-actions">
@@ -2491,6 +2494,18 @@ async function reactivatePackage(id){
 window.reactivatePackage=reactivatePackage;
 
 function renderLists(){
+  const patientsById=Object.create(null);
+  const servicesById=Object.create(null);
+  const patientNames=Object.create(null);
+  const serviceNames=Object.create(null);
+  const linkedPatientIds=new Set();
+  patients.forEach(patient=>{patientsById[String(patient.id)]=patient});
+  services.forEach(service=>{servicesById[String(service.id)]=service});
+  patients.forEach(patient=>{patientNames[String(patient.id)]=patient.name||'Paciente'});
+  services.forEach(service=>{serviceNames[String(service.id)]=service.name||'Sem serviço'});
+  appointments.forEach(a=>linkedPatientIds.add(String(a.patient_id)));
+  packages.forEach(pk=>linkedPatientIds.add(String(pk.patient_id)));
+  movements.forEach(m=>linkedPatientIds.add(String(m.patient_id)));
   $('payerList').innerHTML=payers.map(p=>`<div class="item"><div class="item-top"><strong>${esc(p.name)}</strong><button class="btn danger" onclick="removePayer('${p.id}')">Remover</button></div></div>`).join('')||'<div class="muted">Nenhum pagador.</div>';
 
   $('serviceList').innerHTML=services.map(s=>`<div class="item"><div class="item-top"><div><strong>${esc(s.name)}</strong><div class="muted small">${payerName(s.health_insurance_id)} · ${brl(s.price)} · ${s.duration_minutes}min · ${s.appointment_mode}</div></div><div class="toolbar"><button class="btn" onclick="startServiceEdit('${s.id}')">Editar</button><button class="btn danger" onclick="removeService('${s.id}')">Remover</button></div></div></div>`).join('')||'<div class="muted">Nenhum serviço.</div>';
@@ -2502,29 +2517,32 @@ function renderLists(){
     const pkQuery = $('packageSearch') ? $('packageSearch').value.trim().toLowerCase() : '';
     const filterPk = pk => {
       if(!pkQuery) return true;
-      const patName = String((patients.find(p=>String(p.id)===String(pk.patient_id))||{}).name||'').toLowerCase();
-      const svcName = String((services.find(s=>String(s.id)===String(pk.service_id))||{}).name||'').toLowerCase();
+      const patName = String((patientsById[String(pk.patient_id)]||{}).name||'').toLowerCase();
+      const svcName = String((servicesById[String(pk.service_id)]||{}).name||'').toLowerCase();
       return patName.includes(pkQuery) || svcName.includes(pkQuery);
     };
     const filteredActivePk   = activePk.filter(filterPk);
     const filteredInactivePk = showInactivePackages ? inactivePk.filter(filterPk) : [];
+    const packageCardContext={patientNames,serviceNames};
     const totalActive = activePk.length;
     $('packagesActiveCount').textContent   = pkQuery ? `${filteredActivePk.length}/${totalActive} encontrado(s)` : `${activePk.length} ativo(s)`;
     $('packagesInactiveCount').textContent = inactivePk.length+' inativo(s)';
-    $('packageListActive').innerHTML   = filteredActivePk.length   ? filteredActivePk.map(packageCard).join('')   : `<div class="muted">${pkQuery ? 'Nenhum pacote encontrado.' : 'Nenhum pacote ativo.'}</div>`;
+    $('packageListActive').innerHTML   = filteredActivePk.length   ? filteredActivePk.map(pk=>packageCard(pk,packageCardContext)).join('')   : `<div class="muted">${pkQuery ? 'Nenhum pacote encontrado.' : 'Nenhum pacote ativo.'}</div>`;
     if($('toggleInactivePackagesBtn')) $('toggleInactivePackagesBtn').textContent = showInactivePackages ? 'Ocultar pacotes inativos' : 'Ver pacotes inativos';
     if($('packageInactivePanel')) $('packageInactivePanel').classList.toggle('hidden', !showInactivePackages);
     if($('packageListInactive')) $('packageListInactive').innerHTML = showInactivePackages
-      ? (filteredInactivePk.length ? filteredInactivePk.map(packageCard).join('') : `<div class="muted">${pkQuery ? 'Nenhum pacote inativo encontrado.' : 'Nenhum pacote inativo.'}</div>`)
+      ? (filteredInactivePk.length ? filteredInactivePk.map(pk=>packageCard(pk,packageCardContext)).join('') : `<div class="muted">${pkQuery ? 'Nenhum pacote inativo encontrado.' : 'Nenhum pacote inativo.'}</div>`)
       : '';
   }else if($('packageList')){
-    $('packageList').innerHTML=packages.length?packages.map(packageCard).join(''):'<div class="muted">Nenhum pacote.</div>';
+    $('packageList').innerHTML=packages.length?packages.map(pk=>packageCard(pk,{patientNames,serviceNames})).join(''):'<div class="muted">Nenhum pacote.</div>';
   }
 
   const query = $('patientActiveSearch') ? cleanPhone($('patientActiveSearch').value).toLowerCase() || $('patientActiveSearch').value.trim().toLowerCase() : '';
   const archivedQuery = $('patientArchivedSearch') ? cleanPhone($('patientArchivedSearch').value).toLowerCase() || $('patientArchivedSearch').value.trim().toLowerCase() : '';
-  let activePatients=patients.filter(p=>p.archived!==true);
-  let archivedPatients=patients.filter(p=>p.archived===true);
+  const allActivePatients=patients.filter(p=>p.archived!==true);
+  const allArchivedPatients=patients.filter(p=>p.archived===true);
+  let activePatients=allActivePatients.slice();
+  let archivedPatients=allArchivedPatients.slice();
 
   if(query){
     activePatients = activePatients.filter(p=>{
@@ -2544,15 +2562,15 @@ function renderLists(){
   }
 
   if($('patientListActive')){
-    const totalActive = patients.filter(p=>p.archived!==true).length;
-    const totalArchived = patients.filter(p=>p.archived===true).length;
+    const totalActive = allActivePatients.length;
+    const totalArchived = allArchivedPatients.length;
     $('patientsActiveCount').textContent = query ? `${activePatients.length}/${totalActive} encontrado(s)` : `${activePatients.length} ativo(s)`;
     $('patientsArchivedCount').textContent=totalArchived+' inativo(s)';
-    $('patientListActive').innerHTML=activePatients.length?activePatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente encontrado.</div>';
+    $('patientListActive').innerHTML=activePatients.length?activePatients.map(patient=>patientCard(patient,linkedPatientIds)).join(''):'<div class="muted">Nenhum paciente encontrado.</div>';
     if($('toggleArchivedPatientsBtn')) $('toggleArchivedPatientsBtn').textContent = showArchivedPatients ? 'Ocultar pacientes inativos' : 'Ver pacientes inativos';
     if($('patientArchivedPanel')) $('patientArchivedPanel').classList.toggle('hidden', !showArchivedPatients);
     if($('patientListArchived')) $('patientListArchived').innerHTML=showArchivedPatients
-      ? (archivedPatients.length?archivedPatients.map(patientCard).join(''):'<div class="muted">Nenhum paciente inativo encontrado.</div>')
+      ? (archivedPatients.length?archivedPatients.map(patient=>patientCard(patient,linkedPatientIds)).join(''):'<div class="muted">Nenhum paciente inativo encontrado.</div>')
       : '';
   }
   const packagesPanelActive=$('panel-packages')?.classList.contains('active');
