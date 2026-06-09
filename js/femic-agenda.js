@@ -2687,7 +2687,8 @@ function layoutWeekV3Items(items){
 function openWeekAppointmentSummary(key){
   const item=window.FEMICWeekV3Cache&&window.FEMICWeekV3Cache[key];
   if(!item) return;
-  const a=item.appointment;
+  const a=appointments.find(row=>String(row.id)===String(item.appointmentId));
+  if(!a) return;
   const patient=patientById(a.patient_id);
   const statusLabel={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;
   const title=$('slotSummaryTitle'),subtitle=$('slotSummarySubtitle'),body=$('slotSummaryBody'),addBtn=$('slotSummaryAddBtn');
@@ -2748,8 +2749,8 @@ function renderWeek(){
     html+=`<div class="week-v3-day ${ds===todayIso()?'today':''} ${closed?'closed':''}" style="height:${timelineHeight}px;--hour-height:${hourHeight}px" onclick="femicWeekClickV1434(event,'${ds}',{start:${bounds.start},end:${bounds.end}},${pxPerMin})">`;
     items.forEach(item=>{
       const key='a'+(itemIndex++);
-      window.FEMICWeekV3Cache[key]=item;
       const a=item.appointment;
+      window.FEMICWeekV3Cache[key]={date:item.date,startLabel:item.startLabel,endLabel:item.endLabel,appointmentId:String(a.id||'')};
       const top=Math.round((item.start-bounds.start)*pxPerMin);
       const height=Math.max(54,Math.round((item.end-item.start)*pxPerMin));
       const laneWidth=100/Math.max(item.cols,1);
