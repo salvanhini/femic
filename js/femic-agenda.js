@@ -870,7 +870,24 @@ function parsePeriods(){const raw=String(settings.working_periods||((settings.st
 function slots(){const set=new Set(),step=Number(settings.slot_interval_minutes||30);parsePeriods().forEach(p=>{let m=timeToMin(p.start),end=timeToMin(p.end);while(m<end){set.add(minToTime(m));m+=step}});return [...set].sort()}
 function isInsideWorkingTime(dateStr,start,end){if(!isTodayDate(dateStr)&&!isWorking(dateStr)) return false;const s=timeToMin(start),e=timeToMin(end);return parsePeriods().some(p=>s>=timeToMin(p.start)&&e<=timeToMin(p.end));}
 function prevPeriod(){if($('viewMode').value==='month')currentDate.setMonth(currentDate.getMonth()-1);else currentDate.setDate(currentDate.getDate()-7);renderAgenda()}function nextPeriod(){if($('viewMode').value==='month')currentDate.setMonth(currentDate.getMonth()+1);else currentDate.setDate(currentDate.getDate()+7);renderAgenda()}function goToday(){currentDate=new Date();$('dayDate').value=todayIso();$('reminderDate').value=isoDate(new Date(Date.now()+86400000));renderActivePanel()}
-function agendaFiltered(list){const st=$('agendaStatusFilter')?.value||'all';const sv=$('agendaServiceFilter')?.value||'all';return list.filter(a=>(st==='all'||a.status===st)&&(sv==='all'||String(a.service_id)===String(sv)))}
+function agendaActiveFilters(){return{status:$('agendaStatusFilter')?.value||'all',serviceId:$('agendaServiceFilter')?.value||'all'}}
+function matchesAgendaFilters(appointment,filters){if(filters.status!=='all'&&appointment.status!==filters.status)return false;if(filters.serviceId!=='all'&&String(appointment.service_id)!==String(filters.serviceId))return false;return true}
+function agendaFiltered(list){const filters=agendaActiveFilters();return list.filter(a=>matchesAgendaFilters(a,filters))}
+function buildWeekAgendaData(visibleDays){
+  const filters=agendaActiveFilters();
+  const byDate=Object.create(null);
+  visibleDays.forEach(day=>{byDate[isoDate(day)]=[]});
+  appointments.forEach(appointment=>{
+    const date=String(appointment.appointment_date||'');
+    if(!byDate[date]) return;
+    if(!matchesAgendaFilters(appointment,filters)) return;
+    byDate[date].push(appointment);
+  });
+  Object.keys(byDate).forEach(date=>{
+    byDate[date].sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time))||normalizeTime(a.end_time).localeCompare(normalizeTime(b.end_time)));
+  });
+  return {filters,byDate};
+}
 function populateAgendaFilters(){const sel=$('agendaServiceFilter');if(sel){const current=sel.value||'all';sel.innerHTML='<option value="all">Todos os serviços</option>'+services.filter(s=>s.active!==false).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');sel.value=[...sel.options].some(o=>o.value===current)?current:'all'}const searchSel=$('apptSearchService');if(searchSel){const currentSearch=searchSel.value||'all';searchSel.innerHTML='<option value="all">Todos os serviços</option>'+services.filter(s=>s.active!==false).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');searchSel.value=[...searchSel.options].some(o=>o.value===currentSearch)?currentSearch:'all'}}
 function clearAgendaFilters(){if($('agendaStatusFilter'))$('agendaStatusFilter').value='all';if($('agendaServiceFilter'))$('agendaServiceFilter').value='all';renderAgenda()}
 function getAppointmentSearchResults(){
@@ -2632,8 +2649,8 @@ function weekTimelineBounds(){
   end=Math.ceil(end/60)*60;
   return {start,end,total:end-start};
 }
-function weekV3ItemsForDay(ds,bounds){
-  return agendaFiltered(appointments.filter(a=>a.appointment_date===ds)).map(a=>{
+function weekV3ItemsForDay(ds,dayAppointments,bounds){
+  return dayAppointments.map(a=>{
     const st=timeToMin(normalizeTime(a.start_time));
     let en=timeToMin(normalizeTime(a.end_time));
     if(!Number.isFinite(st)) return null;
@@ -2708,13 +2725,15 @@ function renderWeek(){
   const timelineHeight=Math.round(bounds.total*pxPerMin);
   const timeMarks=[];
   for(let m=bounds.start;m<=bounds.end;m+=60) timeMarks.push(m);
+  const weekData=buildWeekAgendaData(visibleDays);
   window.FEMICWeekV3Cache={};
   let itemIndex=0;
   let html=`<div class="week-v3-shell"><div class="week-v3-board" style="grid-template-columns:64px repeat(${visibleDays.length}, minmax(144px,1fr));">`;
   html+=`<div class="week-v3-corner"></div>`;
   visibleDays.forEach(d=>{
     const ds=isoDate(d);
-    const openCount=agendaFiltered(appointments.filter(a=>a.appointment_date===ds&&a.status!=='cancelado')).length;
+    const dayAppointments=weekData.byDate[ds]||[];
+    const openCount=dayAppointments.filter(a=>a.status!=='cancelado').length;
     const weekLabel=d.toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','');
     html+=`<div class="week-v3-head ${ds===todayIso()?'today':''}"><span>${weekLabel}</span><strong>${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}</strong><small>${openCount} ag.</small></div>`;
   });
@@ -2724,17 +2743,18 @@ function renderWeek(){
   visibleDays.forEach(d=>{
     const ds=isoDate(d);
     const closed=isClosedForView(ds);
-    const items=layoutWeekV3Items(weekV3ItemsForDay(ds,bounds));
+    const dayAppointments=weekData.byDate[ds]||[];
+    const items=layoutWeekV3Items(weekV3ItemsForDay(ds,dayAppointments,bounds));
     html+=`<div class="week-v3-day ${ds===todayIso()?'today':''} ${closed?'closed':''}" style="height:${timelineHeight}px;--hour-height:${hourHeight}px" onclick="femicWeekClickV1434(event,'${ds}',{start:${bounds.start},end:${bounds.end}},${pxPerMin})">`;
     items.forEach(item=>{
       const key='a'+(itemIndex++);
       window.FEMICWeekV3Cache[key]=item;
+      const a=item.appointment;
       const top=Math.round((item.start-bounds.start)*pxPerMin);
       const height=Math.max(54,Math.round((item.end-item.start)*pxPerMin));
       const laneWidth=100/Math.max(item.cols,1);
       const left=laneWidth*item.col;
       const widthStyle=`calc(${laneWidth}% - 8px)`;
-      const a=item.appointment;
       const status=a.status||'agendado';
       html+=`<button class="week-v3-event ${weekV3StatusClass(status)} status-${status}" type="button" style="top:${top}px;height:${height}px;left:calc(${left}% + 4px);width:${widthStyle}" onclick="event.stopPropagation();openWeekAppointmentSummary('${key}')">
         <div class="week-v3-event-time"><span>${item.startLabel}-${item.endLabel}</span></div>
