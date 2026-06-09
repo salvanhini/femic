@@ -1404,8 +1404,10 @@ function reminderListFor(kind,date){
 }
 function dueAutomaticReminders(){
   const now=Date.now();
+  const patientsById=Object.create(null);
+  patients.forEach(patient=>{patientsById[String(patient.id)]=patient});
   return ['appointment','form'].flatMap(kind=>appointments
-    .filter(a=>isReminderCandidate(a,kind)&&!reminderFlag(a,kind)&&reminderPhoneOk(a))
+    .filter(a=>isReminderCandidate(a,kind)&&!reminderFlag(a,kind)&&cleanPhone((patientsById[String(a.patient_id)]||{}).whatsapp).length>=10)
     .map(a=>({a,kind,due:reminderDueAt(a,kind)}))
     .filter(x=>{
       if(!x.due||x.due.getTime()>now) return false;
@@ -1465,14 +1467,14 @@ async function loadAIRadarAppointments(startValue,force=false){
   aiRadarLoaded=true;
   return aiRadarAppointments;
 }
-function aiRadarSlotStatus(date,start,end,rows){
+function aiRadarSlotStatus(date,start,end,rows,servicesById,patientsById){
   const max=Number(settings.max_patients_per_slot||4);
   const startMin=timeToMin(start),endMin=timeToMin(end);
   const overlaps=rows.filter(a=>a.status!=='cancelado'&&timeToMin(normalizeTime(a.start_time))<endMin&&timeToMin(normalizeTime(a.end_time))>startMin);
-  const hasIndividual=overlaps.some(a=>(serviceById(a.service_id).appointment_mode||'grupo')==='individual');
+  const hasIndividual=overlaps.some(a=>(((servicesById[String(a.service_id)]||{}).appointment_mode)||'grupo')==='individual');
   const occupied=overlaps.length;
   const remaining=hasIndividual?0:Math.max(0,max-occupied);
-  const names=overlaps.slice(0,3).map(a=>patientName(a.patient_id));
+  const names=overlaps.slice(0,3).map(a=>(patientsById[String(a.patient_id)]||{}).name||'Paciente');
   let cls='open',label='Livre',rank=2;
   if(hasIndividual||remaining<=0){cls='full';label=hasIndividual?'Individual':'Lotado';rank=0}
   else if(remaining===1){cls='almost';label='1 vaga';rank=1}
@@ -1483,6 +1485,17 @@ function buildAIRadarWeeks(rows,startValue){
   const start=weekStart(new Date(startValue+'T00:00:00'));
   const period=getAIRadarPeriod();
   const slotList=slots().filter(slot=>period==='all'||assistantPeriodMatches(slot,period));
+  const slotStep=agendaSlotStep();
+  const servicesById=Object.create(null);
+  const patientsById=Object.create(null);
+  const rowsByDate=Object.create(null);
+  services.forEach(service=>{servicesById[String(service.id)]=service});
+  patients.forEach(patient=>{patientsById[String(patient.id)]=patient});
+  rows.forEach(a=>{
+    const ds=String(a.appointment_date||'');
+    if(!rowsByDate[ds]) rowsByDate[ds]=[];
+    rowsByDate[ds].push(a);
+  });
   const weeks=[];
   for(let w=0;w<4;w++){
     const weekStartDate=new Date(start);
@@ -1492,10 +1505,10 @@ function buildAIRadarWeeks(rows,startValue){
       const day=new Date(weekStartDate);
       day.setDate(weekStartDate.getDate()+d);
       const ds=isoDate(day);
-      const dayRows=rows.filter(a=>a.appointment_date===ds);
+      const dayRows=rowsByDate[ds]||[];
       const daySlots=isWorking(ds)?slotList.map(slot=>{
-        const end=addMinutes(slot,Number(settings.slot_interval_minutes||30));
-        const item=aiRadarSlotStatus(ds,slot,end,dayRows);
+        const end=addMinutes(slot,slotStep);
+        const item=aiRadarSlotStatus(ds,slot,end,dayRows,servicesById,patientsById);
         week.counts[item.cls]++;
         week.counts.total++;
         return item;
@@ -1624,15 +1637,20 @@ function renderReminders(){
   $('reminderDate').value=date;
   renderReminderAutomationStatus();
   const list=reminderListFor(kind,date);
+  const patientsById=Object.create(null);
+  const servicesById=Object.create(null);
+  patients.forEach(patient=>{patientsById[String(patient.id)]=patient});
+  services.forEach(service=>{servicesById[String(service.id)]=service});
+  const hasReminderPhone=a=>cleanPhone((patientsById[String(a.patient_id)]||{}).whatsapp).length>=10;
   $('reminderTitle').textContent=kind==='form'?'Formulários pós-atendimento':'Lembretes de sessão';
-  const pending=list.filter(a=>!reminderFlag(a,kind)&&reminderPhoneOk(a));
+  const pending=list.filter(a=>!reminderFlag(a,kind)&&hasReminderPhone(a));
   const sent=list.filter(a=>reminderFlag(a,kind));
-  const no=list.filter(a=>!reminderFlag(a,kind)&&!reminderPhoneOk(a));
+  const no=list.filter(a=>!reminderFlag(a,kind)&&!hasReminderPhone(a));
   const due=pending.filter(a=>{const d=reminderDueAt(a,kind);return d&&d.getTime()<=Date.now();});
   $('reminderKpis').innerHTML=`<div class="kpi"><div class="small muted">Pendentes</div><strong>${pending.length}</strong></div><div class="kpi"><div class="small muted">Vencidos agora</div><strong>${due.length}</strong></div><div class="kpi"><div class="small muted">Enviados</div><strong>${sent.length}</strong></div><div class="kpi"><div class="small muted">Sem WhatsApp</div><strong>${no.length}</strong></div>`;
   $('reminderList').innerHTML=list.length?list.map(a=>{
-    const p=patientById(a.patient_id),sentFlag=reminderFlag(a,kind),phoneOk=reminderPhoneOk(a),dueText=sentFlag?'Enviado':reminderDueLabel(a,kind),cls=sentFlag?'reminder-enviado':phoneOk?'reminder-pendente':'reminder-semwhats';
-    return `<div class="item ${cls}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)} — ${esc(p.name||'Paciente')}</strong><div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(serviceName(a.service_id))} · <span class="status-chip ${a.status}">${a.status}</span> · <span class="reminder-state ${cls}">${esc(dueText)}</span></div></div><div class="toolbar">${sentFlag?'<span class="status-chip concluido">Enviado</span>':phoneOk?`<button class="btn primary" onclick="sendWhatsapp('${a.id}',true,'${kind}')">Enviar</button><button class="btn" onclick="markReminder('${a.id}','${kind}')">Marcar enviado</button>`:'<span class="status-chip cancelado">Sem WhatsApp</span>'}</div></div></div>`;
+    const p=patientsById[String(a.patient_id)]||{},service=servicesById[String(a.service_id)]||{},sentFlag=reminderFlag(a,kind),phoneOk=hasReminderPhone(a),dueText=sentFlag?'Enviado':reminderDueLabel(a,kind),cls=sentFlag?'reminder-enviado':phoneOk?'reminder-pendente':'reminder-semwhats';
+    return `<div class="item ${cls}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)} — ${esc(p.name||'Paciente')}</strong><div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(service.name||'Sem serviço')} · <span class="status-chip ${a.status}">${a.status}</span> · <span class="reminder-state ${cls}">${esc(dueText)}</span></div></div><div class="toolbar">${sentFlag?'<span class="status-chip concluido">Enviado</span>':phoneOk?`<button class="btn primary" onclick="sendWhatsapp('${a.id}',true,'${kind}')">Enviar</button><button class="btn" onclick="markReminder('${a.id}','${kind}')">Marcar enviado</button>`:'<span class="status-chip cancelado">Sem WhatsApp</span>'}</div></div></div>`;
   }).join(''):'<div class="muted">Nenhum lembrete nesta data.</div>';
 }
 async function markReminder(id,kind='appointment'){
