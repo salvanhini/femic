@@ -256,6 +256,8 @@ const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],pa
 const packageScheduleCache=new Map();
 let showArchivedPatients=false,showInactivePackages=false;
 const dayAppointmentCache=new Map();
+const packageHistoryCache=new Map();
+const packagePatternCache=new Map();
 const CLINIC_RULES_STORAGE_KEY='femic_agenda_clinic_rules';
 function toast(msg,type='info'){const el=document.createElement('div');el.className='toast '+type;el.textContent=msg;$('toastWrap').appendChild(el);setTimeout(()=>el.remove(),3600)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
@@ -292,14 +294,18 @@ function packageEndedAtPatchValue(value){
   return sessionPackagesEndedAtSupported ? {ended_at:value} : {};
 }
 function packageHistoryByPatient(patientId){
-  return packages
-    .filter(p=>String(p.patient_id)===String(patientId))
+  const cacheKey=String(patientId||'');
+  if(packageHistoryCache.has(cacheKey)) return packageHistoryCache.get(cacheKey);
+  const history=packages
+    .filter(p=>String(p.patient_id)===cacheKey)
     .slice()
     .sort((a,b)=>{
       const createdCompare=String(a.created_at||'').localeCompare(String(b.created_at||''));
       if(createdCompare) return createdCompare;
       return String(a.id||'').localeCompare(String(b.id||''));
     });
+  packageHistoryCache.set(cacheKey,history);
+  return history;
 }
 function packageTimelineMeta(pkg){
   const history=packageHistoryByPatient(pkg.patient_id);
@@ -369,7 +375,7 @@ async function refreshReportMonthIfNeeded(month){
     toast('Erro ao carregar relatório mensal: ' + e.message, 'error');
   }
 }
-async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const apQuery=appointmentWindowQuery();const [pa,hi,sv,pk,ap,mv,st,cr,endedAtSupport]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api(apQuery),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection(),detectSessionPackagesEndedAtSupport()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];loadedAppointmentQuery=apQuery;loadedReportQuery='';reportAppointments=[];aiRadarQuery='';aiRadarLoaded=false;movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});sessionPackagesEndedAtSupported=endedAtSupport;packageScheduleCache.clear();dayAppointmentCache.clear();syncForms();recordSystemLoad(true);renderActivePanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);recordSystemLoad(false,e.message);toast('Erro ao carregar: '+e.message,'error')}}
+async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const apQuery=appointmentWindowQuery();const [pa,hi,sv,pk,ap,mv,st,cr,endedAtSupport]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api(apQuery),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection(),detectSessionPackagesEndedAtSupport()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];loadedAppointmentQuery=apQuery;loadedReportQuery='';reportAppointments=[];aiRadarQuery='';aiRadarLoaded=false;movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});sessionPackagesEndedAtSupported=endedAtSupport;packageScheduleCache.clear();packageHistoryCache.clear();packagePatternCache.clear();dayAppointmentCache.clear();syncForms();recordSystemLoad(true);renderActivePanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);recordSystemLoad(false,e.message);toast('Erro ao carregar: '+e.message,'error')}}
 function toggleSidebar(){
   $('sidebar')?.classList.toggle('show');
   $('overlay')?.classList.toggle('show');
@@ -1728,6 +1734,7 @@ function packagePatternSummary(p){
   try{
     if(!p || !Array.isArray(appointments)) return '';
     const packageId = String(p.id);
+    if(packagePatternCache.has(packageId)) return packagePatternCache.get(packageId);
     const hasDirectLinks = appointments.some(a => String(a.session_package_id || '') === packageId);
     const related = appointments.filter(a => {
       if(String(a.patient_id) !== String(p.patient_id)) return false;
@@ -1736,7 +1743,9 @@ function packagePatternSummary(p){
       return String(a.service_id) === String(p.service_id);
     });
     if(!related.length){
-      return `<div class="package-pattern"><div class="package-pattern-title">🗓️ Padrão de agendamento</div><div class="package-pattern-note">Ainda não há agendamentos suficientes para identificar dias e horários deste pacote.</div></div>`;
+      const emptyHtml=`<div class="package-pattern"><div class="package-pattern-title">🗓️ Padrão de agendamento</div><div class="package-pattern-note">Ainda não há agendamentos suficientes para identificar dias e horários deste pacote.</div></div>`;
+      packagePatternCache.set(packageId,emptyHtml);
+      return emptyHtml;
     }
     const weekdayFull = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
     const map = {};
@@ -1755,13 +1764,18 @@ function packagePatternSummary(p){
       if(a.weekday !== b.weekday) return a.weekday - b.weekday;
       return a.time.localeCompare(b.time);
     });
-    if(!items.length) return '';
+    if(!items.length){
+      packagePatternCache.set(packageId,'');
+      return '';
+    }
     const chips = items.slice(0,8).map(x =>
       `<span class="package-pattern-chip">${weekdayFull[x.weekday]} · ${x.time} <span class="muted">${x.count}x</span></span>`
     ).join('');
     const extra = items.length > 8 ? `<div class="package-pattern-note">+ ${items.length - 8} outro(s) horário(s) menos frequente(s).</div>` : '';
     const note = items.length > 1 ? 'Use este resumo como apoio para renovação. Ele é calculado pelo histórico e não altera os agendamentos.' : 'Padrão calculado automaticamente pelo histórico deste pacote.';
-    return `<div class="package-pattern"><div class="package-pattern-title">🗓️ Padrão de agendamento</div><div class="package-pattern-list">${chips}</div>${extra}<div class="package-pattern-note">${note}</div></div>`;
+    const html=`<div class="package-pattern"><div class="package-pattern-title">🗓️ Padrão de agendamento</div><div class="package-pattern-list">${chips}</div>${extra}<div class="package-pattern-note">${note}</div></div>`;
+    packagePatternCache.set(packageId,html);
+    return html;
   }catch(e){return '';}
 }
 function packageScheduleKey(p){return String(p?.patient_id||'')+'|'+String(p?.service_id||'')}
