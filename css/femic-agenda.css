@@ -7540,28 +7540,27 @@ textarea:focus-visible{
   display:flex;
   flex-direction:column;
   align-items:flex-start;
-  gap:5px;
+  gap:4px;
   appearance:none;
   -webkit-appearance:none;
   border:1px solid rgba(11,60,111,.10);
   border-left:4px solid rgba(100,116,139,.55);
-  border-radius:12px;
-  background:rgba(255,255,255,.96);
-  box-shadow:0 4px 14px rgba(11,60,111,.08);
-  padding:8px 9px;
+  border-radius:10px;
+  background:#fff;
+  box-shadow:0 2px 8px rgba(11,60,111,.07);
+  padding:7px 8px;
   color:var(--text);
   font:inherit;
   text-align:left;
   cursor:pointer;
-  overflow:hidden;
+  overflow:visible;
   box-sizing:border-box;
-  transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease, background-color .16s ease;
+  transition:box-shadow .16s ease, border-color .16s ease, background-color .16s ease;
 }
 
 #weekView .week-v3-event:hover,
 #weekView .week-v3-event:focus-visible{
-  transform:translateY(-1px);
-  box-shadow:0 10px 24px rgba(11,60,111,.12);
+  box-shadow:0 6px 16px rgba(11,60,111,.10);
   outline:none;
 }
 
@@ -7575,16 +7574,16 @@ textarea:focus-visible{
 }
 
 #weekView .week-v3-event-time{
-  display:inline-flex;
+  display:block;
   align-items:center;
   max-width:100%;
   margin:0;
-  padding:2px 7px;
-  border-radius:999px;
-  background:rgba(31,182,233,.10);
-  color:#0a4d6e;
-  font-size:.68rem;
-  font-weight:800;
+  padding:0;
+  border-radius:0;
+  background:transparent;
+  color:#52657a;
+  font-size:.71rem;
+  font-weight:700;
   line-height:1.1;
   box-shadow:none;
 }
@@ -7600,23 +7599,17 @@ textarea:focus-visible{
   display:block;
   width:100%;
   color:var(--primary)!important;
-  font-size:.84rem;
-  font-weight:800;
-  line-height:1.22;
-  letter-spacing:-.01em;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+  font-size:.82rem;
+  font-weight:700;
+  line-height:1.24;
+  letter-spacing:0;
+  white-space:normal;
+  overflow-wrap:anywhere;
 }
 
 #weekView .week-v3-event::after{
-  margin-top:auto;
-  color:#5b6b7d;
-  font-size:.62rem;
-  font-weight:800;
-  letter-spacing:.04em;
-  text-transform:uppercase;
-  opacity:.9;
+  content:none!important;
+  display:none!important;
 }
 
 #weekView .week-v3-event::before{
@@ -7627,66 +7620,40 @@ textarea:focus-visible{
 #weekView .week-v3-event.status-agendado,
 #weekView .week-v3-event.scheduled{
   border-left-color:var(--warning)!important;
-  background:linear-gradient(180deg,#fffdf5,#fff)!important;
-  box-shadow:0 4px 14px rgba(11,60,111,.08)!important;
-}
-
-#weekView .week-v3-event.status-agendado::after,
-#weekView .week-v3-event.scheduled::after{
-  content:"Agendado";
+  background:#fffef7!important;
+  box-shadow:0 2px 8px rgba(11,60,111,.07)!important;
 }
 
 #weekView .week-v3-event.status-confirmado,
 #weekView .week-v3-event.confirmed{
   border-left-color:#2563eb!important;
-  background:linear-gradient(180deg,#f3f7ff,#fff)!important;
-  box-shadow:0 4px 14px rgba(11,60,111,.08)!important;
-}
-
-#weekView .week-v3-event.status-confirmado::after,
-#weekView .week-v3-event.confirmed::after{
-  content:"Confirmado";
+  background:#f8fbff!important;
+  box-shadow:0 2px 8px rgba(11,60,111,.07)!important;
 }
 
 #weekView .week-v3-event.status-concluido,
 #weekView .week-v3-event.done{
   border-left-color:var(--success)!important;
-  background:linear-gradient(180deg,#f3fcf7,#fff)!important;
-  box-shadow:0 4px 14px rgba(11,60,111,.08)!important;
-}
-
-#weekView .week-v3-event.status-concluido::after,
-#weekView .week-v3-event.done::after{
-  content:"Concluído";
+  background:#f8fcfa!important;
+  box-shadow:0 2px 8px rgba(11,60,111,.07)!important;
 }
 
 #weekView .week-v3-event.status-cancelado,
 #weekView .week-v3-event.cancelled{
   border-left-color:var(--danger)!important;
-  background:linear-gradient(180deg,#fff5f5,#fff)!important;
-  box-shadow:0 4px 14px rgba(11,60,111,.08)!important;
+  background:#fff9f9!important;
+  box-shadow:0 2px 8px rgba(11,60,111,.07)!important;
   opacity:1!important;
-}
-
-#weekView .week-v3-event.status-cancelado::after,
-#weekView .week-v3-event.cancelled::after{
-  content:"Cancelado";
 }
 
 #weekView .week-v3-event.status-cancelado .week-v3-event-time,
 #weekView .week-v3-event.cancelled .week-v3-event-time{
-  background:rgba(239,68,68,.10);
   color:#991b1b;
 }
 
 #weekView .week-v3-event.status-cancelado .week-v3-event-name,
 #weekView .week-v3-event.cancelled .week-v3-event-name{
   color:#7f1d1d!important;
-}
-
-#weekView .week-v3-event.status-cancelado::after,
-#weekView .week-v3-event.cancelled::after{
-  color:#991b1b;
 }
 
 #weekView .week-v3-event.status-agendado,
@@ -7709,22 +7676,17 @@ textarea:focus-visible{
 
 @media(max-width:768px){
   #weekView .week-v3-event{
-    gap:4px;
-    padding:7px 7px 6px;
-    border-radius:11px;
+    gap:3px;
+    padding:6px 7px;
+    border-radius:9px;
   }
 
   #weekView .week-v3-event-time{
-    padding:2px 6px;
-    font-size:.61rem;
+    font-size:.64rem;
   }
 
   #weekView .week-v3-event-name{
-    font-size:.74rem;
-    line-height:1.18;
-  }
-
-  #weekView .week-v3-event::after{
-    font-size:.57rem;
+    font-size:.76rem;
+    line-height:1.2;
   }
 }
