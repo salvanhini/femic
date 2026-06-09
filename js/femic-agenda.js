@@ -901,8 +901,10 @@ function getAppointmentSearchResults(){
   const to=$('apptSearchTo')?.value||'';
   const status=$('apptSearchStatus')?.value||'all';
   const service=$('apptSearchService')?.value||'all';
+  const patientsById=Object.create(null);
+  patients.forEach(patient=>{patientsById[String(patient.id)]=patient});
   return appointments.filter(a=>{
-    const patient=patientById(a.patient_id);
+    const patient=patientsById[String(a.patient_id)]||{};
     const patientText=String((patient.name||'')+' '+(patient.whatsapp||'')).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     const phone=cleanPhone(patient.whatsapp||'');
     if(queryText && patientText.indexOf(queryText)===-1 && (!queryPhone || phone.indexOf(queryPhone)===-1)) return false;
@@ -917,12 +919,16 @@ function renderAppointmentSearch(){
   const target=$('apptSearchResults');
   if(!target)return;
   const results=getAppointmentSearchResults();
+  const patientsById=Object.create(null);
+  const servicesById=Object.create(null);
+  patients.forEach(patient=>{patientsById[String(patient.id)]=patient});
+  services.forEach(service=>{servicesById[String(service.id)]=service});
   appointmentSearchSelected.forEach(id=>{if(!results.some(a=>String(a.id)===String(id)))appointmentSearchSelected.delete(id)});
   if($('apptSearchCount'))$('apptSearchCount').textContent=results.length+' encontrado(s)';
   if($('apptSelectedCount'))$('apptSelectedCount').textContent=appointmentSearchSelected.size+' selecionado(s)';
   if($('apptBulkBar'))$('apptBulkBar').classList.toggle('active',appointmentSearchSelected.size>0);
   target.innerHTML=results.length?results.map(a=>{
-    const patient=patientById(a.patient_id),service=serviceById(a.service_id),checked=appointmentSearchSelected.has(String(a.id))?'checked':'';
+    const patient=patientsById[String(a.patient_id)]||{},service=servicesById[String(a.service_id)]||{},checked=appointmentSearchSelected.has(String(a.id))?'checked':'';
     const label={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;
     return `<div class="appointment-search-row status-${a.status}"><label class="appt-check"><input type="checkbox" ${checked} onchange="toggleAppointmentSearchSelection('${a.id}',this.checked)"></label><div class="appt-search-main"><strong>${esc(patient.name||'Paciente')}</strong><span>${fmtWeekday(a.appointment_date)} · ${fmtDate(a.appointment_date)} · ${normalizeTime(a.start_time)}-${normalizeTime(a.end_time)} · ${esc(service.name||'Sem serviço')}</span></div><span class="status-chip ${a.status}">${label}</span><div class="appt-search-actions"><button class="btn small" onclick="openAppt('${a.appointment_date}','${a.id}')">Editar</button><button class="btn small warning" onclick="cancelAppointmentFromSearch('${a.id}')">Cancelar</button><button class="btn small danger" onclick="deleteAppointmentFromSearch('${a.id}')">Apagar</button></div></div>`;
   }).join(''):'<div class="muted small">Nenhum agendamento encontrado.</div>';
@@ -1001,6 +1007,15 @@ function renderMonth(){
   const names=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const y=currentDate.getFullYear(),m=currentDate.getMonth();
   const showEmpty=shouldShowEmptyMonthDays();
+  const filteredAppointments=agendaFiltered(appointments);
+  const appointmentsByDate=Object.create(null);
+  const slotList=slots();
+  const slotStep=agendaSlotStep();
+  filteredAppointments.forEach(a=>{
+    const ds=String(a.appointment_date||'');
+    if(!appointmentsByDate[ds]) appointmentsByDate[ds]=[];
+    appointmentsByDate[ds].push(a);
+  });
   $('periodLabel').textContent=currentDate.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
   $('monthHead').innerHTML=`<div class="month-list-head"><div><div class="eyebrow">Agenda do mês</div><h3>${currentDate.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</h3></div><div class="month-list-tools"><button class="btn ghost" type="button" onclick="toggleMonthEmptyDays()">${showEmpty?'Ocultar dias vazios':'Mostrar dias vazios'}</button><span class="muted small">Lista mensal oficial da FEMIC</span></div></div>`;
   const daysInMonth=new Date(y,m+1,0).getDate();
@@ -1009,7 +1024,7 @@ function renderMonth(){
   for(let day=1;day<=daysInMonth;day++){
     const d=new Date(y,m,day);
     const ds=isoDate(d);
-    const list=agendaFiltered(appointments.filter(a=>a.appointment_date===ds)).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));
+    const list=(appointmentsByDate[ds]||[]).slice().sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));
     if(!showEmpty && !list.length && ds!==todayIso()) continue;
     rendered++;
     totalAppointments+=list.length;
@@ -1020,9 +1035,9 @@ function renderMonth(){
     };
     totalConfirmed+=counts.confirmado;
     totalDone+=counts.concluido;
-    const peak=slots().reduce((max,slot)=>{
+    const peak=slotList.reduce((max,slot)=>{
       const slotStart=timeToMin(slot);
-      const slotEnd=timeToMin(addMinutes(slot,Number(settings.slot_interval_minutes||30)));
+      const slotEnd=timeToMin(addMinutes(slot,slotStep));
       const count=list.filter(a=>a.status!=='cancelado'&&timeToMin(normalizeTime(a.start_time))<slotEnd&&timeToMin(normalizeTime(a.end_time))>slotStart).length;
       return Math.max(max,count);
     },0);
@@ -1292,16 +1307,26 @@ function renderDay(){
   const date=$('dayDate').value||todayIso();$('dayDate').value=date;
   const list=appointments.filter(a=>a.appointment_date===date).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));
   const dayStatusLabels={concluido:'Concluídos',cancelado:'Cancelados'};
-  const peak=slots().reduce((max,slot)=>{
+  const statusCounts={concluido:0,cancelado:0};
+  const patientNames=Object.create(null);
+  const serviceNames=Object.create(null);
+  const slotList=slots();
+  const slotStep=agendaSlotStep();
+  patients.forEach(patient=>{patientNames[String(patient.id)]=patient.name||'Paciente'});
+  services.forEach(service=>{serviceNames[String(service.id)]=service.name||'Sem serviço'});
+  list.forEach(a=>{if(statusCounts[a.status]!==undefined) statusCounts[a.status]++;});
+  const peak=slotList.reduce((max,slot)=>{
     const slotStart=timeToMin(slot);
-    const slotEnd=timeToMin(addMinutes(slot,Number(settings.slot_interval_minutes||30)));
+    const slotEnd=timeToMin(addMinutes(slot,slotStep));
     const count=list.filter(a=>a.status!=='cancelado'&&timeToMin(normalizeTime(a.start_time))<slotEnd&&timeToMin(normalizeTime(a.end_time))>slotStart).length;
     return Math.max(max,count);
   },0);
-  $('dayKpis').innerHTML=`<div class="day-operational-strip"><div class="day-operational-copy"><strong>${fmtWeekday(date)}, ${fmtDate(date)}</strong><span>${list.length} atendimento(s) · pico ${peak}/${Number(settings.max_patients_per_slot||4)}</span></div><div class="day-status-row compact">`+['concluido','cancelado'].map(st=>`<div class="day-status-pill ${st}"><span>${dayStatusLabels[st]}</span><strong>${list.filter(a=>a.status===st).length}</strong></div>`).join('')+`</div></div>`;
+  $('dayKpis').innerHTML=`<div class="day-operational-strip"><div class="day-operational-copy"><strong>${fmtWeekday(date)}, ${fmtDate(date)}</strong><span>${list.length} atendimento(s) · pico ${peak}/${Number(settings.max_patients_per_slot||4)}</span></div><div class="day-status-row compact">`+['concluido','cancelado'].map(st=>`<div class="day-status-pill ${st}"><span>${dayStatusLabels[st]}</span><strong>${statusCounts[st]||0}</strong></div>`).join('')+`</div></div>`;
   $('dayList').innerHTML=list.length?list.map(a=>{
     const label={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;
     const nextStatuses=getNextStatuses(a.status);
+    const patientLabel=patientNames[String(a.patient_id)]||'Paciente';
+    const serviceLabel=serviceNames[String(a.service_id)]||'Sem serviço';
     return `<div class="item status-${a.status}" style="padding:10px 12px">
       <div style="display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -1310,8 +1335,8 @@ function renderDay(){
           <span class="status-chip ${a.status}" style="font-size:.68rem;padding:3px 6px">${label}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="font-size:.82rem;font-weight:700">${esc(patientName(a.patient_id))}</span>
-          <span class="muted" style="font-size:.72rem">${esc(serviceName(a.service_id))}${saldoBadgeInline(a.patient_id,a.service_id)}</span>
+          <span style="font-size:.82rem;font-weight:700">${esc(patientLabel)}</span>
+          <span class="muted" style="font-size:.72rem">${esc(serviceLabel)}${saldoBadgeInline(a.patient_id,a.service_id)}</span>
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:8px">
           <button class="btn" style="padding:6px 10px;font-size:.72rem" onclick="openPatient('${a.patient_id}')" title="Ficha">👤 Ficha</button>
