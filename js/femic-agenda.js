@@ -867,26 +867,29 @@ function syncForms(){
 function renderWorkDays(){const names=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];const active=String(settings.working_days||'1,2,3,4,5').split(',');$('workDays').innerHTML=names.map((n,i)=>`<label class="day-check"><input type="checkbox" class="wd" value="${i}" ${active.includes(String(i))?'checked':''}>${n}</label>`).join('');$('recDays').innerHTML=names.map((n,i)=>`<div class="rec-day-card" id="recCard${i}"><label class="rec-title"><input type="checkbox" class="recDay" value="${i}" onchange="toggleRecDayCard(${i})">${n}</label><input type="time" class="recTime" id="recTime${i}" onchange="previewRecurringEnd(${i})"><div class="muted small" id="recEnd${i}">Fim calculado pelo serviço</div></div>`).join('')}
 function weekStart(d){const x=new Date(d);const day=x.getDay();x.setDate(x.getDate()-(day===0?6:day-1));return x}function isTodayDate(dateStr){return String(dateStr)===todayIso()}function isWorking(dateStr){return String(settings.working_days||'1,2,3,4,5,6').split(',').includes(String(dateDay(dateStr)))}function isClosedForView(dateStr){return !isTodayDate(dateStr)&&!isWorking(dateStr)}
 function parsePeriods(){const raw=String(settings.working_periods||((settings.start_time||'08:00')+'-'+(settings.end_time||'20:00')));return raw.split(',').map(x=>x.trim()).filter(Boolean).map(p=>{const parts=p.split('-').map(v=>v.trim());return {start:parts[0],end:parts[1]};}).filter(p=>/^\d{2}:\d{2}$/.test(p.start)&&/^\d{2}:\d{2}$/.test(p.end)&&timeToMin(p.start)<timeToMin(p.end));}
-function slots(){const set=new Set(),step=Number(settings.slot_interval_minutes||30);parsePeriods().forEach(p=>{let m=timeToMin(p.start),end=timeToMin(p.end);while(m<end){set.add(minToTime(m));m+=step}});return [...set].sort()}
+function agendaSlotStep(){const step=Number(settings.slot_interval_minutes||30);return Number.isFinite(step)&&step>0?step:30}
+function slots(){const set=new Set(),step=agendaSlotStep();parsePeriods().forEach(p=>{let m=timeToMin(p.start),end=timeToMin(p.end);while(m<end){set.add(minToTime(m));m+=step}});return [...set].sort()}
 function isInsideWorkingTime(dateStr,start,end){if(!isTodayDate(dateStr)&&!isWorking(dateStr)) return false;const s=timeToMin(start),e=timeToMin(end);return parsePeriods().some(p=>s>=timeToMin(p.start)&&e<=timeToMin(p.end));}
 function prevPeriod(){if($('viewMode').value==='month')currentDate.setMonth(currentDate.getMonth()-1);else currentDate.setDate(currentDate.getDate()-7);renderAgenda()}function nextPeriod(){if($('viewMode').value==='month')currentDate.setMonth(currentDate.getMonth()+1);else currentDate.setDate(currentDate.getDate()+7);renderAgenda()}function goToday(){currentDate=new Date();$('dayDate').value=todayIso();$('reminderDate').value=isoDate(new Date(Date.now()+86400000));renderActivePanel()}
 function agendaActiveFilters(){return{status:$('agendaStatusFilter')?.value||'all',serviceId:$('agendaServiceFilter')?.value||'all'}}
 function matchesAgendaFilters(appointment,filters){if(filters.status!=='all'&&appointment.status!==filters.status)return false;if(filters.serviceId!=='all'&&String(appointment.service_id)!==String(filters.serviceId))return false;return true}
 function agendaFiltered(list){const filters=agendaActiveFilters();return list.filter(a=>matchesAgendaFilters(a,filters))}
 function buildWeekAgendaData(visibleDays){
-  const filters=agendaActiveFilters();
   const byDate=Object.create(null);
+  const openCountByDate=Object.create(null);
+  const filters=agendaActiveFilters();
   visibleDays.forEach(day=>{byDate[isoDate(day)]=[]});
   appointments.forEach(appointment=>{
     const date=String(appointment.appointment_date||'');
     if(!byDate[date]) return;
     if(!matchesAgendaFilters(appointment,filters)) return;
     byDate[date].push(appointment);
+    if(appointment.status!=='cancelado') openCountByDate[date]=(openCountByDate[date]||0)+1;
   });
   Object.keys(byDate).forEach(date=>{
     byDate[date].sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time))||normalizeTime(a.end_time).localeCompare(normalizeTime(b.end_time)));
   });
-  return {filters,byDate};
+  return {byDate,openCountByDate};
 }
 function populateAgendaFilters(){const sel=$('agendaServiceFilter');if(sel){const current=sel.value||'all';sel.innerHTML='<option value="all">Todos os serviços</option>'+services.filter(s=>s.active!==false).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');sel.value=[...sel.options].some(o=>o.value===current)?current:'all'}const searchSel=$('apptSearchService');if(searchSel){const currentSearch=searchSel.value||'all';searchSel.innerHTML='<option value="all">Todos os serviços</option>'+services.filter(s=>s.active!==false).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');searchSel.value=[...searchSel.options].some(o=>o.value===currentSearch)?currentSearch:'all'}}
 function clearAgendaFilters(){if($('agendaStatusFilter'))$('agendaStatusFilter').value='all';if($('agendaServiceFilter'))$('agendaServiceFilter').value='all';renderAgenda()}
@@ -2621,7 +2624,7 @@ function femicWeekClickV1434(ev,ds,bounds,pxPerMin){
   if(dayEl.classList.contains('closed')) return;
   const rect=dayEl.getBoundingClientRect();
   const y=femicClamp(ev.clientY-rect.top,0,rect.height);
-  const step=Number(settings.slot_interval_minutes||30);
+  const step=agendaSlotStep();
   const raw=bounds.start + Math.round((y/pxPerMin)/step)*step;
   const minute=femicClamp(raw,bounds.start,bounds.end-step);
   openAppt(ds,null,minToTime(minute));
@@ -2649,20 +2652,21 @@ function weekTimelineBounds(){
   end=Math.ceil(end/60)*60;
   return {start,end,total:end-start};
 }
-function weekV3ItemsForDay(ds,dayAppointments,bounds){
+function weekV3ItemsForDay(ds,dayAppointments,bounds,patientNames,serviceDurations){
   return dayAppointments.map(a=>{
     const st=timeToMin(normalizeTime(a.start_time));
     let en=timeToMin(normalizeTime(a.end_time));
     if(!Number.isFinite(st)) return null;
     if(!Number.isFinite(en)||en<=st){
-      const fallbackDuration=Number(a.duration_minutes||serviceById(a.service_id).duration_minutes||45);
+      const fallbackDuration=Number(a.duration_minutes||serviceDurations[String(a.service_id)]||45);
       en=st+(Number.isFinite(fallbackDuration)&&fallbackDuration>0?fallbackDuration:45);
     }
     const start=femicClamp(st,bounds.start,bounds.end);
     const end=femicClamp(en,bounds.start,bounds.end);
     if(end<=start) return null;
-    return {date:ds,start,end,startLabel:normalizeTime(a.start_time),endLabel:normalizeTime(a.end_time),appointment:a,col:0,cols:1};
-  }).filter(Boolean).sort((a,b)=>(a.start-b.start)||(a.end-b.end)||patientName(a.appointment.patient_id).localeCompare(patientName(b.appointment.patient_id),'pt-BR'));
+    const patientLabel=patientNames[String(a.patient_id)]||'Paciente';
+    return {date:ds,start,end,startLabel:normalizeTime(a.start_time),endLabel:normalizeTime(a.end_time),patientLabel,appointment:a,col:0,cols:1};
+  }).filter(Boolean).sort((a,b)=>(a.start-b.start)||(a.end-b.end)||a.patientLabel.localeCompare(b.patientLabel,'pt-BR'));
 }
 function layoutWeekV3Items(items){
   const buckets=[];
@@ -2727,14 +2731,17 @@ function renderWeek(){
   const timeMarks=[];
   for(let m=bounds.start;m<=bounds.end;m+=60) timeMarks.push(m);
   const weekData=buildWeekAgendaData(visibleDays);
+  const patientNames=Object.create(null);
+  const serviceDurations=Object.create(null);
+  patients.forEach(patient=>{patientNames[String(patient.id)]=patient.name||'Paciente'});
+  services.forEach(service=>{serviceDurations[String(service.id)]=Number(service.duration_minutes)||45});
   window.FEMICWeekV3Cache={};
   let itemIndex=0;
   let html=`<div class="week-v3-shell"><div class="week-v3-board" style="grid-template-columns:64px repeat(${visibleDays.length}, minmax(144px,1fr));">`;
   html+=`<div class="week-v3-corner"></div>`;
   visibleDays.forEach(d=>{
     const ds=isoDate(d);
-    const dayAppointments=weekData.byDate[ds]||[];
-    const openCount=dayAppointments.filter(a=>a.status!=='cancelado').length;
+    const openCount=weekData.openCountByDate[ds]||0;
     const weekLabel=d.toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','');
     html+=`<div class="week-v3-head ${ds===todayIso()?'today':''}"><span>${weekLabel}</span><strong>${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}</strong><small>${openCount} ag.</small></div>`;
   });
@@ -2745,7 +2752,7 @@ function renderWeek(){
     const ds=isoDate(d);
     const closed=isClosedForView(ds);
     const dayAppointments=weekData.byDate[ds]||[];
-    const items=layoutWeekV3Items(weekV3ItemsForDay(ds,dayAppointments,bounds));
+    const items=layoutWeekV3Items(weekV3ItemsForDay(ds,dayAppointments,bounds,patientNames,serviceDurations));
     html+=`<div class="week-v3-day ${ds===todayIso()?'today':''} ${closed?'closed':''}" style="height:${timelineHeight}px;--hour-height:${hourHeight}px" onclick="femicWeekClickV1434(event,'${ds}',{start:${bounds.start},end:${bounds.end}},${pxPerMin})">`;
     items.forEach(item=>{
       const key='a'+(itemIndex++);
@@ -2759,7 +2766,7 @@ function renderWeek(){
       const status=a.status||'agendado';
       html+=`<button class="week-v3-event ${weekV3StatusClass(status)} status-${status}" type="button" style="top:${top}px;height:${height}px;left:calc(${left}% + 4px);width:${widthStyle}" onclick="event.stopPropagation();openWeekAppointmentSummary('${key}')">
         <div class="week-v3-event-time"><span>${item.startLabel}-${item.endLabel}</span></div>
-        <strong class="week-v3-event-name">${esc(patientName(a.patient_id))}</strong>
+        <strong class="week-v3-event-name">${esc(item.patientLabel)}</strong>
       </button>`;
     });
     html+=`</div>`;
