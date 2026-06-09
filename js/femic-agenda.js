@@ -601,6 +601,7 @@ function renderPanel(name){
     case 'backup':
       renderBackupPanel();
       break;
+    case 'agenda-assistida':
     case 'pendencias':
       if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();
       break;

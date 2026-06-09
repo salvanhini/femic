@@ -473,7 +473,6 @@
     renderDocAiQuickPrompts();
     renderDocumentAssetPreviews();
     setDocumentStep(getDocumentStep());
-    setDocumentsFocusMode(getDocumentsFocusMode());
     setDocAiStatus('Pronto para gerar. O texto entra no editor para revisão antes de salvar no histórico.', 'neutral');
     renderUnifiedDocumentPreview();
     renderUnifiedPatientDocumentsList(pid);
@@ -538,22 +537,6 @@
   function getDocumentStep(){
     var raw = Number(localStorage.getItem('femic_document_step') || 1);
     return raw >= 1 && raw <= 4 ? raw : 1;
-  }
-
-  function getDocumentsFocusMode(){
-    return localStorage.getItem('femic_documents_focus_mode') === '1';
-  }
-
-  function setDocumentsFocusMode(enabled){
-    enabled = !!enabled;
-    localStorage.setItem('femic_documents_focus_mode', enabled ? '1' : '0');
-    var panel = el('panel-documentos');
-    if(panel) panel.classList.toggle('docs-focus-mode', enabled);
-    var btn = el('docsFocusToggleBtn');
-    if(btn){
-      btn.textContent = enabled ? 'Sair do foco' : 'Modo foco';
-      btn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
-    }
   }
 
   function setDocumentStep(step){
@@ -751,10 +734,6 @@
 
   window.syncDocumentEditorFromInput = function(){
     if(el('docBodyInput')) setDocumentBodyContent(el('docBodyInput').value || '');
-  };
-
-  window.toggleDocumentsFocusMode = function(){
-    setDocumentsFocusMode(!getDocumentsFocusMode());
   };
 
   window.clearDocumentAiPrompt = function(){
