@@ -761,7 +761,7 @@
     var target = el('assistantBookingReview');
     if(!target) return;
     if(!task){
-      target.innerHTML = '<div class="assistant-empty">Descreva o pedido em linguagem natural para eu montar a revisao e a melhor grade.</div>';
+      target.innerHTML = '';
       return;
     }
     var data = task.assistant_data || {};
@@ -955,7 +955,9 @@
             (taskPatientName(task) ? ' · ' + esc(taskPatientName(task)) : '') +
           '</div></div>' +
           '<div class="pending-task-actions">' +
-            '<button class="btn small" type="button" onclick="editAssistantTask(\'' + esc(task.id) + '\')">Editar</button>' +
+            (task.origin === 'assistant_booking'
+              ? '<button class="btn small" type="button" onclick="openAssistantBookingTask(\'' + esc(task.id) + '\')">Abrir na Agenda assistida</button>'
+              : '<button class="btn small" type="button" onclick="editAssistantTask(\'' + esc(task.id) + '\')">Editar</button>') +
             '<button class="btn small" type="button" onclick="setAssistantTaskStatus(\'' + esc(task.id) + '\',\'concluida\')">Concluir</button>' +
             '<button class="btn small danger" type="button" onclick="setAssistantTaskStatus(\'' + esc(task.id) + '\',\'cancelada\')">Descartar</button>' +
           '</div>' +
@@ -1662,6 +1664,13 @@
     renderExtensionPendingTasks();
     if(typeof window.toast === 'function') window.toast('Pendencia atualizada.', 'success');
   };
+  window.openAssistantBookingTask = function(id){
+    var task = readTasks().find(function(item){ return item.id === id && item.origin === 'assistant_booking'; });
+    if(!task) return;
+    state.assistantBookingTaskId = task.id;
+    if(typeof window.showPanel === 'function') window.showPanel('agenda-assistida');
+    renderAssistantBookingWorkspace(task.id);
+  };
   window.showAssistantTaskSlots = function(id){
     var list = readTasks();
     var task = list.find(function(item){ return item.id === id; });
@@ -2017,7 +2026,7 @@
     if (assistantVoiceBtn) assistantVoiceBtn.addEventListener('click', toggleAssistantBookingVoice);
     var assistantStartBtn = el('assistantBookingStartBtn');
     if (assistantStartBtn) assistantStartBtn.addEventListener('click', window.startAssistantBooking);
-    setDebug('IA clinica pronta para apoiar o prontuario. A operacao segue concentrada em Pendencias.');
+    setDebug('IA clinica pronta para apoiar o prontuario. Cadastros assistidos ficam na Agenda assistida e tarefas na fila de Pendencias.');
   }
 
   if(document.readyState === 'loading'){

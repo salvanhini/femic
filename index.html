@@ -95,6 +95,7 @@
       <div class="nav-link active" data-panel="agenda" onclick="showPanel('agenda')"><span class="icon"><i data-lucide="calendar-days"></i></span><span>Agenda</span></div>
       <div class="nav-link" data-panel="day" onclick="showPanel('day')"><span class="icon"><i data-lucide="clipboard-list"></i></span><span>Dia</span></div>
       <div class="nav-link" data-panel="patients" onclick="showPanel('patients')"><span class="icon"><i data-lucide="users-round"></i></span><span>Pacientes</span></div>
+      <div class="nav-link" data-panel="agenda-assistida" onclick="showPanel('agenda-assistida')"><span class="icon"><i data-lucide="calendar-plus-2"></i></span><span>Agenda assistida</span></div>
       <div class="nav-link" data-panel="prontuario" onclick="showPanel('prontuario')"><span class="icon"><i data-lucide="stethoscope"></i></span><span>Prontuário</span></div>
       <div class="nav-link" data-panel="packages" onclick="showPanel('packages')"><span class="icon"><i data-lucide="ticket-check"></i></span><span>Pacotes</span></div>
       <div class="nav-link" data-panel="ai" onclick="showPanel('ai')"><span class="icon"><i data-lucide="sparkles"></i></span><span>IA</span></div>
@@ -170,7 +171,6 @@
   <section class="panel" id="panel-patients">
     <div class="card">
       <div class="section-title"><div><div class="eyebrow">Novo paciente</div><h3>Cadastro direto no Supabase da agenda</h3></div></div>
-      <p class="muted small" style="margin-top:0">Quando agenda e sistema principal usarem o mesmo Supabase, este cadastro alimentará a mesma tabela <strong>patients</strong>. Em teste, fica apenas neste banco isolado.</p>
       <div class="grid grid-2"><div class="field"><label>Nome completo *</label><input id="newPatientName" placeholder="Nome completo"></div><div class="field"><label>WhatsApp *</label><input id="newPatientWhatsapp" placeholder="(16) 99999-9999" inputmode="numeric" autocomplete="tel" maxlength="15" oninput="formatWhatsappInput(this)"></div></div>
       <div class="field" style="margin-top:12px"><label>Patologia / observação</label><input id="newPatientPathology" placeholder="Patologia, queixa ou observação"></div>
       <button class="btn primary" style="margin-top:12px" onclick="savePatient()">Salvar paciente no Supabase</button>
@@ -190,6 +190,48 @@
         <input id="patientArchivedSearch" placeholder="Buscar paciente inativo por nome ou WhatsApp" oninput="renderLists()">
         <div class="list" id="patientListArchived"></div>
       </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-agenda-assistida">
+    <div class="assistant-booking-shell">
+      <div class="assistant-booking-head-card">
+        <div>
+          <div class="eyebrow">Agenda assistida</div>
+          <h3>Cadastre ou localize o paciente e monte a grade com revisão</h3>
+          <p class="muted small">Descreva a necessidade em linguagem natural. O sistema organiza os dados e sugere horários, mas você confirma cada etapa antes da gravação.</p>
+        </div>
+      </div>
+
+      <details class="assistant-booking-guide card">
+        <summary><span><span class="eyebrow">Tutorial</span><strong>Como funciona a Agenda assistida</strong></span><span class="muted small">Abrir guia</span></summary>
+        <div class="assistant-guide-grid">
+          <div class="assistant-guide-step"><span>1</span><div><strong>Descreva a solicitação</strong><p>Informe paciente, serviço, dias, período, frequência e quantidade de sessões por texto ou voz.</p></div></div>
+          <div class="assistant-guide-step"><span>2</span><div><strong>Revise o paciente</strong><p>Confirme se é um paciente novo ou escolha um cadastro já existente antes de continuar.</p></div></div>
+          <div class="assistant-guide-step"><span>3</span><div><strong>Confirme o cadastro</strong><p>A Agenda assistida reutiliza o paciente quando encontra o mesmo nome ou WhatsApp.</p></div></div>
+          <div class="assistant-guide-step"><span>4</span><div><strong>Escolha a grade</strong><p>Compare as sugestões calculadas conforme o expediente, o serviço e os horários disponíveis.</p></div></div>
+          <div class="assistant-guide-step"><span>5</span><div><strong>Confirme os agendamentos</strong><p>Os conflitos são verificados novamente antes da gravação final de cada horário.</p></div></div>
+        </div>
+        <div class="assistant-guide-notes">
+          <p><strong>Nada é gravado automaticamente.</strong> Paciente e horários só são salvos após sua confirmação.</p>
+          <p>Na guia Pacientes, o cadastro manual avisa sobre nome ou WhatsApp parecido, mas permite confirmar uma exceção.</p>
+          <p>Solicitações assistidas salvas continuam disponíveis na fila de Pendências.</p>
+        </div>
+      </details>
+
+      <section class="card assistant-booking-card">
+        <div class="section-title">
+          <div><div class="eyebrow">Cadastro + agenda assistida</div><h3>Descreva o paciente e eu proponho a melhor grade</h3></div>
+          <button class="btn" id="assistantBookingVoiceBtn" type="button">🎤 Ditar pedido</button>
+        </div>
+        <p class="muted small">Exemplo: "nova paciente Ana, terça e quinta de manhã, 2x por semana, 10 sessões de pilates". A gravação final continua manual: primeiro revisamos, depois confirmamos paciente e grade.</p>
+        <textarea id="assistantBookingInput" rows="4" placeholder="Escreva ou dite o pedido do paciente em linguagem natural"></textarea>
+        <div class="assistant-composer-actions">
+          <button class="btn primary" id="assistantBookingStartBtn" type="button">Nova solicitação assistida</button>
+        </div>
+        <div id="assistantBookingReview"></div>
+        <div id="assistantBookingPlans"></div>
+      </section>
     </div>
   </section>
 
@@ -285,7 +327,6 @@
           <div><div class="eyebrow">Documentos</div><h3>Redação clínica com apoio da IA</h3><p class="muted small">Defina o documento, gere o rascunho, revise no editor e salve no histórico.</p></div>
           <div class="toolbar">
             <select id="docsPatientSelect" onchange="selectUnifiedPatient(this.value,'documentos')" style="min-width:260px"></select>
-            <button class="btn ghost" id="docsFocusToggleBtn" type="button" onclick="toggleDocumentsFocusMode()">Modo foco</button>
             <button class="btn" onclick="renderUnifiedDocuments()">Atualizar</button>
           </div>
         </div>
@@ -497,19 +538,6 @@
         <div class="card kpi"><div class="eyebrow">Concluídas</div><strong>0</strong><span class="muted small">já resolvidas</span></div>
         <div class="card kpi"><div class="eyebrow">Canceladas</div><strong>0</strong><span class="muted small">descartadas</span></div>
       </div>
-      <section class="card pending-card assistant-booking-card">
-        <div class="section-title">
-          <div><div class="eyebrow">Cadastro + agenda assistida</div><h3>Descreva o paciente e eu proponho a melhor grade</h3></div>
-          <button class="btn" id="assistantBookingVoiceBtn" type="button">🎤 Ditar pedido</button>
-        </div>
-        <p class="muted small">Exemplo: "nova paciente Ana, terça e quinta de manhã, 2x por semana, 10 sessões de pilates". A gravação final continua manual: primeiro revisamos, depois confirmamos paciente e grade.</p>
-        <textarea id="assistantBookingInput" rows="4" placeholder="Escreva ou dite o pedido do paciente em linguagem natural"></textarea>
-        <div class="assistant-composer-actions">
-          <button class="btn primary" id="assistantBookingStartBtn" type="button">Nova solicitação assistida</button>
-        </div>
-        <div id="assistantBookingReview"></div>
-        <div id="assistantBookingPlans"></div>
-      </section>
       <section class="card pending-card">
         <div class="section-title">
           <div><div class="eyebrow">WhatsApp e voz</div><h3>Tarefas recebidas para revisão</h3></div>
@@ -982,6 +1010,7 @@ if ('caches' in window) {
     agenda: ['Agenda clínica', 'Grade semanal, agenda mensal e busca rápida de atendimentos'],
     day: ['Dia operacional', 'Acompanhamento dos atendimentos de hoje e mudança rápida de status'],
     patients: ['Pacientes', 'Cadastro, busca e gestão da base ativa'],
+    'agenda-assistida': ['Agenda assistida', 'Cadastro revisado e sugestão de grade sem gravação automática'],
     prontuario: ['Prontuário', 'Anamnese, evolução clínica e histórico do paciente'],
     packages: ['Pacotes', 'Sessões, saldos e controle de créditos por paciente'],
     ai: ['Central de IA', 'Apoio clínico, radar operacional e automações assistidas'],

@@ -190,7 +190,6 @@ window.location.replace('index.html');
     <div class="grid grid-2">
       <div class="card">
         <div class="section-title"><div><div class="eyebrow">Novo paciente</div><h3>Cadastro direto no Supabase da agenda</h3></div></div>
-        <p class="muted small" style="margin-top:0">Quando agenda e sistema principal usarem o mesmo Supabase, este cadastro alimentará a mesma tabela <strong>patients</strong>. Em teste, fica apenas neste banco isolado.</p>
         <div class="grid grid-2"><div class="field"><label>Nome completo *</label><input id="newPatientName" placeholder="Nome completo"></div><div class="field"><label>WhatsApp *</label><input id="newPatientWhatsapp" placeholder="(16) 99999-9999" inputmode="numeric" autocomplete="tel" maxlength="15" oninput="formatWhatsappInput(this)"></div></div>
         <div class="field" style="margin-top:12px"><label>Patologia / observação</label><input id="newPatientPathology" placeholder="Patologia, queixa ou observação"></div>
         <button class="btn primary" style="margin-top:12px" onclick="savePatient()">Salvar paciente no Supabase</button>
