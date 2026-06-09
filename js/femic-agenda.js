@@ -1018,6 +1018,8 @@ function renderMonth(){
   const showEmpty=shouldShowEmptyMonthDays();
   const filteredAppointments=agendaFiltered(appointments);
   const appointmentsByDate=Object.create(null);
+  const patientNames=Object.create(null);
+  const serviceNames=Object.create(null);
   const slotList=slots();
   const slotStep=agendaSlotStep();
   filteredAppointments.forEach(a=>{
@@ -1025,6 +1027,8 @@ function renderMonth(){
     if(!appointmentsByDate[ds]) appointmentsByDate[ds]=[];
     appointmentsByDate[ds].push(a);
   });
+  patients.forEach(patient=>{patientNames[String(patient.id)]=patient.name||'Paciente';});
+  services.forEach(service=>{serviceNames[String(service.id)]=service.name||'Sem serviço';});
   $('periodLabel').textContent=currentDate.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
   $('monthHead').innerHTML=`<div class="month-list-head"><div><div class="eyebrow">Agenda do mês</div><h3>${currentDate.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</h3></div><div class="month-list-tools"><button class="btn ghost" type="button" onclick="toggleMonthEmptyDays()">${showEmpty?'Ocultar dias vazios':'Mostrar dias vazios'}</button><span class="muted small">Lista mensal oficial da FEMIC</span></div></div>`;
   const daysInMonth=new Date(y,m+1,0).getDate();
@@ -1053,8 +1057,8 @@ function renderMonth(){
     html+=`<section class="month-agenda-day ${ds===todayIso()?'today':''} ${isClosedForView(ds)?'off':''}">`;
     html+=`<div class="month-agenda-day-head"><div><div class="month-agenda-date">${names[d.getDay()]}, ${fmtDate(ds)}</div><div class="muted small">${list.length?`${list.length} atendimento(s) no dia`:'Dia livre'}</div></div><div class="month-agenda-summary"><span>${counts.agendado} ag.</span><span>${counts.confirmado} conf.</span><span>${counts.concluido} concl.</span><span>Pico ${peak}/${Number(settings.max_patients_per_slot||4)}</span><button class="btn" type="button" onclick="openAppt('${ds}')">+ Agendar</button></div></div>`;
     html+=list.length?`<div class="month-agenda-items">`+list.map(a=>{
-      const patient=patientName(a.patient_id);
-      const service=serviceName(a.service_id);
+      const patient=patientNames[String(a.patient_id)]||'Paciente';
+      const service=serviceNames[String(a.service_id)]||'Sem serviço';
       return `<button class="month-agenda-item status-${a.status}" type="button" onclick="openAppt('${a.appointment_date}','${a.id}')"><span class="month-agenda-time"><strong>${normalizeTime(a.start_time)}</strong><small>${normalizeTime(a.end_time)}</small></span><span class="month-agenda-main"><strong>${esc(patient)}</strong><small>${esc(service)}</small></span></button>`;
     }).join('')+`</div>`:`<div class="month-agenda-empty"><span>Sem atendimentos neste dia.</span><button class="btn ghost" type="button" onclick="openAppt('${ds}')">Criar atendimento</button></div>`;
     html+=`</section>`;
@@ -1064,8 +1068,13 @@ function renderMonth(){
   $('monthCalendar').innerHTML=`<div class="month-agenda-kpis"><div><span>Total no mês</span><strong>${totalAppointments}</strong></div><div><span>Confirmados</span><strong>${totalConfirmed}</strong></div><div><span>Concluídos</span><strong>${totalDone}</strong></div><div><span>Dias exibidos</span><strong>${rendered}</strong></div></div>`+html;
 }
 function activePackageForService(pid,sid){
-  const list=packages.filter(p=>String(p.patient_id)===String(pid)&&String(p.service_id)===String(sid)&&p.active!==false);
-  return list.find(p=>Number(p.remaining_sessions||0)>0)||list[0]||null;
+  let fallback=null;
+  for(const p of packages){
+    if(String(p.patient_id)!==String(pid)||String(p.service_id)!==String(sid)||p.active===false) continue;
+    if(!fallback) fallback=p;
+    if(Number(p.remaining_sessions||0)>0) return p;
+  }
+  return fallback;
 }
 function packageSaldoInfo(pid,sid){const pk=activePackageForService(pid,sid);if(!pk)return null;const total=Number(pk.total_sessions||0),remaining=Number(pk.remaining_sessions??pk.saldo??0),used=Math.max(0,total-remaining);return {package:pk,total,remaining,used,cls:remaining===0?'saldo-zero':(remaining<=3?'saldo-low':'muted')}}
 function saldoBadge(pid,sid){const info=packageSaldoInfo(pid,sid);if(!info)return '<div class="small muted">Sem pacote</div>';return `<div class="small ${info.cls}"><span class="used-counter">${info.used}/${info.total} sessões usadas</span> · saldo ${info.remaining}</div>`}
@@ -1076,7 +1085,7 @@ function closeModal(id){const el=$(id);if(el) el.classList.remove('show')}functi
 function toggleRecDayCard(i){const card=$('recCard'+i);if(card)card.classList.toggle('active',card.querySelector('.recDay')?.checked);previewRecurringEnd(i)}
 function syncRecurrenceTimes(){document.querySelectorAll('.recTime').forEach(inp=>{if(!inp.value)inp.value=$('apptStart').value||'08:00'});document.querySelectorAll('.recDay').forEach(ch=>toggleRecDayCard(ch.value));}
 function previewRecurringEnd(i){const inp=$('recTime'+i),out=$('recEnd'+i),s=serviceById($('apptService').value);if(!inp||!out)return;if(!$('apptService').value){out.textContent='Selecione o serviço';return}const start=inp.value||$('apptStart').value||'08:00';const end=addMinutes(start,Number(s.duration_minutes||45));out.textContent='Fim previsto: '+end;}function onServiceChange(updatePrice=false){const sid=$('apptService').value;if(!sid){$('apptEnd').value='';if(updatePrice)$('apptPrice').value='';showSaldoInfo();document.querySelectorAll('.recDay:checked').forEach(ch=>previewRecurringEnd(ch.value));return}const s=serviceById(sid);$('apptEnd').value=addMinutes($('apptStart').value||settings.start_time,Number(s.duration_minutes||45));if(updatePrice)setAppointmentPriceFromService(true);showSaldoInfo();document.querySelectorAll('.recDay:checked').forEach(ch=>previewRecurringEnd(ch.value))}
-function showSaldoInfo(){const pid=$('apptPatient').value,sid=$('apptService').value;if(!pid&&!sid){$('saldoInfo').innerHTML='Selecione paciente e serviço para visualizar pacote e saldo.';return}if(!pid){$('saldoInfo').innerHTML='Selecione o paciente para visualizar pacote e saldo.';return}if(!sid){$('saldoInfo').innerHTML='Selecione o serviço para visualizar pacote e saldo.';return}const pk=activePackageForService(pid,sid);const future=appointments.filter(a=>String(a.patient_id)===String(pid)&&String(a.service_id)===String(sid)&&['agendado','confirmado'].includes(a.status)&&String(a.appointment_date||'')>=todayIso()).length;if(!pk)$('saldoInfo').innerHTML='Sem pacote ativo para este paciente/serviço.';else $('saldoInfo').innerHTML=`Pacote: ${pk.total_sessions} sessões · saldo ${pk.remaining_sessions} · futuras agendadas ${future} · disponível aproximado ${Number(pk.remaining_sessions||0)-future}`}
+function showSaldoInfo(){const pid=$('apptPatient').value,sid=$('apptService').value;if(!pid&&!sid){$('saldoInfo').innerHTML='Selecione paciente e serviço para visualizar pacote e saldo.';return}if(!pid){$('saldoInfo').innerHTML='Selecione o paciente para visualizar pacote e saldo.';return}if(!sid){$('saldoInfo').innerHTML='Selecione o serviço para visualizar pacote e saldo.';return}const pk=activePackageForService(pid,sid);let future=0;for(const a of appointments){if(String(a.patient_id)===String(pid)&&String(a.service_id)===String(sid)&&['agendado','confirmado'].includes(a.status)&&String(a.appointment_date||'')>=todayIso())future++;}if(!pk)$('saldoInfo').innerHTML='Sem pacote ativo para este paciente/serviço.';else $('saldoInfo').innerHTML=`Pacote: ${pk.total_sessions} sessões · saldo ${pk.remaining_sessions} · futuras agendadas ${future} · disponível aproximado ${Number(pk.remaining_sessions||0)-future}`}
 function conflictInAppointmentList(candidate,list,ignoreId=null){const sNew=serviceById(candidate.service_id);const n1=timeToMin(candidate.start_time),n2=timeToMin(candidate.end_time);const sameDay=(list||[]).filter(a=>a.appointment_date===candidate.appointment_date&&a.status!=='cancelado'&&String(a.id)!==String(ignoreId));const overlaps=sameDay.filter(a=>timeToMin(normalizeTime(a.start_time))<n2 && timeToMin(normalizeTime(a.end_time))>n1);if(!overlaps.length)return null;if((sNew.appointment_mode||'grupo')==='individual')return 'Serviço individual exige horário exclusivo.';if(overlaps.some(a=>(serviceById(a.service_id).appointment_mode||'grupo')==='individual'))return 'Já existe atendimento individual neste intervalo.';const max=Number(sNew.max_patients||settings.max_patients_per_slot||4);if(overlaps.length>=max)return 'Limite de pacientes simultâneos atingido.';return null}
 function hasConflict(candidate,ignoreId=null){return conflictInAppointmentList(candidate,appointments,ignoreId)}
 function recurringWeekdayName(day,short=false){const names=short?['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']:['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];return names[Number(day)]||''}
