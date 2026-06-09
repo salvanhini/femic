@@ -199,16 +199,16 @@
         <div>
           <div class="eyebrow">Agenda assistida</div>
           <h3>Cadastre ou localize o paciente e monte a grade com revisão</h3>
-          <p class="muted small">Descreva a necessidade em linguagem natural. O sistema organiza os dados e sugere horários, mas você confirma cada etapa antes da gravação.</p>
+          <p class="muted small">Escolha o paciente, informe serviço, dias, período e quantidade de sessões. O sistema organiza a grade e sugere os melhores horários para você confirmar.</p>
         </div>
       </div>
 
       <details class="assistant-booking-guide card">
         <summary><span><span class="eyebrow">Tutorial</span><strong>Como funciona a Agenda assistida</strong></span><span class="muted small">Abrir guia</span></summary>
         <div class="assistant-guide-grid">
-          <div class="assistant-guide-step"><span>1</span><div><strong>Descreva a solicitação</strong><p>Informe paciente, serviço, dias, período, frequência e quantidade de sessões por texto ou voz.</p></div></div>
-          <div class="assistant-guide-step"><span>2</span><div><strong>Revise o paciente</strong><p>Confirme se é um paciente novo ou escolha um cadastro já existente antes de continuar.</p></div></div>
-          <div class="assistant-guide-step"><span>3</span><div><strong>Confirme o cadastro</strong><p>A Agenda assistida reutiliza o paciente quando encontra o mesmo nome ou WhatsApp.</p></div></div>
+          <div class="assistant-guide-step"><span>1</span><div><strong>Escolha ou crie o paciente</strong><p>Use um cadastro já existente ou abra o bloco inline para preencher nome, WhatsApp e observação.</p></div></div>
+          <div class="assistant-guide-step"><span>2</span><div><strong>Informe a necessidade</strong><p>Defina serviço, dias da semana, período, frequência, quantidade de sessões e data inicial.</p></div></div>
+          <div class="assistant-guide-step"><span>3</span><div><strong>Confirme o paciente</strong><p>Se for um cadastro novo, a confirmação cria o paciente usando a mesma regra do cadastro padrão.</p></div></div>
           <div class="assistant-guide-step"><span>4</span><div><strong>Escolha a grade</strong><p>Compare as sugestões calculadas conforme o expediente, o serviço e os horários disponíveis.</p></div></div>
           <div class="assistant-guide-step"><span>5</span><div><strong>Confirme os agendamentos</strong><p>Os conflitos são verificados novamente antes da gravação final de cada horário.</p></div></div>
         </div>
@@ -221,13 +221,61 @@
 
       <section class="card assistant-booking-card">
         <div class="section-title">
-          <div><div class="eyebrow">Cadastro + agenda assistida</div><h3>Descreva o paciente e eu proponho a melhor grade</h3></div>
-          <button class="btn" id="assistantBookingVoiceBtn" type="button">🎤 Ditar pedido</button>
+          <div><div class="eyebrow">Cadastro + agenda assistida</div><h3>Escolha o paciente, informe a necessidade e veja as melhores opções</h3></div>
         </div>
-        <p class="muted small">Exemplo: "nova paciente Ana, terça e quinta de manhã, 2x por semana, 10 sessões de pilates". A gravação final continua manual: primeiro revisamos, depois confirmamos paciente e grade.</p>
-        <textarea id="assistantBookingInput" rows="4" placeholder="Escreva ou dite o pedido do paciente em linguagem natural"></textarea>
+        <div class="assistant-form-grid">
+          <section class="assistant-subcard">
+            <div class="assistant-subcard-head">
+              <div>
+                <div class="eyebrow">Paciente</div>
+                <h4>Usar cadastro existente ou criar novo</h4>
+              </div>
+              <button class="btn ghost" id="assistantTogglePatientModeBtn" type="button">Novo paciente</button>
+            </div>
+            <div class="field">
+              <label>Paciente já cadastrado</label>
+              <select id="assistantPatientSelect"></select>
+            </div>
+            <div class="muted small assistant-inline-note" id="assistantPatientInlineStatus">Selecione um paciente já cadastrado. Se não encontrar, abra o cadastro inline.</div>
+            <div class="assistant-new-patient hidden" id="assistantNewPatientFields">
+              <div class="grid grid-2">
+                <div class="field"><label>Nome completo *</label><input id="assistantNewPatientName" placeholder="Nome do paciente"></div>
+                <div class="field"><label>WhatsApp *</label><input id="assistantNewPatientPhone" placeholder="(16) 99999-9999" inputmode="numeric" maxlength="15" oninput="formatWhatsappInput(this)"></div>
+              </div>
+              <div class="field" style="margin-top:12px"><label>Observação</label><input id="assistantNewPatientPathology" placeholder="Observação, queixa ou patologia"></div>
+            </div>
+          </section>
+
+          <section class="assistant-subcard">
+            <div class="assistant-subcard-head">
+              <div>
+                <div class="eyebrow">Necessidades</div>
+                <h4>Critérios para o sistema montar a grade</h4>
+              </div>
+            </div>
+            <div class="grid grid-2">
+              <div class="field"><label>Serviço *</label><select id="assistantServiceSelect"></select></div>
+              <div class="field"><label>Data inicial *</label><input id="assistantStartDate" type="date"></div>
+              <div class="field"><label>Período</label><select id="assistantPeriod"><option value="">Qualquer período</option><option value="manha">Manhã</option><option value="tarde">Tarde</option><option value="noite">Noite</option></select></div>
+              <div class="field"><label>Quantas vezes por semana *</label><input id="assistantFrequency" type="number" min="1" max="6" placeholder="Ex.: 2"></div>
+              <div class="field"><label>Quantidade de sessões *</label><input id="assistantTotalSessions" type="number" min="1" placeholder="Ex.: 10"></div>
+            </div>
+            <div class="field" style="margin-top:12px">
+              <label>Dias da semana *</label>
+              <div class="assistant-weekdays" id="assistantWeekdays">
+                <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="1" onchange="renderAssistantReviewDayState()"> <span>Seg</span></label>
+                <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="2" onchange="renderAssistantReviewDayState()"> <span>Ter</span></label>
+                <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="3" onchange="renderAssistantReviewDayState()"> <span>Qua</span></label>
+                <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="4" onchange="renderAssistantReviewDayState()"> <span>Qui</span></label>
+                <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="5" onchange="renderAssistantReviewDayState()"> <span>Sex</span></label>
+                <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="6" onchange="renderAssistantReviewDayState()"> <span>Sáb</span></label>
+              </div>
+            </div>
+          </section>
+        </div>
         <div class="assistant-composer-actions">
-          <button class="btn primary" id="assistantBookingStartBtn" type="button">Nova solicitação assistida</button>
+          <button class="btn primary" id="assistantBookingStartBtn" type="button">Gerar melhores opções</button>
+          <button class="btn ghost" id="assistantSavePendingBtn" type="button">Salvar como pendência</button>
         </div>
         <div id="assistantBookingReview"></div>
         <div id="assistantBookingPlans"></div>
