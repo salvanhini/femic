@@ -252,7 +252,7 @@ CREATE POLICY "authenticated_full_access_clinical_anamneses" ON clinical_anamnes
 CREATE POLICY "authenticated_full_access_clinical_evolutions" ON clinical_evolutions FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_femic_generated_documents" ON femic_generated_documents FOR ALL TO authenticated USING (true) WITH CHECK (true);
 NOTIFY pgrst, 'reload schema';`;
-const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],reportAppointments=[],movements=[],clinicRules=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();let editingServiceId='';let loadedAppointmentQuery='',loadedReportQuery='',aiRadarQuery='',aiRadarAppointments=[],aiRadarLoaded=false,aiRadarLastWeeks=[],recurringSuggestionCache=[];let sessionPackagesEndedAtSupported=null;const appointmentSearchSelected=new Set();
+const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],reportAppointments=[],movements=[],clinicRules=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();let editingServiceId='';let loadedAppointmentQuery='',loadedReportQuery='',aiRadarQuery='',aiRadarAppointments=[],aiRadarLoaded=false,aiRadarLastWeeks=[],recurringSuggestionCache=[];let sessionPackagesEndedAtSupported=null;let lastUserInteractionAt=Date.now();const appointmentSearchSelected=new Set();
 const packageScheduleCache=new Map();
 let showArchivedPatients=false,showInactivePackages=false;
 const dayAppointmentCache=new Map();
@@ -642,12 +642,63 @@ async function cancelAppointmentProposal(appointmentId){
   await loadAll(true);
   return a;
 }
+function assistantFormatPhone(value){
+  const digits=cleanPhone(value).replace(/^55(?=\d{10,11}$)/,'');
+  if(digits.length===11)return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+  if(digits.length===10)return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+  return value||'';
+}
+function assistantFindPatientMatches(query){
+  const text=String(query||'').trim();
+  const digits=cleanPhone(text);
+  if(!text&&!digits)return [];
+  const normalized=text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  return patients.filter(p=>{
+    if(p.archived===true)return false;
+    const name=String(p.name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    const phone=cleanPhone(p.whatsapp||'');
+    return (!!digits&&phone.includes(digits))|| (!!normalized&&(name.includes(normalized)||normalized.includes(name)));
+  }).slice(0,8).map(p=>({id:p.id,name:p.name||'Paciente sem nome',whatsapp:assistantFormatPhone(p.whatsapp||''),pathology:p.pathology||''}));
+}
+async function createAssistantPatient(payload={}){
+  const name=String(payload.name||'').trim();
+  const whatsapp=assistantFormatPhone(payload.whatsapp||payload.phone||'');
+  const pathology=String(payload.pathology||'').trim();
+  if(!name)throw new Error('Informe o nome do paciente.');
+  if(!/^\(\d{2}\)\s\d{4,5}-\d{4}$/.test(whatsapp))throw new Error('Informe o WhatsApp completo para criar o paciente.');
+  const phone=cleanPhone(whatsapp);
+  const dup=patients.find(p=>p.archived!==true&&(cleanPhone(p.whatsapp)===phone||String(p.name||'').trim().toLowerCase()===name.toLowerCase()));
+  if(dup)return dup;
+  const record={id:makePatientId(),name,pathology,whatsapp,archived:false,archived_at:null};
+  await api('patients',{method:'POST',body:JSON.stringify(record)});
+  await loadAll(true);
+  return patientById(record.id)||record;
+}
+async function confirmAssistantRecurringProgram(input={}){
+  const sessions=Array.isArray(input.sessions)?input.sessions:[];
+  if(!sessions.length)throw new Error('Nenhuma sessao encontrada para confirmar.');
+  const patientId=input.patient_id||input.patientId;
+  if(!patientId)throw new Error('Paciente nao confirmado.');
+  let created=0;
+  for(const session of sessions){
+    const checked=await validateAssistantAppointment({...session,patient_id:patientId});
+    if(!checked.valid)throw new Error(`Conflito ao confirmar ${fmtDate(session.appointment_date)} ${session.start_time}: ${checked.reason}`);
+    await persistAppointment(null,checked.payload);
+    created++;
+  }
+  await loadAll(true);
+  return {created};
+}
 window.FEMICAgendaRuntime={
   getState:function(){return{patients:[...patients],payers:[...payers],services:[...services],packages:[...packages],appointments:[...appointments],movements:[...movements],clinicRules:[...clinicRules],settings:Object.assign({},settings)}},
   suggestAppointmentSlots:suggestAssistantAppointmentSlots,
+  suggestRecurringPrograms:suggestAssistantRecurringPrograms,
   validateAppointmentProposal:validateAssistantAppointment,
   confirmAppointmentProposal:confirmAssistantAppointmentProposal,
+  confirmRecurringProgram:confirmAssistantRecurringProgram,
   findFutureAppointments:findPatientFutureAppointments,
+  findPatientMatches:assistantFindPatientMatches,
+  createPatient:createAssistantPatient,
   cancelAppointment:function(id){return cancelAppointmentProposal(id);},
   api:function(path,opt){return api(path,opt||{});},
   setClinicRules:function(list){clinicRules=Array.isArray(list)?list:[];writeClinicRulesCache(clinicRules);renderBackupPanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));return clinicRules},
@@ -1028,6 +1079,102 @@ function scoreRecurringSuggestion(combo,time,basePayload,rowsMap,totalSessions){
   const score=(created*100)-(conflicts*16)+(partialHits*9)+(emptyHits*3)+pairBonus;
   const badge=created>=totalSessions&&conflicts===0?'Melhor':(created>=Math.ceil(totalSessions*.8)?'Bom':'Atenção');
   return {combo,time,created,conflicts,attempts,partialHits,emptyHits,lastConflict,score,badge,label:combo.map(d=>recurringWeekdayName(d)+' '+time).join(' + ')};
+}
+function assistantRecurringBadge(index){
+  return index===0?'Melhor':(index===1?'Alternativa':'Segura');
+}
+function assistantRecurringReason(code){
+  if(code==='best_fit') return 'Melhor equilíbrio entre cobertura, encaixe e conflitos.';
+  if(code==='closest_match') return 'Alternativa próxima ao pedido original.';
+  return 'Opção segura para seguir sem quebrar a agenda.';
+}
+function assistantRecurringSummary(sessions){
+  if(!Array.isArray(sessions)||!sessions.length) return 'Sem sessões sugeridas.';
+  const map={};
+  sessions.forEach(function(item){
+    const key=String(item.weekday);
+    if(!map[key]) map[key]=item.start_time;
+  });
+  return Object.keys(map).sort().map(function(key){
+    return recurringWeekdayName(Number(key)) + ' ' + map[key];
+  }).join(' · ');
+}
+function assistantRecurringCombos(days,frequency){
+  const base=(Array.isArray(days)&&days.length?days:recurringWorkingDays()).map(Number).filter(Number.isInteger);
+  if(!base.length) return [];
+  const target=Math.max(1, Math.min(Number(frequency||1), base.length));
+  const combos=[];
+  function walk(start,pick){
+    if(pick.length===target){combos.push(pick.slice());return;}
+    for(let i=start;i<base.length;i++) walk(i+1,pick.concat(base[i]));
+  }
+  walk(0,[]);
+  return combos;
+}
+function buildAssistantRecurringPlan(basePayload,combo,time,rowsMap,totalSessions){
+  const service=serviceById(basePayload.service_id),duration=Number(service.duration_minutes||basePayload.duration_minutes||45);
+  const comboSet=new Set(combo),dowTime=combo.reduce((acc,d)=>{acc[d]=time;return acc},{});
+  let created=0,conflicts=0,attempts=0,partialHits=0,emptyHits=0,date=new Date(basePayload.appointment_date+'T00:00:00'),tries=0,lastConflict='';
+  const sessions=[];
+  while(created<totalSessions&&tries<370){
+    const ds=isoDate(date),dow=date.getDay();
+    if(comboSet.has(dow)){
+      attempts++;
+      const st=dowTime[dow]||time;
+      const cand={...basePayload,appointment_date:ds,start_time:st,end_time:addMinutes(st,duration),duration_minutes:duration};
+      const dayRows=rowsMap[ds]||[];
+      const inside=isInsideWorkingTime(ds,cand.start_time,cand.end_time);
+      const msg=inside?conflictInAppointmentList(cand,dayRows):'Fora do expediente.';
+      if(msg){conflicts++;lastConflict=msg;}
+      else{
+        const load=recurringSlotLoad(cand,dayRows);
+        if(load>0)partialHits++;else emptyHits++;
+        created++;
+        sessions.push({...cand,weekday:dow,load});
+      }
+    }
+    date.setDate(date.getDate()+1);
+    tries++;
+  }
+  const pairBonus=combo.length===2?8:0;
+  const score=(created*100)-(conflicts*16)+(partialHits*9)+(emptyHits*3)+pairBonus;
+  const impact=partialHits?`${partialHits} horário(s) aproveitam blocos já ocupados`:`${emptyHits} horário(s) entram em grade mais vazia`;
+  return {combo:[...combo],time,created,conflicts,attempts,partialHits,emptyHits,lastConflict,score,sessions,impact,summary:assistantRecurringSummary(sessions),coverage:`${created}/${totalSessions} sessões previstas`};
+}
+async function suggestAssistantRecurringPrograms(input={}){
+  const sid=input.service_id||input.serviceId;
+  if(!sid) return {plans:[],reason:'Serviço não identificado.'};
+  const service=serviceById(sid);
+  if(!service||!service.id) return {plans:[],reason:'Serviço não encontrado.'};
+  const totalSessions=Math.max(1,Number(input.total_sessions||input.totalSessions||input.count||1));
+  const frequency=Math.max(1,Number(input.frequency_per_week||input.frequencyPerWeek||input.frequency||1));
+  const startDate=String(input.start_date||input.startDate||input.appointment_date||todayIso());
+  const duration=Number(input.duration_minutes||service.duration_minutes||45);
+  const startTime=normalizeTime(input.start_time||input.startTime||settings.start_time||'08:00');
+  const basePayload={patient_id:input.patient_id||input.patientId||'assistant-draft',service_id:service.id,appointment_date:startDate,start_time:startTime,end_time:addMinutes(startTime,duration),duration_minutes:duration,status:'agendado',service_price_at_time:Number(getServiceDefaultPrice(service.id))};
+  const horizonEnd=addDaysIso(startDate,369);
+  const rows=await fetchAppointmentsForRange(startDate,horizonEnd);
+  const rowsMap=recurringRowsByDate(rows);
+  const combos=assistantRecurringCombos(input.weekdays||input.days,frequency);
+  const candidateTimes=[...new Set([startTime,...slots()])].filter(Boolean).filter(function(time){
+    if(!assistantPeriodMatches(time,input.period||input.requested_period||'')) return false;
+    return parsePeriods().some(function(p){
+      return timeToMin(time)>=timeToMin(p.start)&&timeToMin(addMinutes(time,duration))<=timeToMin(p.end);
+    });
+  });
+  const pool=(candidateTimes.length?candidateTimes:[startTime]).flatMap(function(time){
+    return combos.map(function(combo){
+      return buildAssistantRecurringPlan(basePayload,combo,time,rowsMap,totalSessions);
+    });
+  }).filter(function(plan){
+    return plan.created>0;
+  }).sort(function(a,b){
+    return b.score-a.score||b.created-a.created||a.conflicts-b.conflicts||b.partialHits-a.partialHits;
+  }).slice(0,9).map(function(plan,index){
+    const reasonCode=index===0?'best_fit':(index===1?'closest_match':'safe_fallback');
+    return {...plan,badge:assistantRecurringBadge(index),reason:assistantRecurringReason(reasonCode),reason_code:reasonCode};
+  }).slice(0,3);
+  return {plans:pool,reason:pool.length?'Grades recorrentes encontradas.':'Nenhuma grade segura encontrada com os parâmetros atuais.'};
 }
 function renderRecurringSuggestions(list,loading=false){
   const target=$('recSuggestionList');if(!target)return;
@@ -2793,11 +2940,21 @@ function processAutomaticReminders(){
   sendWhatsapp(next.a.id,true,next.kind);
 }
 
-applyAgendaTheme();renderWorkDays();renderReminderAutomationStatus();syncAgendaNavState('agenda');renderAll();if(base()&&key()&&sessionStorage.getItem('femic_jwt'))loadAll(true);
+applyAgendaTheme();renderWorkDays();renderReminderAutomationStatus();syncAgendaNavState('agenda');renderActivePanel();if(base()&&key()&&sessionStorage.getItem('femic_jwt'))loadAll(true);
 function hasOpenModal(){
   return !!document.querySelector('.modal-backdrop.show');
 }
+function shouldBackgroundRefresh(){
+  if(document.hidden) return false;
+  if(!base()||!key()||!sessionStorage.getItem('femic_jwt')) return false;
+  if(hasOpenModal()) return false;
+  if(Date.now()-lastUserInteractionAt<15000) return false;
+  return ['agenda','day','pendencias','report','reminders','ai','patients','packages','settings'].includes(getActivePanelName());
+}
+['pointerdown','keydown','visibilitychange'].forEach(function(evt){
+  document.addEventListener(evt,function(){lastUserInteractionAt=Date.now();},{passive:true});
+});
 setInterval(()=>{
-  if(base()&&key()&&sessionStorage.getItem('femic_jwt')&&!hasOpenModal()) loadAll(true);
-  processAutomaticReminders();
-},60000);
+  if(shouldBackgroundRefresh()) loadAll(true);
+  if(!document.hidden) processAutomaticReminders();
+},120000);
