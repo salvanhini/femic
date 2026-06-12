@@ -238,6 +238,16 @@ window.location.replace('index.html');
           <div><div class="eyebrow">WhatsApp e voz</div><h3>Tarefas recebidas para revisão</h3></div>
           <button class="btn" id="voiceTaskBtn" type="button" title="Criar pendência por voz">🎤 Nova por voz</button>
         </div>
+        <div class="pending-composer">
+          <textarea id="pendingTaskInput" rows="3" placeholder="Digite aqui a pendência, pedido de remarcação, cancelamento ou lembrete interno."></textarea>
+          <div class="pending-composer-actions">
+            <span class="muted small" id="pendingTaskInputStatus">Você pode digitar normalmente ou usar o microfone para preencher o texto.</span>
+            <div class="toolbar">
+              <button class="btn ghost" id="clearPendingTaskBtn" type="button">Limpar</button>
+              <button class="btn primary" id="saveTextTaskBtn" type="button" disabled>Salvar pendência</button>
+            </div>
+          </div>
+        </div>
         <div class="pending-filters">
           <select id="pendingTaskStatusFilter" onchange="renderExtensionPendingTasks()"><option value="open">Abertas</option><option value="all">Todas</option><option value="concluida">Concluídas</option><option value="cancelada">Canceladas</option></select>
           <select id="pendingTaskTypeFilter" onchange="renderExtensionPendingTasks()"><option value="all">Todos os tipos</option><option value="marcacao">Marcação</option><option value="remarcacao">Remarcação</option><option value="cancelamento">Cancelamento</option></select>
@@ -605,6 +615,7 @@ if ('caches' in window) {
 }
 </script>
 <script src="js/femic-agenda.js?v=secure-cloud-9"></script>
+<script src="js/femic-pending-task-utils.js?v=pending-utils-1"></script>
 <script src="js/femic-ai-center.js?v=ai-center-5"></script>
 <script src="js/femic-assistant-rules.js?v=assistant-rules-4"></script>
 <script src="js/femic-assistant.js?v=assistant-ui-5"></script>

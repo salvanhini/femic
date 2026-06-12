@@ -147,6 +147,9 @@
   function speechRecognitionCtor(){
     return window.SpeechRecognition || window.webkitSpeechRecognition || null;
   }
+  function pendingTaskUtils(){
+    return window.FEMICPendingTaskUtils || null;
+  }
   function readTasks(){
     try{
       var raw = JSON.parse(localStorage.getItem(TASKS_STORAGE_KEY) || '[]');
@@ -957,7 +960,7 @@
     return service ? service.name : '';
   }
   function getExtensionTasks(){
-    return readTasks().filter(function(task){ return ['chrome_extension','voice','voice_mobile','assistant_booking'].indexOf(task.origin) !== -1; }).sort(function(a,b){
+    return readTasks().filter(function(task){ return ['chrome_extension','voice','voice_mobile','assistant_booking','manual'].indexOf(task.origin) !== -1; }).sort(function(a,b){
       var statusWeight = { aberta:0, em_andamento:1, concluida:2, cancelada:3 };
       return (statusWeight[a.status] || 9) - (statusWeight[b.status] || 9) || String(b.updated_at || '').localeCompare(String(a.updated_at || ''));
     });
@@ -1950,14 +1953,81 @@
     fromExtension: createTaskFromExtension
   };
 
-  // Voice task creation (mobile-friendly)
+  // Voice and typed task creation in pending queue
   var voiceRec = null;
   var voiceListening = false;
-  var voiceText = '';
+  var voiceFinalSegments = {};
+  var pendingInputSource = 'manual';
+
+  function pendingTaskInput(){
+    return el('pendingTaskInput');
+  }
+
+  function setPendingTaskInputStatus(message){
+    var status = el('pendingTaskInputStatus');
+    if(status) status.textContent = message;
+  }
+
+  function syncPendingTaskComposer(){
+    var input = pendingTaskInput();
+    var saveBtn = el('saveTextTaskBtn');
+    var clearBtn = el('clearPendingTaskBtn');
+    var hasText = !!(input && input.value.trim());
+    if(saveBtn) saveBtn.disabled = !hasText;
+    if(clearBtn) clearBtn.disabled = !hasText && !voiceListening;
+  }
+
+  function resetPendingTaskComposer(options){
+    options = options || {};
+    if(options.clearInput !== false){
+      var input = pendingTaskInput();
+      if(input) input.value = '';
+    }
+    voiceFinalSegments = {};
+    pendingInputSource = 'manual';
+    syncPendingTaskComposer();
+    if(!voiceListening){
+      setPendingTaskInputStatus(options.status || 'Você pode digitar normalmente ou usar o microfone para preencher o texto.');
+    }
+  }
+
+  function buildPendingTask(text, origin){
+    var utils = pendingTaskUtils();
+    if(utils && typeof utils.buildPendingTaskDraft === 'function'){
+      return utils.buildPendingTaskDraft(text, {
+        origin: origin,
+        sourceLabel: origin === 'voice' ? 'por voz' : 'digitada',
+        today: todayIso()
+      });
+    }
+    return {
+      title: 'Pendência',
+      type: 'marcacao',
+      status: 'aberta',
+      priority: 'normal',
+      patient_id: '',
+      patient_name: '',
+      service_id: '',
+      service_name: '',
+      phone: '',
+      origin: origin,
+      requested_action: 'marcacao',
+      notes: String(text || '').trim(),
+      suggested_slots: [],
+      candidates: [],
+      parsed_shift: '',
+      parsed_dates: [],
+      needs_review: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: null
+    };
+  }
 
   function startVoiceTask() {
-    var Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var Ctor = speechRecognitionCtor();
     if (!Ctor) {
+      setPendingTaskInputStatus('Microfone não disponível nesta tela. Você ainda pode salvar a pendência digitando.');
       if (typeof window.toast === 'function') window.toast('Microfone não disponível neste navegador.', 'warning');
       return;
     }
@@ -1966,7 +2036,9 @@
       return;
     }
     var btn = el('voiceTaskBtn');
-    voiceText = '';
+    var input = pendingTaskInput();
+    voiceFinalSegments = {};
+    pendingInputSource = 'voice';
     voiceRec = new Ctor();
     voiceRec.lang = 'pt-BR';
     voiceRec.interimResults = true;
@@ -1974,30 +2046,49 @@
     voiceRec.onstart = function() {
       voiceListening = true;
       if (btn) { btn.textContent = '🔴 Gravando...'; btn.classList.add('is-recording'); }
+      setPendingTaskInputStatus('Ouvindo... fale agora. O texto vai aparecer abaixo para você revisar antes de salvar.');
+      syncPendingTaskComposer();
       if (typeof window.toast === 'function') window.toast('Fale seu lembrete agora.', 'info');
     };
     voiceRec.onresult = function(event) {
+      var utils = pendingTaskUtils();
       var interim = '';
       for (var i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) voiceText += event.results[i][0].transcript;
-        else interim += event.results[i][0].transcript;
+        var transcript = String(event.results[i][0].transcript || '').trim();
+        if(!transcript) continue;
+        if (event.results[i].isFinal) voiceFinalSegments[i] = transcript;
+        else interim += (interim ? ' ' : '') + transcript;
       }
-      if (btn) btn.textContent = '🔴 ' + (voiceText + interim).slice(0, 40);
+      var finalText = utils && typeof utils.buildSpeechText === 'function'
+        ? utils.buildSpeechText(voiceFinalSegments)
+        : Object.keys(voiceFinalSegments).sort().map(function(key){ return voiceFinalSegments[key]; }).join(' ');
+      if (input) input.value = [finalText, interim].filter(Boolean).join(' ').trim();
+      if (btn) btn.textContent = '🔴 ' + ((input && input.value) || '').slice(0, 40);
+      syncPendingTaskComposer();
     };
-    voiceRec.onerror = function() {
+    voiceRec.onerror = function(event) {
+      var utils = pendingTaskUtils();
+      var message = utils && typeof utils.speechErrorMessage === 'function'
+        ? utils.speechErrorMessage(event)
+        : 'Falha no microfone.';
       stopVoiceTask();
-      if (typeof window.toast === 'function') window.toast('Falha no microfone.', 'error');
+      setPendingTaskInputStatus(message + ' Você ainda pode digitar a pendência abaixo.');
+      if (typeof window.toast === 'function') window.toast(message, 'error');
     };
     voiceRec.onend = function() {
+      var inputValue = input && input.value.trim();
       if (voiceListening) {
         voiceListening = false;
-        if (voiceText.trim()) {
-          createVoiceTask(voiceText.trim());
+        if (inputValue) {
+          setPendingTaskInputStatus('Transcrição pronta. Revise o texto e clique em salvar pendência.');
         } else {
+          pendingInputSource = 'manual';
+          setPendingTaskInputStatus('Nada foi captado. Você pode tentar novamente ou digitar a pendência.');
           if (typeof window.toast === 'function') window.toast('Nada captado. Tente novamente.', 'warning');
         }
       }
       if (btn) { btn.textContent = '🎤 Nova por voz'; btn.classList.remove('is-recording'); }
+      syncPendingTaskComposer();
     };
     voiceRec.start();
   }
@@ -2009,41 +2100,26 @@
     voiceListening = false;
     var btn = el('voiceTaskBtn');
     if (btn) { btn.textContent = '🎤 Nova por voz'; btn.classList.remove('is-recording'); }
+    syncPendingTaskComposer();
   }
 
-  function createVoiceTask(text) {
-    var n = norm(text);
-    var action = '';
-    if (/cancel|desmarc|nao vou|nao pod/.test(n)) action = 'cancelamento';
-    else if (/remarc|reagen|remanej|mudar|trocar|alterar/.test(n)) action = 'remarcacao';
-    else if (/marcar|agendar|queria|gostaria|preciso|pode|podia|consigo|vaga|horario/.test(n)) action = 'marcacao';
-    if (!action) action = 'marcacao';
-    var title = taskTypeLabel(action) + ' · Lembrete por voz';
-    var task = upsertTask({
-      title: title,
-      type: action,
-      status: 'aberta',
-      priority: 'normal',
-      patient_id: '',
-      patient_name: '',
-      service_id: '',
-      service_name: '',
-      phone: '',
-      origin: 'voice',
-      requested_action: action,
-      notes: text,
-      suggested_slots: [],
-      candidates: [],
-      parsed_shift: detectShiftFromText(text),
-      parsed_dates: detectDateFromText(text).map(function(d){ return d.date; }),
-      needs_review: true,
-      created_at: new Date().toISOString()
-    });
-    if (typeof window.toast === 'function') window.toast('Lembrete por voz criado: ' + task.title, 'success');
-    setDebug('Lembrete por voz: ' + task.title);
+  function savePendingTaskFromComposer() {
+    var input = pendingTaskInput();
+    var text = input ? input.value.trim() : '';
+    if(!text){
+      setPendingTaskInputStatus('Digite algo ou use o microfone antes de salvar.');
+      if (typeof window.toast === 'function') window.toast('Digite a pendência antes de salvar.', 'warning');
+      return;
+    }
+    var origin = pendingInputSource === 'voice' ? 'voice' : 'manual';
+    var task = upsertTask(buildPendingTask(text, origin));
+    resetPendingTaskComposer({ status:'Pendência salva. Você pode criar outra por texto ou por voz.' });
+    if (typeof window.toast === 'function') window.toast('Pendência criada: ' + task.title, 'success');
+    setDebug('Pendência criada (' + origin + '): ' + task.title);
   }
 
   window.startVoiceTask = startVoiceTask;
+  window.savePendingTaskFromComposer = savePendingTaskFromComposer;
 
   document.addEventListener('FEMIC_EXTENSION_EVENT_CHANNEL', function(event){
     var data = event && event.detail;
@@ -2066,6 +2142,20 @@
     loadTasksFromCloud(true);
     var voiceBtn = el('voiceTaskBtn');
     if (voiceBtn) voiceBtn.addEventListener('click', startVoiceTask);
+    var pendingInput = pendingTaskInput();
+    if(pendingInput) pendingInput.addEventListener('input', function(){
+      if(this.value.trim()) pendingInputSource = voiceListening ? 'voice' : 'manual';
+      else if(!voiceListening) pendingInputSource = 'manual';
+      syncPendingTaskComposer();
+    });
+    var saveTextTaskBtn = el('saveTextTaskBtn');
+    if(saveTextTaskBtn) saveTextTaskBtn.addEventListener('click', savePendingTaskFromComposer);
+    var clearPendingTaskBtn = el('clearPendingTaskBtn');
+    if(clearPendingTaskBtn) clearPendingTaskBtn.addEventListener('click', function(){
+      stopVoiceTask();
+      resetPendingTaskComposer({ status:'Campo limpo. Você pode digitar ou usar o microfone novamente.' });
+    });
+    resetPendingTaskComposer();
     var assistantToggleBtn = el('assistantTogglePatientModeBtn');
     if(assistantToggleBtn) assistantToggleBtn.addEventListener('click', function(){
       var showingNew = !(el('assistantNewPatientFields') && el('assistantNewPatientFields').classList.contains('hidden'));

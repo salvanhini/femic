@@ -4699,6 +4699,42 @@ textarea{
   background:linear-gradient(180deg,rgba(243,249,252,.95),rgba(255,255,255,.92));
 }
 
+#panel-pendencias .pending-composer{
+  display:grid;
+  gap:12px;
+  margin-bottom:16px;
+  padding:14px;
+  border:1px solid rgba(11,60,111,.10);
+  border-radius:18px;
+  background:linear-gradient(180deg,rgba(248,252,254,.96),rgba(255,255,255,.94));
+}
+
+#panel-pendencias .pending-composer textarea{
+  width:100%;
+  min-height:96px;
+  resize:vertical;
+  border-radius:16px;
+  border:1px solid rgba(11,60,111,.12);
+  padding:12px 14px;
+  background:#fff;
+  color:var(--ui-text);
+  line-height:1.45;
+}
+
+#panel-pendencias .pending-composer-actions{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+#panel-pendencias .pending-composer-actions .toolbar{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
 #panel-pendencias .pending-filters select{
   flex:1 1 220px;
   max-width:280px;
@@ -5206,6 +5242,18 @@ textarea{
 
   #panel-pendencias .pending-filters{
     padding:8px;
+  }
+
+  #panel-pendencias .pending-composer-actions{
+    align-items:flex-start;
+  }
+
+  #panel-pendencias .pending-composer-actions .toolbar{
+    width:100%;
+  }
+
+  #panel-pendencias .pending-composer-actions .toolbar .btn{
+    flex:1 1 160px;
   }
 
   #panel-pendencias .pending-filters select{
