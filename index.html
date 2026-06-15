@@ -132,7 +132,7 @@
     <div class="wrap">
 
   <section class="panel active" id="panel-agenda">
-    <div class="card agenda-surface" style="margin-bottom:16px"><div class="toolbar agenda-toolbar"><div class="view-switch" role="tablist" aria-label="Visualização da agenda"><button class="view-chip" id="viewDayBtn" type="button" onclick="showPanel('day')">Dia</button><button class="view-chip active" id="viewWeekBtn" type="button" onclick="setAgendaViewMode('week')">Semana</button><button class="view-chip" id="viewMonthBtn" type="button" onclick="setAgendaViewMode('month')">Mês</button></div><div class="toolbar"><button class="btn" onclick="prevPeriod()">◀</button><button class="btn ghost" onclick="goToday()">Hoje</button><button class="btn" onclick="nextPeriod()">▶</button></div><select id="viewMode" onchange="renderAgenda()" style="display:none"><option value="week">Semana</option><option value="month">Mês</option></select><strong id="periodLabel" style="align-self:center;color:var(--primary)"></strong><div class="legend-row"><span class="legend"><i class="legend-dot" style="background:#f59e0b"></i>Agendado</span><span class="legend"><i class="legend-dot" style="background:#2563eb"></i>Confirmado</span><span class="legend"><i class="legend-dot" style="background:#10b981"></i>Concluído</span><span class="legend"><i class="legend-dot" style="background:#ef4444"></i>Cancelado</span></div></div><div class="agenda-filterbar"><select id="agendaStatusFilter" onchange="renderAgenda()"><option value="all">Todos os status</option><option value="agendado">Agendado</option><option value="confirmado">Confirmado</option><option value="concluido">Concluído</option><option value="cancelado">Cancelado</option></select><select id="agendaServiceFilter" onchange="renderAgenda()"><option value="all">Todos os serviços</option></select><button class="btn ghost" onclick="clearAgendaFilters()">Limpar filtros</button></div></div>
+    <div class="card agenda-surface" style="margin-bottom:16px"><div class="toolbar agenda-toolbar"><div class="view-switch" role="tablist" aria-label="Visualização da agenda"><button class="view-chip" id="viewDayBtn" type="button" onclick="showPanel('day')">Dia</button><button class="view-chip active" id="viewWeekBtn" type="button" onclick="setAgendaViewMode('week')">Semana</button><button class="view-chip" id="viewMonthBtn" type="button" onclick="setAgendaViewMode('month')">Mês</button></div><div class="toolbar"><button class="btn" onclick="prevPeriod()">◀</button><button class="btn ghost" onclick="goToday()">Hoje</button><button class="btn" onclick="nextPeriod()">▶</button></div><select id="viewMode" onchange="renderAgenda()" style="display:none"><option value="week">Semana</option><option value="month">Mês</option></select><strong id="periodLabel" style="align-self:center;color:var(--primary)"></strong><div class="legend-row"><span class="legend"><i class="legend-dot" style="background:#f59e0b"></i>Agendado</span><span class="legend"><i class="legend-dot" style="background:#2563eb"></i>Confirmado</span><span class="legend"><i class="legend-dot" style="background:#10b981"></i>Concluído</span><span class="legend"><i class="legend-dot" style="background:#ef4444"></i>Cancelado</span><span class="legend"><i class="legend-dot package-alert"></i>Precisa renovar ou planejar pacote</span></div></div><div class="agenda-filterbar"><select id="agendaStatusFilter" onchange="renderAgenda()"><option value="all">Todos os status</option><option value="agendado">Agendado</option><option value="confirmado">Confirmado</option><option value="concluido">Concluído</option><option value="cancelado">Cancelado</option></select><select id="agendaServiceFilter" onchange="renderAgenda()"><option value="all">Todos os serviços</option></select><button class="btn ghost" onclick="clearAgendaFilters()">Limpar filtros</button></div></div>
     <div id="monthView"><div class="calendar-head" id="monthHead"></div><div id="monthCalendar"></div></div>
     <div id="weekView" class="hidden"><div id="weekBoard"></div></div>
     <details class="card appointment-search-card appointment-search-drawer">
@@ -171,8 +171,9 @@
   <section class="panel" id="panel-patients">
     <div class="card">
       <div class="section-title"><div><div class="eyebrow">Novo paciente</div><h3>Cadastro direto no Supabase da agenda</h3></div></div>
-      <div class="grid grid-2"><div class="field"><label>Nome completo *</label><input id="newPatientName" placeholder="Nome completo"></div><div class="field"><label>WhatsApp *</label><input id="newPatientWhatsapp" placeholder="(16) 99999-9999" inputmode="numeric" autocomplete="tel" maxlength="15" oninput="formatWhatsappInput(this)"></div></div>
-      <div class="field" style="margin-top:12px"><label>Patologia / observação</label><input id="newPatientPathology" placeholder="Patologia, queixa ou observação"></div>
+        <div class="grid grid-2"><div class="field"><label>Nome completo *</label><input id="newPatientName" placeholder="Nome completo"></div><div class="field"><label>WhatsApp *</label><input id="newPatientWhatsapp" placeholder="(16) 99999-9999" inputmode="numeric" autocomplete="tel" maxlength="15" oninput="formatWhatsappInput(this)"></div></div>
+        <div class="grid grid-2" style="margin-top:12px"><div class="field"><label>Data de nascimento</label><input id="newPatientBirthDate" type="date"></div><div class="field"><label>Como nos encontrou</label><input id="newPatientReferralSource" placeholder="Instagram, indicação, médico, retorno..."></div></div>
+        <div class="field" style="margin-top:12px"><label>Patologia / observação</label><input id="newPatientPathology" placeholder="Patologia, queixa ou observação"></div>
       <button class="btn primary" style="margin-top:12px" onclick="savePatient()">Salvar paciente no Supabase</button>
     </div>
     <div class="card patient-search-shell" style="margin-top:16px">
@@ -297,13 +298,25 @@
     <div class="grid grid-2 prontuario-main-grid" style="margin-top:16px">
       <div class="card prontuario-anamnese-card">
         <div class="section-title"><div><div class="eyebrow">Anamnese</div><h3>Base clínica do paciente</h3><p class="muted small prontuario-card-note">Use o Assistente IA no topo para criar um rascunho inicial. Revise e salve quando estiver pronto.</p></div></div>
-        <div class="grid" style="gap:12px">
-          <div class="field"><label>Queixa principal</label><textarea id="anamChief" rows="3"></textarea></div>
-          <div class="field"><label>História atual</label><textarea id="anamHistory" rows="4"></textarea></div>
-          <div class="field"><label>Diagnóstico / hipótese</label><textarea id="anamDiagnosis" rows="3"></textarea></div>
-          <div class="field"><label>Limitações funcionais</label><textarea id="anamLimitations" rows="3"></textarea></div>
-          <div class="field"><label>Objetivos</label><textarea id="anamGoals" rows="3"></textarea></div>
-          <div class="field"><label>Observações</label><textarea id="anamObs" rows="3"></textarea></div>
+        <div class="quick-note small" id="anamAgeSupport">Selecione um paciente para ver a idade e o contexto clínico rápido.</div>
+        <div class="toolbar" style="margin-top:12px; flex-wrap:wrap">
+          <button class="btn" type="button" onclick="fillAnamneseWithAI()">Organizar com IA</button>
+          <button class="btn ghost" type="button" onclick="askAnamneseMissingWithAI()">Perguntar o que falta</button>
+          <button class="btn ghost" type="button" onclick="summarizeAnamneseWithAI()">Gerar síntese clínica</button>
+        </div>
+        <div class="quick-note small hidden" id="anamAiQuestions" style="margin-top:12px"></div>
+        <div class="grid" style="gap:12px; margin-top:12px">
+          <div class="field"><label>Queixa principal</label><textarea id="anamChief" rows="2" placeholder="Motivo principal da consulta em linguagem do paciente."></textarea></div>
+          <div class="field"><label>História organizada da queixa</label><textarea id="anamHistory" rows="3" placeholder="Quando começou, piora, melhora, irritabilidade, impacto funcional."></textarea></div>
+          <div class="field"><label>Ocupação / rotina de trabalho</label><textarea id="anamOccupation" rows="2" placeholder="Profissão, demandas repetitivas, postura, carga e rotina."></textarea></div>
+          <div class="field"><label>Atividade física e relação com o quadro</label><textarea id="anamActivity" rows="2" placeholder="O que gosta de fazer, o que evita e como isso se relaciona ao problema."></textarea></div>
+          <div class="field"><label>Red flags</label><textarea id="anamRedFlags" rows="2" placeholder="Marque ausência ou presença de sinais de alerta relevantes."></textarea></div>
+          <div class="field"><label>Tratamentos prévios e percepção</label><textarea id="anamPreviousTreatments" rows="2" placeholder="O que já fez, o que ajudou, o que não ajudou e por quê."></textarea></div>
+          <div class="field"><label>Fatores psicossociais</label><textarea id="anamPsychosocial" rows="2" placeholder="Sono, estresse, humor, apoio familiar, contexto de vida."></textarea></div>
+          <div class="field"><label>Medos e evitação</label><textarea id="anamFearAvoidance" rows="2" placeholder="Movimentos ou atividades que teme fazer e comportamento de proteção."></textarea></div>
+          <div class="field"><label>Objetivos e expectativas</label><textarea id="anamGoals" rows="2" placeholder="O que o paciente quer voltar a fazer e o que espera do tratamento."></textarea></div>
+          <div class="field"><label>Observações clínicas</label><textarea id="anamObs" rows="2" placeholder="Pontos clínicos curtos relevantes para revisão profissional."></textarea></div>
+          <div class="field"><label>Síntese clínica</label><textarea id="anamClinicalSummary" rows="3" placeholder="Resumo biopsicossocial curto, revisável e útil para o plano terapêutico."></textarea></div>
         </div>
         <div class="toolbar" style="margin-top:12px">
           <button class="btn primary" onclick="saveUnifiedAnamnese()">Salvar anamnese</button>
@@ -966,6 +979,14 @@
           <input id="editPatientWhatsapp" placeholder="(16) 99999-9999" inputmode="numeric" maxlength="15" oninput="formatWhatsappInput(this)" onkeydown="if(event.key==='Enter')saveEditPatient()">
         </div>
         <div class="field">
+          <label>Data de nascimento</label>
+          <input id="editPatientBirthDate" type="date" onkeydown="if(event.key==='Enter')saveEditPatient()">
+        </div>
+        <div class="field">
+          <label>Como nos encontrou</label>
+          <input id="editPatientReferralSource" placeholder="Instagram, indicação, médico, retorno..." onkeydown="if(event.key==='Enter')saveEditPatient()">
+        </div>
+        <div class="field">
           <label>Patologia / observação</label>
           <input id="editPatientPathology" placeholder="Patologia, queixa ou observação" onkeydown="if(event.key==='Enter')saveEditPatient()">
         </div>
@@ -1059,6 +1080,7 @@ if ('caches' in window) {
 }
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js"></script>
+<script src="js/femic-clinical-utils.js?v=clinical-utils-1"></script>
 <script src="js/femic-agenda.js?v=secure-cloud-9"></script>
 <script src="js/femic-unified.js?v=receipt-docs-2"></script>
 <script src="js/femic-pending-task-utils.js?v=pending-utils-1"></script>

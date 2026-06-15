@@ -191,6 +191,7 @@ window.location.replace('index.html');
       <div class="card">
         <div class="section-title"><div><div class="eyebrow">Novo paciente</div><h3>Cadastro direto no Supabase da agenda</h3></div></div>
         <div class="grid grid-2"><div class="field"><label>Nome completo *</label><input id="newPatientName" placeholder="Nome completo"></div><div class="field"><label>WhatsApp *</label><input id="newPatientWhatsapp" placeholder="(16) 99999-9999" inputmode="numeric" autocomplete="tel" maxlength="15" oninput="formatWhatsappInput(this)"></div></div>
+        <div class="grid grid-2" style="margin-top:12px"><div class="field"><label>Data de nascimento</label><input id="newPatientBirthDate" type="date"></div><div class="field"><label>Como nos encontrou</label><input id="newPatientReferralSource" placeholder="Instagram, indicação, médico, retorno..."></div></div>
         <div class="field" style="margin-top:12px"><label>Patologia / observação</label><input id="newPatientPathology" placeholder="Patologia, queixa ou observação"></div>
         <button class="btn primary" style="margin-top:12px" onclick="savePatient()">Salvar paciente no Supabase</button>
       </div>
@@ -546,6 +547,14 @@ window.location.replace('index.html');
           <input id="editPatientWhatsapp" placeholder="(16) 99999-9999" inputmode="numeric" maxlength="15" oninput="formatWhatsappInput(this)" onkeydown="if(event.key==='Enter')saveEditPatient()">
         </div>
         <div class="field">
+          <label>Data de nascimento</label>
+          <input id="editPatientBirthDate" type="date" onkeydown="if(event.key==='Enter')saveEditPatient()">
+        </div>
+        <div class="field">
+          <label>Como nos encontrou</label>
+          <input id="editPatientReferralSource" placeholder="Instagram, indicação, médico, retorno..." onkeydown="if(event.key==='Enter')saveEditPatient()">
+        </div>
+        <div class="field">
           <label>Patologia / observação</label>
           <input id="editPatientPathology" placeholder="Patologia, queixa ou observação" onkeydown="if(event.key==='Enter')saveEditPatient()">
         </div>
@@ -614,6 +623,7 @@ if ('caches' in window) {
   });
 }
 </script>
+<script src="js/femic-clinical-utils.js?v=clinical-utils-1"></script>
 <script src="js/femic-agenda.js?v=secure-cloud-9"></script>
 <script src="js/femic-pending-task-utils.js?v=pending-utils-1"></script>
 <script src="js/femic-ai-center.js?v=ai-center-5"></script>

@@ -1214,16 +1214,36 @@
   function readFieldValue(id){
     return el(id) ? String(el(id).value || '').trim() : '';
   }
+  function renderAnamneseAIQuestions(lines){
+    var target = el('anamAiQuestions');
+    var items = Array.isArray(lines) ? lines.filter(Boolean) : [];
+    if(!target) return;
+    if(!items.length){
+      target.textContent = '';
+      target.classList.add('hidden');
+      return;
+    }
+    target.innerHTML = '<strong>Perguntas sugeridas pela IA:</strong><br>' + items.map(function(item){ return '• ' + esc(item); }).join('<br>');
+    target.classList.remove('hidden');
+  }
   function buildAnamneseContext(patient){
     var lines = [];
     if(patient && patient.name) lines.push('Paciente: ' + patient.name);
+    var age = patientAgeLabel(patient);
+    if(age) lines.push('Idade: ' + age + ' anos');
+    if(patient && patient.referral_source) lines.push('Como nos encontrou: ' + patient.referral_source);
     if(patient && patient.pathology) lines.push('Patologia conhecida: ' + patient.pathology);
     if(readFieldValue('anamChief')) lines.push('Queixa principal atual: ' + readFieldValue('anamChief'));
-    if(readFieldValue('anamHistory')) lines.push('Historia atual registrada: ' + readFieldValue('anamHistory'));
-    if(readFieldValue('anamDiagnosis')) lines.push('Diagnostico/hipotese atual: ' + readFieldValue('anamDiagnosis'));
-    if(readFieldValue('anamLimitations')) lines.push('Limitacoes funcionais atuais: ' + readFieldValue('anamLimitations'));
+    if(readFieldValue('anamHistory')) lines.push('História organizada: ' + readFieldValue('anamHistory'));
+    if(readFieldValue('anamOccupation')) lines.push('Ocupação e rotina: ' + readFieldValue('anamOccupation'));
+    if(readFieldValue('anamActivity')) lines.push('Atividade física: ' + readFieldValue('anamActivity'));
+    if(readFieldValue('anamRedFlags')) lines.push('Red flags: ' + readFieldValue('anamRedFlags'));
+    if(readFieldValue('anamPreviousTreatments')) lines.push('Tratamentos prévios: ' + readFieldValue('anamPreviousTreatments'));
+    if(readFieldValue('anamPsychosocial')) lines.push('Fatores psicossociais: ' + readFieldValue('anamPsychosocial'));
+    if(readFieldValue('anamFearAvoidance')) lines.push('Medos e evitação: ' + readFieldValue('anamFearAvoidance'));
     if(readFieldValue('anamGoals')) lines.push('Objetivos atuais: ' + readFieldValue('anamGoals'));
-    if(readFieldValue('anamObs')) lines.push('Observacoes atuais: ' + readFieldValue('anamObs'));
+    if(readFieldValue('anamObs')) lines.push('Observações atuais: ' + readFieldValue('anamObs'));
+    if(readFieldValue('anamClinicalSummary')) lines.push('Síntese clínica atual: ' + readFieldValue('anamClinicalSummary'));
     return lines.join('\n');
   }
   function buildEvolutionContext(patient){
@@ -1242,15 +1262,11 @@
     if(!patient) return '';
     var explicit = patient.age || patient.idade;
     if(explicit) return String(explicit);
+    var utils = window.FEMICClinicalUtils || null;
+    if(!utils || typeof utils.calculateAge !== 'function') return '';
     var birth = patient.birth_date || patient.birthdate || patient.birth || patient.data_nascimento;
-    if(!birth) return '';
-    var date = new Date(String(birth).slice(0,10) + 'T00:00:00');
-    if(isNaN(date.getTime())) return '';
-    var today = new Date();
-    var age = today.getFullYear() - date.getFullYear();
-    var m = today.getMonth() - date.getMonth();
-    if(m < 0 || (m === 0 && today.getDate() < date.getDate())) age -= 1;
-    return age > 0 && age < 120 ? String(age) : '';
+    var age = utils.calculateAge(birth);
+    return age != null ? String(age) : '';
   }
   function buildTreatmentContext(patient){
     var unified = getUnifiedState();
@@ -1263,9 +1279,13 @@
     if(patient && patient.pathology) lines.push('Patologia/observacao do cadastro: ' + patient.pathology);
     if(anamnese.chief_complaint || readFieldValue('anamChief')) lines.push('Queixa principal: ' + (readFieldValue('anamChief') || anamnese.chief_complaint));
     if(anamnese.history || readFieldValue('anamHistory')) lines.push('Historia/anamnese: ' + (readFieldValue('anamHistory') || anamnese.history));
-    if(anamnese.diagnosis || readFieldValue('anamDiagnosis')) lines.push('Hipotese atual: ' + (readFieldValue('anamDiagnosis') || anamnese.diagnosis));
-    if(anamnese.limitations || readFieldValue('anamLimitations')) lines.push('Limitacoes funcionais: ' + (readFieldValue('anamLimitations') || anamnese.limitations));
+    if(anamnese.occupation_routine || readFieldValue('anamOccupation')) lines.push('Ocupacao e rotina: ' + (readFieldValue('anamOccupation') || anamnese.occupation_routine));
+    if(anamnese.physical_activity_context || readFieldValue('anamActivity')) lines.push('Atividade fisica: ' + (readFieldValue('anamActivity') || anamnese.physical_activity_context));
+    if(anamnese.red_flags || readFieldValue('anamRedFlags')) lines.push('Red flags: ' + (readFieldValue('anamRedFlags') || anamnese.red_flags));
+    if(anamnese.psychosocial_factors || readFieldValue('anamPsychosocial')) lines.push('Fatores psicossociais: ' + (readFieldValue('anamPsychosocial') || anamnese.psychosocial_factors));
+    if(anamnese.fear_avoidance || readFieldValue('anamFearAvoidance')) lines.push('Medos e evitacao: ' + (readFieldValue('anamFearAvoidance') || anamnese.fear_avoidance));
     if(anamnese.goals || readFieldValue('anamGoals')) lines.push('Objetivos funcionais: ' + (readFieldValue('anamGoals') || anamnese.goals));
+    if(anamnese.clinical_summary || readFieldValue('anamClinicalSummary')) lines.push('Sintese clinica: ' + (readFieldValue('anamClinicalSummary') || anamnese.clinical_summary));
     if(readFieldValue('evolutionConduct')) lines.push('Conduta/evolucao digitada agora: ' + readFieldValue('evolutionConduct'));
     if(readFieldValue('evolutionGuidance')) lines.push('Orientacoes digitadas agora: ' + readFieldValue('evolutionGuidance'));
     lastEvolutions.forEach(function(item, idx){
@@ -1304,7 +1324,7 @@
     var target = el('clinicalAiChoices');
     if(!target) return;
     var choices = [
-      { mode:'anamnese', title:'Criar anamnese', text:'Preenche queixa, historia, hipotese, limitacoes e objetivos.', tone:'start' },
+      { mode:'anamnese', title:'Organizar anamnese', text:'Distribui o relato nos blocos rápidos biopsicossociais.', tone:'start' },
       { mode:'evolucao', title:'Registrar evolucao', text:'Resume a sessao de hoje em evolucao clinica e orientacoes.', tone:'session' },
       { mode:'tratamento', title:'Planejar tratamento', text:'Gera um plano FEMIC faseado para revisar, copiar ou aplicar.', tone:'plan' }
     ];
@@ -1349,7 +1369,7 @@
     setClinicalAIInputVisible(true);
     if(el('clinicalAiModalTitle')) el('clinicalAiModalTitle').textContent = mode === 'anamnese' ? 'Gerar rascunho de anamnese' : (mode === 'tratamento' ? 'Assistente de tratamento FEMIC' : 'Gerar rascunho de evolucao clinica');
     if(el('clinicalAiModalHelper')) el('clinicalAiModalHelper').textContent = mode === 'anamnese'
-      ? 'Descreva queixa, historia, limitacoes e objetivo. Voce pode complementar o que ja esta na ficha e usar o microfone para ditar o contexto.'
+      ? 'Descreva o caso de forma livre. A IA vai organizar a anamnese rápida em queixa, história, ocupação, atividade física, red flags, psicossociais e síntese clínica.'
       : (mode === 'tratamento'
         ? 'Revise o contexto do paciente e acrescente detalhes clinicos livres. A IA vai gerar um plano de tratamento para voce revisar, copiar ou aplicar na evolucao.'
         : 'Descreva a sessao, resposta do paciente, conduta e orientacoes. Voce pode usar o microfone e complementar o que ja estiver escrito.');
@@ -1451,18 +1471,48 @@
   }
   async function generateAnamneseDraft(patient, notes){
     var prompt = [
-      'Monte anamnese fisioterapeutica curta em JSON.',
+      'Monte anamnese fisioterapeutica rápida e biopsicossocial em JSON.',
       'Responda apenas JSON valido, sem markdown.',
-      'Campos obrigatorios: chief_complaint, history, diagnosis, limitations, goals, obs.',
-      'Limite por campo: ate 220 caracteres.',
-      'Preencha todos os campos mesmo que de forma concisa e segura.',
+      'Campos obrigatorios: queixa_principal, historia_organizada, ocupacao_rotina_trabalho, atividade_fisica_relacao_com_quadro, red_flags_check, tratamentos_previos_e_percepcao, fatores_psicossociais, medos_e_evitacao, objetivos_expectativas, observacoes_clinicas, sintese_clinica.',
+      'Limite por campo: ate 260 caracteres. Seja curto, objetivo e util para prontuario.',
+      'Se algum dado nao foi informado, escreva de forma segura e concisa como "Nao informado" ou "Sem relato relevante".',
       'Paciente: ' + patient.name,
+      patientAgeLabel(patient) ? 'Idade: ' + patientAgeLabel(patient) + ' anos' : '',
+      patient.referral_source ? 'Como nos encontrou: ' + patient.referral_source : '',
       'Patologia conhecida: ' + (patient.pathology || 'nao informada'),
       'Contexto clinico:',
       notes
-    ].join('\n');
+    ].filter(Boolean).join('\n');
     var external = await callExternalWithFallback(prompt, getConfig().provider);
     return { provider: external.provider, draft: extractJson(external.text) };
+  }
+  async function generateAnamneseMissingQuestions(patient){
+    var prompt = [
+      'Analise a anamnese fisioterapeutica rápida abaixo e devolva apenas JSON valido.',
+      'Campos obrigatorios: missing_questions.',
+      'missing_questions deve ser um array com 3 a 5 perguntas curtas, práticas e clinicamente úteis.',
+      'Use foco biopsicossocial: red flags, ocupacao, atividade fisica, tratamentos previos, fatores psicossociais, medo/evitacao e objetivos.',
+      'Nao repita o que ja esta claro.',
+      'Paciente: ' + patient.name,
+      patientAgeLabel(patient) ? 'Idade: ' + patientAgeLabel(patient) + ' anos' : '',
+      'Anamnese atual:',
+      buildAnamneseContext(patient)
+    ].filter(Boolean).join('\n');
+    var external = await callExternalWithFallback(prompt, getConfig().provider);
+    return { provider: external.provider, draft: extractJson(external.text) };
+  }
+  async function generateAnamneseSummary(patient){
+    var prompt = [
+      'Gere uma sintese clinica curta e revisavel para prontuario fisioterapeutico.',
+      'Responda apenas texto simples, sem markdown, com no maximo 420 caracteres.',
+      'Integre os pontos biologicos, psicologicos e sociais mais relevantes sem diagnostico definitivo.',
+      'Paciente: ' + patient.name,
+      patientAgeLabel(patient) ? 'Idade: ' + patientAgeLabel(patient) + ' anos' : '',
+      'Anamnese atual:',
+      buildAnamneseContext(patient)
+    ].filter(Boolean).join('\n');
+    var external = await callExternalWithFallback(prompt, getConfig().provider);
+    return { provider: external.provider, draft: String(external.text || '').trim() };
   }
   async function generateEvolutionDraft(patient, notes){
     var unified = getUnifiedState();
@@ -1542,6 +1592,37 @@
   }
   async function fillAnamneseWithAI(){
     openClinicalAIModal('anamnese');
+  }
+  async function askAnamneseMissingWithAI(){
+    var patient = getSelectedPatientOrWarn();
+    if(!patient) return;
+    setDebug('Buscando perguntas curtas para completar a anamnese...');
+    setClinicalAiStatus('Analisando o que falta na anamnese...');
+    try{
+      var result = await generateAnamneseMissingQuestions(patient);
+      var questions = Array.isArray(result.draft.missing_questions) ? result.draft.missing_questions : [];
+      renderAnamneseAIQuestions(questions);
+      setDebug('Perguntas de anamnese sugeridas via ' + providerLabel(result.provider) + '.');
+      if(typeof window.toast === 'function') window.toast('Perguntas sugeridas para completar a anamnese.', 'success');
+    }catch(error){
+      setDebug('Falha ao sugerir perguntas da anamnese: ' + (error.message || 'erro desconhecido'));
+      if(typeof window.toast === 'function') window.toast('Nao consegui sugerir perguntas agora: ' + error.message, 'error');
+    }
+  }
+  async function summarizeAnamneseWithAI(){
+    var patient = getSelectedPatientOrWarn();
+    if(!patient) return;
+    setDebug('Gerando sintese clinica da anamnese...');
+    setClinicalAiStatus('Gerando síntese clínica...');
+    try{
+      var result = await generateAnamneseSummary(patient);
+      if(el('anamClinicalSummary')) el('anamClinicalSummary').value = result.draft;
+      setDebug('Síntese clínica gerada via ' + providerLabel(result.provider) + '.');
+      if(typeof window.toast === 'function') window.toast('Síntese clínica atualizada.', 'success');
+    }catch(error){
+      setDebug('Falha ao gerar síntese clínica: ' + (error.message || 'erro desconhecido'));
+      if(typeof window.toast === 'function') window.toast('Nao consegui gerar a síntese agora: ' + error.message, 'error');
+    }
   }
   async function fillEvolutionWithAI(){
     openClinicalAIModal('evolucao');
@@ -1680,9 +1761,14 @@
     }
   };
   window.fillAnamneseWithAI = fillAnamneseWithAI;
+  window.askAnamneseMissingWithAI = askAnamneseMissingWithAI;
+  window.summarizeAnamneseWithAI = summarizeAnamneseWithAI;
   window.fillEvolutionWithAI = fillEvolutionWithAI;
   window.FEMICClinicalAI = Object.assign(window.FEMICClinicalAI || {}, {
     generateDocumentDraft: generateDocumentDraft,
+    generateAnamneseDraft: generateAnamneseDraft,
+    generateAnamneseMissingQuestions: generateAnamneseMissingQuestions,
+    generateAnamneseSummary: generateAnamneseSummary,
     providerLabel: providerLabel
   });
   window.closeClinicalAIModal = closeClinicalAIModal;

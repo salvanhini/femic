@@ -3611,7 +3611,7 @@ textarea,
 
 #panel-prontuario #prontuarioKpis{
   display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
+  grid-template-columns:repeat(4,minmax(0,1fr));
   gap:12px;
 }
 
@@ -3634,7 +3634,16 @@ textarea,
 
 #panel-prontuario .prontuario-anamnese-card textarea,
 #panel-prontuario .prontuario-evolucao-card textarea{
-  min-height:92px;
+  min-height:78px;
+}
+
+#panel-prontuario #anamClinicalSummary{
+  min-height:110px;
+}
+
+#panel-prontuario #anamAiQuestions{
+  border:1px dashed rgba(11,60,111,.16);
+  background:rgba(248,251,253,.96);
 }
 
 #panel-prontuario .prontuario-timeline-card #prontuarioTimeline{
@@ -4085,6 +4094,7 @@ textarea{
 }
 
 #monthCalendar .month-agenda-item{
+  position:relative;
   display:grid;
   grid-template-columns:92px minmax(0,1fr) auto;
   gap:12px;
@@ -4097,6 +4107,33 @@ textarea{
   padding:10px 12px;
   text-align:left;
   cursor:pointer;
+}
+
+.appointment-package-alert-dot{
+  position:absolute;
+  top:8px;
+  right:8px;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#ef4444;
+  box-shadow:0 0 0 2px rgba(239,68,68,.14);
+}
+
+.legend-dot.package-alert{
+  background:#ef4444;
+  box-shadow:0 0 0 3px rgba(239,68,68,.14);
+}
+
+.appointment-package-alert-dot.week{
+  top:6px;
+  right:6px;
+}
+
+.appointment-package-alert-dot.inline{
+  position:static;
+  display:inline-block;
+  flex:0 0 auto;
 }
 
 #monthCalendar .month-agenda-item.status-agendado{border-left-color:#f59e0b}

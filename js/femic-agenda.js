@@ -21,6 +21,8 @@ CREATE TABLE patients (
   name TEXT NOT NULL,
   pathology TEXT,
   whatsapp TEXT,
+  birth_date DATE,
+  referral_source TEXT,
   archived BOOLEAN DEFAULT FALSE,
   archived_at TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
@@ -93,6 +95,13 @@ CREATE TABLE clinical_anamneses (
   limitations TEXT,
   goals TEXT,
   obs TEXT,
+  occupation_routine TEXT,
+  physical_activity_context TEXT,
+  red_flags TEXT,
+  previous_treatments TEXT,
+  psychosocial_factors TEXT,
+  fear_avoidance TEXT,
+  clinical_summary TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
@@ -680,12 +689,14 @@ async function createAssistantPatient(payload={}){
   const name=String(payload.name||'').trim();
   const whatsapp=assistantFormatPhone(payload.whatsapp||payload.phone||'');
   const pathology=String(payload.pathology||'').trim();
+  const birthDate=String(payload.birth_date||'').slice(0,10);
+  const referralSource=String(payload.referral_source||'').trim();
   if(!name)throw new Error('Informe o nome do paciente.');
   if(!/^\(\d{2}\)\s\d{4,5}-\d{4}$/.test(whatsapp))throw new Error('Informe o WhatsApp completo para criar o paciente.');
   const phone=cleanPhone(whatsapp);
   const dup=patients.find(p=>p.archived!==true&&(cleanPhone(p.whatsapp)===phone||String(p.name||'').trim().toLowerCase()===name.toLowerCase()));
   if(dup)return dup;
-  const record={id:makePatientId(),name,pathology,whatsapp,archived:false,archived_at:null};
+  const record={id:makePatientId(),name,pathology,whatsapp,birth_date:birthDate||null,referral_source:referralSource,archived:false,archived_at:null};
   await api('patients',{method:'POST',body:JSON.stringify(record)});
   await loadAll(true);
   return patientById(record.id)||record;
@@ -1041,6 +1052,7 @@ function renderMonth(){
   $('periodLabel').textContent=currentDate.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
   $('monthHead').innerHTML=`<div class="month-list-head"><div><div class="eyebrow">Agenda do mês</div><h3>${currentDate.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</h3></div><div class="month-list-tools"><button class="btn ghost" type="button" onclick="toggleMonthEmptyDays()">${showEmpty?'Ocultar dias vazios':'Mostrar dias vazios'}</button><span class="muted small">Lista mensal oficial da FEMIC</span></div></div>`;
   const daysInMonth=new Date(y,m+1,0).getDate();
+  const packageAlertCache=Object.create(null);
   let html='<div class="month-agenda-list">';
   let rendered=0,totalAppointments=0,totalConfirmed=0,totalDone=0;
   for(let day=1;day<=daysInMonth;day++){
@@ -1068,7 +1080,8 @@ function renderMonth(){
     html+=list.length?`<div class="month-agenda-items">`+list.map(a=>{
       const patient=patientNames[String(a.patient_id)]||'Paciente';
       const service=serviceNames[String(a.service_id)]||'Sem serviço';
-      return `<button class="month-agenda-item status-${a.status}" type="button" onclick="openAppt('${a.appointment_date}','${a.id}')"><span class="month-agenda-time"><strong>${normalizeTime(a.start_time)}</strong><small>${normalizeTime(a.end_time)}</small></span><span class="month-agenda-main"><strong>${esc(patient)}</strong><small>${esc(service)}</small></span></button>`;
+      const alert=appointmentPackageAlertMeta(a,packageAlertCache);
+      return `<button class="month-agenda-item status-${a.status}" type="button" onclick="openAppt('${a.appointment_date}','${a.id}')">${alert.show?`<span class="appointment-package-alert-dot" title="${esc(alert.text)}" aria-label="${esc(alert.text)}"></span>`:''}<span class="month-agenda-time"><strong>${normalizeTime(a.start_time)}</strong><small>${normalizeTime(a.end_time)}</small></span><span class="month-agenda-main"><strong>${esc(patient)}</strong><small>${esc(service)}</small></span></button>`;
     }).join('')+`</div>`:`<div class="month-agenda-empty"><span>Sem atendimentos neste dia.</span><button class="btn ghost" type="button" onclick="openAppt('${ds}')">Criar atendimento</button></div>`;
     html+=`</section>`;
   }
@@ -1333,6 +1346,7 @@ async function deleteAppointment(){const id=$('apptId').value;if(!id||!confirm('
 function renderDay(){
   const date=$('dayDate').value||todayIso();$('dayDate').value=date;
   const list=appointments.filter(a=>a.appointment_date===date).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));
+  const packageAlertCache=Object.create(null);
   const dayStatusLabels={concluido:'Concluídos',cancelado:'Cancelados'};
   const statusCounts={concluido:0,cancelado:0};
   const patientNames=Object.create(null);
@@ -1354,12 +1368,14 @@ function renderDay(){
     const nextStatuses=getNextStatuses(a.status);
     const patientLabel=patientNames[String(a.patient_id)]||'Paciente';
     const serviceLabel=serviceNames[String(a.service_id)]||'Sem serviço';
+    const alert=appointmentPackageAlertMeta(a,packageAlertCache);
     return `<div class="item status-${a.status}" style="padding:10px 12px">
       <div style="display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="appt-weekday" style="margin:0;font-size:.7rem">${weekdayShort(a.appointment_date)}</span>
           <strong style="font-size:.9rem">${normalizeTime(a.start_time)}–${normalizeTime(a.end_time)}</strong>
           <span class="status-chip ${a.status}" style="font-size:.68rem;padding:3px 6px">${label}</span>
+          ${alert.show?`<span class="appointment-package-alert-dot inline" title="${esc(alert.text)}" aria-label="${esc(alert.text)}"></span>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span style="font-size:.82rem;font-weight:700">${esc(patientLabel)}</span>
@@ -1843,6 +1859,23 @@ function packageScheduleStats(p,list){
   const lastAny=valid[valid.length-1]||null;
   return {total,remain,used:Math.max(0,total-remain),futures,futureCount:futures.length,lastFuture,lastAny,toSchedule:Math.max(0,remain-futures.length),alert:remain>0&&futures.length<=1};
 }
+function clinicalUtils(){return window.FEMICClinicalUtils||null}
+function appointmentPackageAlertMeta(appointment,cache){
+  if(!appointment)return {show:false,text:''};
+  const key=String(appointment.patient_id||'')+'::'+String(appointment.service_id||'');
+  cache=cache||Object.create(null);
+  if(!cache[key]){
+    const pkg=activePackageForService(appointment.patient_id,appointment.service_id);
+    cache[key]={stats:pkg?packageScheduleStats(pkg,appointments):null};
+  }
+  const stats=cache[key].stats;
+  const utils=clinicalUtils();
+  const show=utils&&typeof utils.shouldShowAppointmentPackageAlert==='function'
+    ? utils.shouldShowAppointmentPackageAlert(appointment,stats)
+    : !!(stats&&stats.alert&&stats.lastFuture&&String(stats.lastFuture.id||'')===String(appointment.id||''));
+  const text=utils&&typeof utils.packageAlertCopy==='function' ? utils.packageAlertCopy(stats) : (stats&&stats.alert?(stats.futureCount?'Última sessão futura do pacote':'Saldo sem agenda suficiente'):'');
+  return {show,text};
+}
 function packageScheduleLine(a){
   if(!a)return 'Sem futuras marcadas';
   return fmtWeekday(a.appointment_date)+' · '+fmtDate(a.appointment_date)+' · '+normalizeTime(a.start_time);
@@ -1914,10 +1947,11 @@ async function planPackageRecurrence(id){
     toast('Erro ao preparar recorrência: '+e.message,'error');
   }
 }
-function patientCard(p,linkedSet){const linked=linkedSet?linkedSet.has(String(p.id)):(appointments.some(a=>String(a.patient_id)===String(p.id))||packages.some(pk=>String(pk.patient_id)===String(p.id))||movements.some(m=>String(m.patient_id)===String(p.id)));const archived=p.archived===true;return `<div class="item patient-card ${archived?'archived':''}"><div class="item-top"><div><strong>${esc(p.name||'Sem nome')}</strong>${archived?' <span class="muted small">(inativo)</span>':''}<div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(p.pathology||'Sem patologia')}</div></div><div class="toolbar"><button class="btn" onclick="openPatient('${p.id}')">Ficha</button><button class="btn ghost" onclick="openEditPatient('${p.id}')">✏️ Editar</button>${archived?`<button class="btn success" onclick="reactivatePatient('${p.id}')">Reativar</button>`:`<button class="btn warning" onclick="archivePatient('${p.id}')">Inativar</button>`}<button class="btn danger" onclick="deletePatientSafe('${p.id}')">Apagar</button></div></div>${linked?'<div class="muted small" style="margin-top:8px">Possui vínculo: apagar será bloqueado; use inativar.</div>':''}</div>`}
+function patientCard(p,linkedSet){const linked=linkedSet?linkedSet.has(String(p.id)):(appointments.some(a=>String(a.patient_id)===String(p.id))||packages.some(pk=>String(pk.patient_id)===String(p.id))||movements.some(m=>String(m.patient_id)===String(p.id)));const archived=p.archived===true;const meta=[p.whatsapp||'Sem WhatsApp',p.birth_date?fmtDate(p.birth_date):'',p.referral_source||'',p.pathology||'Sem patologia'].filter(Boolean).join(' · ');return `<div class="item patient-card ${archived?'archived':''}"><div class="item-top"><div><strong>${esc(p.name||'Sem nome')}</strong>${archived?' <span class="muted small">(inativo)</span>':''}<div class="muted small">${esc(meta)}</div></div><div class="toolbar"><button class="btn" onclick="openPatient('${p.id}')">Ficha</button><button class="btn ghost" onclick="openEditPatient('${p.id}')">✏️ Editar</button>${archived?`<button class="btn success" onclick="reactivatePatient('${p.id}')">Reativar</button>`:`<button class="btn warning" onclick="archivePatient('${p.id}')">Inativar</button>`}<button class="btn danger" onclick="deletePatientSafe('${p.id}')">Apagar</button></div></div>${linked?'<div class="muted small" style="margin-top:8px">Possui vínculo: apagar será bloqueado; use inativar.</div>':''}</div>`}
 function formatWhatsappInput(input){let v=input.value.replace(/\D/g,'').slice(0,11);if(v.length>6)input.value=`(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;else if(v.length>2)input.value=`(${v.slice(0,2)}) ${v.slice(2)}`;else if(v.length>0)input.value=`(${v}`;}
 function makePatientId(){return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
-async function savePatient(){const name=$('newPatientName').value.trim();const whatsapp=$('newPatientWhatsapp').value.trim();const pathology=$('newPatientPathology').value.trim();if(!name){toast('Informe o nome do paciente.','warning');return}if(!/^\(\d{2}\)\s\d{5}-\d{4}$/.test(whatsapp)){toast('Digite o WhatsApp no formato (99) 99999-9999.','warning');return}const phone=cleanPhone(whatsapp);const dup=patients.find(p=>p.archived!==true&&(cleanPhone(p.whatsapp)===phone||String(p.name||'').trim().toLowerCase()===name.toLowerCase()));if(dup&&!confirm('Já existe paciente com nome ou WhatsApp parecido. Deseja cadastrar mesmo assim?'))return;const payload={id:makePatientId(),name,pathology,whatsapp,archived:false,archived_at:null};try{await api('patients',{method:'POST',body:JSON.stringify(payload)});$('newPatientName').value='';$('newPatientWhatsapp').value='';$('newPatientPathology').value='';await loadAll(true);toast('Paciente salvo no Supabase e disponível na agenda.','success')}catch(e){toast('Erro ao salvar paciente: '+e.message,'error')}}
+function isMissingPatientSchemaError(error){return /birth_date|referral_source|column .* does not exist/i.test(String(error&&error.message||error||''))}
+async function savePatient(){const name=$('newPatientName').value.trim();const whatsapp=$('newPatientWhatsapp').value.trim();const birthDate=$('newPatientBirthDate')?$('newPatientBirthDate').value:'';const referralSource=$('newPatientReferralSource')?$('newPatientReferralSource').value.trim():'';const pathology=$('newPatientPathology').value.trim();if(!name){toast('Informe o nome do paciente.','warning');return}if(!/^\(\d{2}\)\s\d{5}-\d{4}$/.test(whatsapp)){toast('Digite o WhatsApp no formato (99) 99999-9999.','warning');return}const phone=cleanPhone(whatsapp);const dup=patients.find(p=>p.archived!==true&&(cleanPhone(p.whatsapp)===phone||String(p.name||'').trim().toLowerCase()===name.toLowerCase()));if(dup&&!confirm('Já existe paciente com nome ou WhatsApp parecido. Deseja cadastrar mesmo assim?'))return;const payload={id:makePatientId(),name,pathology,whatsapp,birth_date:birthDate||null,referral_source:referralSource,archived:false,archived_at:null};try{await api('patients',{method:'POST',body:JSON.stringify(payload)});$('newPatientName').value='';$('newPatientWhatsapp').value='';if($('newPatientBirthDate'))$('newPatientBirthDate').value='';if($('newPatientReferralSource'))$('newPatientReferralSource').value='';$('newPatientPathology').value='';await loadAll(true);toast('Paciente salvo no Supabase e disponível na agenda.','success')}catch(e){toast(isMissingPatientSchemaError(e)?'Atualize o Supabase com o patch incremental de patients antes de usar data de nascimento e origem do paciente.':'Erro ao salvar paciente: '+e.message,isMissingPatientSchemaError(e)?'warning':'error')}}
 async function archivePatient(id){if(!confirm('Inativar este paciente? Ele sairá das listas de novo agendamento, mas o histórico será preservado.'))return;try{await api('patients?id=eq.'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({archived:true,archived_at:new Date().toISOString()})});await loadAll(true);toast('Paciente inativado.','success')}catch(e){toast('Erro ao inativar: '+e.message,'error')}}
 async function reactivatePatient(id){try{await api('patients?id=eq.'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({archived:false,archived_at:null})});await loadAll(true);toast('Paciente reativado.','success')}catch(e){toast('Erro ao reativar: '+e.message,'error')}}
 async function deletePatientSafe(id){const linked=appointments.some(a=>String(a.patient_id)===String(id))||packages.some(p=>String(p.patient_id)===String(id))||movements.some(m=>String(m.patient_id)===String(id));if(linked){toast('Paciente possui vínculos. Não apaguei; use Inativar para preservar histórico.','warning');return}if(!confirm('Apagar este paciente definitivamente? Só faça isso para cadastro criado por engano.'))return;try{await api('patients?id=eq.'+encodeURIComponent(id),{method:'DELETE'});await loadAll(true);toast('Paciente apagado.','success')}catch(e){toast('Erro ao apagar: '+e.message,'error')}}
@@ -2347,6 +2381,8 @@ function openEditPatient(pid){
   $('editPatientId').value = pid;
   $('editPatientName').value = p.name || '';
   $('editPatientWhatsapp').value = p.whatsapp || '';
+  if($('editPatientBirthDate')) $('editPatientBirthDate').value = String(p.birth_date || '').slice(0,10);
+  if($('editPatientReferralSource')) $('editPatientReferralSource').value = p.referral_source || '';
   $('editPatientPathology').value = p.pathology || '';
   $('editPatientModal').classList.add('show');
 }
@@ -2355,19 +2391,21 @@ async function saveEditPatient(){
   const id    = $('editPatientId').value;
   const name  = $('editPatientName').value.trim();
   const whats = $('editPatientWhatsapp').value.trim();
+  const birthDate = $('editPatientBirthDate') ? $('editPatientBirthDate').value : '';
+  const referralSource = $('editPatientReferralSource') ? $('editPatientReferralSource').value.trim() : '';
   const path  = $('editPatientPathology').value.trim();
   if(!name){ toast('Informe o nome do paciente.','warning'); return; }
   if(whats && !/^\(\d{2}\)\s\d{5}-\d{4}$/.test(whats)){ toast('WhatsApp inválido. Use (99) 99999-9999.','warning'); return; }
   try{
     await api('patients?id=eq.' + encodeURIComponent(id), {
       method:'PATCH',
-      body: JSON.stringify({ name, whatsapp: whats, pathology: path })
+      body: JSON.stringify({ name, whatsapp: whats, birth_date: birthDate || null, referral_source: referralSource, pathology: path })
     });
     closeModal('editPatientModal');
     await loadAll(true);
     toast('Paciente atualizado com sucesso.','success');
   }catch(e){
-    toast('Erro ao salvar: ' + e.message,'error');
+    toast(isMissingPatientSchemaError(e)?'Atualize o Supabase com o patch incremental de patients antes de editar nascimento e origem.':'Erro ao salvar: ' + e.message,isMissingPatientSchemaError(e)?'warning':'error');
   }
 }
 
@@ -2831,6 +2869,7 @@ function renderWeek(){
   const weekData=buildWeekAgendaData(visibleDays);
   const patientNames=Object.create(null);
   const serviceDurations=Object.create(null);
+  const packageAlertCache=Object.create(null);
   patients.forEach(patient=>{patientNames[String(patient.id)]=patient.name||'Paciente'});
   services.forEach(service=>{serviceDurations[String(service.id)]=Number(service.duration_minutes)||45});
   window.FEMICWeekV3Cache={};
@@ -2862,7 +2901,9 @@ function renderWeek(){
       const left=laneWidth*item.col;
       const widthStyle=`calc(${laneWidth}% - 8px)`;
       const status=a.status||'agendado';
+      const alert=appointmentPackageAlertMeta(a,packageAlertCache);
       html+=`<button class="week-v3-event ${weekV3StatusClass(status)} status-${status}" type="button" style="top:${top}px;height:${height}px;left:calc(${left}% + 4px);width:${widthStyle}" onclick="event.stopPropagation();openWeekAppointmentSummary('${key}')">
+        ${alert.show?`<span class="appointment-package-alert-dot week" title="${esc(alert.text)}" aria-label="${esc(alert.text)}"></span>`:''}
         <div class="week-v3-event-time"><span>${item.startLabel}-${item.endLabel}</span></div>
         <strong class="week-v3-event-name">${esc(item.patientLabel)}</strong>
       </button>`;

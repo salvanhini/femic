@@ -72,9 +72,16 @@ Use este SQL quando o banco já existe e você só precisa ativar o salvamento d
 Importante:
 - Este patch não apaga dados.
 - Este patch não recria a agenda.
+- Este patch também ativa os novos campos de cadastro clínico (`birth_date`, `referral_source`) e da anamnese rápida biopsicossocial.
 - Este patch não é necessário para as melhorias de saldo/pacotes.
 
 ```sql
+ALTER TABLE patients
+ADD COLUMN IF NOT EXISTS birth_date DATE;
+
+ALTER TABLE patients
+ADD COLUMN IF NOT EXISTS referral_source TEXT;
+
 CREATE TABLE IF NOT EXISTS clinical_anamneses (
   id TEXT PRIMARY KEY,
   patient_id TEXT NOT NULL UNIQUE REFERENCES patients(id) ON DELETE CASCADE,
@@ -87,6 +94,27 @@ CREATE TABLE IF NOT EXISTS clinical_anamneses (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
+
+ALTER TABLE clinical_anamneses
+ADD COLUMN IF NOT EXISTS occupation_routine TEXT;
+
+ALTER TABLE clinical_anamneses
+ADD COLUMN IF NOT EXISTS physical_activity_context TEXT;
+
+ALTER TABLE clinical_anamneses
+ADD COLUMN IF NOT EXISTS red_flags TEXT;
+
+ALTER TABLE clinical_anamneses
+ADD COLUMN IF NOT EXISTS previous_treatments TEXT;
+
+ALTER TABLE clinical_anamneses
+ADD COLUMN IF NOT EXISTS psychosocial_factors TEXT;
+
+ALTER TABLE clinical_anamneses
+ADD COLUMN IF NOT EXISTS fear_avoidance TEXT;
+
+ALTER TABLE clinical_anamneses
+ADD COLUMN IF NOT EXISTS clinical_summary TEXT;
 
 CREATE TABLE IF NOT EXISTS clinical_evolutions (
   id TEXT PRIMARY KEY,
