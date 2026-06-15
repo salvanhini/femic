@@ -431,43 +431,29 @@
       '</div>';
   }
 
-  var ANAMNESE_FIELD_IDS = ['anamChief','anamHistory','anamOccupation','anamActivity','anamRedFlags','anamPreviousTreatments','anamPsychosocial','anamFearAvoidance','anamGoals','anamObs','anamClinicalSummary'];
+  var ANAMNESE_FIELD_IDS = ['anamChief','anamHistory','anamDiagnosis','anamLimitations','anamGoals','anamObs'];
   function resetAnamneseFields(){
     ANAMNESE_FIELD_IDS.concat(['evolutionDate','evolutionConduct','evolutionGuidance']).forEach(function(id){
       if(el(id)) el(id).value = '';
     });
-    if(el('anamAiQuestions')){
-      el('anamAiQuestions').textContent = '';
-      el('anamAiQuestions').classList.add('hidden');
-    }
   }
-  function fillStructuredAnamneseFields(anamnese){
+  function fillSimpleAnamneseFields(anamnese){
     anamnese = anamnese || {};
     if(el('anamChief')) el('anamChief').value = anamnese.chief_complaint || '';
     if(el('anamHistory')) el('anamHistory').value = anamnese.history || '';
-    if(el('anamOccupation')) el('anamOccupation').value = anamnese.occupation_routine || '';
-    if(el('anamActivity')) el('anamActivity').value = anamnese.physical_activity_context || '';
-    if(el('anamRedFlags')) el('anamRedFlags').value = anamnese.red_flags || '';
-    if(el('anamPreviousTreatments')) el('anamPreviousTreatments').value = anamnese.previous_treatments || '';
-    if(el('anamPsychosocial')) el('anamPsychosocial').value = anamnese.psychosocial_factors || '';
-    if(el('anamFearAvoidance')) el('anamFearAvoidance').value = anamnese.fear_avoidance || '';
+    if(el('anamDiagnosis')) el('anamDiagnosis').value = anamnese.diagnosis || anamnese.clinical_summary || '';
+    if(el('anamLimitations')) el('anamLimitations').value = anamnese.limitations || anamnese.physical_activity_context || '';
     if(el('anamGoals')) el('anamGoals').value = anamnese.goals || '';
     if(el('anamObs')) el('anamObs').value = anamnese.obs || '';
-    if(el('anamClinicalSummary')) el('anamClinicalSummary').value = anamnese.clinical_summary || anamnese.diagnosis || '';
   }
-  function collectStructuredAnamneseFields(){
+  function collectSimpleAnamneseFields(){
     return {
-      queixa_principal: el('anamChief') ? String(el('anamChief').value || '').trim() : '',
-      historia_organizada: el('anamHistory') ? String(el('anamHistory').value || '').trim() : '',
-      ocupacao_rotina_trabalho: el('anamOccupation') ? String(el('anamOccupation').value || '').trim() : '',
-      atividade_fisica_relacao_com_quadro: el('anamActivity') ? String(el('anamActivity').value || '').trim() : '',
-      red_flags_check: el('anamRedFlags') ? String(el('anamRedFlags').value || '').trim() : '',
-      tratamentos_previos_e_percepcao: el('anamPreviousTreatments') ? String(el('anamPreviousTreatments').value || '').trim() : '',
-      fatores_psicossociais: el('anamPsychosocial') ? String(el('anamPsychosocial').value || '').trim() : '',
-      medos_e_evitacao: el('anamFearAvoidance') ? String(el('anamFearAvoidance').value || '').trim() : '',
-      objetivos_expectativas: el('anamGoals') ? String(el('anamGoals').value || '').trim() : '',
-      observacoes_clinicas: el('anamObs') ? String(el('anamObs').value || '').trim() : '',
-      sintese_clinica: el('anamClinicalSummary') ? String(el('anamClinicalSummary').value || '').trim() : ''
+      chief_complaint: el('anamChief') ? String(el('anamChief').value || '').trim() : '',
+      history: el('anamHistory') ? String(el('anamHistory').value || '').trim() : '',
+      diagnosis: el('anamDiagnosis') ? String(el('anamDiagnosis').value || '').trim() : '',
+      limitations: el('anamLimitations') ? String(el('anamLimitations').value || '').trim() : '',
+      goals: el('anamGoals') ? String(el('anamGoals').value || '').trim() : '',
+      obs: el('anamObs') ? String(el('anamObs').value || '').trim() : ''
     };
   }
   function patientAge(patient){
@@ -491,7 +477,6 @@
     if(!patient){
       kpis.innerHTML = '<div class="kpi"><div class="small muted">Prontuário</div><strong>Selecione um paciente</strong></div>';
       timeline.innerHTML = '<div class="muted">Selecione um paciente para carregar a linha do cuidado.</div>';
-      if(el('anamAgeSupport')) el('anamAgeSupport').textContent = 'Selecione um paciente para ver a idade e o contexto clínico rápido.';
       resetAnamneseFields();
       return;
     }
@@ -502,11 +487,9 @@
     var completedAppointments = appointments.filter(function(item){ return item.status === 'concluido'; });
     kpis.innerHTML =
       '<div class="kpi"><div class="small muted">Paciente</div><strong>' + escHtml(patient.name) + '</strong></div>' +
-      '<div class="kpi"><div class="small muted">Idade</div><strong>' + escHtml(patientAge(patient) != null ? String(patientAge(patient)) + ' anos' : 'Não informada') + '</strong></div>' +
       '<div class="kpi"><div class="small muted">Sessões realizadas</div><strong>' + completedAppointments.length + '</strong></div>' +
       '<div class="kpi"><div class="small muted">Evoluções clínicas</div><strong>' + evolutions.length + '</strong></div>';
-    if(el('anamAgeSupport')) el('anamAgeSupport').textContent = patientAgeSupportText(patient) + (patient.referral_source ? ' Origem: ' + patient.referral_source + '.' : '');
-    fillStructuredAnamneseFields(anamnese);
+    fillSimpleAnamneseFields(anamnese);
     if(el('evolutionDate') && !el('evolutionDate').value) el('evolutionDate').value = todayIsoSafe();
 
     var rows = [];
@@ -1404,34 +1387,23 @@
     var now = new Date().toISOString();
     var list = getAnamneses();
     var existing = getAnamneseByPatient(pid);
-    var structured = collectStructuredAnamneseFields();
-    var utils = clinicalUtils();
-    var legacy = utils && typeof utils.buildLegacyAnamneseFields === 'function'
-      ? utils.buildLegacyAnamneseFields(structured)
-      : {
-          chief_complaint: structured.queixa_principal,
-          history: structured.historia_organizada,
-          diagnosis: structured.sintese_clinica,
-          limitations: structured.atividade_fisica_relacao_com_quadro,
-          goals: structured.objetivos_expectativas,
-          obs: structured.observacoes_clinicas
-        };
+    var fields = collectSimpleAnamneseFields();
     var payload = {
       id: existing && existing.id ? existing.id : generateId('a'),
       patient_id: pid,
-      chief_complaint: legacy.chief_complaint || '',
-      history: legacy.history || '',
-      diagnosis: legacy.diagnosis || '',
-      limitations: legacy.limitations || '',
-      goals: legacy.goals || '',
-      obs: legacy.obs || '',
-      occupation_routine: structured.ocupacao_rotina_trabalho || '',
-      physical_activity_context: structured.atividade_fisica_relacao_com_quadro || '',
-      red_flags: structured.red_flags_check || '',
-      previous_treatments: structured.tratamentos_previos_e_percepcao || '',
-      psychosocial_factors: structured.fatores_psicossociais || '',
-      fear_avoidance: structured.medos_e_evitacao || '',
-      clinical_summary: structured.sintese_clinica || '',
+      chief_complaint: fields.chief_complaint || '',
+      history: fields.history || '',
+      diagnosis: fields.diagnosis || '',
+      limitations: fields.limitations || '',
+      goals: fields.goals || '',
+      obs: fields.obs || '',
+      occupation_routine: existing && existing.occupation_routine ? existing.occupation_routine : '',
+      physical_activity_context: existing && existing.physical_activity_context ? existing.physical_activity_context : '',
+      red_flags: existing && existing.red_flags ? existing.red_flags : '',
+      previous_treatments: existing && existing.previous_treatments ? existing.previous_treatments : '',
+      psychosocial_factors: existing && existing.psychosocial_factors ? existing.psychosocial_factors : '',
+      fear_avoidance: existing && existing.fear_avoidance ? existing.fear_avoidance : '',
+      clinical_summary: fields.diagnosis || (existing && existing.clinical_summary ? existing.clinical_summary : ''),
       created_at: existing && existing.created_at ? existing.created_at : now,
       updated_at: now
     };
@@ -2019,15 +1991,10 @@
       draft = draft || {};
       if(el('anamChief')) el('anamChief').value = draft.queixa_principal || draft.chief_complaint || draft.chief || '';
       if(el('anamHistory')) el('anamHistory').value = draft.historia_organizada || draft.history || '';
-      if(el('anamOccupation')) el('anamOccupation').value = draft.ocupacao_rotina_trabalho || draft.occupation_routine || '';
-      if(el('anamActivity')) el('anamActivity').value = draft.atividade_fisica_relacao_com_quadro || draft.physical_activity_context || '';
-      if(el('anamRedFlags')) el('anamRedFlags').value = draft.red_flags_check || draft.red_flags || '';
-      if(el('anamPreviousTreatments')) el('anamPreviousTreatments').value = draft.tratamentos_previos_e_percepcao || draft.previous_treatments || '';
-      if(el('anamPsychosocial')) el('anamPsychosocial').value = draft.fatores_psicossociais || draft.psychosocial_factors || '';
-      if(el('anamFearAvoidance')) el('anamFearAvoidance').value = draft.medos_e_evitacao || draft.fear_avoidance || '';
+      if(el('anamDiagnosis')) el('anamDiagnosis').value = draft.sintese_clinica || draft.clinical_summary || draft.diagnosis || '';
+      if(el('anamLimitations')) el('anamLimitations').value = draft.atividade_fisica_relacao_com_quadro || draft.limitations || '';
       if(el('anamGoals')) el('anamGoals').value = draft.objetivos_expectativas || draft.goals || '';
       if(el('anamObs')) el('anamObs').value = draft.observacoes_clinicas || draft.obs || draft.observations || '';
-      if(el('anamClinicalSummary')) el('anamClinicalSummary').value = draft.sintese_clinica || draft.clinical_summary || draft.diagnosis || '';
     },
     applyEvolutionDraft: function(draft){
       draft = draft || {};

@@ -3611,7 +3611,7 @@ textarea,
 
 #panel-prontuario #prontuarioKpis{
   display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
+  grid-template-columns:repeat(3,minmax(0,1fr));
   gap:12px;
 }
 
@@ -3635,15 +3635,6 @@ textarea,
 #panel-prontuario .prontuario-anamnese-card textarea,
 #panel-prontuario .prontuario-evolucao-card textarea{
   min-height:78px;
-}
-
-#panel-prontuario #anamClinicalSummary{
-  min-height:110px;
-}
-
-#panel-prontuario #anamAiQuestions{
-  border:1px dashed rgba(11,60,111,.16);
-  background:rgba(248,251,253,.96);
 }
 
 #panel-prontuario .prontuario-timeline-card #prontuarioTimeline{

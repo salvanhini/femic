@@ -297,26 +297,17 @@
     </div>
     <div class="grid grid-2 prontuario-main-grid" style="margin-top:16px">
       <div class="card prontuario-anamnese-card">
-        <div class="section-title"><div><div class="eyebrow">Anamnese</div><h3>Base clínica do paciente</h3><p class="muted small prontuario-card-note">Use o Assistente IA no topo para criar um rascunho inicial. Revise e salve quando estiver pronto.</p></div></div>
-        <div class="quick-note small" id="anamAgeSupport">Selecione um paciente para ver a idade e o contexto clínico rápido.</div>
+        <div class="section-title"><div><div class="eyebrow">Anamnese</div><h3>Base clínica do paciente</h3><p class="muted small prontuario-card-note">Use o Assistente IA no topo para criar um rascunho inicial. Revise, ajuste livremente e salve quando estiver pronto.</p></div></div>
         <div class="toolbar" style="margin-top:12px; flex-wrap:wrap">
-          <button class="btn" type="button" onclick="fillAnamneseWithAI()">Organizar com IA</button>
-          <button class="btn ghost" type="button" onclick="askAnamneseMissingWithAI()">Perguntar o que falta</button>
-          <button class="btn ghost" type="button" onclick="summarizeAnamneseWithAI()">Gerar síntese clínica</button>
+          <button class="btn" type="button" onclick="fillAnamneseWithAI()">Preencher com IA</button>
         </div>
-        <div class="quick-note small hidden" id="anamAiQuestions" style="margin-top:12px"></div>
         <div class="grid" style="gap:12px; margin-top:12px">
-          <div class="field"><label>Queixa principal</label><textarea id="anamChief" rows="2" placeholder="Motivo principal da consulta em linguagem do paciente."></textarea></div>
-          <div class="field"><label>História organizada da queixa</label><textarea id="anamHistory" rows="3" placeholder="Quando começou, piora, melhora, irritabilidade, impacto funcional."></textarea></div>
-          <div class="field"><label>Ocupação / rotina de trabalho</label><textarea id="anamOccupation" rows="2" placeholder="Profissão, demandas repetitivas, postura, carga e rotina."></textarea></div>
-          <div class="field"><label>Atividade física e relação com o quadro</label><textarea id="anamActivity" rows="2" placeholder="O que gosta de fazer, o que evita e como isso se relaciona ao problema."></textarea></div>
-          <div class="field"><label>Red flags</label><textarea id="anamRedFlags" rows="2" placeholder="Marque ausência ou presença de sinais de alerta relevantes."></textarea></div>
-          <div class="field"><label>Tratamentos prévios e percepção</label><textarea id="anamPreviousTreatments" rows="2" placeholder="O que já fez, o que ajudou, o que não ajudou e por quê."></textarea></div>
-          <div class="field"><label>Fatores psicossociais</label><textarea id="anamPsychosocial" rows="2" placeholder="Sono, estresse, humor, apoio familiar, contexto de vida."></textarea></div>
-          <div class="field"><label>Medos e evitação</label><textarea id="anamFearAvoidance" rows="2" placeholder="Movimentos ou atividades que teme fazer e comportamento de proteção."></textarea></div>
-          <div class="field"><label>Objetivos e expectativas</label><textarea id="anamGoals" rows="2" placeholder="O que o paciente quer voltar a fazer e o que espera do tratamento."></textarea></div>
-          <div class="field"><label>Observações clínicas</label><textarea id="anamObs" rows="2" placeholder="Pontos clínicos curtos relevantes para revisão profissional."></textarea></div>
-          <div class="field"><label>Síntese clínica</label><textarea id="anamClinicalSummary" rows="3" placeholder="Resumo biopsicossocial curto, revisável e útil para o plano terapêutico."></textarea></div>
+          <div class="field"><label>Queixa principal</label><textarea id="anamChief" rows="2"></textarea></div>
+          <div class="field"><label>História / Anamnese</label><textarea id="anamHistory" rows="3"></textarea></div>
+          <div class="field"><label>Diagnóstico / Hipótese</label><textarea id="anamDiagnosis" rows="2"></textarea></div>
+          <div class="field"><label>Limitações</label><textarea id="anamLimitations" rows="2"></textarea></div>
+          <div class="field"><label>Objetivos</label><textarea id="anamGoals" rows="2"></textarea></div>
+          <div class="field"><label>Observações</label><textarea id="anamObs" rows="2"></textarea></div>
         </div>
         <div class="toolbar" style="margin-top:12px">
           <button class="btn primary" onclick="saveUnifiedAnamnese()">Salvar anamnese</button>
