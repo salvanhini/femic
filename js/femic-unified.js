@@ -91,6 +91,29 @@
   function el(id){ return document.getElementById(id); }
   function escHtml(v){ return typeof esc === 'function' ? esc(v) : String(v == null ? '' : v).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); }); }
   function clinicalUtils(){ return window.FEMICClinicalUtils || null; }
+  function unifiedAppointmentsUtils(){ return window.FEMICUnifiedAppointmentsUtils || null; }
+  function sortAppointmentsNewestFirst(list){
+    var utils = unifiedAppointmentsUtils();
+    if(utils && typeof utils.sortAppointmentsNewestFirst === 'function') return utils.sortAppointmentsNewestFirst(list);
+    return (Array.isArray(list) ? list.slice() : []).sort(function(a,b){
+      return (String(b && b.appointment_date || '') + String(b && b.start_time || '')).localeCompare(String(a && a.appointment_date || '') + String(a && a.start_time || ''));
+    });
+  }
+  function getCompletedAgendaAppointmentsByPatient(pid){
+    var utils = unifiedAppointmentsUtils();
+    var appointments = getAgendaAppointmentsByPatient(pid);
+    if(utils && typeof utils.getCompletedAgendaAppointmentsByPatient === 'function'){
+      return utils.getCompletedAgendaAppointmentsByPatient(appointments, pid);
+    }
+    return sortAppointmentsNewestFirst(appointments.filter(function(item){ return item.status === 'concluido'; }));
+  }
+  function buildCompletedAppointmentHistoryHtml(appointments){
+    return appointments.length
+      ? appointments.map(function(item){
+          return '<div class="patient-ficha-line"><strong>' + escHtml(fmtDateSafe(item.appointment_date)) + '</strong><span>' + escHtml(fmtWeekdaySafe(item.appointment_date) + ' · ' + String(item.start_time || '').slice(0,5) + ' · ' + (window.serviceName ? serviceName(item.service_id) : 'Serviço')) + '</span></div>';
+        }).join('')
+      : '<div class="muted small">Nenhuma sessão concluída na agenda.</div>';
+  }
   function safeExternalUrl(value){
     var url = String(value || '').trim();
     if(!url) return '';
@@ -366,7 +389,9 @@
     return getGeneratedDocuments().filter(function(item){ return String(item.patient_id) === String(pid); }).sort(function(a,b){ return String(b.created_at || '').localeCompare(String(a.created_at || '')); });
   }
   function getAgendaAppointmentsByPatient(pid){
-    return (getAgendaState().appointments || []).filter(function(item){ return String(item.patient_id) === String(pid); }).sort(function(a,b){ return String(a.appointment_date || '') + String(a.start_time || '') > String(b.appointment_date || '') + String(b.start_time || '') ? 1 : -1; });
+    return (getAgendaState().appointments || []).filter(function(item){ return String(item.patient_id) === String(pid); }).sort(function(a,b){
+      return (String(a.appointment_date || '') + String(a.start_time || '')).localeCompare(String(b.appointment_date || '') + String(b.start_time || ''));
+    });
   }
   function getAgendaPackagesByPatient(pid){
     return (getAgendaState().packages || []).filter(function(item){ return String(item.patient_id) === String(pid); });
@@ -1817,7 +1842,7 @@
     if(!patient) return '';
     var anamnese = getAnamneseByPatient(pid) || {};
     var evolutions = getPatientEvolutions(pid);
-    var appointments = getAgendaAppointmentsByPatient(pid).filter(function(item){ return item.status === 'concluido'; });
+    var appointments = getCompletedAgendaAppointmentsByPatient(pid);
     var daysHtml = includeDays
       ? (appointments.length
         ? appointments.map(function(item){
@@ -1861,7 +1886,7 @@
     var appointments = getAgendaAppointmentsByPatient(pid);
     var packages = getAgendaPackagesByPatient(pid);
     var upcoming = appointments.filter(function(item){ return ['agendado','confirmado'].indexOf(item.status) !== -1; });
-    var completed = appointments.filter(function(item){ return item.status === 'concluido'; });
+    var completed = getCompletedAgendaAppointmentsByPatient(pid);
     var anamnese = getAnamneseByPatient(pid);
     var sortedAppointments = appointments.slice().sort(function(a,b){
       return String(a.appointment_date || '').localeCompare(String(b.appointment_date || '')) || String(a.start_time || '').localeCompare(String(b.start_time || ''));
@@ -1889,6 +1914,7 @@
     var evolutionLines = evolutions.length ? evolutions.slice(0,4).map(function(item){
       return '<div class="item"><strong>' + fmtDateSafe(item.date) + '</strong><div class="muted small">' + escHtml(item.conduct || 'Sem registro') + '</div>' + (item.guidance ? '<div class="muted small">' + escHtml(item.guidance) + '</div>' : '') + '</div>';
     }).join('') : '<div class="muted">Nenhuma evolução clínica registrada.</div>';
+    var completedHistoryLines = buildCompletedAppointmentHistoryHtml(completed);
     el('patientFicha').innerHTML =
       '<div class="patient-ficha-shell">' +
         '<div class="patient-ficha-kpis">' +
@@ -1901,6 +1927,7 @@
         '<div class="patient-ficha-actions"><button class="btn primary" onclick="openProntuarioPatient(\'' + escHtml(pid) + '\')">Abrir prontuário</button><button class="btn" onclick="openDocumentsPatient(\'' + escHtml(pid) + '\')">Abrir documentos</button><button class="btn" onclick="openPatientClinicalExport(\'' + escHtml(pid) + '\')">Exportar ficha</button></div>' +
         '<div class="patient-ficha-overview">' +
           '<section class="hub-card patient-ficha-panel"><h4>Próximos atendimentos</h4><div class="muted small">' + (nextAppointments.length ? nextAppointments.map(function(item){ return fmtWeekdaySafe(item.appointment_date) + ' · ' + fmtDateSafe(item.appointment_date) + ' · ' + String(item.start_time || '').slice(0,5) + ' · ' + escHtml(window.serviceName ? serviceName(item.service_id) : 'Serviço'); }).join('<br>') : 'Sem agendamentos futuros.') + '</div></section>' +
+          '<section class="hub-card patient-ficha-panel"><h4>Sessões realizadas</h4><div class="patient-ficha-lines patient-ficha-session-history">' + completedHistoryLines + '</div></section>' +
           '<section class="hub-card patient-ficha-panel"><h4>Pacotes</h4><div class="patient-ficha-lines">' + packageLines + '</div></section>' +
           '<section class="hub-card patient-ficha-panel"><h4>Cadastro clínico</h4><div class="muted small">' + escHtml(patient.birth_date ? 'Nascimento: ' + fmtDateSafe(patient.birth_date) : 'Nascimento não informado') + '<br>' + escHtml(patient.referral_source ? 'Origem: ' + patient.referral_source : 'Origem não informada') + '</div></section>' +
           '<section class="hub-card patient-ficha-panel"><h4>Anamnese</h4><div class="muted small">' + (anamnese ? escHtml((anamnese.chief_complaint || 'Sem queixa principal') + ' · ' + (anamnese.clinical_summary || anamnese.diagnosis || 'Sem síntese registrada')) : 'Nenhuma anamnese cadastrada.') + '</div></section>' +

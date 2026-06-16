@@ -5578,6 +5578,12 @@ textarea{
   font-size:.88rem;
 }
 
+#patientFicha .patient-ficha-session-history{
+  max-height:240px;
+  overflow:auto;
+  padding-right:4px;
+}
+
 #patientFicha .hub-card .muted.small,
 #patientFicha .timeline-item .muted.small{
   font-size:.76rem;
