@@ -108,6 +108,24 @@
     }
     return sortAppointmentsNewestFirst(appointments.filter(function(item){ return item.status === 'concluido'; }));
   }
+  function buildPatientAppointmentSnapshot(appointments, pid, todayIso){
+    var utils = unifiedAppointmentsUtils();
+    if(utils && typeof utils.buildPatientAppointmentSnapshot === 'function'){
+      return utils.buildPatientAppointmentSnapshot(appointments, pid, todayIso);
+    }
+    var sortedAppointments = (appointments || []).filter(function(item){
+      return String(item && item.patient_id) === String(pid);
+    }).sort(function(a,b){
+      return (String(a && a.appointment_date || '') + String(a && a.start_time || '')).localeCompare(String(b && b.appointment_date || '') + String(b && b.start_time || ''));
+    });
+    return {
+      all: sortedAppointments,
+      completed: sortAppointmentsNewestFirst(sortedAppointments.filter(function(item){ return item.status === 'concluido'; })),
+      nextAppointments: sortedAppointments.filter(function(item){
+        return ['agendado','confirmado'].indexOf(item.status) !== -1 && (!todayIso || String(item.appointment_date || '') >= String(todayIso));
+      })
+    };
+  }
   function buildPatientPackageSummary(packages, appointments, todayPackageIso){
     if(!packages.length) return null;
     var item = packages[0];
@@ -439,6 +457,20 @@
       return (String(a.appointment_date || '') + String(a.start_time || '')).localeCompare(String(b.appointment_date || '') + String(b.start_time || ''));
     });
   }
+  async function fetchAllAppointmentsForPatient(pid){
+    var fallback = getAgendaAppointmentsByPatient(pid);
+    if(!pid) return fallback;
+    if(typeof api !== 'function' || typeof base !== 'function' || typeof key !== 'function') return fallback;
+    if(!base() || !key()) return fallback;
+    if(window.hasValidSession && typeof hasValidSession === 'function' && !hasValidSession()) return fallback;
+    try{
+      var rows = await api('appointments?select=*&patient_id=eq.' + encodeURIComponent(pid) + '&order=appointment_date.asc,start_time.asc');
+      return Array.isArray(rows) ? rows : fallback;
+    }catch(e){
+      console.error('FEMIC ficha: falha ao buscar histórico completo de agendamentos do paciente.', e);
+      return fallback;
+    }
+  }
   function getAgendaPackagesByPatient(pid){
     return (getAgendaState().packages || []).filter(function(item){ return String(item.patient_id) === String(pid); });
   }
@@ -554,12 +586,15 @@
     fetchClinicalForPatient(pid).catch(function(e){ if(typeof toast === 'function') toast('Erro ao carregar prontuário em nuvem: ' + e.message, 'error'); });
     var anamnese = getAnamneseByPatient(pid) || {};
     var evolutions = getPatientEvolutions(pid);
-    var appointments = getAgendaAppointmentsByPatient(pid);
-    var completedAppointments = appointments.filter(function(item){ return item.status === 'concluido'; });
-    kpis.innerHTML =
-      '<div class="kpi"><div class="small muted">Paciente</div><strong>' + escHtml(patient.name) + '</strong></div>' +
-      '<div class="kpi"><div class="small muted">Sessões realizadas</div><strong>' + completedAppointments.length + '</strong></div>' +
-      '<div class="kpi"><div class="small muted">Evoluções clínicas</div><strong>' + evolutions.length + '</strong></div>';
+    var todayIso = todayIsoSafe();
+    function paintProntuario(appointments){
+      var snapshot = buildPatientAppointmentSnapshot(appointments, pid, todayIso);
+      kpis.innerHTML =
+        '<div class="kpi"><div class="small muted">Paciente</div><strong>' + escHtml(patient.name) + '</strong></div>' +
+        '<div class="kpi"><div class="small muted">Sessões realizadas</div><strong>' + snapshot.completed.length + '</strong></div>' +
+        '<div class="kpi"><div class="small muted">Evoluções clínicas</div><strong>' + evolutions.length + '</strong></div>';
+    }
+    paintProntuario(getAgendaAppointmentsByPatient(pid));
     fillSimpleAnamneseFields(anamnese);
     if(el('evolutionDate') && !el('evolutionDate').value) el('evolutionDate').value = todayIsoSafe();
 
@@ -569,6 +604,10 @@
     });
     rows.sort(function(a,b){ return String(b.date || '').localeCompare(String(a.date || '')); });
     timeline.innerHTML = rows.length ? rows.map(function(item){ return '<div class="item">' + item.html + '</div>'; }).join('') : '<div class="muted">Ainda não há evoluções clínicas para este paciente.</div>';
+    fetchAllAppointmentsForPatient(pid).then(function(fullAppointments){
+      if(String(getSelectedPatientId()) !== String(pid)) return;
+      paintProntuario(fullAppointments);
+    }).catch(function(){});
   }
 
   function renderUnifiedDocuments(){
@@ -1921,22 +1960,18 @@
       '</div>';
   }
 
-  window.openPatient = function(pid){
+  window.openPatient = async function(pid){
     var patient = getPatientById(pid);
     if(!patient || !el('patientFicha')) return;
     setCurrentPatient(pid);
     var evolutions = getPatientEvolutions(pid);
-    var appointments = getAgendaAppointmentsByPatient(pid);
+    var appointments = await fetchAllAppointmentsForPatient(pid);
     var packages = getAgendaPackagesByPatient(pid);
-    var completed = getCompletedAgendaAppointmentsByPatient(pid);
     var anamnese = getAnamneseByPatient(pid);
-    var sortedAppointments = appointments.slice().sort(function(a,b){
-      return String(a.appointment_date || '').localeCompare(String(b.appointment_date || '')) || String(a.start_time || '').localeCompare(String(b.start_time || ''));
-    });
-    var nextAppointments = sortedAppointments.filter(function(item){ return ['agendado','confirmado'].indexOf(item.status) !== -1; }).slice(0,5);
     var age = patientAge(patient);
     var todayForPackages = new Date();
     var todayPackageIso = todayForPackages.getFullYear() + '-' + String(todayForPackages.getMonth() + 1).padStart(2, '0') + '-' + String(todayForPackages.getDate()).padStart(2, '0');
+    var appointmentSnapshot = buildPatientAppointmentSnapshot(appointments, pid, todayPackageIso);
     var packageSummary = buildPatientPackageSummary(packages, appointments, todayPackageIso);
     var latestEvolution = evolutions[0] || null;
     var utils = patientFichaUtils();
@@ -1944,12 +1979,12 @@
       ? utils.buildPatientFichaSummaryModel({
           patient: patient,
           ageLabel: age != null ? String(age) + ' anos' : 'Não informada',
-          nextAppointment: nextAppointments[0] ? {
-            appointment_date: nextAppointments[0].appointment_date,
-            start_time: nextAppointments[0].start_time,
-            service_name: window.serviceName ? serviceName(nextAppointments[0].service_id) : 'Serviço'
+          nextAppointment: appointmentSnapshot.nextAppointments[0] ? {
+            appointment_date: appointmentSnapshot.nextAppointments[0].appointment_date,
+            start_time: appointmentSnapshot.nextAppointments[0].start_time,
+            service_name: window.serviceName ? serviceName(appointmentSnapshot.nextAppointments[0].service_id) : 'Serviço'
           } : null,
-          completedCount: completed.length,
+          completedCount: appointmentSnapshot.completed.length,
           packageSummary: packageSummary,
           anamnese: anamnese,
           latestEvolution: latestEvolution,
