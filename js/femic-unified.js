@@ -92,6 +92,7 @@
   function escHtml(v){ return typeof esc === 'function' ? esc(v) : String(v == null ? '' : v).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); }); }
   function clinicalUtils(){ return window.FEMICClinicalUtils || null; }
   function unifiedAppointmentsUtils(){ return window.FEMICUnifiedAppointmentsUtils || null; }
+  function patientFichaUtils(){ return window.FEMICPatientFichaUtils || null; }
   function sortAppointmentsNewestFirst(list){
     var utils = unifiedAppointmentsUtils();
     if(utils && typeof utils.sortAppointmentsNewestFirst === 'function') return utils.sortAppointmentsNewestFirst(list);
@@ -107,12 +108,57 @@
     }
     return sortAppointmentsNewestFirst(appointments.filter(function(item){ return item.status === 'concluido'; }));
   }
-  function buildCompletedAppointmentHistoryHtml(appointments){
-    return appointments.length
-      ? appointments.map(function(item){
-          return '<div class="patient-ficha-line"><strong>' + escHtml(fmtDateSafe(item.appointment_date)) + '</strong><span>' + escHtml(fmtWeekdaySafe(item.appointment_date) + ' · ' + String(item.start_time || '').slice(0,5) + ' · ' + (window.serviceName ? serviceName(item.service_id) : 'Serviço')) + '</span></div>';
-        }).join('')
-      : '<div class="muted small">Nenhuma sessão concluída na agenda.</div>';
+  function buildPatientPackageSummary(packages, appointments, todayPackageIso){
+    if(!packages.length) return null;
+    var item = packages[0];
+    var service = window.serviceName ? serviceName(item.service_id) : 'Serviço';
+    var total = Number(item.total_sessions || 0);
+    var remaining = Number(item.remaining_sessions || 0);
+    var used = Math.max(0, total - remaining);
+    var pkgAppointments = appointments.filter(function(appt){ return String(appt.service_id) === String(item.service_id); });
+    var futurePkg = pkgAppointments.filter(function(appt){
+      return ['agendado','confirmado'].indexOf(appt.status) !== -1 && String(appt.appointment_date || '') >= todayPackageIso;
+    }).sort(function(a,b){
+      return String(a.appointment_date || '').localeCompare(String(b.appointment_date || '')) || String(a.start_time || '').localeCompare(String(b.start_time || ''));
+    });
+    var missing = Math.max(0, remaining - futurePkg.length);
+    return {
+      label: service,
+      used: used,
+      total: total,
+      remaining: remaining,
+      alert: missing > 0 ? 'Faltam ' + missing + ' sessões sem agendamento' : 'Agenda do pacote em dia'
+    };
+  }
+  function buildPatientFichaSummaryHtml(model, pid){
+    if(!model) return '';
+    var statusHtml = model.statusCards.map(function(item){
+      return '<div class="kpi patient-ficha-status-card"><div class="small muted">' + escHtml(item.label) + '</div><strong>' + escHtml(item.value) + '</strong></div>';
+    }).join('');
+    var sectionsHtml = model.sections.map(function(section){
+      return '<section class="hub-card patient-ficha-panel"><h4>' + escHtml(section.title) + '</h4><p class="muted small patient-ficha-body">' + escHtml(section.body) + '</p></section>';
+    }).join('');
+    return '<div class="patient-ficha-shell">' +
+      '<section class="card patient-ficha-header-card">' +
+        '<div class="patient-ficha-header-top">' +
+          '<div>' +
+            '<div class="eyebrow">Ficha do paciente</div>' +
+            '<h3>' + escHtml(model.header.name) + '</h3>' +
+          '</div>' +
+          '<div class="patient-ficha-header-meta">' +
+            '<span>' + escHtml(model.header.whatsapp) + '</span>' +
+            '<span>' + escHtml(model.header.age) + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</section>' +
+      '<section class="patient-ficha-status-band">' + statusHtml + '</section>' +
+      '<section class="patient-ficha-main">' + sectionsHtml + '</section>' +
+      '<section class="patient-ficha-actions">' +
+        '<button class="btn primary" onclick="openProntuarioPatient(\'' + escHtml(pid) + '\')">' + escHtml(model.secondaryActions[0].label) + '</button>' +
+        '<button class="btn" onclick="openDocumentsPatient(\'' + escHtml(pid) + '\')">' + escHtml(model.secondaryActions[1].label) + '</button>' +
+        '<button class="btn" onclick="openPatientClinicalExport(\'' + escHtml(pid) + '\')">' + escHtml(model.secondaryActions[2].label) + '</button>' +
+      '</section>' +
+    '</div>';
   }
   function safeExternalUrl(value){
     var url = String(value || '').trim();
@@ -1879,13 +1925,9 @@
     var patient = getPatientById(pid);
     if(!patient || !el('patientFicha')) return;
     setCurrentPatient(pid);
-    var sessions = getPatientSessions(pid);
     var evolutions = getPatientEvolutions(pid);
-    var docs = getDocumentsByPatient(pid);
-    var guias = getGuiasByPatient(pid);
     var appointments = getAgendaAppointmentsByPatient(pid);
     var packages = getAgendaPackagesByPatient(pid);
-    var upcoming = appointments.filter(function(item){ return ['agendado','confirmado'].indexOf(item.status) !== -1; });
     var completed = getCompletedAgendaAppointmentsByPatient(pid);
     var anamnese = getAnamneseByPatient(pid);
     var sortedAppointments = appointments.slice().sort(function(a,b){
@@ -1895,46 +1937,28 @@
     var age = patientAge(patient);
     var todayForPackages = new Date();
     var todayPackageIso = todayForPackages.getFullYear() + '-' + String(todayForPackages.getMonth() + 1).padStart(2, '0') + '-' + String(todayForPackages.getDate()).padStart(2, '0');
-    var packageLines = packages.length ? packages.map(function(item){
-      var service = window.serviceName ? serviceName(item.service_id) : 'Serviço';
-      var total = Number(item.total_sessions || 0);
-      var remaining = Number(item.remaining_sessions || 0);
-      var used = Math.max(0, total - remaining);
-      var pkgAppointments = appointments.filter(function(appt){ return String(appt.service_id) === String(item.service_id); });
-      var futurePkg = pkgAppointments.filter(function(appt){ return ['agendado','confirmado'].indexOf(appt.status) !== -1 && String(appt.appointment_date || '') >= todayPackageIso; }).sort(function(a,b){
-        return String(a.appointment_date || '').localeCompare(String(b.appointment_date || '')) || String(a.start_time || '').localeCompare(String(b.start_time || ''));
-      });
-      var lastFuture = futurePkg[futurePkg.length - 1] || null;
-      var missing = Math.max(0, remaining - futurePkg.length);
-      var alertText = remaining > 0 && futurePkg.length <= 1
-        ? (lastFuture ? 'Última futura: ' + fmtWeekdaySafe(lastFuture.appointment_date) + ' · ' + fmtDateSafe(lastFuture.appointment_date) : 'Sem futuras marcadas')
-        : 'Futuras marcadas: ' + futurePkg.length;
-      return '<div class="patient-ficha-line"><strong>' + escHtml(service) + '</strong><span>' + used + '/' + total + ' usadas · saldo ' + remaining + ' · ' + escHtml(alertText) + (missing > 0 ? ' · faltam ' + missing : '') + '</span></div>';
-    }).join('') : '<div class="muted">Sem pacote ativo.</div>';
-    var evolutionLines = evolutions.length ? evolutions.slice(0,4).map(function(item){
-      return '<div class="item"><strong>' + fmtDateSafe(item.date) + '</strong><div class="muted small">' + escHtml(item.conduct || 'Sem registro') + '</div>' + (item.guidance ? '<div class="muted small">' + escHtml(item.guidance) + '</div>' : '') + '</div>';
-    }).join('') : '<div class="muted">Nenhuma evolução clínica registrada.</div>';
-    var completedHistoryLines = buildCompletedAppointmentHistoryHtml(completed);
-    el('patientFicha').innerHTML =
-      '<div class="patient-ficha-shell">' +
-        '<div class="patient-ficha-kpis">' +
-          '<div class="kpi patient-ficha-kpi"><div class="small muted">Paciente</div><strong>' + escHtml(patient.name) + '</strong></div>' +
-          '<div class="kpi patient-ficha-kpi"><div class="small muted">WhatsApp</div><strong>' + escHtml(formatWhatsapp(patient.whatsapp || '-')) + '</strong></div>' +
-          '<div class="kpi patient-ficha-kpi"><div class="small muted">Idade</div><strong>' + escHtml(age != null ? String(age) + ' anos' : 'Não informada') + '</strong></div>' +
-          '<div class="kpi patient-ficha-kpi"><div class="small muted">Agenda</div><strong>' + upcoming.length + ' futuros</strong></div>' +
-          '<div class="kpi patient-ficha-kpi"><div class="small muted">Sessões realizadas</div><strong>' + completed.length + '</strong></div>' +
-        '</div>' +
-        '<div class="patient-ficha-actions"><button class="btn primary" onclick="openProntuarioPatient(\'' + escHtml(pid) + '\')">Abrir prontuário</button><button class="btn" onclick="openDocumentsPatient(\'' + escHtml(pid) + '\')">Abrir documentos</button><button class="btn" onclick="openPatientClinicalExport(\'' + escHtml(pid) + '\')">Exportar ficha</button></div>' +
-        '<div class="patient-ficha-overview">' +
-          '<section class="hub-card patient-ficha-panel"><h4>Próximos atendimentos</h4><div class="muted small">' + (nextAppointments.length ? nextAppointments.map(function(item){ return fmtWeekdaySafe(item.appointment_date) + ' · ' + fmtDateSafe(item.appointment_date) + ' · ' + String(item.start_time || '').slice(0,5) + ' · ' + escHtml(window.serviceName ? serviceName(item.service_id) : 'Serviço'); }).join('<br>') : 'Sem agendamentos futuros.') + '</div></section>' +
-          '<section class="hub-card patient-ficha-panel"><h4>Sessões realizadas</h4><div class="patient-ficha-lines patient-ficha-session-history">' + completedHistoryLines + '</div></section>' +
-          '<section class="hub-card patient-ficha-panel"><h4>Pacotes</h4><div class="patient-ficha-lines">' + packageLines + '</div></section>' +
-          '<section class="hub-card patient-ficha-panel"><h4>Cadastro clínico</h4><div class="muted small">' + escHtml(patient.birth_date ? 'Nascimento: ' + fmtDateSafe(patient.birth_date) : 'Nascimento não informado') + '<br>' + escHtml(patient.referral_source ? 'Origem: ' + patient.referral_source : 'Origem não informada') + '</div></section>' +
-          '<section class="hub-card patient-ficha-panel"><h4>Anamnese</h4><div class="muted small">' + (anamnese ? escHtml((anamnese.chief_complaint || 'Sem queixa principal') + ' · ' + (anamnese.clinical_summary || anamnese.diagnosis || 'Sem síntese registrada')) : 'Nenhuma anamnese cadastrada.') + '</div></section>' +
-          '<section class="hub-card patient-ficha-panel"><h4>Documentos e guias</h4><div class="muted small">' + docs.length + ' documento(s) · ' + guias.length + ' guia(s)</div></section>' +
-        '</div>' +
-        '<section class="card patient-ficha-panel patient-ficha-panel-wide"><div class="section-title"><h3>Últimas evoluções clínicas</h3><span class="muted small">' + completed.length + ' atendimento(s) concluído(s) na agenda</span></div><div class="list">' + evolutionLines + '</div></section>' +
-      '</div>';
+    var packageSummary = buildPatientPackageSummary(packages, appointments, todayPackageIso);
+    var latestEvolution = evolutions[0] || null;
+    var utils = patientFichaUtils();
+    var model = utils && typeof utils.buildPatientFichaSummaryModel === 'function'
+      ? utils.buildPatientFichaSummaryModel({
+          patient: patient,
+          ageLabel: age != null ? String(age) + ' anos' : 'Não informada',
+          nextAppointment: nextAppointments[0] ? {
+            appointment_date: nextAppointments[0].appointment_date,
+            start_time: nextAppointments[0].start_time,
+            service_name: window.serviceName ? serviceName(nextAppointments[0].service_id) : 'Serviço'
+          } : null,
+          completedCount: completed.length,
+          packageSummary: packageSummary,
+          anamnese: anamnese,
+          latestEvolution: latestEvolution,
+          formatDate: fmtDateSafe,
+          formatWeekday: fmtWeekdaySafe,
+          formatPhone: formatWhatsapp
+        })
+      : null;
+    el('patientFicha').innerHTML = buildPatientFichaSummaryHtml(model, pid);
     if(el('patientModal')) el('patientModal').classList.add('show');
     renderUnifiedAll();
   };

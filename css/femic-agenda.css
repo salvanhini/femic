@@ -5531,41 +5531,85 @@ textarea{
 }
 
 #patientFicha .patient-ficha-shell{
-  gap:10px;
+  display:grid;
+  gap:12px;
 }
 
-#patientFicha .patient-ficha-kpis{
+#patientFicha .patient-ficha-header-card{
+  padding:16px 18px;
+  border-radius:16px;
+}
+
+#patientFicha .patient-ficha-header-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+#patientFicha .patient-ficha-header-top h3{
+  margin:4px 0 0;
+  font-size:1.2rem;
+}
+
+#patientFicha .patient-ficha-header-meta{
+  display:flex;
+  flex-wrap:wrap;
   gap:8px;
 }
 
-#patientFicha .patient-ficha-kpi{
-  min-height:78px;
-  padding:11px 12px;
-  border-radius:12px;
+#patientFicha .patient-ficha-header-meta span{
+  display:inline-flex;
+  align-items:center;
+  min-height:32px;
+  padding:6px 10px;
+  border-radius:999px;
+  background:rgba(11,60,111,.06);
+  color:var(--primary);
+  font-size:.8rem;
+  font-weight:800;
 }
 
-#patientFicha .patient-ficha-kpi .small{
+#patientFicha .patient-ficha-status-band{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+}
+
+#patientFicha .patient-ficha-status-card{
+  min-width:0;
+  min-height:84px;
+  padding:12px;
+  border-radius:14px;
+  box-shadow:none;
+}
+
+#patientFicha .patient-ficha-status-card .small{
   font-size:.66rem;
 }
 
-#patientFicha .patient-ficha-kpi strong,
-#patientFicha .patient-ficha-kpi strong[style]{
+#patientFicha .patient-ficha-status-card strong{
   font-size:.9rem !important;
-  line-height:1.12;
+  line-height:1.25;
+}
+
+#patientFicha .patient-ficha-main{
+  display:grid;
+  gap:10px;
 }
 
 #patientFicha .patient-ficha-actions{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
   gap:8px;
 }
 
 #patientFicha .patient-ficha-actions .btn{
-  min-height:34px;
-  padding:8px 11px;
+  min-height:36px;
+  padding:8px 12px;
   font-size:.78rem;
-}
-
-#patientFicha .patient-ficha-overview{
-  gap:10px;
 }
 
 #patientFicha .patient-ficha-panel{
@@ -5578,10 +5622,9 @@ textarea{
   font-size:.88rem;
 }
 
-#patientFicha .patient-ficha-session-history{
-  max-height:240px;
-  overflow:auto;
-  padding-right:4px;
+#patientFicha .patient-ficha-body{
+  margin:0;
+  line-height:1.5;
 }
 
 #patientFicha .hub-card .muted.small,
@@ -5608,8 +5651,21 @@ textarea{
     gap:3px;
   }
 
-  #patientFicha .patient-ficha-kpi{
+  #patientFicha .patient-ficha-header-card{
+    padding:14px;
+  }
+
+  #patientFicha .patient-ficha-status-band{
+    grid-template-columns:1fr;
+  }
+
+  #patientFicha .patient-ficha-status-card{
     min-height:0;
+  }
+
+  #patientFicha .patient-ficha-actions .btn{
+    width:100%;
+    justify-content:center;
   }
 }
 
