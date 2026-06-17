@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const {
   buildPatientAppointmentSnapshot,
   getCompletedAgendaAppointmentsByPatient,
+  getPatientHistoryExportItems,
   normalizeAppointmentStatus,
+  toPatientHistoryStatusLabel,
 } = require('../js/femic-unified-appointments-utils.js');
 
 test('getCompletedAgendaAppointmentsByPatient keeps only completed appointments for the patient ordered from newest to oldest', () => {
@@ -65,4 +67,34 @@ test('buildPatientAppointmentSnapshot separates completed history from future ap
 test('normalizeAppointmentStatus removes accents, spaces and casing noise', () => {
   assert.equal(normalizeAppointmentStatus(' Concluído '), 'concluido');
   assert.equal(normalizeAppointmentStatus('CONFIRMADO'), 'confirmado');
+});
+
+test('toPatientHistoryStatusLabel maps agenda statuses to export labels', () => {
+  assert.equal(toPatientHistoryStatusLabel('concluido'), 'Atendido');
+  assert.equal(toPatientHistoryStatusLabel('cancelado'), 'Falta');
+  assert.equal(toPatientHistoryStatusLabel('agendado'), 'Agendado');
+  assert.equal(toPatientHistoryStatusLabel('confirmado'), 'Confirmado');
+  assert.equal(toPatientHistoryStatusLabel('desconhecido'), 'Desconhecido');
+});
+
+test('getPatientHistoryExportItems keeps every patient appointment in chronological order with export labels', () => {
+  const appointments = [
+    { id: 'a4', patient_id: 'p1', service_id: 'svc-4', appointment_date: '2026-06-15', start_time: '11:00', status: 'confirmado' },
+    { id: 'a2', patient_id: 'p1', service_id: 'svc-2', appointment_date: '2026-06-11', start_time: '09:00', status: 'cancelado' },
+    { id: 'a3', patient_id: 'p2', service_id: 'svc-3', appointment_date: '2026-06-12', start_time: '10:00', status: 'concluido' },
+    { id: 'a1', patient_id: 'p1', service_id: 'svc-1', appointment_date: '2026-06-10', start_time: '08:00', status: 'concluido' },
+    { id: 'a5', patient_id: 'p1', service_id: 'svc-5', appointment_date: '2026-06-18', start_time: '07:30', status: 'agendado' },
+  ];
+  const serviceNameById = (serviceId) => ({
+    'svc-1': 'Avaliacao',
+    'svc-2': 'Pilates',
+    'svc-4': 'RPG',
+    'svc-5': 'Fisioterapia',
+  }[serviceId] || 'Servico');
+
+  const result = getPatientHistoryExportItems(appointments, 'p1', serviceNameById);
+
+  assert.deepEqual(result.map((item) => item.id), ['a1', 'a2', 'a4', 'a5']);
+  assert.deepEqual(result.map((item) => item.statusLabel), ['Atendido', 'Falta', 'Confirmado', 'Agendado']);
+  assert.deepEqual(result.map((item) => item.serviceLabel), ['Avaliacao', 'Pilates', 'RPG', 'Fisioterapia']);
 });

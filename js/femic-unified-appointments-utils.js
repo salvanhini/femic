@@ -29,6 +29,15 @@
     });
   }
 
+  function toPatientHistoryStatusLabel(status){
+    var normalized = normalizeAppointmentStatus(status);
+    if(normalized === 'concluido') return 'Atendido';
+    if(normalized === 'cancelado') return 'Falta';
+    if(normalized === 'agendado') return 'Agendado';
+    if(normalized === 'confirmado') return 'Confirmado';
+    return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : 'Desconhecido';
+  }
+
   function getCompletedAgendaAppointmentsByPatient(appointments, patientId){
     return sortAppointmentsNewestFirst((appointments || []).filter(function(item){
       return String(item && item.patient_id) === String(patientId) && normalizeAppointmentStatus(item && item.status) === 'concluido';
@@ -55,11 +64,33 @@
     };
   }
 
+  function getPatientHistoryExportItems(appointments, patientId, serviceNameResolver){
+    var resolveServiceName = typeof serviceNameResolver === 'function'
+      ? serviceNameResolver
+      : function(){ return 'Serviço'; };
+    return sortAppointmentsOldestFirst((appointments || []).filter(function(item){
+      return String(item && item.patient_id) === String(patientId);
+    })).map(function(item){
+      return {
+        id: item && item.id,
+        patient_id: item && item.patient_id,
+        service_id: item && item.service_id,
+        appointment_date: String(item && item.appointment_date || ''),
+        start_time: String(item && item.start_time || ''),
+        status: item && item.status,
+        statusLabel: toPatientHistoryStatusLabel(item && item.status),
+        serviceLabel: resolveServiceName(item && item.service_id, item)
+      };
+    });
+  }
+
   return {
     buildPatientAppointmentSnapshot: buildPatientAppointmentSnapshot,
     getCompletedAgendaAppointmentsByPatient: getCompletedAgendaAppointmentsByPatient,
+    getPatientHistoryExportItems: getPatientHistoryExportItems,
     normalizeAppointmentStatus: normalizeAppointmentStatus,
     sortAppointmentsOldestFirst: sortAppointmentsOldestFirst,
-    sortAppointmentsNewestFirst: sortAppointmentsNewestFirst
+    sortAppointmentsNewestFirst: sortAppointmentsNewestFirst,
+    toPatientHistoryStatusLabel: toPatientHistoryStatusLabel
   };
 });

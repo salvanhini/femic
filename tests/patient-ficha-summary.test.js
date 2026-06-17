@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 
 const {
   buildPatientFichaSummaryModel,
+  buildPatientFichaExportContext,
+  buildPatientHistorySummaryModel,
 } = require('../js/femic-patient-ficha-utils.js');
 
 test('buildPatientFichaSummaryModel prioritizes the operational summary and keeps secondary details out of the main blocks', () => {
@@ -101,4 +103,82 @@ test('buildPatientFichaSummaryModel provides clear empty states when operational
   assert.match(result.sections[1].body, /Sem pacote ativo/);
   assert.match(result.sections[2].body, /Sem resumo clínico/);
   assert.match(result.sections[3].body, /Nenhuma evolução clínica registrada/);
+});
+
+test('buildPatientFichaExportContext creates a coherent export-ready model from ficha sources', () => {
+  const result = buildPatientFichaExportContext({
+    patient: {
+      id: 'p1',
+      name: 'Ana Souza',
+      whatsapp: '11999998888',
+      pathology: 'Lombalgia',
+    },
+    ageLabel: '34 anos',
+    nextAppointment: {
+      appointment_date: '2026-06-20',
+      start_time: '08:00',
+      service_name: 'Fisioterapia ortopedica',
+    },
+    completedCount: 5,
+    packageSummary: {
+      label: 'Ortopedia',
+      used: 3,
+      total: 10,
+      remaining: 7,
+      alert: 'Faltam 2 sessoes sem agendamento',
+    },
+    anamnese: {
+      chief_complaint: 'Dor lombar',
+      clinical_summary: 'Quadro mecanico com piora ao sentar.',
+    },
+    latestEvolution: {
+      date: '2026-06-14',
+      conduct: 'Melhora parcial da dor',
+      guidance: 'Manter exercicios em casa.',
+    },
+    formatDate: (value) => `data:${value}`,
+    formatWeekday: (value) => `dia:${value}`,
+    formatPhone: (value) => `fone:${value}`,
+  });
+
+  assert.equal(result.header.name, 'Ana Souza');
+  assert.equal(result.summaryModel.statusCards[0].value, 'data:2026-06-20 às 08:00');
+  assert.equal(result.exportMeta.pathology, 'Lombalgia');
+  assert.equal(result.exportMeta.phone, 'fone:11999998888');
+});
+
+test('buildPatientHistorySummaryModel creates empty state and timeline rows for the export modal', () => {
+  const filled = buildPatientHistorySummaryModel({
+    items: [
+      {
+        appointment_date: '2026-06-10',
+        weekdayLabel: 'Terça-feira',
+        start_time: '08:00',
+        statusLabel: 'Atendido',
+        serviceLabel: 'Avaliacao',
+      },
+      {
+        appointment_date: '2026-06-11',
+        weekdayLabel: 'Quarta-feira',
+        start_time: '09:00',
+        statusLabel: 'Falta',
+        serviceLabel: 'Pilates',
+      },
+    ],
+    formatDate: (value) => `data:${value}`,
+  });
+  const empty = buildPatientHistorySummaryModel({
+    items: [],
+    formatDate: (value) => value,
+  });
+
+  assert.equal(filled.countLabel, '2 registros');
+  assert.match(filled.rows[0].body, /Terça-feira/);
+  assert.match(filled.rows[1].body, /Falta/);
+  assert.deepEqual(filled.summaryCards.map((item) => item.label), ['Atendidos', 'Faltas', 'Futuros']);
+  assert.equal(filled.rows[0].statusTone, 'success');
+  assert.equal(filled.rows[1].statusTone, 'danger');
+  assert.equal(empty.countLabel, 'Sem histórico');
+  assert.match(empty.emptyMessage, /Nenhum registro encontrado/);
+  assert.equal(empty.summaryCards[0].value, '0');
 });

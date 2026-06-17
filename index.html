@@ -930,24 +930,57 @@
 </div>
 
 <div class="modal-backdrop" id="patientExportModal">
-  <div class="modal sm">
+  <div class="modal patient-export-modal">
     <div class="modal-head">
-      <h3>Exportar ficha clínica</h3>
+      <div>
+        <div class="eyebrow">Ficha do paciente</div>
+        <h3>Central de exportação e prévia</h3>
+      </div>
       <button class="btn" type="button" onclick="closeModal('patientExportModal')">✕</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="patientExportPatientId">
-      <div class="grid" style="gap:14px">
-        <label class="day-check">
-          <input type="checkbox" id="patientExportIncludeDays" checked>
-          Mostrar dias atendidos na exportação
-        </label>
-        <div class="quick-note small">A exportação clínica inclui identificação do paciente, anamnese, evoluções clínicas e, opcionalmente, os atendimentos concluídos na agenda.</div>
+      <div class="patient-export-shell">
+        <div class="patient-export-preview-panel">
+          <div class="patient-export-preview-head">
+            <div>
+              <div class="eyebrow" id="patientExportPreviewEyebrow">Prévia em tela</div>
+              <div class="patient-export-type-switch" role="tablist" aria-label="Tipo de documento">
+                <label class="patient-export-switch-option">
+                  <input type="radio" name="patientExportType" id="patientExportTypeClinical" checked onchange="renderPatientClinicalExportPreview()">
+                  <span>Ficha clínica</span>
+                </label>
+                <label class="patient-export-switch-option">
+                  <input type="radio" name="patientExportType" id="patientExportTypeHistory" onchange="renderPatientClinicalExportPreview()">
+                  <span>Histórico completo</span>
+                </label>
+              </div>
+              <h4 id="patientExportPreviewTitle">Ficha clínica do paciente</h4>
+            </div>
+            <span class="patient-export-preview-badge" id="patientExportPreviewBadge">Visualização pronta</span>
+          </div>
+          <div class="patient-export-toolbar">
+            <div class="patient-export-inline-options">
+              <label class="day-check patient-export-toggle" id="patientExportIncludeDaysRow">
+                <input type="checkbox" id="patientExportIncludeDays" checked onchange="renderPatientClinicalExportPreview()">
+                <span>
+                  <strong>Mostrar dias atendidos</strong>
+                  <small>Exibe os atendimentos concluídos no final da ficha clínica.</small>
+                </span>
+              </label>
+            </div>
+            <div class="quick-note small" id="patientExportNote">A ficha clínica inclui identificação do paciente, anamnese, evoluções clínicas e, opcionalmente, os atendimentos concluídos na agenda. O histórico completo lista todos os registros do paciente por data, com status e serviço.</div>
+          </div>
+          <div class="patient-export-preview-stage">
+            <div id="patientExportPreview" class="patient-export-preview"></div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="modal-foot">
       <button class="btn" type="button" onclick="closeModal('patientExportModal')">Cancelar</button>
-      <button class="btn primary" type="button" onclick="printPatientClinicalExport()">Gerar PDF clínico</button>
+      <button class="btn" type="button" onclick="openPatientClinicalExportWindow()">Abrir em nova janela</button>
+      <button class="btn primary" type="button" onclick="printPatientClinicalExport()">Imprimir / exportar PDF</button>
     </div>
   </div>
 </div>

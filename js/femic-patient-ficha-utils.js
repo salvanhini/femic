@@ -18,6 +18,75 @@
     return value.slice(0, Math.max(0, limit - 1)).trimEnd() + '…';
   }
 
+  function formatAgeLabel(value){
+    return asText(value) || 'Não informada';
+  }
+
+  function buildPatientFichaExportContext(input){
+    input = input || {};
+    var patient = input.patient || {};
+    var formatPhone = typeof input.formatPhone === 'function' ? input.formatPhone : function(value){ return asText(value); };
+    return {
+      header: {
+        name: asText(patient.name) || 'Paciente',
+        phone: formatPhone(patient.whatsapp || '-') || '-',
+        pathology: asText(patient.pathology) || 'Sem patologia registrada',
+        age: formatAgeLabel(input.ageLabel)
+      },
+      exportMeta: {
+        patientId: asText(patient.id),
+        phone: formatPhone(patient.whatsapp || '-') || '-',
+        pathology: asText(patient.pathology) || 'Sem patologia registrada',
+        age: formatAgeLabel(input.ageLabel)
+      },
+      summaryModel: buildPatientFichaSummaryModel(input)
+    };
+  }
+
+  function buildPatientHistorySummaryModel(input){
+    input = input || {};
+    var items = Array.isArray(input.items) ? input.items : [];
+    var formatDate = typeof input.formatDate === 'function' ? input.formatDate : function(value){ return asText(value); };
+    var attended = 0;
+    var missed = 0;
+    var future = 0;
+    function toneForStatus(statusLabel){
+      var normalized = asText(statusLabel).toLowerCase();
+      if(normalized === 'atendido') return 'success';
+      if(normalized === 'falta') return 'danger';
+      if(normalized === 'agendado' || normalized === 'confirmado') return 'info';
+      return 'neutral';
+    }
+    items.forEach(function(item){
+      var normalized = asText(item && item.statusLabel).toLowerCase();
+      if(normalized === 'atendido') attended += 1;
+      else if(normalized === 'falta') missed += 1;
+      else if(normalized === 'agendado' || normalized === 'confirmado') future += 1;
+    });
+    return {
+      countLabel: items.length ? items.length + ' registro' + (items.length === 1 ? '' : 's') : 'Sem histórico',
+      emptyMessage: 'Nenhum registro encontrado para este paciente.',
+      summaryCards: [
+        { label: 'Atendidos', value: String(attended) },
+        { label: 'Faltas', value: String(missed) },
+        { label: 'Futuros', value: String(future) }
+      ],
+      rows: items.map(function(item){
+        var time = asText(item.start_time).slice(0, 5);
+        var parts = [asText(item.weekdayLabel), time, asText(item.statusLabel), asText(item.serviceLabel)].filter(Boolean);
+        return {
+          title: formatDate(item.appointment_date),
+          body: parts.join(' · '),
+          statusLabel: asText(item.statusLabel),
+          statusTone: toneForStatus(item.statusLabel),
+          serviceLabel: asText(item.serviceLabel),
+          weekdayLabel: asText(item.weekdayLabel),
+          timeLabel: time
+        };
+      })
+    };
+  }
+
   function buildPatientFichaSummaryModel(input){
     input = input || {};
     var patient = input.patient || {};
@@ -28,7 +97,7 @@
     var formatDate = typeof input.formatDate === 'function' ? input.formatDate : function(value){ return asText(value); };
     var formatWeekday = typeof input.formatWeekday === 'function' ? input.formatWeekday : function(value){ return asText(value); };
     var formatPhone = typeof input.formatPhone === 'function' ? input.formatPhone : function(value){ return asText(value); };
-    var ageLabel = asText(input.ageLabel) || 'Não informada';
+    var ageLabel = formatAgeLabel(input.ageLabel);
     var completedCount = Number(input.completedCount || 0);
 
     var nextStatus = nextAppointment
@@ -94,6 +163,8 @@
   }
 
   return {
-    buildPatientFichaSummaryModel: buildPatientFichaSummaryModel
+    buildPatientFichaExportContext: buildPatientFichaExportContext,
+    buildPatientFichaSummaryModel: buildPatientFichaSummaryModel,
+    buildPatientHistorySummaryModel: buildPatientHistorySummaryModel
   };
 });

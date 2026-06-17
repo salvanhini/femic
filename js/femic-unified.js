@@ -76,6 +76,11 @@
 
   var runtime = {
     currentPatientId: '',
+    patientExport: {
+      patientId: '',
+      appointments: [],
+      htmlByType: { clinical:'', history:'' }
+    },
     historyDataset: { source:'empty', patients:[], sessions:[] },
     clinicalCloud: {
       loadedPatientId: '',
@@ -571,6 +576,172 @@
     return age + ' anos · ' + utils.getAgeSupportNote(age);
   }
 
+  function resolveServiceName(serviceId){
+    return window.serviceName ? serviceName(serviceId) : 'Serviço';
+  }
+
+  function getPatientFichaViewData(pid, appointments){
+    var patient = getPatientById(pid);
+    if(!patient) return null;
+    appointments = Array.isArray(appointments) ? appointments : [];
+    var evolutions = getPatientEvolutions(pid);
+    var packages = getAgendaPackagesByPatient(pid);
+    var anamnese = getAnamneseByPatient(pid);
+    var age = patientAge(patient);
+    var today = new Date();
+    var todayPackageIso = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    var appointmentSnapshot = buildPatientAppointmentSnapshot(appointments, pid, todayPackageIso);
+    var packageSummary = buildPatientPackageSummary(packages, appointments, todayPackageIso);
+    var latestEvolution = evolutions[0] || null;
+    var utils = patientFichaUtils();
+    var input = {
+      patient: patient,
+      ageLabel: age != null ? String(age) + ' anos' : 'Não informada',
+      nextAppointment: appointmentSnapshot.nextAppointments[0] ? {
+        appointment_date: appointmentSnapshot.nextAppointments[0].appointment_date,
+        start_time: appointmentSnapshot.nextAppointments[0].start_time,
+        service_name: resolveServiceName(appointmentSnapshot.nextAppointments[0].service_id)
+      } : null,
+      completedCount: appointmentSnapshot.completed.length,
+      packageSummary: packageSummary,
+      anamnese: anamnese,
+      latestEvolution: latestEvolution,
+      formatDate: fmtDateSafe,
+      formatWeekday: fmtWeekdaySafe,
+      formatPhone: formatWhatsapp
+    };
+    var exportContext = utils && typeof utils.buildPatientFichaExportContext === 'function'
+      ? utils.buildPatientFichaExportContext(input)
+      : { summaryModel: utils && typeof utils.buildPatientFichaSummaryModel === 'function' ? utils.buildPatientFichaSummaryModel(input) : null };
+    return {
+      patient: patient,
+      input: input,
+      appointments: appointments,
+      appointmentSnapshot: appointmentSnapshot,
+      packageSummary: packageSummary,
+      anamnese: anamnese || {},
+      evolutions: evolutions,
+      latestEvolution: latestEvolution,
+      exportContext: exportContext || {},
+      model: exportContext && exportContext.summaryModel ? exportContext.summaryModel : null
+    };
+  }
+
+  function getPatientHistoryExportItemsForPatient(pid, appointments){
+    var utils = unifiedAppointmentsUtils();
+    if(utils && typeof utils.getPatientHistoryExportItems === 'function'){
+      return utils.getPatientHistoryExportItems(appointments, pid, function(serviceId){
+        return resolveServiceName(serviceId);
+      });
+    }
+    return [];
+  }
+
+  function getPatientExportType(){
+    return el('patientExportTypeHistory') && el('patientExportTypeHistory').checked ? 'history' : 'clinical';
+  }
+
+  function getClinicalExportDocumentStyles(){
+    return [
+      ':root{color-scheme:light;--clinical-navy:#0c355d;--clinical-cyan:#2497c8;--clinical-mint:#dff4f2;--clinical-ink:#1a3146;--clinical-muted:#6b7d8e;--clinical-line:rgba(12,53,93,.12);--clinical-bg:#edf5f8;--clinical-card:#ffffff;--clinical-success:#dff3e8;--clinical-danger:#fbe4e4;--clinical-info:#e3f0fb;}',
+      '*{box-sizing:border-box}',
+      'body{margin:0;font-family:Georgia,"Times New Roman",serif;color:var(--clinical-ink);background:linear-gradient(180deg,#f7fbfd 0%,var(--clinical-bg) 100%);padding:22px}',
+      '.clinical-export-doc{max-width:920px;margin:0 auto;background:rgba(255,255,255,.96);border:1px solid var(--clinical-line);border-radius:28px;box-shadow:0 24px 60px rgba(12,53,93,.12);overflow:hidden}',
+      '.clinical-export-header{padding:28px 30px 22px;background:linear-gradient(145deg,#ffffff 0%,#f1f8fb 58%,#eef9f7 100%);display:grid;gap:18px;border-bottom:1px solid var(--clinical-line)}',
+      '.clinical-export-brand{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}',
+      '.clinical-export-brand-mark{display:flex;align-items:center;gap:14px}',
+      '.clinical-export-brand-seal{width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,var(--clinical-navy),#134d7f);color:#fff;display:grid;place-items:center;font-size:1.2rem;font-weight:700;letter-spacing:.08em;box-shadow:0 16px 30px rgba(12,53,93,.16)}',
+      '.clinical-export-brand span{display:block;color:var(--clinical-cyan);font-size:.74rem;font-weight:700;letter-spacing:.28em;text-transform:uppercase}',
+      '.clinical-export-brand strong{display:block;margin-top:4px;color:var(--clinical-navy);font-size:1.2rem;line-height:1.2}',
+      '.clinical-export-brand small{color:var(--clinical-muted);font-size:.88rem;line-height:1.5;text-align:right}',
+      '.clinical-export-title{display:grid;gap:6px}',
+      '.clinical-export-title .eyebrow{font-size:.75rem;letter-spacing:.22em;text-transform:uppercase;color:var(--clinical-cyan);font-weight:700}',
+      '.clinical-export-title h2{margin:0;color:var(--clinical-navy);font-size:2rem;line-height:1.08;font-weight:700}',
+      '.clinical-export-subtitle{margin:0;color:var(--clinical-muted);font-size:1rem;line-height:1.6}',
+      '.clinical-export-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}',
+      '.clinical-export-meta div,.clinical-export-summary-card{border:1px solid var(--clinical-line);border-radius:20px;padding:14px 16px;background:rgba(255,255,255,.72);backdrop-filter:blur(8px)}',
+      '.clinical-export-meta strong,.clinical-export-field strong,.clinical-export-summary-card strong{display:block;color:var(--clinical-cyan);font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;font-weight:700}',
+      '.clinical-export-meta span{display:block;margin-top:8px;color:var(--clinical-navy);font-size:1rem;line-height:1.45}',
+      '.clinical-export-body{padding:26px 30px 32px;display:grid;gap:18px}',
+      '.clinical-export-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}',
+      '.clinical-export-summary-card span{display:block;margin-top:6px;color:var(--clinical-navy);font-size:1.65rem;font-weight:700;line-height:1.05}',
+      '.clinical-export-section{display:grid;gap:12px}',
+      '.clinical-export-section-head{display:flex;justify-content:space-between;align-items:center;gap:12px}',
+      '.clinical-export-section h3{margin:0;color:var(--clinical-navy);font-size:1.12rem;line-height:1.2}',
+      '.clinical-export-section-note{color:var(--clinical-muted);font-size:.92rem;line-height:1.5}',
+      '.clinical-export-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}',
+      '.clinical-export-field,.clinical-export-block,.clinical-export-history-item{border:1px solid var(--clinical-line);border-radius:20px;background:var(--clinical-card);padding:16px 18px;box-shadow:0 10px 22px rgba(12,53,93,.05)}',
+      '.clinical-export-field p,.clinical-export-block p{margin:8px 0 0;white-space:pre-wrap;line-height:1.7;font-size:.98rem;color:var(--clinical-ink)}',
+      '.clinical-export-block h4{margin:0;color:var(--clinical-navy);font-size:1rem}',
+      '.clinical-export-history-list{display:grid;gap:12px}',
+      '.clinical-export-history-item{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:flex-start}',
+      '.clinical-export-history-accent{width:14px;min-height:100%;border-radius:999px;background:linear-gradient(180deg,var(--clinical-cyan),#69c7cf)}',
+      '.clinical-export-history-content{display:grid;gap:10px}',
+      '.clinical-export-history-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}',
+      '.clinical-export-history-title{color:var(--clinical-navy);font-size:1rem;font-weight:700;line-height:1.3}',
+      '.clinical-export-status{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:8px 12px;font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}',
+      '.clinical-export-status.success{background:var(--clinical-success);color:#19583c}',
+      '.clinical-export-status.danger{background:var(--clinical-danger);color:#8a2f2f}',
+      '.clinical-export-status.info{background:var(--clinical-info);color:#22547f}',
+      '.clinical-export-status.neutral{background:#eef3f7;color:#496072}',
+      '.clinical-export-history-meta{display:flex;flex-wrap:wrap;gap:8px;color:var(--clinical-muted);font-size:.9rem;line-height:1.5}',
+      '.clinical-export-pill{display:inline-flex;align-items:center;border-radius:999px;padding:7px 10px;background:#f3f8fb;border:1px solid rgba(12,53,93,.08)}',
+      '.clinical-export-empty{padding:22px;border:1px dashed rgba(12,53,93,.2);border-radius:20px;background:rgba(255,255,255,.68);color:var(--clinical-muted);text-align:center;line-height:1.6}',
+      '.clinical-export-days{list-style:none;margin:0;padding:0;display:grid;gap:10px}',
+      '.clinical-export-days li{border:1px solid var(--clinical-line);border-radius:18px;padding:14px 16px;background:#fff;display:flex;justify-content:space-between;gap:12px;font-size:.95rem;line-height:1.45}',
+      '.clinical-export-days strong{color:var(--clinical-navy)}',
+      '.clinical-export-days span{color:var(--clinical-muted)}',
+      '@media(max-width:900px){body{padding:14px}.clinical-export-doc{border-radius:24px}.clinical-export-header,.clinical-export-body{padding:20px}.clinical-export-meta,.clinical-export-grid,.clinical-export-summary-grid{grid-template-columns:1fr}.clinical-export-brand{display:grid}.clinical-export-brand small{text-align:left}.clinical-export-history-item{grid-template-columns:1fr}.clinical-export-history-accent{display:none}.clinical-export-days li{display:grid}}',
+      '@media print{@page{size:A4;margin:14mm}body{padding:0;background:#fff}.clinical-export-doc{max-width:none;border:none;box-shadow:none;border-radius:0}.clinical-export-field,.clinical-export-block,.clinical-export-history-item,.clinical-export-summary-card,.clinical-export-meta div,.clinical-export-days li{box-shadow:none;break-inside:avoid}.clinical-export-header{background:#fff}}'
+    ].join('');
+  }
+
+  function getPatientExportPayload(pid, appointments, includeDays){
+    var exportType = getPatientExportType();
+    var html = exportType === 'history'
+      ? buildPatientHistoryExportHtml(pid, appointments)
+      : buildPatientClinicalExportHtml(pid, includeDays, appointments);
+    return {
+      type: exportType,
+      title: exportType === 'history' ? 'Histórico completo do paciente' : 'Ficha clínica do paciente',
+      fileTitle: exportType === 'history' ? 'Histórico do paciente FEMIC' : 'Ficha clínica FEMIC',
+      html: html
+    };
+  }
+
+  function updatePatientExportControlState(exportType){
+    var includeDaysRow = el('patientExportIncludeDaysRow');
+    var note = el('patientExportNote');
+    var title = el('patientExportPreviewTitle');
+    var eyebrow = el('patientExportPreviewEyebrow');
+    if(includeDaysRow) includeDaysRow.style.display = exportType === 'clinical' ? '' : 'none';
+    if(note){
+      note.textContent = exportType === 'history'
+        ? 'A linha do tempo reúne todos os agendamentos do paciente em ordem cronológica, com serviço e status destacados.'
+        : 'A ficha clínica reúne identificação, anamnese, evoluções e, opcionalmente, os atendimentos concluídos na agenda.';
+    }
+    if(title) title.textContent = exportType === 'history' ? 'Histórico completo do paciente' : 'Ficha clínica do paciente';
+    if(eyebrow) eyebrow.textContent = exportType === 'history' ? 'Prévia do histórico' : 'Prévia da ficha';
+  }
+
+  function renderPatientExportDocument(html){
+    var target = el('patientExportPreview');
+    if(!target) return;
+    target.innerHTML = html || '<div class="clinical-export-empty">Nenhum conteúdo disponível para pré-visualização.</div>';
+  }
+
+  function openPatientExportInWindow(payload, shouldPrint){
+    if(!payload || !payload.html) return;
+    var exportWindow = window.open('', '_blank', 'width=1080,height=820');
+    if(!exportWindow) return;
+    exportWindow.document.write('<html><head><title>' + payload.fileTitle + '</title><style>' + getClinicalExportDocumentStyles() + '</style></head><body>' + payload.html + '</body></html>');
+    exportWindow.document.close();
+    exportWindow.focus();
+    if(shouldPrint){
+      setTimeout(function(){ exportWindow.print(); }, 250);
+    }
+  }
+
   function renderUnifiedProntuario(){
     var pid = getSelectedPatientId();
     var patient = getPatientById(pid);
@@ -1009,6 +1180,66 @@
     '</div>';
   }
 
+  function buildPremiumDocumentBrandHtml(settings, dateValue, type){
+    var typeLabel = DOC_LABELS[type] || 'Documento';
+    return '<div class="doc-brand">' +
+      '<div class="doc-brand-main">' +
+        '<div class="doc-brand-mark">' +
+          '<div class="doc-brand-seal">F</div>' +
+          '<div class="doc-brand-copy">' +
+            '<span>FEMIC</span>' +
+            '<strong>Fisioterapia Especializada</strong>' +
+            ((settings.professionalCouncil || '') ? '<small>' + escHtml(settings.professionalCouncil) + '</small>' : '') +
+          '</div>' +
+        '</div>' +
+        (settings.logoData ? '<div class="doc-brand-logo-wrap">' + renderDocumentImage(settings.logoData, 'doc-logo-img', 'Logo') + '</div>' : '') +
+      '</div>' +
+      '<div class="doc-brand-side">' +
+        '<div class="doc-brand-pill">' + escHtml(typeLabel) + '</div>' +
+        '<small>Emitido em ' + escHtml(fmtDateSafe(dateValue)) + '</small>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function getPremiumDocumentSheetStyles(){
+    return [
+      '@page{size:A4;margin:16mm}',
+      '*{box-sizing:border-box}',
+      'body{margin:0;padding:22px;font-family:Georgia,"Times New Roman",serif;color:#193248;background:linear-gradient(180deg,#f7fbfd 0%,#eef6fa 100%)}',
+      '.document-sheet{max-width:900px;margin:0 auto;background:rgba(255,255,255,.96);border:1px solid rgba(11,60,111,.14);border-radius:26px;box-shadow:0 22px 48px rgba(11,60,111,.10);padding:28px 30px 32px}',
+      '.document-sheet-premium h2{margin:18px 0 14px;color:#0c355d;font-size:2rem;line-height:1.08}',
+      '.doc-brand{display:flex;justify-content:space-between;align-items:flex-start;gap:22px;padding-bottom:20px;margin-bottom:22px;border-bottom:1px solid rgba(11,60,111,.14)}',
+      '.doc-brand-main{display:grid;gap:14px;min-width:0}',
+      '.doc-brand-mark{display:flex;align-items:center;gap:14px}',
+      '.doc-brand-seal{width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,#0c355d,#134d7f);color:#fff;display:grid;place-items:center;font-size:1.3rem;font-weight:700;letter-spacing:.08em;box-shadow:0 16px 30px rgba(12,53,93,.18)}',
+      '.doc-brand-copy{display:grid;gap:4px}',
+      '.doc-brand-copy span{display:block;color:#2497c8;font-size:.74rem;font-weight:700;letter-spacing:.28em;text-transform:uppercase}',
+      '.doc-brand-copy strong{display:block;color:#0c355d;font-size:1.25rem;line-height:1.15}',
+      '.doc-brand-copy small,.doc-brand-side small{display:block;color:#6b7d8e;font-size:.88rem;line-height:1.5}',
+      '.doc-brand-logo-wrap{display:flex;align-items:center}',
+      '.doc-logo-img{max-width:260px;max-height:118px;object-fit:contain}',
+      '.doc-brand-side{display:grid;gap:10px;justify-items:end;text-align:right}',
+      '.doc-brand-pill{display:inline-flex;align-items:center;min-height:32px;padding:7px 11px;border-radius:999px;background:#e9f4fb;color:#0c355d;font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}',
+      '.doc-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:22px}',
+      '.doc-meta-receipt{grid-template-columns:repeat(2,minmax(0,1fr))}',
+      '.meta-box{border:1px solid rgba(11,60,111,.12);border-radius:18px;padding:13px 15px;background:linear-gradient(180deg,#fff,#f7fbfd)}',
+      '.meta-box .small{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;font-weight:800;color:#2497c8}',
+      '.meta-box strong{display:block;margin-top:8px;color:#0c355d;font-size:1rem;line-height:1.45}',
+      '.doc-body{white-space:pre-wrap;line-height:1.72;font-size:12.2pt;min-height:310px;color:#193248}',
+      '.doc-body p{margin:0 0 12px}',
+      '.doc-sign{margin-top:34px;padding-top:18px;border-top:1px dashed rgba(11,60,111,.22);color:#64748b}',
+      '.doc-sign-premium{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}',
+      '.doc-signature-block{min-width:260px;text-align:center;color:#183043}',
+      '.doc-signature-img{display:block;max-width:230px;max-height:92px;object-fit:contain;margin:0 auto 6px}',
+      '.doc-sign-line{border-top:1px solid rgba(11,60,111,.34);margin:2px auto 8px;width:240px;max-width:100%}',
+      '.doc-professional-name{display:block;color:#0c355d;font-size:11.5pt}',
+      '.doc-professional-council{display:block;margin-top:3px;color:#64748b;font-size:10pt;font-weight:700}',
+      '.doc-stamp-img{max-width:150px;max-height:150px;object-fit:contain;opacity:.92}',
+      '@media(max-width:760px){body{padding:14px}.document-sheet{padding:18px;border-radius:22px}.doc-brand,.doc-sign-premium{display:grid}.doc-brand-side{justify-items:start;text-align:left}.doc-meta,.doc-meta-receipt{grid-template-columns:1fr}}',
+      '@media print{body{padding:0;background:#fff}.document-sheet{max-width:none;border:none;box-shadow:none;border-radius:0;padding:0}}'
+    ].join('');
+  }
+
   function renderUnifiedDocumentPreview(){
     var preview = el('documentPreview');
     if(!preview) return;
@@ -1032,7 +1263,7 @@
     var body = getDocumentBodyHtml() || textToDocumentHtml('Use o botão "Gerar texto" para preencher um documento com base no contexto clínico do paciente.');
     preview.innerHTML =
       '<div class="document-sheet document-sheet-premium">' +
-        '<div class="doc-brand"><div class="doc-brand-main">' + (settings.logoData ? renderDocumentImage(settings.logoData, 'doc-logo-img', 'Logo') : '<span>FEMIC</span>') + (settings.logoData && settings.professionalCouncil ? '<div><small>' + escHtml(settings.professionalCouncil) + '</small></div>' : (!settings.logoData && settings.professionalCouncil ? '<div><small>' + escHtml(settings.professionalCouncil) + '</small></div>' : '')) + '</div></div>' +
+        buildPremiumDocumentBrandHtml(settings, dateValue, type) +
         '<h2>' + escHtml(preset.title || 'DOCUMENTO') + '</h2>' +
         documentMetaHtml(type, patient, dateValue, ctx) +
         '<div class="doc-body">' + body + '</div>' +
@@ -1047,7 +1278,7 @@
     var title = doc.title || doc.type_label || 'DOCUMENTO';
     var ctx = getDocumentContext(doc.patient_id);
     return '<div class="document-sheet document-sheet-premium">' +
-      '<div class="doc-brand"><div class="doc-brand-main">' + (settings.logoData ? renderDocumentImage(settings.logoData, 'doc-logo-img', 'Logo') : '<span>FEMIC</span>') + (settings.logoData && settings.professionalCouncil ? '<div><small>' + escHtml(settings.professionalCouncil) + '</small></div>' : (!settings.logoData && settings.professionalCouncil ? '<div><small>' + escHtml(settings.professionalCouncil) + '</small></div>' : '')) + '</div></div>' +
+      buildPremiumDocumentBrandHtml(settings, doc.date, doc.type) +
       '<h2>' + escHtml(title) + '</h2>' +
       documentMetaHtml(doc.type, patient, doc.date, ctx) +
       '<div class="doc-body">' + body + '</div>' +
@@ -1686,7 +1917,7 @@
     if(!preview) return;
     var printWindow = window.open('', '_blank', 'width=900,height=700');
     if(!printWindow) return;
-    printWindow.document.write('<html><head><title>Documento FEMIC</title><style>@page{size:A4;margin:18mm}body{font-family:Arial,sans-serif;color:#183043;background:#fff}h2{color:#0b3c6f;letter-spacing:.03em;margin:0 0 18px}.document-sheet{max-width:820px;margin:0 auto}.doc-brand{display:flex;justify-content:space-between;align-items:center;gap:18px;border-bottom:2px solid #dbe5ea;padding:0 0 18px;margin-bottom:24px;background:#fff}.doc-brand-main{display:grid;gap:8px}.doc-logo-img{max-width:260px;max-height:118px;object-fit:contain}.doc-brand span{display:block;color:#0b3c6f;font-size:1.55rem;font-weight:900;letter-spacing:.08em}.doc-brand strong,.doc-brand small{color:#64748b}.doc-brand small{text-align:right;line-height:1.45}.doc-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}.meta-box{border:1px solid #dbe5ea;border-radius:12px;padding:10px}.doc-body{white-space:pre-wrap;line-height:1.68;font-size:12.5pt;min-height:310px}.doc-sign{margin-top:34px;padding-top:18px;border-top:1px dashed #c9d6de;color:#64748b}.doc-sign-premium{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}.doc-signature-block{min-width:280px;text-align:center;color:#183043}.doc-signature-img{display:block;max-width:230px;max-height:92px;object-fit:contain;margin:0 auto 6px}.doc-sign-line{border-top:1px solid #8da2b3;margin:2px auto 8px;width:260px}.doc-professional-name{display:block;color:#0b3c6f;font-size:11.5pt}.doc-professional-council{display:block;margin-top:3px;color:#64748b;font-size:10pt;font-weight:700}.doc-stamp-img{max-width:150px;max-height:150px;object-fit:contain;opacity:.92}@media print{body{padding:0}.document-sheet{max-width:none}}</style></head><body>' + preview.innerHTML + '</body></html>');
+    printWindow.document.write('<html><head><title>Documento FEMIC</title><style>' + getPremiumDocumentSheetStyles() + '</style></head><body>' + preview.innerHTML + '</body></html>');
     printWindow.document.close();
     printWindow.focus();
     setTimeout(function(){ printWindow.print(); }, 300);
@@ -1779,7 +2010,7 @@
     if(!body || !body.innerHTML.trim()) return;
     var printWindow = window.open('', '_blank', 'width=900,height=700');
     if(!printWindow) return;
-    printWindow.document.write('<html><head><title>Documento FEMIC</title><style>@page{size:A4;margin:18mm}body{font-family:Arial,sans-serif;color:#183043;background:#fff}.document-sheet{max-width:820px;margin:0 auto}.doc-brand{display:flex;justify-content:space-between;align-items:center;gap:18px;border-bottom:2px solid #dbe5ea;padding:0 0 18px;margin-bottom:24px;background:#fff}.doc-brand-main{display:grid;gap:8px}.doc-logo-img{max-width:260px;max-height:118px;object-fit:contain}.doc-brand span{display:block;color:#0b3c6f;font-size:1.55rem;font-weight:900;letter-spacing:.08em}.doc-brand strong,.doc-brand small{color:#64748b}.doc-brand small{text-align:right;line-height:1.45}h2{color:#0b3c6f;letter-spacing:.03em;margin:0 0 18px}.doc-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}.meta-box{border:1px solid #dbe5ea;border-radius:12px;padding:10px}.small{font-size:.88rem}.muted{color:#64748b}.doc-body{white-space:pre-wrap;line-height:1.68;font-size:12.5pt;min-height:310px}.doc-sign{margin-top:34px;padding-top:18px;border-top:1px dashed #c9d6de;color:#64748b}.doc-sign-premium{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}.doc-signature-block{min-width:280px;text-align:center;color:#183043}.doc-signature-img{display:block;max-width:230px;max-height:92px;object-fit:contain;margin:0 auto 6px}.doc-sign-line{border-top:1px solid #8da2b3;margin:2px auto 8px;width:260px}.doc-professional-name{display:block;color:#0b3c6f;font-size:11.5pt}.doc-professional-council{display:block;margin-top:3px;color:#64748b;font-size:10pt;font-weight:700}.doc-stamp-img{max-width:150px;max-height:150px;object-fit:contain;opacity:.92}@media print{body{padding:0}.document-sheet{max-width:none}}</style></head><body>' + body.innerHTML + '</body></html>');
+    printWindow.document.write('<html><head><title>Documento FEMIC</title><style>' + getPremiumDocumentSheetStyles() + '</style></head><body>' + body.innerHTML + '</body></html>');
     printWindow.document.close();
     printWindow.focus();
     setTimeout(function(){ printWindow.print(); }, 300);
@@ -1922,16 +2153,19 @@
     URL.revokeObjectURL(url);
   };
 
-  function buildPatientClinicalExportHtml(pid, includeDays){
+  function buildPatientClinicalExportHtml(pid, includeDays, appointments){
     var patient = getPatientById(pid);
     if(!patient) return '';
-    var anamnese = getAnamneseByPatient(pid) || {};
-    var evolutions = getPatientEvolutions(pid);
-    var appointments = getCompletedAgendaAppointmentsByPatient(pid);
+    appointments = Array.isArray(appointments) ? appointments : getAgendaAppointmentsByPatient(pid);
+    var fichaData = getPatientFichaViewData(pid, appointments);
+    if(!fichaData) return '';
+    var anamnese = fichaData.anamnese || {};
+    var evolutions = fichaData.evolutions || [];
+    var completedAppointments = fichaData.appointmentSnapshot && Array.isArray(fichaData.appointmentSnapshot.completed) ? fichaData.appointmentSnapshot.completed : [];
     var daysHtml = includeDays
-      ? (appointments.length
-        ? appointments.map(function(item){
-            return '<li><strong>' + escHtml(fmtDateSafe(item.appointment_date)) + '</strong><span>' + escHtml(fmtWeekdaySafe(item.appointment_date) + ' · ' + String(item.start_time || '').slice(0,5) + ' · ' + (window.serviceName ? serviceName(item.service_id) : 'Serviço')) + '</span></li>';
+      ? (completedAppointments.length
+        ? completedAppointments.map(function(item){
+            return '<li><strong>' + escHtml(fmtDateSafe(item.appointment_date)) + '</strong><span>' + escHtml(fmtWeekdaySafe(item.appointment_date) + ' · ' + String(item.start_time || '').slice(0,5) + ' · ' + resolveServiceName(item.service_id)) + '</span></li>';
           }).join('')
         : '<li>Nenhum atendimento concluído na agenda.</li>')
       : '';
@@ -1939,114 +2173,126 @@
       ? evolutions.map(function(item){
           return '<article class="clinical-export-block"><h4>' + escHtml(fmtDateSafe(item.date)) + '</h4><p><strong>Evolução:</strong> ' + escHtml(item.conduct || 'Sem registro') + '</p><p><strong>Orientações:</strong> ' + escHtml(item.guidance || 'Sem orientações registradas') + '</p></article>';
         }).join('')
-      : '<p>Nenhuma evolução clínica cadastrada.</p>';
+      : '<div class="clinical-export-empty">Nenhuma evolução clínica cadastrada.</div>';
     return '' +
       '<div class="clinical-export-doc">' +
         '<header class="clinical-export-header">' +
-          '<div class="clinical-export-brand"><div><span>FEMIC</span><strong>Fisioterapia Especializada</strong></div><small>Ficha clínica do paciente<br>Emitida em ' + escHtml(fmtDateSafe(todayIsoSafe())) + '</small></div>' +
-          '<div class="clinical-export-title"><div class="eyebrow">Ficha F</div><h2>Ficha clínica do paciente</h2></div>' +
+          '<div class="clinical-export-brand"><div class="clinical-export-brand-mark"><div class="clinical-export-brand-seal">F</div><div><span>FEMIC</span><strong>Fisioterapia Especializada</strong></div></div><small>Ficha clínica do paciente<br>Emitida em ' + escHtml(fmtDateSafe(todayIsoSafe())) + '</small></div>' +
+          '<div class="clinical-export-title"><div class="eyebrow">Ficha F</div><h2>Ficha clínica do paciente</h2><p class="clinical-export-subtitle">Documento clínico consolidado com contexto funcional, evolução recente e visão rápida do acompanhamento.</p></div>' +
           '<div class="clinical-export-meta"><div><strong>Paciente</strong><span>' + escHtml(patient.name || '-') + '</span></div><div><strong>WhatsApp</strong><span>' + escHtml(formatWhatsapp(patient.whatsapp || '-')) + '</span></div><div><strong>Patologia</strong><span>' + escHtml(patient.pathology || 'Sem patologia registrada') + '</span></div></div>' +
         '</header>' +
-        '<section class="clinical-export-section"><h3>Anamnese</h3><div class="clinical-export-grid">' +
-          '<div class="clinical-export-field"><strong>Queixa principal</strong><p>' + escHtml(anamnese.chief_complaint || 'Não registrada') + '</p></div>' +
-          '<div class="clinical-export-field"><strong>História atual</strong><p>' + escHtml(anamnese.history || 'Não registrada') + '</p></div>' +
-          '<div class="clinical-export-field"><strong>Diagnóstico / hipótese</strong><p>' + escHtml(anamnese.diagnosis || 'Não registrado') + '</p></div>' +
-          '<div class="clinical-export-field"><strong>Limitações funcionais</strong><p>' + escHtml(anamnese.limitations || 'Não registradas') + '</p></div>' +
-          '<div class="clinical-export-field"><strong>Objetivos</strong><p>' + escHtml(anamnese.goals || 'Não registrados') + '</p></div>' +
-          '<div class="clinical-export-field"><strong>Observações</strong><p>' + escHtml(anamnese.obs || 'Sem observações') + '</p></div>' +
-        '</div></section>' +
-        '<section class="clinical-export-section"><h3>Evoluções clínicas</h3>' + evolutionHtml + '</section>' +
-        (includeDays ? '<section class="clinical-export-section"><h3>Dias atendidos</h3><ul class="clinical-export-days">' + daysHtml + '</ul></section>' : '') +
+        '<div class="clinical-export-body">' +
+          '<section class="clinical-export-section"><div class="clinical-export-section-head"><h3>Panorama rápido</h3><span class="clinical-export-section-note">Leitura imediata do momento clínico e operacional do paciente.</span></div><div class="clinical-export-summary-grid"><div class="clinical-export-summary-card"><strong>Sessões realizadas</strong><span>' + escHtml(String(fichaData.appointmentSnapshot.completed.length)) + '</span></div><div class="clinical-export-summary-card"><strong>Próximo atendimento</strong><span>' + escHtml(fichaData.model && fichaData.model.statusCards[0] ? fichaData.model.statusCards[0].value : 'Sem próximos atendimentos') + '</span></div><div class="clinical-export-summary-card"><strong>Saldo do pacote</strong><span>' + escHtml(fichaData.model && fichaData.model.statusCards[2] ? fichaData.model.statusCards[2].value : 'Sem pacote ativo') + '</span></div></div></section>' +
+          '<section class="clinical-export-section"><div class="clinical-export-section-head"><h3>Anamnese</h3><span class="clinical-export-section-note">Base clínica resumida para consulta rápida.</span></div><div class="clinical-export-grid">' +
+            '<div class="clinical-export-field"><strong>Queixa principal</strong><p>' + escHtml(anamnese.chief_complaint || 'Não registrada') + '</p></div>' +
+            '<div class="clinical-export-field"><strong>História atual</strong><p>' + escHtml(anamnese.history || 'Não registrada') + '</p></div>' +
+            '<div class="clinical-export-field"><strong>Diagnóstico / hipótese</strong><p>' + escHtml(anamnese.diagnosis || 'Não registrado') + '</p></div>' +
+            '<div class="clinical-export-field"><strong>Limitações funcionais</strong><p>' + escHtml(anamnese.limitations || 'Não registradas') + '</p></div>' +
+            '<div class="clinical-export-field"><strong>Objetivos</strong><p>' + escHtml(anamnese.goals || 'Não registrados') + '</p></div>' +
+            '<div class="clinical-export-field"><strong>Observações</strong><p>' + escHtml(anamnese.obs || 'Sem observações') + '</p></div>' +
+          '</div></section>' +
+          '<section class="clinical-export-section"><div class="clinical-export-section-head"><h3>Evoluções clínicas</h3><span class="clinical-export-section-note">Registros recentes do acompanhamento fisioterapêutico.</span></div>' + evolutionHtml + '</section>' +
+          (includeDays ? '<section class="clinical-export-section"><div class="clinical-export-section-head"><h3>Dias atendidos</h3><span class="clinical-export-section-note">Atendimentos concluídos já realizados na agenda.</span></div><ul class="clinical-export-days">' + daysHtml + '</ul></section>' : '') +
+        '</div>' +
+      '</div>';
+  }
+
+  function buildPatientHistoryExportHtml(pid, appointments){
+    var patient = getPatientById(pid);
+    if(!patient) return '';
+    var fichaData = getPatientFichaViewData(pid, appointments || []);
+    if(!fichaData) return '';
+    var items = getPatientHistoryExportItemsForPatient(pid, appointments || []);
+    var historySummaryUtils = patientFichaUtils();
+    var historyModel = historySummaryUtils && typeof historySummaryUtils.buildPatientHistorySummaryModel === 'function'
+      ? historySummaryUtils.buildPatientHistorySummaryModel({
+          items: items.map(function(item){
+            return {
+              appointment_date: item.appointment_date,
+              weekdayLabel: fmtWeekdaySafe(item.appointment_date),
+              start_time: item.start_time,
+              statusLabel: item.statusLabel,
+              serviceLabel: item.serviceLabel
+            };
+          }),
+          formatDate: fmtDateSafe
+        })
+      : { countLabel: items.length + ' registros', emptyMessage: 'Nenhum registro encontrado para este paciente.', rows: [] };
+    var rowsHtml = historyModel.rows.length
+      ? historyModel.rows.map(function(row){
+          return '<article class="clinical-export-history-item"><div class="clinical-export-history-accent"></div><div class="clinical-export-history-content"><div class="clinical-export-history-top"><div class="clinical-export-history-title">' + escHtml(row.title) + '</div><span class="clinical-export-status ' + escHtml(row.statusTone) + '">' + escHtml(row.statusLabel) + '</span></div><div class="clinical-export-history-meta"><span class="clinical-export-pill">' + escHtml(row.weekdayLabel || '-') + '</span><span class="clinical-export-pill">' + escHtml(row.timeLabel || '--:--') + '</span><span class="clinical-export-pill">' + escHtml(row.serviceLabel || 'Serviço') + '</span></div><p>' + escHtml(row.body) + '</p></div></article>';
+        }).join('')
+      : '<div class="clinical-export-empty">' + escHtml(historyModel.emptyMessage) + '</div>';
+    var summaryCardsHtml = historyModel.summaryCards.map(function(card){
+      return '<div class="clinical-export-summary-card"><strong>' + escHtml(card.label) + '</strong><span>' + escHtml(card.value) + '</span></div>';
+    }).join('');
+    return '' +
+      '<div class="clinical-export-doc">' +
+        '<header class="clinical-export-header">' +
+          '<div class="clinical-export-brand"><div class="clinical-export-brand-mark"><div class="clinical-export-brand-seal">F</div><div><span>FEMIC</span><strong>Fisioterapia Especializada</strong></div></div><small>Histórico completo do paciente<br>Emitido em ' + escHtml(fmtDateSafe(todayIsoSafe())) + '</small></div>' +
+          '<div class="clinical-export-title"><div class="eyebrow">Ficha F</div><h2>Histórico completo do paciente</h2><p class="clinical-export-subtitle">Linha do tempo integral dos agendamentos do paciente, pensada para leitura confortável também sem impressora.</p></div>' +
+          '<div class="clinical-export-meta"><div><strong>Paciente</strong><span>' + escHtml(fichaData.exportContext && fichaData.exportContext.header ? fichaData.exportContext.header.name : patient.name || '-') + '</span></div><div><strong>WhatsApp</strong><span>' + escHtml(fichaData.exportContext && fichaData.exportContext.exportMeta ? fichaData.exportContext.exportMeta.phone : formatWhatsapp(patient.whatsapp || '-')) + '</span></div><div><strong>Patologia</strong><span>' + escHtml(fichaData.exportContext && fichaData.exportContext.exportMeta ? fichaData.exportContext.exportMeta.pathology : patient.pathology || 'Sem patologia registrada') + '</span></div></div>' +
+        '</header>' +
+        '<div class="clinical-export-body">' +
+          '<section class="clinical-export-section"><div class="clinical-export-section-head"><h3>Resumo</h3><span class="clinical-export-section-note">Indicadores rápidos do histórico para navegação mais leve.</span></div><div class="clinical-export-summary-grid"><div class="clinical-export-summary-card"><strong>Registros no histórico</strong><span>' + escHtml(historyModel.countLabel) + '</span></div>' + summaryCardsHtml + '</div></section>' +
+          '<section class="clinical-export-section"><div class="clinical-export-section-head"><h3>Linha do tempo de atendimentos</h3><span class="clinical-export-section-note">Todos os eventos em ordem cronológica, com status e serviço destacados.</span></div><div class="clinical-export-history-list">' + rowsHtml + '</div></section>' +
+        '</div>' +
       '</div>';
   }
 
   window.openPatient = async function(pid){
-    var patient = getPatientById(pid);
-    if(!patient || !el('patientFicha')) return;
+    if(!el('patientFicha')) return;
     setCurrentPatient(pid);
-    var evolutions = getPatientEvolutions(pid);
     var appointments = await fetchAllAppointmentsForPatient(pid);
-    var packages = getAgendaPackagesByPatient(pid);
-    var anamnese = getAnamneseByPatient(pid);
-    var age = patientAge(patient);
-    var todayForPackages = new Date();
-    var todayPackageIso = todayForPackages.getFullYear() + '-' + String(todayForPackages.getMonth() + 1).padStart(2, '0') + '-' + String(todayForPackages.getDate()).padStart(2, '0');
-    var appointmentSnapshot = buildPatientAppointmentSnapshot(appointments, pid, todayPackageIso);
-    var packageSummary = buildPatientPackageSummary(packages, appointments, todayPackageIso);
-    var latestEvolution = evolutions[0] || null;
-    var utils = patientFichaUtils();
-    var model = utils && typeof utils.buildPatientFichaSummaryModel === 'function'
-      ? utils.buildPatientFichaSummaryModel({
-          patient: patient,
-          ageLabel: age != null ? String(age) + ' anos' : 'Não informada',
-          nextAppointment: appointmentSnapshot.nextAppointments[0] ? {
-            appointment_date: appointmentSnapshot.nextAppointments[0].appointment_date,
-            start_time: appointmentSnapshot.nextAppointments[0].start_time,
-            service_name: window.serviceName ? serviceName(appointmentSnapshot.nextAppointments[0].service_id) : 'Serviço'
-          } : null,
-          completedCount: appointmentSnapshot.completed.length,
-          packageSummary: packageSummary,
-          anamnese: anamnese,
-          latestEvolution: latestEvolution,
-          formatDate: fmtDateSafe,
-          formatWeekday: fmtWeekdaySafe,
-          formatPhone: formatWhatsapp
-        })
-      : null;
-    el('patientFicha').innerHTML = buildPatientFichaSummaryHtml(model, pid);
+    var fichaData = getPatientFichaViewData(pid, appointments);
+    if(!fichaData) return;
+    el('patientFicha').innerHTML = buildPatientFichaSummaryHtml(fichaData.model, pid);
     if(el('patientModal')) el('patientModal').classList.add('show');
     renderUnifiedAll();
   };
 
-  window.openPatientClinicalExport = function(pid){
+  window.openPatientClinicalExport = async function(pid){
     var patient = getPatientById(pid);
     if(!patient || !el('patientExportPatientId')) return;
     el('patientExportPatientId').value = pid;
+    if(el('patientExportTypeClinical')) el('patientExportTypeClinical').checked = true;
     if(el('patientExportIncludeDays')) el('patientExportIncludeDays').checked = true;
+    runtime.patientExport.patientId = pid;
+    runtime.patientExport.appointments = await fetchAllAppointmentsForPatient(pid);
     if(el('patientExportModal')) el('patientExportModal').classList.add('show');
+    window.renderPatientClinicalExportPreview();
   };
 
-  window.printPatientClinicalExport = function(){
+  window.renderPatientClinicalExportPreview = function(){
+    var pid = el('patientExportPatientId') ? el('patientExportPatientId').value : runtime.patientExport.patientId;
+    if(!pid) return;
+    var includeDays = !!(el('patientExportIncludeDays') && el('patientExportIncludeDays').checked);
+    var payload = getPatientExportPayload(pid, runtime.patientExport.appointments || [], includeDays);
+    runtime.patientExport.patientId = pid;
+    runtime.patientExport.htmlByType[payload.type] = payload.html;
+    updatePatientExportControlState(payload.type);
+    renderPatientExportDocument(payload.html);
+    if(el('patientExportPreviewBadge')) el('patientExportPreviewBadge').textContent = payload.type === 'history' ? 'Histórico em tela' : 'Ficha em tela';
+  };
+
+  window.openPatientClinicalExportWindow = function(){
+    var pid = el('patientExportPatientId') ? el('patientExportPatientId').value : runtime.patientExport.patientId;
+    if(!pid) return;
+    var includeDays = !!(el('patientExportIncludeDays') && el('patientExportIncludeDays').checked);
+    var payload = getPatientExportPayload(pid, runtime.patientExport.appointments || [], includeDays);
+    openPatientExportInWindow(payload, false);
+  };
+
+  window.printPatientClinicalExport = async function(){
     var pid = el('patientExportPatientId') ? el('patientExportPatientId').value : '';
     if(!pid) return;
     var includeDays = !!(el('patientExportIncludeDays') && el('patientExportIncludeDays').checked);
-    var html = buildPatientClinicalExportHtml(pid, includeDays);
-    if(!html) return;
-    var printWindow = window.open('', '_blank', 'width=980,height=760');
-    if(!printWindow) return;
-    var style = [
-      '@page{size:A4;margin:16mm}',
-      '*{box-sizing:border-box}',
-      'body{font-family:Arial,sans-serif;color:#183043;background:#fff;margin:0;padding:22px}',
-      '.clinical-export-doc{max-width:820px;margin:0 auto;background:#fff}',
-      '.clinical-export-header{display:grid;gap:16px;margin-bottom:20px}',
-      '.clinical-export-brand{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;border-bottom:2px solid #dbe5ea;padding-bottom:14px}',
-      '.clinical-export-brand span{display:block;color:#0b3c6f;font-size:21px;font-weight:900;letter-spacing:.08em}',
-      '.clinical-export-brand strong,.clinical-export-brand small{color:#64748b;font-size:10.5pt;line-height:1.35}',
-      '.clinical-export-brand small{text-align:right}',
-      '.clinical-export-title h2{margin:2px 0 0;color:#0b3c6f;font-size:20pt}',
-      '.eyebrow{font-size:8.5pt;letter-spacing:.08em;text-transform:uppercase;color:#0f5c5c;font-weight:900}',
-      '.clinical-export-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}',
-      '.clinical-export-meta div{border:1px solid #dbe5ea;border-radius:10px;padding:9px 10px;background:#f8fbfd}',
-      '.clinical-export-meta strong,.clinical-export-field strong{display:block;color:#0b3c6f;font-size:8.5pt;text-transform:uppercase;letter-spacing:.04em}',
-      '.clinical-export-meta span{display:block;margin-top:4px;font-size:10.5pt}',
-      '.clinical-export-section{margin-top:14px;border-top:1px solid #dbe5ea;padding-top:13px;break-inside:avoid}',
-      '.clinical-export-section h3{margin:0 0 10px;color:#0b3c6f;font-size:13.5pt}',
-      '.clinical-export-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}',
-      '.clinical-export-field,.clinical-export-block{border:1px solid #dbe5ea;border-radius:10px;padding:10px 11px;background:#fff;break-inside:avoid}',
-      '.clinical-export-field p,.clinical-export-block p{margin:7px 0 0;white-space:pre-wrap;line-height:1.5;font-size:10.5pt}',
-      '.clinical-export-block{margin-bottom:8px}',
-      '.clinical-export-block h4{margin:0;color:#0b3c6f;font-size:11pt}',
-      '.clinical-export-days{list-style:none;margin:0;padding:0;display:grid;gap:6px}',
-      '.clinical-export-days li{border:1px solid #dbe5ea;border-radius:9px;padding:8px 10px;display:flex;justify-content:space-between;gap:10px;font-size:10pt}',
-      '.clinical-export-days span{color:#64748b}',
-      '@media(max-width:760px){body{padding:14px}.clinical-export-meta,.clinical-export-grid{grid-template-columns:1fr}.clinical-export-brand{display:grid}.clinical-export-brand small{text-align:left}}',
-      '@media print{body{padding:0}.clinical-export-doc{max-width:none}.clinical-export-meta div,.clinical-export-field,.clinical-export-block,.clinical-export-days li{background:#fff}}'
-    ].join('');
-    printWindow.document.write('<html><head><title>Ficha clínica FEMIC</title><style>' + style + '</style></head><body>' + html + '</body></html>');
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(function(){ printWindow.print(); }, 300);
+    if(!runtime.patientExport.appointments.length){
+      runtime.patientExport.appointments = await fetchAllAppointmentsForPatient(pid);
+    }
+    var payload = getPatientExportPayload(pid, runtime.patientExport.appointments || [], includeDays);
+    if(!payload.html) return;
+    openPatientExportInWindow(payload, true);
     if(el('patientExportModal')) el('patientExportModal').classList.remove('show');
   };
 
