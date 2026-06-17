@@ -943,8 +943,11 @@
       <div class="patient-export-shell">
         <div class="patient-export-preview-panel">
           <div class="patient-export-preview-head">
-            <div>
+            <div class="patient-export-head-main">
               <div class="eyebrow" id="patientExportPreviewEyebrow">Prévia em tela</div>
+              <h4 id="patientExportPreviewTitle">Ficha clínica do paciente</h4>
+            </div>
+            <div class="patient-export-head-actions">
               <div class="patient-export-type-switch" role="tablist" aria-label="Tipo de documento">
                 <label class="patient-export-switch-option">
                   <input type="radio" name="patientExportType" id="patientExportTypeClinical" checked onchange="renderPatientClinicalExportPreview()">
@@ -955,9 +958,8 @@
                   <span>Histórico completo</span>
                 </label>
               </div>
-              <h4 id="patientExportPreviewTitle">Ficha clínica do paciente</h4>
+              <span class="patient-export-preview-badge" id="patientExportPreviewBadge">Visualização pronta</span>
             </div>
-            <span class="patient-export-preview-badge" id="patientExportPreviewBadge">Visualização pronta</span>
           </div>
           <div class="patient-export-toolbar">
             <div class="patient-export-inline-options">

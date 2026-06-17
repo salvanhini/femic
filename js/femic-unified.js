@@ -499,46 +499,6 @@
     if(window.syncPatientPickers) window.syncPatientPickers();
   }
 
-  function renderPatientHub(){
-    return;
-    var target = el('patientHubContent');
-    var status = el('patientHubStatus');
-    if(!target || !status) return;
-    var pid = getSelectedPatientId();
-    var patient = getPatientById(pid);
-    if(!patient){
-      status.textContent = 'Selecione um paciente para consolidar o contexto.';
-      target.className = 'unified-empty-state';
-      target.innerHTML = 'Abra a ficha de um paciente ou selecione-o no prontuário para ver agenda, pacote, evolução, documentos e atalhos em um único lugar.';
-      return;
-    }
-    fetchClinicalForPatient(pid).catch(function(e){ if(typeof toast === 'function') toast('Erro ao carregar prontuário em nuvem: ' + e.message, 'error'); });
-    var sessions = getPatientSessions(pid);
-    var evolutions = getPatientEvolutions(pid);
-    var docs = getDocumentsByPatient(pid);
-    var guias = getGuiasByPatient(pid);
-    var appointments = getAgendaAppointmentsByPatient(pid);
-    var packages = getAgendaPackagesByPatient(pid);
-    status.textContent = 'Paciente ativo: ' + patient.name;
-    target.className = '';
-    target.innerHTML =
-      '<div class="hub-grid">' +
-        '<div class="hub-card"><h4>Dados centrais</h4><div><strong>' + escHtml(patient.name) + '</strong></div><div class="muted small">' + escHtml(formatWhatsapp(patient.whatsapp || '-')) + ' · ' + escHtml(patient.pathology || 'Sem patologia') + '</div></div>' +
-        '<div class="hub-card"><h4>Agenda</h4><div><strong>' + appointments.filter(function(a){ return ['agendado','confirmado'].indexOf(a.status) !== -1; }).length + '</strong> futuro(s)</div><div class="muted small">' + appointments.length + ' agendamento(s) totais</div></div>' +
-        '<div class="hub-card"><h4>Prontuário</h4><div><strong>' + sessions.length + '</strong> sessão(ões) clínicas</div><div class="muted small">' + evolutions.length + ' evolução(ões) clínicas</div></div>' +
-        '<div class="hub-card"><h4>Documentos</h4><div><strong>' + (docs.length + guias.length) + '</strong> registro(s)</div><div class="muted small">' + getGeneratedDocumentsByPatient(pid).length + ' documento(s) gerado(s)</div></div>' +
-      '</div>' +
-      '<div class="timeline-soft" style="margin-top:14px">' +
-        '<div class="event"><strong>Pacotes</strong><div class="muted small" style="margin-top:6px">' + (packages.length ? packages.map(function(pkg){
-          var total = Number(pkg.total_sessions || 0);
-          var remaining = Number(pkg.remaining_sessions || 0);
-          return escHtml((window.serviceName ? serviceName(pkg.service_id) : 'Serviço') + ': ' + (total - remaining) + '/' + total + ' usadas · saldo ' + remaining);
-        }).join('<br>') : 'Sem pacote ativo.') + '</div></div>' +
-        '<div class="event"><strong>Última evolução</strong><div class="muted small" style="margin-top:6px">' + (evolutions[0] ? escHtml((fmtDateSafe(evolutions[0].date) + ' · ' + (evolutions[0].conduct || 'Sem registro'))) : 'Nenhuma evolução clínica registrada.') + '</div></div>' +
-        '<div class="event"><strong>Atalhos</strong><div class="toolbar" style="margin-top:10px"><button class="btn" onclick="openProntuarioPatient(\'' + escHtml(pid) + '\')">Abrir prontuário</button><button class="btn" onclick="openDocumentsPatient(\'' + escHtml(pid) + '\')">Abrir documentos</button></div></div>' +
-      '</div>';
-  }
-
   var ANAMNESE_FIELD_IDS = ['anamChief','anamHistory','anamDiagnosis','anamLimitations','anamGoals','anamObs'];
   function resetAnamneseFields(){
     ANAMNESE_FIELD_IDS.concat(['evolutionDate','evolutionConduct','evolutionGuidance']).forEach(function(id){
