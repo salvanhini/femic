@@ -7225,98 +7225,80 @@ textarea{
 #panel-documentos .document-sheet-premium .doc-brand{
   display:flex;
   justify-content:space-between;
-  align-items:center;
+  align-items:flex-end;
   gap:22px;
   border-bottom:1px solid rgba(11,60,111,.14);
-  padding:0 0 20px;
-  margin-bottom:22px;
+  padding:0 0 18px;
+  margin-bottom:24px;
   background:none;
 }
 
 #panel-documentos .document-sheet-premium .doc-brand-main{
-  display:grid;
-  gap:14px;
-  min-width:0;
-}
-
-#panel-documentos .document-sheet-premium .doc-brand-mark{
   display:flex;
   align-items:center;
-  gap:14px;
-}
-
-#panel-documentos .document-sheet-premium .doc-brand-seal{
-  width:56px;
-  height:56px;
-  border-radius:18px;
-  background:linear-gradient(135deg,#0c355d,#134d7f);
-  color:#fff;
-  display:grid;
-  place-items:center;
-  font-size:1.3rem;
-  font-weight:700;
-  letter-spacing:.08em;
-  box-shadow:0 16px 30px rgba(12,53,93,.18);
-}
-
-#panel-documentos .document-sheet-premium .doc-brand-copy{
-  display:grid;
-  gap:4px;
+  min-width:0;
+  flex:1;
 }
 
 #panel-documentos .document-sheet-premium .doc-logo-img{
-  max-width:260px;
-  max-height:118px;
+  max-width:300px;
+  max-height:88px;
   object-fit:contain;
+  object-position:left center;
 }
 
 #panel-documentos .document-sheet-premium .doc-brand-logo-wrap{
   display:flex;
   align-items:center;
+  max-width:100%;
 }
 
-#panel-documentos .document-sheet-premium .doc-brand span{
+#panel-documentos .document-sheet-premium .doc-brand-logo-wrap.is-featured{
+  padding:2px 0;
+}
+
+#panel-documentos .document-sheet-premium .doc-brand-fallback{
+  display:grid;
+  gap:4px;
+}
+
+#panel-documentos .document-sheet-premium .doc-brand-fallback strong{
   display:block;
-  color:#2497c8;
+  color:#0c355d;
+  font-size:1.28rem;
+  line-height:1.1;
+  letter-spacing:.08em;
+}
+
+#panel-documentos .document-sheet-premium .doc-brand-fallback small{
+  display:block;
+  color:#4b84ae;
   font-size:.74rem;
   font-weight:700;
-  letter-spacing:.28em;
+  line-height:1.4;
+  letter-spacing:.22em;
   text-transform:uppercase;
 }
 
-#panel-documentos .document-sheet-premium .doc-brand strong{
-  color:#0c355d;
-  font-size:1.25rem;
-  line-height:1.15;
-}
-
-#panel-documentos .document-sheet-premium .doc-brand-copy small,
-#panel-documentos .document-sheet-premium .doc-brand-side small{
-  color:#6b7d8e;
-  font-size:.88rem;
-  font-weight:600;
-  line-height:1.45;
-}
-
 #panel-documentos .document-sheet-premium .doc-brand-side{
-  display:grid;
-  gap:10px;
-  justify-items:end;
-  text-align:right;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
 }
 
 #panel-documentos .document-sheet-premium .doc-brand-pill{
   display:inline-flex;
   align-items:center;
-  min-height:32px;
-  padding:7px 11px;
+  min-height:34px;
+  padding:8px 14px;
   border-radius:999px;
-  background:#e9f4fb;
+  background:#edf5fb;
   color:#0c355d;
-  font-size:.78rem;
+  font-size:.76rem;
   font-weight:800;
-  letter-spacing:.08em;
+  letter-spacing:.16em;
   text-transform:uppercase;
+  white-space:nowrap;
 }
 
 #panel-documentos .document-sheet-premium h2{
@@ -7439,97 +7421,79 @@ textarea{
 .generated-document-reader .doc-brand{
   display:flex;
   justify-content:space-between;
-  align-items:center;
+  align-items:flex-end;
   gap:22px;
   border-bottom:1px solid rgba(11,60,111,.14);
-  padding:0 0 20px;
-  margin-bottom:22px;
+  padding:0 0 18px;
+  margin-bottom:24px;
 }
 
 .generated-document-reader .doc-brand-main{
-  display:grid;
-  gap:14px;
-  min-width:0;
-}
-
-.generated-document-reader .doc-brand-mark{
   display:flex;
   align-items:center;
-  gap:14px;
-}
-
-.generated-document-reader .doc-brand-seal{
-  width:56px;
-  height:56px;
-  border-radius:18px;
-  background:linear-gradient(135deg,#0c355d,#134d7f);
-  color:#fff;
-  display:grid;
-  place-items:center;
-  font-size:1.3rem;
-  font-weight:700;
-  letter-spacing:.08em;
-  box-shadow:0 16px 30px rgba(12,53,93,.18);
-}
-
-.generated-document-reader .doc-brand-copy{
-  display:grid;
-  gap:4px;
+  min-width:0;
+  flex:1;
 }
 
 .generated-document-reader .doc-logo-img{
-  max-width:260px;
-  max-height:118px;
+  max-width:300px;
+  max-height:88px;
   object-fit:contain;
+  object-position:left center;
 }
 
 .generated-document-reader .doc-brand-logo-wrap{
   display:flex;
   align-items:center;
+  max-width:100%;
 }
 
-.generated-document-reader .doc-brand span{
+.generated-document-reader .doc-brand-logo-wrap.is-featured{
+  padding:2px 0;
+}
+
+.generated-document-reader .doc-brand-fallback{
+  display:grid;
+  gap:4px;
+}
+
+.generated-document-reader .doc-brand-fallback strong{
   display:block;
-  color:#2497c8;
+  color:#0c355d;
+  font-size:1.28rem;
+  line-height:1.1;
+  letter-spacing:.08em;
+}
+
+.generated-document-reader .doc-brand-fallback small{
+  display:block;
+  color:#4b84ae;
   font-size:.74rem;
   font-weight:700;
-  letter-spacing:.28em;
+  line-height:1.4;
+  letter-spacing:.22em;
   text-transform:uppercase;
 }
 
-.generated-document-reader .doc-brand strong{
-  color:#0c355d;
-  font-size:1.25rem;
-  line-height:1.15;
-}
-
-.generated-document-reader .doc-brand-copy small,
-.generated-document-reader .doc-brand-side small{
-  color:#6b7d8e;
-  font-size:.88rem;
-  font-weight:600;
-  line-height:1.45;
-}
-
 .generated-document-reader .doc-brand-side{
-  display:grid;
-  gap:10px;
-  justify-items:end;
-  text-align:right;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
 }
 
 .generated-document-reader .doc-brand-pill{
   display:inline-flex;
   align-items:center;
-  min-height:32px;
-  padding:7px 11px;
+  min-height:34px;
+  padding:8px 14px;
   border-radius:999px;
-  background:#e9f4fb;
+  background:#edf5fb;
   color:#0c355d;
-  font-size:.78rem;
+  font-size:.76rem;
   font-weight:800;
-  letter-spacing:.08em;
+  letter-spacing:.16em;
   text-transform:uppercase;
+  white-space:nowrap;
 }
 
 .generated-document-reader h2{
@@ -8045,7 +8009,28 @@ textarea:focus-visible{
     flex-direction:column;
   }
 
+  #panel-documentos .document-sheet-premium .doc-brand,
+  #panel-documentos .document-sheet-premium .doc-sign-premium{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  #panel-documentos .document-sheet-premium .doc-brand-side,
+  .generated-document-reader .doc-brand-side{
+    justify-content:flex-start;
+  }
+
+  #panel-documentos .document-sheet-premium .doc-logo-img,
+  .generated-document-reader .doc-logo-img{
+    max-width:250px;
+    max-height:74px;
+  }
+
   .generated-document-reader .doc-meta{
+    grid-template-columns:1fr;
+  }
+
+  #panel-documentos .document-sheet-premium .doc-meta{
     grid-template-columns:1fr;
   }
 

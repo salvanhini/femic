@@ -1142,21 +1142,13 @@
 
   function buildPremiumDocumentBrandHtml(settings, dateValue, type){
     var typeLabel = DOC_LABELS[type] || 'Documento';
+    var brandMain = settings.logoData
+      ? '<div class="doc-brand-logo-wrap is-featured">' + renderDocumentImage(settings.logoData, 'doc-logo-img', 'Logo FEMIC') + '</div>'
+      : '<div class="doc-brand-fallback"><strong>FEMIC</strong><small>Fisioterapia Especializada</small></div>';
     return '<div class="doc-brand">' +
-      '<div class="doc-brand-main">' +
-        '<div class="doc-brand-mark">' +
-          '<div class="doc-brand-seal">F</div>' +
-          '<div class="doc-brand-copy">' +
-            '<span>FEMIC</span>' +
-            '<strong>Fisioterapia Especializada</strong>' +
-            ((settings.professionalCouncil || '') ? '<small>' + escHtml(settings.professionalCouncil) + '</small>' : '') +
-          '</div>' +
-        '</div>' +
-        (settings.logoData ? '<div class="doc-brand-logo-wrap">' + renderDocumentImage(settings.logoData, 'doc-logo-img', 'Logo') + '</div>' : '') +
-      '</div>' +
+      '<div class="doc-brand-main">' + brandMain + '</div>' +
       '<div class="doc-brand-side">' +
         '<div class="doc-brand-pill">' + escHtml(typeLabel) + '</div>' +
-        '<small>Emitido em ' + escHtml(fmtDateSafe(dateValue)) + '</small>' +
       '</div>' +
     '</div>';
   }
@@ -1168,18 +1160,16 @@
       'body{margin:0;padding:22px;font-family:Georgia,"Times New Roman",serif;color:#193248;background:linear-gradient(180deg,#f7fbfd 0%,#eef6fa 100%)}',
       '.document-sheet{max-width:900px;margin:0 auto;background:rgba(255,255,255,.96);border:1px solid rgba(11,60,111,.14);border-radius:26px;box-shadow:0 22px 48px rgba(11,60,111,.10);padding:28px 30px 32px}',
       '.document-sheet-premium h2{margin:18px 0 14px;color:#0c355d;font-size:2rem;line-height:1.08}',
-      '.doc-brand{display:flex;justify-content:space-between;align-items:flex-start;gap:22px;padding-bottom:20px;margin-bottom:22px;border-bottom:1px solid rgba(11,60,111,.14)}',
-      '.doc-brand-main{display:grid;gap:14px;min-width:0}',
-      '.doc-brand-mark{display:flex;align-items:center;gap:14px}',
-      '.doc-brand-seal{width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,#0c355d,#134d7f);color:#fff;display:grid;place-items:center;font-size:1.3rem;font-weight:700;letter-spacing:.08em;box-shadow:0 16px 30px rgba(12,53,93,.18)}',
-      '.doc-brand-copy{display:grid;gap:4px}',
-      '.doc-brand-copy span{display:block;color:#2497c8;font-size:.74rem;font-weight:700;letter-spacing:.28em;text-transform:uppercase}',
-      '.doc-brand-copy strong{display:block;color:#0c355d;font-size:1.25rem;line-height:1.15}',
-      '.doc-brand-copy small,.doc-brand-side small{display:block;color:#6b7d8e;font-size:.88rem;line-height:1.5}',
-      '.doc-brand-logo-wrap{display:flex;align-items:center}',
-      '.doc-logo-img{max-width:260px;max-height:118px;object-fit:contain}',
-      '.doc-brand-side{display:grid;gap:10px;justify-items:end;text-align:right}',
-      '.doc-brand-pill{display:inline-flex;align-items:center;min-height:32px;padding:7px 11px;border-radius:999px;background:#e9f4fb;color:#0c355d;font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}',
+      '.doc-brand{display:flex;justify-content:space-between;align-items:flex-end;gap:22px;padding-bottom:18px;margin-bottom:24px;border-bottom:1px solid rgba(11,60,111,.10)}',
+      '.doc-brand-main{display:flex;align-items:center;min-width:0;flex:1}',
+      '.doc-brand-logo-wrap{display:flex;align-items:center;max-width:100%}',
+      '.doc-brand-logo-wrap.is-featured{padding:2px 0}',
+      '.doc-logo-img{max-width:300px;max-height:88px;object-fit:contain;object-position:left center}',
+      '.doc-brand-fallback{display:grid;gap:4px}',
+      '.doc-brand-fallback strong{display:block;color:#0c355d;font-size:1.28rem;line-height:1.1;letter-spacing:.08em}',
+      '.doc-brand-fallback small{display:block;color:#4b84ae;font-size:.74rem;font-weight:700;letter-spacing:.22em;text-transform:uppercase}',
+      '.doc-brand-side{display:flex;align-items:center;justify-content:flex-end}',
+      '.doc-brand-pill{display:inline-flex;align-items:center;min-height:34px;padding:8px 14px;border-radius:999px;background:#edf5fb;color:#0c355d;font-size:.76rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap}',
       '.doc-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:22px}',
       '.doc-meta-receipt{grid-template-columns:repeat(2,minmax(0,1fr))}',
       '.meta-box{border:1px solid rgba(11,60,111,.12);border-radius:18px;padding:13px 15px;background:linear-gradient(180deg,#fff,#f7fbfd)}',
@@ -1195,7 +1185,7 @@
       '.doc-professional-name{display:block;color:#0c355d;font-size:11.5pt}',
       '.doc-professional-council{display:block;margin-top:3px;color:#64748b;font-size:10pt;font-weight:700}',
       '.doc-stamp-img{max-width:150px;max-height:150px;object-fit:contain;opacity:.92}',
-      '@media(max-width:760px){body{padding:14px}.document-sheet{padding:18px;border-radius:22px}.doc-brand,.doc-sign-premium{display:grid}.doc-brand-side{justify-items:start;text-align:left}.doc-meta,.doc-meta-receipt{grid-template-columns:1fr}}',
+      '@media(max-width:760px){body{padding:14px}.document-sheet{padding:18px;border-radius:22px}.doc-brand,.doc-sign-premium{display:grid}.doc-brand-side{justify-content:flex-start}.doc-logo-img{max-width:250px;max-height:74px}.doc-meta,.doc-meta-receipt{grid-template-columns:1fr}}',
       '@media print{body{padding:0;background:#fff}.document-sheet{max-width:none;border:none;box-shadow:none;border-radius:0;padding:0}}'
     ].join('');
   }
