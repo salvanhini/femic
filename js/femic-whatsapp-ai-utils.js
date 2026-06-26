@@ -75,6 +75,58 @@
     };
   }
 
+  function inferIntentFromShortAnswer(message){
+    var text = norm(message);
+    var patch = {};
+    if(!text) return patch;
+    if(/convenio|convênio/.test(text)) patch.serviceCategory = 'convenio_group';
+    if(/unimed|hapvida|pro\s*unica|prounica/.test(text)) patch.payerName = canonicalPayer(text);
+    if(/fisioterapia|fisio/.test(text)){
+      patch.serviceQuery = 'fisioterapia';
+      patch.serviceCategory = 'convenio_group';
+    }
+    if(/quiro|quiroprax|coluna|ajust/.test(text)){
+      patch.serviceQuery = 'quiropraxia';
+      patch.serviceCategory = 'individual_bodywork';
+    }
+    if(/miofasc|liberacao|liberação|liberar/.test(text)){
+      patch.serviceQuery = 'liberacao miofascial';
+      patch.serviceCategory = 'individual_bodywork';
+    }
+    return patch;
+  }
+
+  function mergeConversationIntentState(previousState, nextIntent, message, nowIso){
+    var previous = previousState && previousState.intent ? previousState.intent : {};
+    var inferred = inferIntentFromShortAnswer(message);
+    var next = nextIntent || {};
+    var merged = {
+      shouldCreateTask: next.shouldCreateTask !== false && previous.shouldCreateTask !== false,
+      action: next.action && next.action !== 'marcacao' ? next.action : (previous.action || next.action || 'marcacao'),
+      serviceCategory: next.serviceCategory && next.serviceCategory !== 'unknown'
+        ? next.serviceCategory
+        : (inferred.serviceCategory || previous.serviceCategory || 'unknown'),
+      serviceQuery: next.serviceQuery || inferred.serviceQuery || previous.serviceQuery || '',
+      payerName: next.payerName || inferred.payerName || previous.payerName || '',
+      shift: next.shift || previous.shift || '',
+      dates: next.dates && next.dates.length ? next.dates : (previous.dates || []),
+      needsClarification: !!next.needsClarification,
+      clarificationQuestion: next.clarificationQuestion || '',
+      reply: next.reply || '',
+      confidence: next.confidence || previous.confidence || 'medium',
+      raw: next.raw || {},
+    };
+
+    if(merged.serviceCategory !== 'unknown' && merged.serviceQuery && (merged.payerName || merged.serviceCategory === 'individual_bodywork')){
+      merged.needsClarification = false;
+      merged.clarificationQuestion = '';
+    }
+
+    var history = previousState && Array.isArray(previousState.history) ? previousState.history.slice(-5) : [];
+    history.push({ role: 'patient', text: String(message || ''), at: nowIso || new Date().toISOString() });
+    return { intent: merged, history: history };
+  }
+
   function serviceMode(service){
     return norm(service && service.appointment_mode || 'grupo');
   }
@@ -168,8 +220,24 @@
     });
   }
 
+  function courteousClarificationQuestion(intent){
+    intent = intent || {};
+    if(intent.serviceCategory === 'convenio_group' && !intent.payerName){
+      return 'Perfeito. Por gentileza, você poderia me informar qual é o seu convênio? Atendemos opções como Unimed, Hapvida, Pro Única e outros.';
+    }
+    if(intent.serviceCategory === 'unknown' || (!intent.serviceCategory && !intent.serviceQuery)){
+      return 'Claro, vou te ajudar pelo atendimento da FEMIC. Por gentileza, você procura fisioterapia pelo convênio, quiropraxia ou liberação miofascial?';
+    }
+    if(intent.serviceCategory === 'individual_bodywork' && !intent.serviceQuery){
+      return 'Claro. Por gentileza, você deseja atendimento de quiropraxia ou liberação miofascial?';
+    }
+    return 'Obrigada pelas informações. Por gentileza, poderia me confirmar o tipo de atendimento desejado para eu encaminhar corretamente à equipe FEMIC?';
+  }
+
   return {
     chooseServiceForConversationIntent: chooseServiceForConversationIntent,
+    courteousClarificationQuestion: courteousClarificationQuestion,
+    mergeConversationIntentState: mergeConversationIntentState,
     parseGroqConversationJson: parseGroqConversationJson,
     serviceCatalogForPrompt: serviceCatalogForPrompt,
   };

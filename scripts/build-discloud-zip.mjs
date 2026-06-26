@@ -46,6 +46,7 @@ await run('zip', [
   'package-lock.json',
   'js/femic-appointment-slot-utils.js',
   'js/femic-pending-task-utils.js',
+  'js/femic-whatsapp-ai-utils.js',
   'js/femic-whatsapp-reminder-utils.js',
   'services/whatsapp-worker',
   '.env.discloud.example',

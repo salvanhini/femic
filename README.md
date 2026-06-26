@@ -172,9 +172,12 @@ O FEMIC usa um único canal automático de WhatsApp: o worker Baileys em `servic
 
 Fluxo atual:
 - O worker conecta no WhatsApp com Baileys e mantém a sessão fora do navegador.
+- Quando `FEMIC_GROQ_API_KEY` está configurada no Discloud, o bot usa Groq para entender frases naturais do paciente.
+- Quando `FEMIC_BAILEYS_ADMIN_PHONE` está configurado, o bot envia aviso por WhatsApp ao conectar ou reconectar.
 - Lembretes são enviados automaticamente 12 horas antes para agendamentos `agendado` e `confirmado`.
 - Pedidos recebidos pelo WhatsApp viram registros em `assistant_tasks`, mesmo quando o telefone ainda não está cadastrado como paciente.
 - O bot sugere horários seguros quando consegue identificar serviço, data/turno e agenda suficiente.
+- Fisioterapia por convênio, como Unimed, Hapvida, Pro Única ou outros, é tratada como grupo; quiropraxia e liberação miofascial são tratadas como individuais quando os serviços estão cadastrados assim.
 - A v1 não agenda sozinha: a equipe revisa a pendência no FEMIC e confirma manualmente.
 - O botão manual por `wa.me` fica apenas como contingência operacional quando o bot estiver indisponível.
 

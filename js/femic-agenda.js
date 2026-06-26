@@ -387,24 +387,37 @@ function renderWhatsappServiceStatus(){
   const provider=whatsappProviderValue();
   const status=whatsappServiceStatus||null;
   const serviceName=whatsappServiceNameValue();
-  let message='';
+  let message='',severity='info';
   if(provider==='baileys'){
+    const lastSeen=status&&status.last_seen_at?new Date(status.last_seen_at):null;
+    const stale=lastSeen&&!Number.isNaN(lastSeen.getTime())&&(Date.now()-lastSeen.getTime()>3*60*1000);
     if(status&&status.connection_status==='connected'){
-      message='Canal WhatsApp: Baileys conectado';
+      severity=stale?'warning':'success';
+      message=stale?'Atenção: bot Baileys sem heartbeat recente.':'Canal WhatsApp: Baileys conectado';
       if(status.last_connected_at) message+=' · conectado em '+fmtDateTime(status.last_connected_at);
       if(status.last_message_at) message+=' · último envio '+fmtDateTime(status.last_message_at);
+      if(stale&&status.last_seen_at) message+=' · último sinal '+fmtDateTime(status.last_seen_at);
     }else if(status&&status.connection_status){
-      message='Canal WhatsApp: Baileys '+status.connection_status;
+      severity='danger';
+      message='Atenção: bot Baileys '+status.connection_status+'. O envio automático pode estar parado.';
       if(status.last_error) message+=' · '+String(status.last_error).slice(0,120);
+      if(status.last_seen_at) message+=' · último sinal '+fmtDateTime(status.last_seen_at);
     }else{
-      message='Canal WhatsApp: aguardando heartbeat do serviço "'+serviceName+'".';
+      severity='warning';
+      message='Atenção: FEMIC ainda não recebeu heartbeat do bot "'+serviceName+'". Confirme se o Discloud está rodando.';
     }
   }else{
     message='Canal WhatsApp: contingência manual por wa.me disponível. O envio automático é do bot Baileys.';
   }
   targets.forEach(function(id){
     const node=$(id);
-    if(node) node.textContent=message;
+    if(node){
+      node.textContent=message;
+      node.dataset.status=severity;
+      node.style.borderLeftColor=severity==='success'?'#10b981':severity==='danger'?'#ef4444':severity==='warning'?'#f59e0b':'var(--primary2)';
+      node.style.background=severity==='success'?'#ecfdf5':severity==='danger'?'#fff1f2':severity==='warning'?'#fffbeb':'#f1fbff';
+      node.style.color=severity==='danger'?'#991b1b':severity==='warning'?'#92400e':severity==='success'?'#065f46':'var(--primary)';
+    }
   });
 }
 function packageEndedAtPatchValue(value){

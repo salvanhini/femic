@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 
 const {
   chooseServiceForConversationIntent,
+  courteousClarificationQuestion,
+  mergeConversationIntentState,
   parseGroqConversationJson,
 } = require('../js/femic-whatsapp-ai-utils.js');
 
@@ -92,4 +94,52 @@ test('chooseServiceForConversationIntent asks for clarification when category is
   assert.equal(match.service, null);
   assert.equal(match.confidence, 'low');
   assert.match(match.reason, /confirmar/i);
+});
+
+test('mergeConversationIntentState keeps short answers from the same patient conversation', () => {
+  const first = mergeConversationIntentState(null, parseGroqConversationJson(JSON.stringify({
+    should_create_task: true,
+    action: 'marcacao',
+    service_category: 'convenio_group',
+    needs_clarification: true,
+    clarification_question: 'Qual convênio você possui?'
+  })), 'Convênio');
+
+  const second = mergeConversationIntentState(first, parseGroqConversationJson(JSON.stringify({
+    should_create_task: true,
+    action: 'marcacao',
+    service_category: 'unknown',
+    payer_name: 'Unimed',
+    needs_clarification: true,
+    clarification_question: 'Qual tipo de atendimento você precisa?'
+  })), 'Unimed');
+
+  const third = mergeConversationIntentState(second, parseGroqConversationJson(JSON.stringify({
+    should_create_task: true,
+    action: 'marcacao',
+    service_category: 'convenio_group',
+    service_query: 'Fisioterapia',
+    needs_clarification: false
+  })), 'Fisioterapia');
+
+  assert.equal(third.intent.serviceCategory, 'convenio_group');
+  assert.equal(third.intent.payerName, 'unimed');
+  assert.equal(third.intent.serviceQuery, 'fisioterapia');
+  assert.equal(third.intent.needsClarification, false);
+
+  const match = chooseServiceForConversationIntent(services, third.intent);
+  assert.equal(match.service.id, 'svc-unimed');
+  assert.equal(match.confidence, 'high');
+});
+
+test('courteousClarificationQuestion sounds like a polite clinic secretary', () => {
+  const question = courteousClarificationQuestion({
+    serviceCategory: 'unknown',
+    payerName: '',
+    serviceQuery: '',
+  });
+
+  assert.match(question, /Por gentileza/i);
+  assert.match(question, /FEMIC/i);
+  assert.match(question, /convênio|quiropraxia|liberação/i);
 });

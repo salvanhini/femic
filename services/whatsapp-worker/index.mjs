@@ -30,6 +30,8 @@ const {
 
 const {
   chooseServiceForConversationIntent,
+  courteousClarificationQuestion,
+  mergeConversationIntentState,
   parseGroqConversationJson,
   serviceCatalogForPrompt,
 } = aiUtils;
@@ -40,6 +42,7 @@ const sessionDir = process.env.FEMIC_BAILEYS_SESSION_DIR || path.resolve(__dirna
 const pollMs = Math.max(15000, Number(process.env.FEMIC_BAILEYS_POLL_MS || 60000));
 const serviceName = String(process.env.FEMIC_BAILEYS_SERVICE_NAME || 'baileys-main').trim() || 'baileys-main';
 const pairingPhone = normalizePhone(process.env.FEMIC_BAILEYS_PAIRING_PHONE || '');
+const adminPhone = normalizePhone(process.env.FEMIC_BAILEYS_ADMIN_PHONE || '');
 const logLevel = process.env.FEMIC_BAILEYS_LOG_LEVEL || 'info';
 const supabaseUrl = String(process.env.FEMIC_SUPABASE_URL || '').trim();
 const supabaseServiceRoleKey = String(process.env.FEMIC_SUPABASE_SERVICE_ROLE_KEY || '').trim();
@@ -65,9 +68,40 @@ let connectionState = 'disconnected';
 let pairingCodeRequested = false;
 let whatsappStatusTableMissing = false;
 let scheduleSettingsTableMissing = false;
+let openedOnce = false;
+const conversationStateByPhone = new Map();
+const conversationStateTtlMs = 15 * 60 * 1000;
 
 function nowIso(){
   return new Date().toISOString();
+}
+
+function conversationKey(phone){
+  return normalizePhone(phone);
+}
+
+function readConversationState(phone){
+  const key = conversationKey(phone);
+  const state = conversationStateByPhone.get(key);
+  if(!state) return null;
+  const updatedAt = new Date(state.updatedAt || 0).getTime();
+  if(!updatedAt || Date.now() - updatedAt > conversationStateTtlMs){
+    conversationStateByPhone.delete(key);
+    return null;
+  }
+  return state;
+}
+
+function writeConversationState(phone, state){
+  const key = conversationKey(phone);
+  conversationStateByPhone.set(key, {
+    ...state,
+    updatedAt: nowIso(),
+  });
+}
+
+function clearConversationState(phone){
+  conversationStateByPhone.delete(conversationKey(phone));
 }
 
 function localIsoDate(value){
@@ -112,6 +146,21 @@ function formatReminderMessage(template, reminder){
 
 function toJid(phone){
   return `${phone}@s.whatsapp.net`;
+}
+
+async function notifyAdminConnectionOpen(){
+  if(!adminPhone || !socket) return;
+  const text = openedOnce
+    ? `FEMIC WhatsApp: bot Baileys reconectado em ${new Date().toLocaleString('pt-BR')}.`
+    : `FEMIC WhatsApp: bot Baileys conectado em ${new Date().toLocaleString('pt-BR')}.`;
+  try{
+    await socket.sendMessage(toJid(adminPhone), { text });
+    logger.info({ adminPhone }, 'Aviso de conexao enviado ao administrador via Baileys');
+  }catch(error){
+    logger.warn({ err: error, adminPhone }, 'Nao foi possivel enviar aviso de conexao ao administrador');
+  }finally{
+    openedOnce = true;
+  }
 }
 
 async function upsertServiceStatus(patch = {}){
@@ -274,9 +323,14 @@ function chooseServiceFromText(services, text){
   }) || null;
 }
 
-function buildGroqConversationPrompt({ text, patient, services, today }){
+function buildGroqConversationPrompt({ text, patient, services, today, conversationState }){
+  const priorIntent = conversationState && conversationState.intent ? conversationState.intent : null;
+  const priorHistory = conversationState && Array.isArray(conversationState.history) ? conversationState.history.slice(-5) : [];
   return [
     'Voce e a atendente virtual da FEMIC Fisioterapia no WhatsApp.',
+    'Fale como uma secretaria educada, acolhedora e objetiva: cumprimente quando fizer sentido, use "por gentileza", agradeca as informacoes e evite respostas secas.',
+    'Nao use linguagem tecnica, nao mencione JSON, IA, sistema, banco ou algoritmo para o paciente.',
+    'Se precisar perguntar algo, faca uma pergunta por vez, de forma curta e profissional.',
     'Sua tarefa e interpretar a mensagem do paciente e responder APENAS um JSON valido, sem markdown.',
     'Nunca confirme, marque, cancele ou prometa horario definitivo. A equipe humana sempre confirma no painel FEMIC.',
     'Classifique fisioterapia pelo convenio como service_category="convenio_group". Convenios comuns: Unimed, Hapvida, Pro Unica e outros.',
@@ -290,12 +344,13 @@ function buildGroqConversationPrompt({ text, patient, services, today }){
     `Data de hoje: ${today}`,
     `Paciente cadastrado: ${patient && patient.name ? patient.name : 'nao identificado'}`,
     `Servicos cadastrados: ${JSON.stringify(serviceCatalogForPrompt(services))}`,
+    `Contexto anterior desta conversa: ${JSON.stringify({ intent: priorIntent, history: priorHistory })}`,
     '',
     `Mensagem do paciente: ${text}`,
   ].join('\n');
 }
 
-async function classifyWithGroq({ text, patient, services, today }){
+async function classifyWithGroq({ text, patient, services, today, conversationState }){
   if(!groqApiKey) return null;
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -307,8 +362,8 @@ async function classifyWithGroq({ text, patient, services, today }){
       model: groqModel,
       temperature: 0.1,
       messages: [
-        { role: 'system', content: 'Voce interpreta conversas de WhatsApp para uma clinica e responde somente JSON valido.' },
-        { role: 'user', content: buildGroqConversationPrompt({ text, patient, services, today }) },
+        { role: 'system', content: 'Voce interpreta conversas de WhatsApp para uma clinica. Responda somente JSON valido, mas escreva campos de resposta como uma secretaria educada da FEMIC.' },
+        { role: 'user', content: buildGroqConversationPrompt({ text, patient, services, today, conversationState }) },
       ],
     }),
   });
@@ -455,9 +510,15 @@ async function handleIncomingSchedulingMessage(message){
   const patients = await fetchPatients();
   const services = await fetchServices();
   const patient = findPatientByPhone(patients, remotePhone);
+  const previousConversationState = readConversationState(remotePhone);
   let aiIntent = null;
   try{
-    aiIntent = await classifyWithGroq({ text, patient, services, today });
+    aiIntent = await classifyWithGroq({ text, patient, services, today, conversationState: previousConversationState });
+    if(aiIntent){
+      const nextState = mergeConversationIntentState(previousConversationState, aiIntent, text, nowIso());
+      writeConversationState(remotePhone, nextState);
+      aiIntent = nextState.intent;
+    }
   }catch(error){
     logger.warn({ err: error, remotePhone: normalizePhone(remotePhone) }, 'Groq falhou; usando classificador local');
     await upsertServiceStatus({
@@ -496,6 +557,9 @@ async function handleIncomingSchedulingMessage(message){
   const dates = defaultCandidateDates(classification);
   const shift = classification.shift;
   const needsClarification = !!(aiIntent && (aiIntent.needsClarification || !service || serviceMatch.confidence === 'low'));
+  if(!needsClarification && service){
+    clearConversationState(remotePhone);
+  }
   const from = dates[0] || localIsoDate(new Date());
   const to = dates[dates.length - 1] || from;
   const [appointments, scheduleBlocks] = await Promise.all([
@@ -517,7 +581,7 @@ async function handleIncomingSchedulingMessage(message){
 
   const task = await createSchedulingTask({ text, remotePhone, patient, service, slots, action, shift, dates, aiIntent, serviceMatch });
   const clarificationQuestion = needsClarification
-    ? (aiIntent && aiIntent.clarificationQuestion) || 'Só para confirmar: seria fisioterapia pelo convênio, quiropraxia ou liberação miofascial?'
+    ? (aiIntent && aiIntent.clarificationQuestion) || courteousClarificationQuestion(aiIntent)
     : '';
   await socket.sendMessage(remoteJid, { text: buildSchedulingReply(slots, { clarificationQuestion }) });
   await upsertServiceStatus({
@@ -729,6 +793,7 @@ async function startSocket(){
         last_connected_at: nowIso(),
         last_error: null,
       });
+      await notifyAdminConnectionOpen();
       ensureSyncLoop();
       await syncRemindersOnce();
       return;

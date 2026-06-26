@@ -14,6 +14,12 @@ Serviço Node separado para enviar confirmações automáticas via Baileys e reg
   - opcional, default: `services/whatsapp-worker/.session`
 - `FEMIC_BAILEYS_LOG_LEVEL`
   - opcional, default: `info`
+- `FEMIC_BAILEYS_ADMIN_PHONE`
+  - opcional, telefone com DDI para receber aviso quando o bot conectar/reconectar
+- `FEMIC_GROQ_API_KEY`
+  - opcional, mas recomendado para conversa natural no WhatsApp
+- `FEMIC_GROQ_MODEL`
+  - opcional, default: `llama-3.3-70b-versatile`
 
 ## Instalação
 
@@ -41,6 +47,9 @@ Na primeira execução, o Baileys imprime o QR no terminal. Depois de conectado,
 - grava auditoria de envio nos campos do agendamento;
 - atualiza a tabela `whatsapp_service_status` para o painel do FEMIC.
 - escuta mensagens recebidas pedindo marcação/remarcação;
+- usa Groq, quando configurado, para entender frases naturais do paciente;
+- diferencia fisioterapia por convênio/grupo de quiropraxia e liberação miofascial individuais;
+- pergunta antes de sugerir horário quando o tipo de atendimento estiver ambíguo;
 - calcula sugestões respeitando expediente, bloqueios manuais, serviço individual/grupo e limite de vagas;
 - cria uma pendência em `assistant_tasks` para revisão humana;
 - não grava agendamento automaticamente na v1.
@@ -67,6 +76,9 @@ FEMIC_BAILEYS_SERVICE_NAME=baileys-main
 FEMIC_BAILEYS_SESSION_DIR=.session
 FEMIC_BAILEYS_POLL_MS=60000
 FEMIC_BAILEYS_PAIRING_PHONE=
+FEMIC_BAILEYS_ADMIN_PHONE=
+FEMIC_GROQ_API_KEY=
+FEMIC_GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
 O arquivo `.env` real fica no `.gitignore`. Ele não deve ser enviado para GitHub ou compartilhado em conversa.
