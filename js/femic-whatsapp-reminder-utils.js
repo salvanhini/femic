@@ -7,9 +7,9 @@
 
   function normalizeWhatsappProvider(value){
     var normalized = String(value || '').trim().toLowerCase();
-    return normalized === 'baileys' || normalized === 'api' || normalized === 'wa_me'
+    return normalized === 'baileys' || normalized === 'wa_me'
       ? normalized
-      : 'wa_me';
+      : 'baileys';
   }
 
   function normalizePhone(value){

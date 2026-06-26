@@ -200,7 +200,7 @@ CREATE TABLE schedule_settings (
   working_periods TEXT DEFAULT '08:00-12:00,16:00-20:00',
   max_patients_per_slot INTEGER DEFAULT 4,
   slot_interval_minutes INTEGER DEFAULT 30,
-  whatsapp_provider TEXT DEFAULT 'wa_me',
+  whatsapp_provider TEXT DEFAULT 'baileys',
   whatsapp_template_appointment TEXT,
   whatsapp_confirmation_hours_before INTEGER DEFAULT 12,
   whatsapp_service_name TEXT DEFAULT 'baileys-main',
@@ -252,7 +252,7 @@ INSERT INTO schedule_settings (
   '08:00-12:00,16:00-20:00',
   4,
   30,
-  'wa_me',
+  'baileys',
   'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊',
   12,
   'baileys-main'
@@ -311,7 +311,7 @@ CREATE POLICY "authenticated_full_access_clinical_anamneses" ON clinical_anamnes
 CREATE POLICY "authenticated_full_access_clinical_evolutions" ON clinical_evolutions FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_femic_generated_documents" ON femic_generated_documents FOR ALL TO authenticated USING (true) WITH CHECK (true);
 NOTIFY pgrst, 'reload schema';`;
-const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],reportAppointments=[],movements=[],clinicRules=[],scheduleBlocks=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4,whatsapp_provider:'wa_me',whatsapp_template_appointment:'',whatsapp_confirmation_hours_before:12,whatsapp_service_name:'baileys-main'};let currentDate=new Date();let editingServiceId='';let loadedAppointmentQuery='',loadedReportQuery='',aiRadarQuery='',aiRadarAppointments=[],aiRadarLoaded=false,aiRadarLastWeeks=[],recurringSuggestionCache=[];let sessionPackagesEndedAtSupported=null;let whatsappServiceStatus=null;let lastUserInteractionAt=Date.now();const appointmentSearchSelected=new Set();
+const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],reportAppointments=[],movements=[],clinicRules=[],scheduleBlocks=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4,whatsapp_provider:'baileys',whatsapp_template_appointment:'',whatsapp_confirmation_hours_before:12,whatsapp_service_name:'baileys-main'};let currentDate=new Date();let editingServiceId='';let loadedAppointmentQuery='',loadedReportQuery='',aiRadarQuery='',aiRadarAppointments=[],aiRadarLoaded=false,aiRadarLastWeeks=[],recurringSuggestionCache=[];let sessionPackagesEndedAtSupported=null;let whatsappServiceStatus=null;let lastUserInteractionAt=Date.now();const appointmentSearchSelected=new Set();
 const packageScheduleCache=new Map();
 let showArchivedPatients=false,showInactivePackages=false;
 const dayAppointmentCache=new Map();
@@ -357,7 +357,8 @@ async function detectSessionPackagesEndedAtSupport(){
   return sessionPackagesEndedAtSupported;
 }
 function whatsappProviderValue(){
-  return settings.whatsapp_provider||localStorage.femic_whatsapp_provider||'wa_me';
+  const value=String(settings.whatsapp_provider||localStorage.femic_whatsapp_provider||'baileys').toLowerCase();
+  return value==='wa_me'?'wa_me':'baileys';
 }
 function whatsappServiceNameValue(){
   return settings.whatsapp_service_name||localStorage.femic_whatsapp_service_name||'baileys-main';
@@ -398,10 +399,8 @@ function renderWhatsappServiceStatus(){
     }else{
       message='Canal WhatsApp: aguardando heartbeat do serviço "'+serviceName+'".';
     }
-  }else if(provider==='api'){
-    message='Canal WhatsApp: provedor API preparado. O envio automático depende da integração externa.';
   }else{
-    message='Canal WhatsApp: envio manual por wa.me disponível como contingência operacional.';
+    message='Canal WhatsApp: contingência manual por wa.me disponível. O envio automático é do bot Baileys.';
   }
   targets.forEach(function(id){
     const node=$(id);
@@ -450,7 +449,7 @@ function rebuildReferenceIndexes(){
 }
 async function loadClinicRulesCollection(){try{const rows=await api('clinic_rules?select=*&order=priority.asc,created_at.asc');writeClinicRulesCache(rows||[]);return rows||[]}catch(e){if(isMissingClinicRulesTableError(e))return readClinicRulesCache();throw e}}
 clinicRules=readClinicRulesCache();
-function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||DEFAULT_WHATSAPP_REMINDER_TEMPLATE;$('tplReminder').value=tpl;if($('whatsappProvider'))$('whatsappProvider').value=localStorage.femic_whatsapp_provider||'wa_me';if($('whatsappEndpoint'))$('whatsappEndpoint').value=localStorage.femic_whatsapp_endpoint||'';if($('whatsappTplAppointment'))$('whatsappTplAppointment').value=localStorage.femic_whatsapp_tpl_appointment||'lembrete_sessao';if($('whatsappTplForm'))$('whatsappTplForm').value=localStorage.femic_whatsapp_tpl_form||'formulario_pos_sessao';if($('whatsappServiceName'))$('whatsappServiceName').value=localStorage.femic_whatsapp_service_name||'baileys-main';renderWhatsappProviderBadge()}
+function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||DEFAULT_WHATSAPP_REMINDER_TEMPLATE;$('tplReminder').value=tpl;localStorage.femic_whatsapp_provider='baileys';if($('whatsappProvider'))$('whatsappProvider').value='baileys';if($('whatsappServiceName'))$('whatsappServiceName').value=localStorage.femic_whatsapp_service_name||'baileys-main';renderWhatsappProviderBadge()}
 async function testConnection(){try{await api('patients?select=id&limit=1');toast('Conexão e carregamento funcionando.','success')}catch(e){toast('Erro real: '+e.message,'error')}}
 function appointmentWindowQuery(){
   const mode = $('viewMode') ? $('viewMode').value : 'week';
@@ -1048,11 +1047,8 @@ function syncForms(){
   if($('setPeriods')) $('setPeriods').value=settings.working_periods||((settings.start_time||'08:00')+'-'+(settings.end_time||'20:00'));
   $('setInterval').value=String(settings.slot_interval_minutes||30);
   if($('tplReminder')) $('tplReminder').value=settings.whatsapp_template_appointment||localStorage.femic_tpl_reminder||DEFAULT_WHATSAPP_REMINDER_TEMPLATE;
-  if($('whatsappProvider')) $('whatsappProvider').value=settings.whatsapp_provider||localStorage.femic_whatsapp_provider||'wa_me';
+  if($('whatsappProvider')) $('whatsappProvider').value='baileys';
   if($('whatsappServiceName')) $('whatsappServiceName').value=settings.whatsapp_service_name||localStorage.femic_whatsapp_service_name||'baileys-main';
-  if($('whatsappEndpoint')) $('whatsappEndpoint').value=localStorage.femic_whatsapp_endpoint||'';
-  if($('whatsappTplAppointment')) $('whatsappTplAppointment').value=localStorage.femic_whatsapp_tpl_appointment||'lembrete_sessao';
-  if($('whatsappTplForm')) $('whatsappTplForm').value=localStorage.femic_whatsapp_tpl_form||'formulario_pos_sessao';
   renderWhatsappProviderBadge();
   renderWhatsappServiceStatus();
   populateAgendaFilters();
@@ -1597,7 +1593,6 @@ function reminderDueLabel(a,kind){
   const hours=Math.floor(mins/60), rest=mins%60;
   return 'Vence em '+hours+'h'+(rest?String(rest).padStart(2,'0'):'');
 }
-function getReminderMode(){return localStorage.getItem('femic_reminder_mode')==='auto'?'auto':'manual'}
 function isBaileysProviderOnline(){
   return whatsappProviderValue()==='baileys'&&!!(whatsappServiceStatus&&whatsappServiceStatus.connection_status==='connected');
 }
@@ -1616,50 +1611,17 @@ function buildAppointmentReminderPatch(provider,deliveryStatus,errorMessage,exte
     ? {appointment_reminder_sent:true,appointment_reminder_sent_at:new Date().toISOString(),reminder_sent:true,reminder_sent_at:new Date().toISOString()}
     : {appointment_reminder_sent:false,reminder_sent:false};
 }
-function setReminderMode(mode){
-  localStorage.setItem('femic_reminder_mode',mode==='auto'?'auto':'manual');
-  renderReminderAutomationStatus();
-  renderReminders();
-  if(mode==='auto'){
-    toast(whatsappProviderValue()==='baileys'?'Envio automático via Baileys ativado. O worker assume as confirmações quando estiver conectado.':'Envio automático ativado. Mantenha a agenda aberta para disparar os WhatsApps.','info');
-    processAutomaticReminders();
-  }else{
-    toast('Envio manual ativado.','info');
-  }
-}
 function renderReminderAutomationStatus(){
-  const mode=getReminderMode();
-  const provider=whatsappProviderValue();
-  const badge=$('reminderModeBadge'),status=$('reminderAutoStatus'),manual=$('manualModeBtn'),auto=$('autoModeBtn');
-  if(badge){badge.className='mode-badge '+mode;badge.textContent=mode==='auto'?'Automático':'Manual'}
+  const badge=$('reminderModeBadge'),status=$('reminderAutoStatus');
+  if(badge){badge.className='mode-badge auto';badge.textContent='Baileys'}
   if(status){
-    if(mode!=='auto') status.textContent='Manual: você escolhe quando enviar.';
-    else if(provider==='baileys') status.textContent=isBaileysProviderOnline()?'Automático via Baileys: o worker conectado envia confirmações '+appointmentReminderHoursBefore()+'h antes do atendimento.':'Automático via Baileys: aguardando conexão do worker. Enquanto isso, use o envio manual.';
-    else status.textContent='Automático ativo: verifica vencidos a cada minuto e abre o WhatsApp quando chegar a hora.';
+    status.textContent=isBaileysProviderOnline()?'Bot Baileys conectado: confirmações automáticas '+appointmentReminderHoursBefore()+'h antes do atendimento.':'Aguardando conexão do bot Baileys. Verifique Discloud e whatsapp_service_status.';
   }
-  if(manual) manual.classList.toggle('primary',mode==='manual');
-  if(auto) auto.classList.toggle('primary',mode==='auto');
 }
 function reminderListFor(kind,date){
   return appointments
     .filter(a=>a.appointment_date===date&&isReminderCandidate(a,kind))
     .sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));
-}
-function dueAutomaticReminders(){
-  if(whatsappProviderValue()!=='wa_me') return [];
-  const now=Date.now();
-  const patientsById=Object.create(null);
-  patients.forEach(patient=>{patientsById[String(patient.id)]=patient});
-  return ['appointment','form'].flatMap(kind=>appointments
-    .filter(a=>isReminderCandidate(a,kind)&&!reminderFlag(a,kind)&&cleanPhone((patientsById[String(a.patient_id)]||{}).whatsapp).length>=10)
-    .map(a=>({a,kind,due:reminderDueAt(a,kind)}))
-    .filter(x=>{
-      if(!x.due||x.due.getTime()>now) return false;
-      const start=appointmentDateTime(x.a,'start_time');
-      if(x.kind==='form') return now<=x.due.getTime()+(24*60*60*1000);
-      return start&&now<=start.getTime();
-    })
-  ).sort((x,y)=>x.due-y.due);
 }
 function aiRadarWeekStartValue(){
   const input=$('aiRadarStart');
@@ -1910,9 +1872,6 @@ async function markReminder(id,kind='appointment'){
 }
 async function sendWhatsapp(id,mark=false,kind='appointment'){
   const a=appointments.find(x=>String(x.id)===String(id));if(!a)return false;
-  if(whatsappProviderValue()==='api'){
-    toast('API preparada, mas envio real ainda usa link seguro até a Edge Function estar implementada.','info');
-  }
   const p=patientById(a.patient_id);const phone='55'+cleanPhone(p.whatsapp);
   if(phone.length<12){toast('Paciente sem WhatsApp válido.','warning');return false}
   const defaultTpl=kind==='form'?'Olá, {nome}! Obrigado por comparecer à FEMIC. Quando puder, responda o formulário pós-atendimento: {form_link}':'';
@@ -1923,35 +1882,21 @@ async function sendWhatsapp(id,mark=false,kind='appointment'){
   const opened=window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');
   if(!opened){toast('O navegador bloqueou a janela do WhatsApp. Use o modo manual ou libere pop-ups para a agenda.','warning');return false}
   if(mark) await markReminder(id,kind);
+  toast('WhatsApp manual aberto como contingência. O envio automático oficial é pelo bot Baileys.','info');
   return true;
 }
-function sendNextReminder(){
-  if(whatsappProviderValue()==='baileys'){
-    toast(isBaileysProviderOnline()?'O worker Baileys cuida dos envios automáticos. Use os botões de WhatsApp manual para contingência.':'Baileys indisponível. Use o envio manual até o serviço reconectar.','info');
-    return;
-  }
-  const kind=$('reminderType')?$('reminderType').value:'appointment';
-  const date=$('reminderDate').value;
-  const patientsById=Object.create(null);
-  patients.forEach(patient=>{patientsById[String(patient.id)]=patient});
-  const next=reminderListFor(kind,date).filter(a=>!reminderFlag(a,kind)&&cleanPhone((patientsById[String(a.patient_id)]||{}).whatsapp).length>=10).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)))[0];
-  if(!next)toast('Nenhum lembrete pendente.','info');else sendWhatsapp(next.id,true,kind);
-}
 function renderWhatsappProviderBadge(){
-  const provider=$('whatsappProvider')?.value||whatsappProviderValue();
+  const provider='baileys';
   const badge=$('whatsappProviderBadge');
   if(!badge) return;
-  badge.className='mode-badge '+(provider==='baileys'?'auto':provider==='api'?'auto':'manual');
-  badge.textContent=provider==='baileys'?'Baileys':provider==='api'?'API preparada':'wa.me';
+  badge.className='mode-badge auto';
+  badge.textContent='Baileys';
   renderWhatsappServiceStatus();
 }
 async function saveWhatsappApiConfig(){
-  const provider=$('whatsappProvider')?.value||'wa_me';
+  const provider='baileys';
   const serviceName=($('whatsappServiceName')?.value||'baileys-main').trim()||'baileys-main';
   localStorage.femic_whatsapp_provider=provider;
-  localStorage.femic_whatsapp_endpoint=($('whatsappEndpoint')?.value||'').trim();
-  localStorage.femic_whatsapp_tpl_appointment=($('whatsappTplAppointment')?.value||'lembrete_sessao').trim()||'lembrete_sessao';
-  localStorage.femic_whatsapp_tpl_form=($('whatsappTplForm')?.value||'formulario_pos_sessao').trim()||'formulario_pos_sessao';
   localStorage.femic_whatsapp_service_name=serviceName;
   try{
     const payload={whatsapp_provider:provider,whatsapp_service_name:serviceName,whatsapp_confirmation_hours_before:appointmentReminderHoursBefore()};
@@ -1961,23 +1906,14 @@ async function saveWhatsappApiConfig(){
     settings.whatsapp_service_name=serviceName;
     renderWhatsappProviderBadge();
     refreshWhatsappServiceStatus();
-    if(provider==='baileys') toast('Configuração salva. O worker Baileys passa a ser o canal automático de confirmação.','success');
-    else if(provider==='api') toast('Configuração salva. O envio pela API continua preparado para uma integração futura.','info');
-    else toast('WhatsApp por link seguro ativado.','success');
+    toast('Bot Baileys salvo como canal automático do FEMIC.','success');
   }catch(e){
     toast(isMissingWhatsappSettingsSchemaError(e)?'Atualize o Supabase com o patch incremental de WhatsApp/Baileys antes de salvar esse provedor.':'Erro ao salvar configuração do WhatsApp: '+e.message,isMissingWhatsappSettingsSchemaError(e)?'warning':'error');
   }
 }
 function testWhatsappApiConfig(){
-  const provider=$('whatsappProvider')?.value||'wa_me';
-  const endpoint=($('whatsappEndpoint')?.value||'').trim();
-  if(provider==='baileys'){toast('Baileys usa o serviço Node externo. Confira o status do canal e o nome do serviço configurado.','success');return}
-  if(provider==='wa_me'){toast('Configuração atual usa link WhatsApp seguro.','success');return}
-  if(!endpoint||!/^https:\/\/[a-z0-9-]+\.functions\.supabase\.co\/[a-z0-9-_/]+$/i.test(endpoint)){
-    toast('Informe uma URL de Supabase Edge Function válida.','warning');
-    return;
-  }
-  toast('Formato local aprovado. Próximo passo: criar a Edge Function com o token da Meta no Supabase.','success');
+  refreshWhatsappServiceStatus();
+  toast('Status do bot Baileys atualizado. Confira conexão, último envio e último erro no painel.','success');
 }
 function statusButtons(a){
   const id=String(a.id);
@@ -2401,7 +2337,7 @@ async function restoreAgendaBackup(event){
   }
 }
 
-async function saveTemplates(){const template=($('tplReminder')?.value||'').trim()||DEFAULT_WHATSAPP_REMINDER_TEMPLATE;localStorage.femic_tpl_reminder=template;try{const payload={whatsapp_template_appointment:template};if(settings.id)await api('schedule_settings?id=eq.'+settings.id,{method:'PATCH',body:JSON.stringify(payload)});else await api('schedule_settings',{method:'POST',body:JSON.stringify({start_time:settings.start_time||'08:00',end_time:settings.end_time||'20:00',working_days:settings.working_days||'1,2,3,4,5,6',working_periods:settings.working_periods||'08:00-12:00,16:00-20:00',max_patients_per_slot:Number(settings.max_patients_per_slot||4),slot_interval_minutes:Number(settings.slot_interval_minutes||30),whatsapp_provider:settings.whatsapp_provider||'wa_me',whatsapp_template_appointment:template,whatsapp_confirmation_hours_before:appointmentReminderHoursBefore(),whatsapp_service_name:settings.whatsapp_service_name||'baileys-main'})});settings.whatsapp_template_appointment=template;toast('Modelo salvo.','success')}catch(e){toast(isMissingWhatsappSettingsSchemaError(e)?'Atualize o Supabase com o patch incremental de WhatsApp/Baileys antes de salvar o modelo.':'Erro ao salvar modelo: '+e.message,isMissingWhatsappSettingsSchemaError(e)?'warning':'error')}}async function copySql(){const ok=confirm('Este SQL faz RESET COMPLETO e apaga tabelas operacionais antes de recriar a estrutura. Use apenas em banco vazio ou depois de backup JSON. Deseja copiar mesmo assim?');if(!ok)return;await navigator.clipboard.writeText(SQL_SCHEMA);toast('SQL destrutivo copiado.','warning')}
+async function saveTemplates(){const template=($('tplReminder')?.value||'').trim()||DEFAULT_WHATSAPP_REMINDER_TEMPLATE;localStorage.femic_tpl_reminder=template;try{const payload={whatsapp_template_appointment:template};if(settings.id)await api('schedule_settings?id=eq.'+settings.id,{method:'PATCH',body:JSON.stringify(payload)});else await api('schedule_settings',{method:'POST',body:JSON.stringify({start_time:settings.start_time||'08:00',end_time:settings.end_time||'20:00',working_days:settings.working_days||'1,2,3,4,5,6',working_periods:settings.working_periods||'08:00-12:00,16:00-20:00',max_patients_per_slot:Number(settings.max_patients_per_slot||4),slot_interval_minutes:Number(settings.slot_interval_minutes||30),whatsapp_provider:'baileys',whatsapp_template_appointment:template,whatsapp_confirmation_hours_before:appointmentReminderHoursBefore(),whatsapp_service_name:settings.whatsapp_service_name||'baileys-main'})});settings.whatsapp_template_appointment=template;toast('Modelo salvo.','success')}catch(e){toast(isMissingWhatsappSettingsSchemaError(e)?'Atualize o Supabase com o patch incremental de WhatsApp/Baileys antes de salvar o modelo.':'Erro ao salvar modelo: '+e.message,isMissingWhatsappSettingsSchemaError(e)?'warning':'error')}}async function copySql(){const ok=confirm('Este SQL faz RESET COMPLETO e apaga tabelas operacionais antes de recriar a estrutura. Use apenas em banco vazio ou depois de backup JSON. Deseja copiar mesmo assim?');if(!ok)return;await navigator.clipboard.writeText(SQL_SCHEMA);toast('SQL destrutivo copiado.','warning')}
 $('sqlBox').textContent=SQL_SCHEMA;loadConfig();checkFemicAuth();$('dayDate').value=todayIso();$('reminderDate').value=isoDate(new Date(Date.now()+86400000));$('reportMonth').value=new Date().toISOString().slice(0,7);
 /* =========================================================
    FEMIC Agenda v1.4.36 - Ficha com dia da semana — Correção robusta de consumo de pacote
@@ -3323,20 +3259,6 @@ function checkFemicAuth(){
   if(lbl && email) lbl.textContent = email.split('@')[0] + ' · Sair';
 }
 
-function processAutomaticReminders(){
-  if(getReminderMode()!=='auto') return;
-  if(!base()||!key()||!sessionStorage.getItem('femic_jwt')||hasOpenModal()) return;
-  const next=dueAutomaticReminders()[0];
-  if(!next) return;
-  const stamp=next.kind+':'+String(next.a.id);
-  const last=localStorage.getItem('femic_auto_reminder_last')||'';
-  const lastAt=Number(localStorage.getItem('femic_auto_reminder_last_at')||0);
-  if(last===stamp && Date.now()-lastAt<10*60*1000) return;
-  localStorage.setItem('femic_auto_reminder_last',stamp);
-  localStorage.setItem('femic_auto_reminder_last_at',String(Date.now()));
-  sendWhatsapp(next.a.id,true,next.kind);
-}
-
 applyAgendaTheme();renderWorkDays();renderReminderAutomationStatus();syncAgendaNavState('agenda');renderActivePanel();if(base()&&key()&&sessionStorage.getItem('femic_jwt'))loadAll(true);
 function hasOpenModal(){
   return !!document.querySelector('.modal-backdrop.show');
@@ -3353,5 +3275,4 @@ function shouldBackgroundRefresh(){
 });
 setInterval(()=>{
   if(shouldBackgroundRefresh()) loadAll(true);
-  if(!document.hidden) processAutomaticReminders();
 },120000);

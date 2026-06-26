@@ -166,95 +166,42 @@ END $$;
 NOTIFY pgrst, 'reload schema';
 ```
 
-## WhatsApp: lembretes e preparação para Meta Cloud API
+## WhatsApp: bot Baileys no Discloud
 
-### Bot Baileys no Discloud e bloqueios de agenda
-- O worker em `services/whatsapp-worker/` pode rodar no Discloud com `npm start`.
-- Ele continua enviando confirmações 12h antes quando o provedor estiver como `baileys`.
-- Mensagens de marcação/remarcação recebidas pelo bot viram pendências revisáveis em `assistant_tasks`.
-- A v1 não agenda sozinha: o FEMIC sugere horários e a equipe confirma no painel.
-- A agenda agora pode bloquear e reabrir horários no dia operacional. Bloqueios impedem sugestões do bot.
-- Para convênio/grupo, as sugestões priorizam preencher horários já parcialmente ocupados antes de abrir janelas vazias.
+O FEMIC usa um único canal automático de WhatsApp: o worker Baileys em `services/whatsapp-worker/`, hospedado no Discloud. O painel continua sendo o lugar de revisão e decisão; o bot envia lembretes, recebe pedidos de marcação/remarcação e cria pendências para a equipe confirmar.
 
-Patch seguro para ativar bloqueios manuais:
+Fluxo atual:
+- O worker conecta no WhatsApp com Baileys e mantém a sessão fora do navegador.
+- Lembretes são enviados automaticamente 12 horas antes para agendamentos `agendado` e `confirmado`.
+- Pedidos recebidos pelo WhatsApp viram registros em `assistant_tasks`, mesmo quando o telefone ainda não está cadastrado como paciente.
+- O bot sugere horários seguros quando consegue identificar serviço, data/turno e agenda suficiente.
+- A v1 não agenda sozinha: a equipe revisa a pendência no FEMIC e confirma manualmente.
+- O botão manual por `wa.me` fica apenas como contingência operacional quando o bot estiver indisponível.
 
-```sql
-CREATE TABLE IF NOT EXISTS schedule_blocks (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  block_date DATE NOT NULL,
-  start_time TIME NOT NULL,
-  end_time TIME NOT NULL,
-  reason TEXT,
-  status TEXT DEFAULT 'active',
-  origin TEXT DEFAULT 'manual',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
+Regras de agenda usadas pelo bot:
+- Horários bloqueados em `schedule_blocks` não aparecem como sugestão.
+- Se `schedule_blocks` ainda não existir, o worker segue funcionando e registra aviso no status/log.
+- Agendamentos cancelados não ocupam vaga.
+- Serviço individual exige exclusividade no intervalo.
+- Serviço em grupo/convênio compartilha horário até `max_patients` do serviço ou limite global da agenda.
+- Para convênio/grupo, o algoritmo prioriza preencher horários parcialmente ocupados antes de sugerir janelas vazias.
 
-CREATE INDEX IF NOT EXISTS idx_schedule_blocks_date_status
-ON schedule_blocks(block_date, status);
+No painel FEMIC:
+- `Configurações > WhatsApp` mostra apenas status do bot Baileys, nome do serviço, template e instruções de conexão.
+- `Lembretes` funciona como fila/auditoria de pendentes, enviados, falhas, último erro e contingência manual.
+- `Pendências` mostra solicitações vindas do bot para agendar, responder, ignorar ou bloquear horário.
 
-ALTER TABLE schedule_blocks ENABLE ROW LEVEL SECURITY;
+Para gerar o pacote do Discloud:
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON schedule_blocks TO authenticated;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE schemaname = 'public'
-      AND tablename = 'schedule_blocks'
-      AND policyname = 'authenticated_full_access_schedule_blocks'
-  ) THEN
-    CREATE POLICY "authenticated_full_access_schedule_blocks"
-    ON schedule_blocks
-    FOR ALL TO authenticated
-    USING (true)
-    WITH CHECK (true);
-  END IF;
-END $$;
-
-NOTIFY pgrst, 'reload schema';
+```bash
+npm run build:discloud
 ```
 
-## Extensão Chrome: WhatsApp Web para tarefas IA
-- Extensão local criada em `chrome-extension/`.
-- Ela adiciona um botão flutuante `FEMIC` no WhatsApp Web.
-- O botão envia marcações, remarcações e cancelamentos para a aba IA do FEMIC como tarefas operacionais.
-- As pendências agora usam a tabela Supabase `assistant_tasks`, compartilhada entre desktop, FEMIC Mobile e extensão.
-- O FEMIC Mobile pode gravar lembretes por voz direto nessa mesma fila; se o Supabase falhar, mantém cache local com sincronização pendente.
-- Na Fase 1 do assistente de agendamento, as tarefas de marcação/remarcação vindas do WhatsApp passam a gerar propostas com horários válidos.
-- A confirmação final continua humana: a equipe clica em um horário sugerido na aba **Pendências** e só então o FEMIC grava o agendamento.
-- As propostas respeitam as regras da agenda: expediente, períodos, duração do serviço, conflitos, atendimento individual/grupo e limite de pacientes por horário.
-- Instruções completas: `chrome-extension/README.md`.
-
-### Fila compartilhada de pendências
-Rode o SQL atualizado mostrado em `Configurações > Banco de dados` para criar `assistant_tasks`. Essa tabela guarda pedidos vindos do WhatsApp Web e lembretes de voz do mobile com status, paciente, telefone, ação solicitada, datas/turno interpretados, sugestões, candidatos, fingerprint da extensão e carimbos de criação/atualização.
-
-### Estado atual seguro
-- A agenda envia lembretes pelo WhatsApp usando link `wa.me`, com a mensagem já preenchida.
-- O envio manual continua funcionando como antes.
-- A aba **Lembretes** permite alternar entre modo manual e modo automático local.
-- O modo automático local verifica:
-  - lembrete de sessão: 12 horas antes do horário marcado;
-  - formulário pós-atendimento: 5 horas depois da sessão concluída.
-- O navegador precisa estar aberto para o modo automático local abrir o WhatsApp.
-- O sistema está preparado para uma futura integração com API, mas não coloca token da Meta no HTML, JS ou `localStorage`.
-
-### Baileys para confirmações automáticas
-- O projeto agora inclui um worker separado em `services/whatsapp-worker/`.
-- Esse serviço:
-  - conecta no WhatsApp via Baileys;
-  - lê agendamentos e configurações direto do Supabase;
-  - envia confirmações automáticas 12 horas antes;
-  - grava auditoria de envio no próprio agendamento;
-  - atualiza a tabela `whatsapp_service_status` para o painel do FEMIC.
-- O frontend continua com fallback manual por `wa.me`.
-- Instruções operacionais: `services/whatsapp-worker/README.md`.
+O arquivo final fica em `dist/femic-whatsapp-bot-discloud.zip`. As instruções operacionais detalhadas ficam em `services/whatsapp-worker/README.md`.
 
 ### Patch incremental para Supabase existente
 
-Se o banco já existe, rode este patch antes de usar Baileys:
+Se o banco já existe, rode este patch antes de usar o bot Baileys:
 
 ```sql
 ALTER TABLE appointments
@@ -273,7 +220,7 @@ ALTER TABLE appointments
 ADD COLUMN IF NOT EXISTS appointment_reminder_external_id TEXT;
 
 ALTER TABLE schedule_settings
-ADD COLUMN IF NOT EXISTS whatsapp_provider TEXT DEFAULT 'wa_me';
+ADD COLUMN IF NOT EXISTS whatsapp_provider TEXT DEFAULT 'baileys';
 
 ALTER TABLE schedule_settings
 ADD COLUMN IF NOT EXISTS whatsapp_template_appointment TEXT;
@@ -289,6 +236,53 @@ SET whatsapp_template_appointment = COALESCE(
   whatsapp_template_appointment,
   'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊'
 );
+
+CREATE TABLE IF NOT EXISTS assistant_tasks (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  type TEXT DEFAULT 'outro',
+  status TEXT DEFAULT 'aberta',
+  priority TEXT DEFAULT 'normal',
+  patient_id TEXT REFERENCES patients(id) ON DELETE SET NULL,
+  patient_name TEXT,
+  service_id UUID REFERENCES services(id) ON DELETE SET NULL,
+  service_name TEXT,
+  suggestion_reason TEXT,
+  phone TEXT,
+  origin TEXT DEFAULT 'manual',
+  requested_action TEXT,
+  notes TEXT,
+  suggested_slots JSONB DEFAULT '[]'::jsonb,
+  candidates JSONB DEFAULT '[]'::jsonb,
+  parsed_shift TEXT,
+  parsed_dates JSONB DEFAULT '[]'::jsonb,
+  extension_fingerprint TEXT,
+  needs_review BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  completed_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_assistant_tasks_status_updated
+ON assistant_tasks(status, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_assistant_tasks_origin
+ON assistant_tasks(origin);
+
+CREATE TABLE IF NOT EXISTS schedule_blocks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  block_date DATE NOT NULL,
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  reason TEXT,
+  status TEXT DEFAULT 'active',
+  origin TEXT DEFAULT 'manual',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_schedule_blocks_date_status
+ON schedule_blocks(block_date, status);
 
 CREATE TABLE IF NOT EXISTS whatsapp_service_status (
   service_name TEXT PRIMARY KEY,
@@ -306,11 +300,41 @@ CREATE INDEX IF NOT EXISTS idx_whatsapp_service_status_updated
 ON whatsapp_service_status(updated_at DESC);
 
 ALTER TABLE whatsapp_service_status ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assistant_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE schedule_blocks ENABLE ROW LEVEL SECURITY;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON whatsapp_service_status TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON assistant_tasks TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON schedule_blocks TO authenticated;
 
 DO $$
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'assistant_tasks'
+      AND policyname = 'authenticated_full_access_assistant_tasks'
+  ) THEN
+    CREATE POLICY "authenticated_full_access_assistant_tasks"
+    ON assistant_tasks
+    FOR ALL TO authenticated
+    USING (true)
+    WITH CHECK (true);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'schedule_blocks'
+      AND policyname = 'authenticated_full_access_schedule_blocks'
+  ) THEN
+    CREATE POLICY "authenticated_full_access_schedule_blocks"
+    ON schedule_blocks
+    FOR ALL TO authenticated
+    USING (true)
+    WITH CHECK (true);
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'public'
@@ -327,146 +351,6 @@ END $$;
 
 NOTIFY pgrst, 'reload schema';
 ```
-
-### Por que não colocar token da Meta no navegador
-O token da Meta WhatsApp Cloud API permite enviar mensagens em nome do negócio. Se ele ficar no `index.html`, no `agenda.html`, em JavaScript público ou em `localStorage`, qualquer pessoa com acesso ao navegador ou ao código consegue copiar esse token. Por isso, a arquitetura segura futura é:
-
-```text
-index.html/agenda.html -> Supabase Edge Function -> Meta WhatsApp Cloud API
-```
-
-Na agenda ficam apenas:
-- provedor desejado: `wa.me` ou API preparada;
-- URL da Supabase Edge Function;
-- nomes dos templates aprovados na Meta.
-
-No Supabase ficam os segredos:
-- `WHATSAPP_TOKEN`
-- `WHATSAPP_PHONE_NUMBER_ID`
-- `WHATSAPP_WABA_ID`
-
-### Configuração no sistema FEMIC
-Na agenda, acesse:
-
-```text
-Configurações -> WhatsApp API
-```
-
-Campos disponíveis:
-- **Provedor de envio**
-  - `Link WhatsApp seguro`: usa `wa.me`, recomendado enquanto a API não estiver pronta.
-  - `API preparada via Supabase Edge Function`: salva a configuração para implementação futura, mas não envia pela API nesta versão.
-- **Endpoint da Edge Function**
-  - Exemplo: `https://SEU-PROJETO.functions.supabase.co/send-whatsapp-reminder`
-- **Template Meta: sessão**
-  - Sugestão: `lembrete_sessao`
-- **Template Meta: formulário**
-  - Sugestão: `formulario_pos_sessao`
-
-Importante: nesta versão, o envio real continua por `wa.me`. A Edge Function precisa ser implementada e testada antes de substituir esse fallback seguro.
-
-### Configuração no site da Meta
-1. Acesse o Meta for Developers e crie um app do tipo Business.
-2. Adicione o produto **WhatsApp** ao app.
-3. No WhatsApp Manager, conecte ou crie:
-   - Business Portfolio;
-   - WhatsApp Business Account, também chamado WABA;
-   - número de telefone comercial.
-4. Guarde os IDs:
-   - `WABA_ID`;
-   - `PHONE_NUMBER_ID`.
-5. Crie um token permanente pelo Business Manager/System User com permissões:
-   - `whatsapp_business_messaging`;
-   - `whatsapp_business_management`.
-6. Registre o número da Cloud API, se a Meta solicitar PIN/código.
-7. Crie templates de mensagem em português do Brasil (`pt_BR`), categoria Utility:
-   - `lembrete_sessao`
-   - `formulario_pos_sessao`
-8. Aguarde aprovação dos templates pela Meta.
-9. Teste um envio no painel da Meta ou com Postman antes de ligar no sistema.
-
-Referências oficiais:
-- Cloud API overview: https://developers.facebook.com/docs/whatsapp/cloud-api/overview
-- Mensagens e templates: https://developers.facebook.com/docs/whatsapp/cloud-api/guides/send-message-templates
-- Webhooks: https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks
-- Coleção Postman da Meta: https://www.postman.com/meta/whatsapp-business-platform/overview
-
-### Supabase Edge Function sugerida
-Crie uma função chamada:
-
-```text
-send-whatsapp-reminder
-```
-
-Segredos no Supabase:
-
-```bash
-supabase secrets set WHATSAPP_TOKEN="TOKEN_DA_META"
-supabase secrets set WHATSAPP_PHONE_NUMBER_ID="PHONE_NUMBER_ID"
-supabase secrets set WHATSAPP_WABA_ID="WABA_ID"
-```
-
-Contrato recomendado do corpo enviado pela agenda:
-
-```json
-{
-  "kind": "appointment",
-  "appointment_id": "uuid",
-  "patient_id": "p123",
-  "patient_name": "Nome do paciente",
-  "patient_whatsapp": "16999999999",
-  "appointment_date": "2026-05-10",
-  "start_time": "08:00",
-  "end_time": "08:45",
-  "service_name": "Fisioterapia",
-  "form_link": "https://...",
-  "template_name": "lembrete_sessao"
-}
-```
-
-Regras recomendadas para a Edge Function:
-- validar o JWT do usuário logado no Supabase;
-- aceitar apenas origem/domínio do sistema FEMIC;
-- normalizar telefone para formato E.164 com DDI 55;
-- enviar somente templates aprovados;
-- retornar JSON com `ok`, `message_id` e `error`;
-- gravar log em uma tabela separada antes de marcar lembrete como enviado.
-
-### Tabela opcional para fila/log de WhatsApp
-Para não mexer na tabela `appointments`, use uma tabela separada:
-
-```sql
-create table if not exists whatsapp_outbox (
-  id uuid primary key default gen_random_uuid(),
-  appointment_id uuid references appointments(id) on delete set null,
-  patient_id text references patients(id) on delete set null,
-  kind text not null,
-  provider text default 'meta_cloud_api',
-  template_name text,
-  phone text,
-  status text default 'pending',
-  message_id text,
-  error text,
-  payload jsonb,
-  created_at timestamptz default now(),
-  sent_at timestamptz
-);
-
-alter table whatsapp_outbox enable row level security;
-
-create policy "Authenticated read whatsapp outbox"
-on whatsapp_outbox
-for select
-to authenticated
-using (true);
-```
-
-### Estratégia para não quebrar o sistema
-1. Manter `wa.me` como fallback.
-2. Criar a Edge Function e testar fora da agenda.
-3. Criar `whatsapp_outbox` para logs.
-4. Só depois ligar o provedor API na agenda.
-5. Se a API falhar, manter envio por `wa.me`.
 
 ## Configuração SQL completa (Supabase)
 
@@ -786,7 +670,7 @@ create policy "Authenticated CRUD clinical templates"
 ### Estratégia atual de RLS no projeto
 - Sistema principal: RLS `ENABLE` + policy pública (`USING (true)`) nas tabelas clínicas.
 - Formulário de paciente: RLS `ENABLE` + policy pública de leitura/escrita.
-- Agenda: versões antigas usavam RLS `DISABLE`; o SQL seguro atual usa RLS `ENABLE` com acesso para `authenticated` e Edge Functions com `service_role` apenas no servidor.
+- Agenda: versões antigas usavam RLS `DISABLE`; o SQL seguro atual usa RLS `ENABLE` com acesso para `authenticated` e uso de `service_role` apenas em serviços internos, como o bot no Discloud.
 - Documentos em nuvem: RLS `ENABLE` + policies apenas para `authenticated`, se a tabela for usada.
 - Templates clínicos: RLS `ENABLE` + policy de CRUD para `authenticated`, se o recurso for reativado.
 

@@ -19,9 +19,7 @@ const {
 } = reminderUtils;
 
 const {
-  detectAction,
-  detectDates,
-  detectShift,
+  classifyWhatsappBotMessage,
   tidySpeechText,
 } = pendingTaskUtils;
 
@@ -200,7 +198,10 @@ async function fetchScheduleBlocks(from, to){
     .order('block_date', { ascending: true })
     .order('start_time', { ascending: true });
   if(error){
-    if(/schedule_blocks|relation .* does not exist|Could not find the table|schema cache/i.test(String(error.message || error))) return [];
+    if(/schedule_blocks|relation .* does not exist|Could not find the table|schema cache/i.test(String(error.message || error))){
+      logger.warn('Tabela schedule_blocks ausente; sugestoes seguem sem bloqueios manuais.');
+      return [];
+    }
     throw error;
   }
   return data || [];
@@ -245,16 +246,11 @@ function chooseServiceFromText(services, text){
   return (services || []).find((service) => {
     const name = textNorm(service.name);
     return name && normalized.includes(name);
-  }) || (services || [])[0] || null;
+  }) || null;
 }
 
-function hasSchedulingIntent(text){
-  const normalized = textNorm(text);
-  return /\b(marcar|agendar|remarcar|reagendar|horario|vaga|encaixe|consulta|sessao|fisioterapia)\b/.test(normalized);
-}
-
-function defaultCandidateDates(text){
-  const parsed = detectDates(text, localIsoDate(new Date()));
+function defaultCandidateDates(classification){
+  const parsed = classification && Array.isArray(classification.dates) ? classification.dates : [];
   if(parsed.length) return parsed.slice(0, 4);
   const dates = [];
   const cursor = new Date();
@@ -310,11 +306,12 @@ async function createSchedulingTask({ text, remotePhone, patient, service, slots
   const { error } = await supabase.from('assistant_tasks').insert(payload);
   if(error){
     if(/assistant_tasks|relation .* does not exist|Could not find the table|schema cache/i.test(String(error.message || error))){
-      logger.warn({ payload }, 'assistant_tasks ausente; pedido do bot nao foi persistido');
+      logger.warn({ table: 'assistant_tasks', phone: normalizePhone(remotePhone) }, 'Tabela assistant_tasks ausente; pedido do bot nao foi persistido');
       return null;
     }
     throw error;
   }
+  logger.info({ taskId: payload.id, phone: normalizePhone(remotePhone), slots: slots.length }, 'Pendencia de agenda criada pelo bot');
   return payload;
 }
 
@@ -327,19 +324,32 @@ async function handleIncomingSchedulingMessage(message){
     || '';
   const text = tidySpeechText(rawText);
   if(!text) return;
-  if(!hasSchedulingIntent(text)) return;
-
-  const action = detectAction(text);
-  if(action !== 'marcacao' && action !== 'remarcacao') return;
-
   const remotePhone = String(remoteJid).split('@')[0];
+  const classification = classifyWhatsappBotMessage(text, { today: localIsoDate(new Date()) });
+  logger.info({ remotePhone: normalizePhone(remotePhone), preview: text.slice(0, 120), reason: classification.reason }, 'Mensagem recebida no WhatsApp');
+  if(!classification.shouldCreateTask){
+    logger.info({ remotePhone: normalizePhone(remotePhone), reason: classification.reason }, 'Mensagem ignorada pelo bot de agenda');
+    await upsertServiceStatus({
+      last_error: null,
+      meta: {
+        last_inbound_status: 'ignored',
+        last_inbound_reason: classification.reason,
+        last_inbound_phone: normalizePhone(remotePhone),
+        last_inbound_at: nowIso(),
+      },
+    });
+    return;
+  }
+
+  const action = classification.action;
+
   const settings = await readScheduleSettings();
   const patients = await fetchPatients();
   const services = await fetchServices();
   const patient = findPatientByPhone(patients, remotePhone);
   const service = chooseServiceFromText(services, text);
-  const dates = defaultCandidateDates(text);
-  const shift = detectShift(text);
+  const dates = defaultCandidateDates(classification);
+  const shift = classification.shift;
   const from = dates[0] || localIsoDate(new Date());
   const to = dates[dates.length - 1] || from;
   const [appointments, scheduleBlocks] = await Promise.all([
@@ -359,18 +369,21 @@ async function handleIncomingSchedulingMessage(message){
     limit: 5,
   }) : [];
 
-  await createSchedulingTask({ text, remotePhone, patient, service, slots, action, shift, dates });
+  const task = await createSchedulingTask({ text, remotePhone, patient, service, slots, action, shift, dates });
   await socket.sendMessage(remoteJid, { text: buildSchedulingReply(slots) });
   await upsertServiceStatus({
     last_message_at: nowIso(),
     last_error: null,
     meta: {
+      last_inbound_status: task ? 'task_created' : 'task_not_persisted',
       last_inbound_action: action,
       last_inbound_phone: normalizePhone(remotePhone),
+      last_inbound_at: nowIso(),
+      last_task_id: task && task.id,
       last_suggested_slots: slots.length,
     },
   });
-  logger.info({ phone: normalizePhone(remotePhone), action, slots: slots.length }, 'Pedido de agenda recebido pelo bot');
+  logger.info({ phone: normalizePhone(remotePhone), action, slots: slots.length, taskId: task && task.id }, 'Pedido de agenda processado pelo bot');
 }
 
 async function patchAppointmentReminder(appointmentId, patch){

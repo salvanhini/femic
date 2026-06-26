@@ -56,8 +56,36 @@
     var normalized = norm(text);
     if(/cancel|desmarc|nao vou|nao pod/.test(normalized)) return 'cancelamento';
     if(/remarc|reagen|remanej|mudar|trocar|alterar/.test(normalized)) return 'remarcacao';
-    if(/marcar|agendar|queria|gostaria|preciso|pode|podia|consigo|vaga|horario/.test(normalized)) return 'marcacao';
+    if(/marcar|agendar|encaix|consulta|sessao|fisioterapia|fisio|queria|gostaria|preciso|pode|podia|consigo|vaga|horario|disponibilidade|disponivel/.test(normalized)) return 'marcacao';
     return 'marcacao';
+  }
+
+  function classifyWhatsappBotMessage(text, options){
+    options = options || {};
+    var cleanText = tidySpeechText(text);
+    var normalized = norm(cleanText);
+    if(!normalized){
+      return { shouldCreateTask:false, reason:'empty_message', action:'', shift:'', dates:[], text:'' };
+    }
+    var hasIntent = /\b(marcar|agendar|remarcar|reagendar|remanejar|mudar|trocar|alterar|encaix|consulta|sessao|fisioterapia|fisio|vaga|horario|disponibilidade|disponivel)\b/.test(normalized)
+      || /atendimento.*\b(hoje|amanha|manha|tarde|noite|semana|segunda|terca|quarta|quinta|sexta|sabado|domingo|horario|vaga|marcar|agendar)\b/.test(normalized)
+      || /tem (algum )?(horario|vaga|encaix)/.test(normalized)
+      || /consegue me (marcar|encaixar)/.test(normalized);
+    if(!hasIntent){
+      return { shouldCreateTask:false, reason:'no_scheduling_intent', action:'', shift:'', dates:[], text:cleanText };
+    }
+    var action = detectAction(cleanText);
+    if(action === 'cancelamento'){
+      return { shouldCreateTask:false, reason:'cancellation_not_supported_by_bot_v1', action:action, shift:detectShift(cleanText), dates:detectDates(cleanText, options.today), text:cleanText };
+    }
+    return {
+      shouldCreateTask:true,
+      reason:'scheduling_intent',
+      action:action === 'remarcacao' ? 'remarcacao' : 'marcacao',
+      shift:detectShift(cleanText),
+      dates:detectDates(cleanText, options.today),
+      text:cleanText
+    };
   }
 
   function detectShift(text){
@@ -159,6 +187,7 @@
   return {
     buildPendingTaskDraft: buildPendingTaskDraft,
     buildSpeechText: buildSpeechText,
+    classifyWhatsappBotMessage: classifyWhatsappBotMessage,
     detectAction: detectAction,
     detectDates: detectDates,
     detectShift: detectShift,

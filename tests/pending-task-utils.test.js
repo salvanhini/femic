@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const {
   buildPendingTaskDraft,
+  classifyWhatsappBotMessage,
   mergeSpeechPart,
   buildSpeechText,
 } = require('../js/femic-pending-task-utils.js');
@@ -36,4 +37,34 @@ test('buildSpeechText keeps ordered final segments without repeating content', (
   });
 
   assert.equal(text, 'quero remarcar minha consulta para sexta');
+});
+
+test('classifyWhatsappBotMessage detects scheduling requests with broad wording', () => {
+  const result = classifyWhatsappBotMessage('Oi, tem algum encaixe de fisioterapia amanhã à tarde?', {
+    today: '2026-06-26',
+  });
+
+  assert.equal(result.shouldCreateTask, true);
+  assert.equal(result.action, 'marcacao');
+  assert.equal(result.shift, 'tarde');
+  assert.deepEqual(result.dates, ['2026-06-27']);
+});
+
+test('classifyWhatsappBotMessage detects rescheduling requests', () => {
+  const result = classifyWhatsappBotMessage('Preciso trocar meu horário para sexta de manhã.', {
+    today: '2026-06-26',
+  });
+
+  assert.equal(result.shouldCreateTask, true);
+  assert.equal(result.action, 'remarcacao');
+  assert.equal(result.shift, 'manha');
+});
+
+test('classifyWhatsappBotMessage ignores casual messages without scheduling intent', () => {
+  const result = classifyWhatsappBotMessage('Bom dia, obrigado pelo atendimento de ontem.', {
+    today: '2026-06-26',
+  });
+
+  assert.equal(result.shouldCreateTask, false);
+  assert.equal(result.reason, 'no_scheduling_intent');
 });

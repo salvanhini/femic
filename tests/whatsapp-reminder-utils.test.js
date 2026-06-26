@@ -8,12 +8,12 @@ const {
   reminderDueAt,
 } = require('../js/femic-whatsapp-reminder-utils.js');
 
-test('normalizeWhatsappProvider keeps supported providers and falls back to wa_me', () => {
+test('normalizeWhatsappProvider keeps current providers and falls back to baileys', () => {
   assert.equal(normalizeWhatsappProvider('baileys'), 'baileys');
   assert.equal(normalizeWhatsappProvider('wa_me'), 'wa_me');
-  assert.equal(normalizeWhatsappProvider('api'), 'api');
-  assert.equal(normalizeWhatsappProvider('unknown'), 'wa_me');
-  assert.equal(normalizeWhatsappProvider(''), 'wa_me');
+  assert.equal(normalizeWhatsappProvider('api'), 'baileys');
+  assert.equal(normalizeWhatsappProvider('unknown'), 'baileys');
+  assert.equal(normalizeWhatsappProvider(''), 'baileys');
 });
 
 test('reminderDueAt returns 12h before the appointment start by default', () => {
