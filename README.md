@@ -168,6 +168,55 @@ NOTIFY pgrst, 'reload schema';
 
 ## WhatsApp: lembretes e preparação para Meta Cloud API
 
+### Bot Baileys no Discloud e bloqueios de agenda
+- O worker em `services/whatsapp-worker/` pode rodar no Discloud com `npm start`.
+- Ele continua enviando confirmações 12h antes quando o provedor estiver como `baileys`.
+- Mensagens de marcação/remarcação recebidas pelo bot viram pendências revisáveis em `assistant_tasks`.
+- A v1 não agenda sozinha: o FEMIC sugere horários e a equipe confirma no painel.
+- A agenda agora pode bloquear e reabrir horários no dia operacional. Bloqueios impedem sugestões do bot.
+- Para convênio/grupo, as sugestões priorizam preencher horários já parcialmente ocupados antes de abrir janelas vazias.
+
+Patch seguro para ativar bloqueios manuais:
+
+```sql
+CREATE TABLE IF NOT EXISTS schedule_blocks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  block_date DATE NOT NULL,
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  reason TEXT,
+  status TEXT DEFAULT 'active',
+  origin TEXT DEFAULT 'manual',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_schedule_blocks_date_status
+ON schedule_blocks(block_date, status);
+
+ALTER TABLE schedule_blocks ENABLE ROW LEVEL SECURITY;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON schedule_blocks TO authenticated;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'schedule_blocks'
+      AND policyname = 'authenticated_full_access_schedule_blocks'
+  ) THEN
+    CREATE POLICY "authenticated_full_access_schedule_blocks"
+    ON schedule_blocks
+    FOR ALL TO authenticated
+    USING (true)
+    WITH CHECK (true);
+  END IF;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
+```
+
 ## Extensão Chrome: WhatsApp Web para tarefas IA
 - Extensão local criada em `chrome-extension/`.
 - Ela adiciona um botão flutuante `FEMIC` no WhatsApp Web.
@@ -191,6 +240,93 @@ Rode o SQL atualizado mostrado em `Configurações > Banco de dados` para criar 
   - formulário pós-atendimento: 5 horas depois da sessão concluída.
 - O navegador precisa estar aberto para o modo automático local abrir o WhatsApp.
 - O sistema está preparado para uma futura integração com API, mas não coloca token da Meta no HTML, JS ou `localStorage`.
+
+### Baileys para confirmações automáticas
+- O projeto agora inclui um worker separado em `services/whatsapp-worker/`.
+- Esse serviço:
+  - conecta no WhatsApp via Baileys;
+  - lê agendamentos e configurações direto do Supabase;
+  - envia confirmações automáticas 12 horas antes;
+  - grava auditoria de envio no próprio agendamento;
+  - atualiza a tabela `whatsapp_service_status` para o painel do FEMIC.
+- O frontend continua com fallback manual por `wa.me`.
+- Instruções operacionais: `services/whatsapp-worker/README.md`.
+
+### Patch incremental para Supabase existente
+
+Se o banco já existe, rode este patch antes de usar Baileys:
+
+```sql
+ALTER TABLE appointments
+ADD COLUMN IF NOT EXISTS appointment_reminder_provider_used TEXT;
+
+ALTER TABLE appointments
+ADD COLUMN IF NOT EXISTS appointment_reminder_delivery_status TEXT;
+
+ALTER TABLE appointments
+ADD COLUMN IF NOT EXISTS appointment_reminder_error_message TEXT;
+
+ALTER TABLE appointments
+ADD COLUMN IF NOT EXISTS appointment_reminder_last_attempt_at TIMESTAMP WITH TIME ZONE;
+
+ALTER TABLE appointments
+ADD COLUMN IF NOT EXISTS appointment_reminder_external_id TEXT;
+
+ALTER TABLE schedule_settings
+ADD COLUMN IF NOT EXISTS whatsapp_provider TEXT DEFAULT 'wa_me';
+
+ALTER TABLE schedule_settings
+ADD COLUMN IF NOT EXISTS whatsapp_template_appointment TEXT;
+
+ALTER TABLE schedule_settings
+ADD COLUMN IF NOT EXISTS whatsapp_confirmation_hours_before INTEGER DEFAULT 12;
+
+ALTER TABLE schedule_settings
+ADD COLUMN IF NOT EXISTS whatsapp_service_name TEXT DEFAULT 'baileys-main';
+
+UPDATE schedule_settings
+SET whatsapp_template_appointment = COALESCE(
+  whatsapp_template_appointment,
+  'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊'
+);
+
+CREATE TABLE IF NOT EXISTS whatsapp_service_status (
+  service_name TEXT PRIMARY KEY,
+  provider TEXT DEFAULT 'baileys',
+  connection_status TEXT DEFAULT 'disconnected',
+  last_seen_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  last_connected_at TIMESTAMP WITH TIME ZONE,
+  last_message_at TIMESTAMP WITH TIME ZONE,
+  last_error TEXT,
+  meta JSONB DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_whatsapp_service_status_updated
+ON whatsapp_service_status(updated_at DESC);
+
+ALTER TABLE whatsapp_service_status ENABLE ROW LEVEL SECURITY;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON whatsapp_service_status TO authenticated;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'whatsapp_service_status'
+      AND policyname = 'authenticated_full_access_whatsapp_service_status'
+  ) THEN
+    CREATE POLICY "authenticated_full_access_whatsapp_service_status"
+    ON whatsapp_service_status
+    FOR ALL TO authenticated
+    USING (true)
+    WITH CHECK (true);
+  END IF;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
+```
 
 ### Por que não colocar token da Meta no navegador
 O token da Meta WhatsApp Cloud API permite enviar mensagens em nome do negócio. Se ele ficar no `index.html`, no `agenda.html`, em JavaScript público ou em `localStorage`, qualquer pessoa com acesso ao navegador ou ao código consegue copiar esse token. Por isso, a arquitetura segura futura é:

@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS clinical_evolutions CASCADE;
 DROP TABLE IF EXISTS clinical_anamneses CASCADE;
 DROP TABLE IF EXISTS femic_generated_documents CASCADE;
 DROP TABLE IF EXISTS clinic_rules CASCADE;
+DROP TABLE IF EXISTS schedule_blocks CASCADE;
 DROP TABLE IF EXISTS assistant_tasks CASCADE;
 DROP TABLE IF EXISTS services CASCADE;
 DROP TABLE IF EXISTS health_insurances CASCADE;
@@ -76,6 +77,11 @@ CREATE TABLE appointments (
   session_package_id UUID REFERENCES session_packages(id) ON DELETE SET NULL,
   appointment_reminder_sent BOOLEAN DEFAULT FALSE,
   appointment_reminder_sent_at TIMESTAMP WITH TIME ZONE,
+  appointment_reminder_provider_used TEXT,
+  appointment_reminder_delivery_status TEXT,
+  appointment_reminder_error_message TEXT,
+  appointment_reminder_last_attempt_at TIMESTAMP WITH TIME ZONE,
+  appointment_reminder_external_id TEXT,
   form_reminder_sent BOOLEAN DEFAULT FALSE,
   form_reminder_sent_at TIMESTAMP WITH TIME ZONE,
   reminder_sent BOOLEAN DEFAULT FALSE,
@@ -194,7 +200,37 @@ CREATE TABLE schedule_settings (
   working_periods TEXT DEFAULT '08:00-12:00,16:00-20:00',
   max_patients_per_slot INTEGER DEFAULT 4,
   slot_interval_minutes INTEGER DEFAULT 30,
+  whatsapp_provider TEXT DEFAULT 'wa_me',
+  whatsapp_template_appointment TEXT,
+  whatsapp_confirmation_hours_before INTEGER DEFAULT 12,
+  whatsapp_service_name TEXT DEFAULT 'baileys-main',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- BLOQUEIOS MANUAIS DA AGENDA
+CREATE TABLE schedule_blocks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  block_date DATE NOT NULL,
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  reason TEXT,
+  status TEXT DEFAULT 'active',
+  origin TEXT DEFAULT 'manual',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- STATUS DO CANAL WHATSAPP
+CREATE TABLE whatsapp_service_status (
+  service_name TEXT PRIMARY KEY,
+  provider TEXT DEFAULT 'baileys',
+  connection_status TEXT DEFAULT 'disconnected',
+  last_seen_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  last_connected_at TIMESTAMP WITH TIME ZONE,
+  last_message_at TIMESTAMP WITH TIME ZONE,
+  last_error TEXT,
+  meta JSONB DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
 -- CONFIGURAÇÃO INICIAL
@@ -204,14 +240,22 @@ INSERT INTO schedule_settings (
   working_days,
   working_periods,
   max_patients_per_slot,
-  slot_interval_minutes
+  slot_interval_minutes,
+  whatsapp_provider,
+  whatsapp_template_appointment,
+  whatsapp_confirmation_hours_before,
+  whatsapp_service_name
 ) VALUES (
   '08:00',
   '20:00',
   '1,2,3,4,5,6',
   '08:00-12:00,16:00-20:00',
   4,
-  30
+  30,
+  'wa_me',
+  'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊',
+  12,
+  'baileys-main'
 );
 
 -- ÍNDICES PARA USO NO PLANO FREE
@@ -227,6 +271,8 @@ CREATE INDEX idx_femic_generated_documents_created ON femic_generated_documents(
 CREATE INDEX idx_assistant_tasks_status_updated ON assistant_tasks(status, updated_at DESC);
 CREATE INDEX idx_assistant_tasks_origin ON assistant_tasks(origin);
 CREATE INDEX idx_assistant_tasks_fingerprint ON assistant_tasks(extension_fingerprint);
+CREATE INDEX idx_schedule_blocks_date_status ON schedule_blocks(block_date, status);
+CREATE INDEX idx_whatsapp_service_status_updated ON whatsapp_service_status(updated_at DESC);
 
 -- SEGURANÇA: anon não acessa dados. Usuários autenticados da clínica acessam tudo.
 ALTER TABLE patients ENABLE ROW LEVEL SECURITY;
@@ -238,6 +284,8 @@ ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE session_movements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinic_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assistant_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE schedule_blocks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE whatsapp_service_status ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinical_anamneses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinical_evolutions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE femic_generated_documents ENABLE ROW LEVEL SECURITY;
@@ -257,11 +305,13 @@ CREATE POLICY "authenticated_full_access_appointments" ON appointments FOR ALL T
 CREATE POLICY "authenticated_full_access_session_movements" ON session_movements FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_clinic_rules" ON clinic_rules FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_assistant_tasks" ON assistant_tasks FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_full_access_schedule_blocks" ON schedule_blocks FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_full_access_whatsapp_service_status" ON whatsapp_service_status FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_clinical_anamneses" ON clinical_anamneses FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_clinical_evolutions" ON clinical_evolutions FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_femic_generated_documents" ON femic_generated_documents FOR ALL TO authenticated USING (true) WITH CHECK (true);
 NOTIFY pgrst, 'reload schema';`;
-const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],reportAppointments=[],movements=[],clinicRules=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4};let currentDate=new Date();let editingServiceId='';let loadedAppointmentQuery='',loadedReportQuery='',aiRadarQuery='',aiRadarAppointments=[],aiRadarLoaded=false,aiRadarLastWeeks=[],recurringSuggestionCache=[];let sessionPackagesEndedAtSupported=null;let lastUserInteractionAt=Date.now();const appointmentSearchSelected=new Set();
+const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],reportAppointments=[],movements=[],clinicRules=[],scheduleBlocks=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4,whatsapp_provider:'wa_me',whatsapp_template_appointment:'',whatsapp_confirmation_hours_before:12,whatsapp_service_name:'baileys-main'};let currentDate=new Date();let editingServiceId='';let loadedAppointmentQuery='',loadedReportQuery='',aiRadarQuery='',aiRadarAppointments=[],aiRadarLoaded=false,aiRadarLastWeeks=[],recurringSuggestionCache=[];let sessionPackagesEndedAtSupported=null;let whatsappServiceStatus=null;let lastUserInteractionAt=Date.now();const appointmentSearchSelected=new Set();
 const packageScheduleCache=new Map();
 let showArchivedPatients=false,showInactivePackages=false;
 const dayAppointmentCache=new Map();
@@ -269,6 +319,7 @@ const packageHistoryCache=new Map();
 const packagePatternCache=new Map();
 let patientIndex=Object.create(null),serviceIndex=Object.create(null),payerIndex=Object.create(null);
 const CLINIC_RULES_STORAGE_KEY='femic_agenda_clinic_rules';
+const DEFAULT_WHATSAPP_REMINDER_TEMPLATE='Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊';
 function toast(msg,type='info'){const el=document.createElement('div');el.className='toast '+type;el.textContent=msg;$('toastWrap').appendChild(el);setTimeout(()=>el.remove(),3600)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function localIsoDate(d){const x=new Date(d);return String(x.getFullYear())+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}function todayIso(){return localIsoDate(new Date())}function isoDate(d){return localIsoDate(d)}function dateDay(dateStr){const [y,m,d]=String(dateStr).split('-').map(Number);return new Date(y,m-1,d).getDay()}function fmtDate(s){if(!s)return'';const [y,m,d]=String(s).split('-');return d+'/'+m+'/'+y}function fmtDateTime(value){if(!value)return'';const dt=new Date(value);if(Number.isNaN(dt.getTime()))return fmtDate(String(value).slice(0,10));return dt.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}function fmtWeekday(s){if(!s)return'';const [y,m,d]=String(s).split('-').map(Number);const dias=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];return dias[new Date(y,m-1,d).getDay()]||''}function cleanPhone(v){return String(v||'').replace(/\D/g,'')}function brl(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}function normalizeTime(t){return String(t||'').slice(0,5)}function timeToMin(t){const [h,m]=normalizeTime(t).split(':').map(Number);return h*60+(m||0)}function minToTime(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}function addMinutes(t,m){return minToTime(timeToMin(t)+Number(m||0))}function base(){return ($('sbUrl').value||localStorage.femic_agenda_url||'').trim().replace(/\/$/,'')}function key(){return ($('sbKey').value||localStorage.femic_agenda_key||'').trim()}function hasValidSession(){const jwt=sessionStorage.getItem('femic_jwt');const expiry=Number(sessionStorage.getItem('femic_token_expiry')||0);return !!(jwt&&expiry&&Date.now()<expiry)}async function ensureSession(){if(hasValidSession())return true;if(sessionStorage.getItem('femic_refresh_token')&&await femicRefreshToken())return true;throw new Error('Faça login para acessar os dados do Supabase.')}function headers(){
@@ -282,10 +333,15 @@ function localIsoDate(d){const x=new Date(d);return String(x.getFullYear())+'-'+
   return{apikey:key(),Authorization:'Bearer '+authJwt,'Content-Type':'application/json',Prefer:'return=representation'};
 }
 async function api(path,opt={}){await ensureSession();const res=await fetch(base()+'/rest/v1/'+path,{headers:headers(),...opt});const txt=await res.text();let data;try{data=txt?JSON.parse(txt):null}catch(e){data=txt}if(!res.ok){console.error('Supabase error',path,res.status,data);throw new Error((data&&data.message)||txt||('HTTP '+res.status))}return data}
+function reminderUtils(){return typeof FEMICWhatsappReminderUtils==='object'&&FEMICWhatsappReminderUtils?FEMICWhatsappReminderUtils:null}
+function slotUtils(){return typeof FEMICAppointmentSlotUtils==='object'&&FEMICAppointmentSlotUtils?FEMICAppointmentSlotUtils:null}
 function readClinicRulesCache(){try{const raw=JSON.parse(localStorage.getItem(CLINIC_RULES_STORAGE_KEY)||'[]');return Array.isArray(raw)?raw:[]}catch(e){return[]}}
 function writeClinicRulesCache(list){localStorage.setItem(CLINIC_RULES_STORAGE_KEY,JSON.stringify(Array.isArray(list)?list:[]))}
 function isMissingClinicRulesTableError(err){return /clinic_rules|relation .* does not exist|Could not find the table/i.test(String(err&&err.message||err||''))}
+function isMissingScheduleBlocksTableError(err){return /schedule_blocks|relation .* does not exist|Could not find the table|schema cache/i.test(String(err&&err.message||err||''))}
 function isMissingEndedAtColumnError(err){return /ended_at|column .* does not exist|schema cache/i.test(String(err&&err.message||err||''))}
+function isMissingWhatsappStatusTableError(err){return /whatsapp_service_status|relation .* does not exist|Could not find the table|schema cache/i.test(String(err&&err.message||err||''))}
+function isMissingWhatsappSettingsSchemaError(err){return /whatsapp_provider|whatsapp_template_appointment|whatsapp_confirmation_hours_before|whatsapp_service_name|schema cache|column .* does not exist/i.test(String(err&&err.message||err||''))}
 async function detectSessionPackagesEndedAtSupport(){
   if(sessionPackagesEndedAtSupported!==null) return sessionPackagesEndedAtSupported;
   try{
@@ -299,6 +355,58 @@ async function detectSessionPackagesEndedAtSupport(){
     }
   }
   return sessionPackagesEndedAtSupported;
+}
+function whatsappProviderValue(){
+  return settings.whatsapp_provider||localStorage.femic_whatsapp_provider||'wa_me';
+}
+function whatsappServiceNameValue(){
+  return settings.whatsapp_service_name||localStorage.femic_whatsapp_service_name||'baileys-main';
+}
+async function refreshWhatsappServiceStatus(){
+  if(!base()||!key()||!hasValidSession()){
+    whatsappServiceStatus=null;
+    renderWhatsappServiceStatus();
+    return null;
+  }
+  try{
+    const rows=await api('whatsapp_service_status?select=*&service_name=eq.'+encodeURIComponent(whatsappServiceNameValue())+'&limit=1');
+    whatsappServiceStatus=(rows&&rows[0])||null;
+  }catch(e){
+    if(isMissingWhatsappStatusTableError(e)){
+      whatsappServiceStatus=null;
+    }else{
+      console.error(e);
+    }
+  }
+  renderWhatsappServiceStatus();
+  return whatsappServiceStatus;
+}
+function renderWhatsappServiceStatus(){
+  const targets=['whatsappServiceStatusPanel','whatsappServiceStatusInline'];
+  const provider=whatsappProviderValue();
+  const status=whatsappServiceStatus||null;
+  const serviceName=whatsappServiceNameValue();
+  let message='';
+  if(provider==='baileys'){
+    if(status&&status.connection_status==='connected'){
+      message='Canal WhatsApp: Baileys conectado';
+      if(status.last_connected_at) message+=' · conectado em '+fmtDateTime(status.last_connected_at);
+      if(status.last_message_at) message+=' · último envio '+fmtDateTime(status.last_message_at);
+    }else if(status&&status.connection_status){
+      message='Canal WhatsApp: Baileys '+status.connection_status;
+      if(status.last_error) message+=' · '+String(status.last_error).slice(0,120);
+    }else{
+      message='Canal WhatsApp: aguardando heartbeat do serviço "'+serviceName+'".';
+    }
+  }else if(provider==='api'){
+    message='Canal WhatsApp: provedor API preparado. O envio automático depende da integração externa.';
+  }else{
+    message='Canal WhatsApp: envio manual por wa.me disponível como contingência operacional.';
+  }
+  targets.forEach(function(id){
+    const node=$(id);
+    if(node) node.textContent=message;
+  });
 }
 function packageEndedAtPatchValue(value){
   return sessionPackagesEndedAtSupported ? {ended_at:value} : {};
@@ -342,7 +450,7 @@ function rebuildReferenceIndexes(){
 }
 async function loadClinicRulesCollection(){try{const rows=await api('clinic_rules?select=*&order=priority.asc,created_at.asc');writeClinicRulesCache(rows||[]);return rows||[]}catch(e){if(isMissingClinicRulesTableError(e))return readClinicRulesCache();throw e}}
 clinicRules=readClinicRulesCache();
-function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊';$('tplReminder').value=tpl;if($('whatsappProvider'))$('whatsappProvider').value=localStorage.femic_whatsapp_provider||'wa_me';if($('whatsappEndpoint'))$('whatsappEndpoint').value=localStorage.femic_whatsapp_endpoint||'';if($('whatsappTplAppointment'))$('whatsappTplAppointment').value=localStorage.femic_whatsapp_tpl_appointment||'lembrete_sessao';if($('whatsappTplForm'))$('whatsappTplForm').value=localStorage.femic_whatsapp_tpl_form||'formulario_pos_sessao';renderWhatsappProviderBadge()}
+function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||DEFAULT_WHATSAPP_REMINDER_TEMPLATE;$('tplReminder').value=tpl;if($('whatsappProvider'))$('whatsappProvider').value=localStorage.femic_whatsapp_provider||'wa_me';if($('whatsappEndpoint'))$('whatsappEndpoint').value=localStorage.femic_whatsapp_endpoint||'';if($('whatsappTplAppointment'))$('whatsappTplAppointment').value=localStorage.femic_whatsapp_tpl_appointment||'lembrete_sessao';if($('whatsappTplForm'))$('whatsappTplForm').value=localStorage.femic_whatsapp_tpl_form||'formulario_pos_sessao';if($('whatsappServiceName'))$('whatsappServiceName').value=localStorage.femic_whatsapp_service_name||'baileys-main';renderWhatsappProviderBadge()}
 async function testConnection(){try{await api('patients?select=id&limit=1');toast('Conexão e carregamento funcionando.','success')}catch(e){toast('Erro real: '+e.message,'error')}}
 function appointmentWindowQuery(){
   const mode = $('viewMode') ? $('viewMode').value : 'week';
@@ -393,7 +501,7 @@ async function refreshReportMonthIfNeeded(month){
     toast('Erro ao carregar relatório mensal: ' + e.message, 'error');
   }
 }
-async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const apQuery=appointmentWindowQuery();const [pa,hi,sv,pk,ap,mv,st,cr,endedAtSupport]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api(apQuery),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection(),detectSessionPackagesEndedAtSupport()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];loadedAppointmentQuery=apQuery;loadedReportQuery='';reportAppointments=[];aiRadarQuery='';aiRadarLoaded=false;movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});sessionPackagesEndedAtSupported=endedAtSupport;rebuildReferenceIndexes();patientPickerItemsCache=null;packageScheduleCache.clear();packageHistoryCache.clear();packagePatternCache.clear();dayAppointmentCache.clear();syncForms();recordSystemLoad(true);renderActivePanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);recordSystemLoad(false,e.message);toast('Erro ao carregar: '+e.message,'error')}}
+async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const apQuery=appointmentWindowQuery();const [pa,hi,sv,pk,ap,mv,st,cr,blocks,endedAtSupport]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api(apQuery),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection(),loadScheduleBlocksCollection(),detectSessionPackagesEndedAtSupport()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];scheduleBlocks=blocks||[];loadedAppointmentQuery=apQuery;loadedReportQuery='';reportAppointments=[];aiRadarQuery='';aiRadarLoaded=false;movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});sessionPackagesEndedAtSupported=endedAtSupport;rebuildReferenceIndexes();patientPickerItemsCache=null;packageScheduleCache.clear();packageHistoryCache.clear();packagePatternCache.clear();dayAppointmentCache.clear();syncForms();refreshWhatsappServiceStatus();recordSystemLoad(true);renderActivePanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);recordSystemLoad(false,e.message);toast('Erro ao carregar: '+e.message,'error')}}
 function toggleSidebar(){
   $('sidebar')?.classList.toggle('show');
   $('overlay')?.classList.toggle('show');
@@ -534,6 +642,57 @@ function resetClinicRulesToDefaults(){
   toast('Regras padrão restauradas localmente. Clique em salvar para enviar ao Supabase.','info');
 }
 
+function scheduleBlockDate(block){return String(block&&block.block_date||'')}
+function isActiveScheduleBlock(block){return !['inactive','reopened','cancelado','cancelled'].includes(String(block&&block.status||'active').toLowerCase())}
+function activeScheduleBlocksForDate(date){return scheduleBlocks.filter(block=>scheduleBlockDate(block)===String(date)&&isActiveScheduleBlock(block))}
+function activeScheduleBlockForSlot(date,start,end){
+  const utils=slotUtils();
+  if(!utils||typeof utils.slotBlocked!=='function')return null;
+  return activeScheduleBlocksForDate(date).find(block=>utils.slotBlocked({appointment_date:date,start_time:start,end_time:end},[block]))||null;
+}
+async function loadScheduleBlocksCollection(){
+  const from=localIsoDate(new Date(Date.now()-7*86400000));
+  const end=new Date();end.setDate(end.getDate()+45);
+  try{
+    return await api('schedule_blocks?select=*&block_date=gte.'+from+'&block_date=lte.'+isoDate(end)+'&order=block_date.asc,start_time.asc')||[];
+  }catch(e){
+    if(isMissingScheduleBlocksTableError(e))return[];
+    throw e;
+  }
+}
+async function blockScheduleSlot(date,start,end,reason){
+  if(!date||!start||!end){toast('Informe data, início e fim para bloquear.','warning');return}
+  try{
+    await api('schedule_blocks',{method:'POST',body:JSON.stringify({block_date:date,start_time:start,end_time:end,reason:reason||'Bloqueio manual',status:'active',origin:'manual'})});
+    await loadAll(true);
+    toast('Horário bloqueado. O bot não vai oferecer este encaixe.','success');
+  }catch(e){
+    toast(isMissingScheduleBlocksTableError(e)?'Tabela schedule_blocks ausente. Rode o SQL atualizado para usar bloqueios.':'Erro ao bloquear horário: '+e.message,isMissingScheduleBlocksTableError(e)?'warning':'error');
+  }
+}
+async function quickBlockSlot(date,start,end){
+  const reason=prompt('Motivo do bloqueio deste horário:', 'Bloqueado pela equipe');
+  if(reason===null)return;
+  await blockScheduleSlot(date,start,end,reason);
+}
+async function quickBlockDay(date){
+  const start=prompt('Qual horário inicial bloquear? Ex.: 08:00', slots()[0]||settings.start_time||'08:00');
+  if(!start)return;
+  const end=prompt('Qual horário final bloquear?', addMinutes(start,agendaSlotStep()));
+  if(!end)return;
+  await quickBlockSlot(date,normalizeTime(start),normalizeTime(end));
+}
+async function reopenScheduleBlock(id){
+  if(!id)return;
+  try{
+    await api('schedule_blocks?id=eq.'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status:'inactive',updated_at:new Date().toISOString()})});
+    await loadAll(true);
+    toast('Horário reaberto.','success');
+  }catch(e){
+    toast('Erro ao reabrir horário: '+e.message,'error');
+  }
+}
+
 function recordSystemLoad(ok,message=''){
   localStorage.setItem('femic_last_load_status', ok ? 'ok' : 'error');
   localStorage.setItem('femic_last_load_at', new Date().toISOString());
@@ -588,7 +747,7 @@ async function runSystemHealthCheck(){
   const lastAt=localStorage.getItem('femic_last_load_at');
   if(lastAt)items.push({status:localStorage.getItem('femic_last_load_status')==='error'?'danger':'ok',title:'Última atualização',detail:new Date(lastAt).toLocaleString('pt-BR')+(localStorage.getItem('femic_last_load_message')?' · '+localStorage.getItem('femic_last_load_message'):'')});
   if(base()&&key()&&hasValidSession()){
-    const optional=['clinical_anamneses','clinical_evolutions','assistant_tasks','clinic_rules'];
+    const optional=['clinical_anamneses','clinical_evolutions','assistant_tasks','clinic_rules','schedule_blocks','whatsapp_service_status'];
     const checked=await Promise.all(optional.map(checkOptionalTable));
     items.push(...checked);
   }else{
@@ -649,7 +808,7 @@ function renderAll(){renderAgenda();renderDay();renderReminders();renderAIRadar(
 function assistantPeriodMatches(start,period){const p=String(period||'').toLowerCase();const m=timeToMin(start);if(p==='manha')return m<12*60;if(p==='tarde')return m>=12*60&&m<18*60;if(p==='noite')return m>=18*60;return true}
 function assistantAppointmentPayload(input={}){const sid=input.service_id||input.serviceId,pid=input.patient_id||input.patientId,date=input.appointment_date||input.date,start=normalizeTime(input.start_time||input.start);if(!pid)throw new Error('Paciente não identificado.');if(!sid)throw new Error('Serviço não identificado.');if(!date)throw new Error('Data não informada.');if(!start)throw new Error('Horário inicial não informado.');const s=serviceById(sid);if(!s||!s.id)throw new Error('Serviço não encontrado.');const duration=Number(input.duration_minutes||s.duration_minutes||45);const end=normalizeTime(input.end_time||input.end||addMinutes(start,duration));return{patient_id:pid,service_id:sid,appointment_date:date,start_time:start,end_time:end,duration_minutes:duration,status:input.status||'agendado',service_price_at_time:Number(input.service_price_at_time!=null?input.service_price_at_time:getServiceDefaultPrice(sid))}}
 async function validateAssistantAppointment(input={}){const payload=assistantAppointmentPayload(input);if(timeToMin(payload.end_time)<=timeToMin(payload.start_time))return{valid:false,reason:'O horário final precisa ser maior que o inicial.',payload};if(!isTodayDate(payload.appointment_date)&&!isWorking(payload.appointment_date))return{valid:false,reason:'Dia fora do expediente.',payload};if(!isInsideWorkingTime(payload.appointment_date,payload.start_time,payload.end_time))return{valid:false,reason:'Horário fora dos períodos de expediente configurados.',payload};let rows=appointments.filter(a=>a.appointment_date===payload.appointment_date);try{rows=await fetchAppointmentsForDate(payload.appointment_date)}catch(e){}const conflict=conflictInAppointmentList(payload,rows,input.ignore_id||input.ignoreId||null);if(conflict)return{valid:false,reason:conflict,payload};return{valid:true,reason:'Horário disponível.',payload,patient:patientById(payload.patient_id),service:serviceById(payload.service_id)}}
-async function suggestAssistantAppointmentSlots(input={}){const sid=input.service_id||input.serviceId,pid=input.patient_id||input.patientId;if(!pid)return{slots:[],reason:'Paciente não identificado.'};if(!sid)return{slots:[],reason:'Serviço não identificado.'};const s=serviceById(sid);if(!s||!s.id)return{slots:[],reason:'Serviço não encontrado.'};const duration=Number(input.duration_minutes||s.duration_minutes||45);const dates=(Array.isArray(input.dates)?input.dates:[input.appointment_date||input.date]).filter(Boolean).slice(0,8);if(!dates.length)return{slots:[],reason:'Informe ao menos uma data para buscar horários.'};const slotsFound=[];let lastReason='Nenhum horário disponível nas datas sugeridas.';for(const date of dates){if(slotsFound.length>=5)break;if(!isTodayDate(date)&&!isWorking(date)){lastReason='Dia fora do expediente.';continue}let dayRows=appointments.filter(a=>a.appointment_date===date);try{dayRows=await fetchAppointmentsForDate(date)}catch(e){}for(const period of parsePeriods()){for(let minute=timeToMin(period.start);minute+duration<=timeToMin(period.end);minute+=Number(settings.slot_interval_minutes||30)){if(slotsFound.length>=5)break;const start=minToTime(minute);if(!assistantPeriodMatches(start,input.requested_period||input.period))continue;const payload={patient_id:pid,service_id:sid,appointment_date:date,start_time:start,end_time:addMinutes(start,duration),duration_minutes:duration,status:'agendado',service_price_at_time:Number(getServiceDefaultPrice(sid))};const conflict=conflictInAppointmentList(payload,dayRows,input.ignore_id||input.ignoreId||null);if(conflict){lastReason=conflict;continue}slotsFound.push({patient_id:pid,service_id:sid,date,appointment_date:date,start,start_time:start,end:payload.end_time,end_time:payload.end_time,duration_minutes:duration,service_price_at_time:payload.service_price_at_time,load:dayRows.filter(a=>a.status!=='cancelado'&&timeToMin(normalizeTime(a.start_time))<timeToMin(payload.end_time)&&timeToMin(normalizeTime(a.end_time))>timeToMin(start)).length})}}}return{slots:slotsFound,reason:slotsFound.length?'Horários encontrados.':lastReason}}
+async function suggestAssistantAppointmentSlots(input={}){const sid=input.service_id||input.serviceId,pid=input.patient_id||input.patientId;if(!pid)return{slots:[],reason:'Paciente não identificado.'};if(!sid)return{slots:[],reason:'Serviço não identificado.'};const s=serviceById(sid);if(!s||!s.id)return{slots:[],reason:'Serviço não encontrado.'};const dates=(Array.isArray(input.dates)?input.dates:[input.appointment_date||input.date]).filter(Boolean).slice(0,8);if(!dates.length)return{slots:[],reason:'Informe ao menos uma data para buscar horários.'};let rows=appointments.filter(a=>dates.includes(String(a.appointment_date||'')));try{const sorted=[...dates].sort();rows=await fetchAppointmentsForRange(sorted[0],sorted[sorted.length-1])}catch(e){}const servicesById=Object.create(null);services.forEach(service=>{servicesById[String(service.id)]=service});const utils=slotUtils();if(!utils||typeof utils.findSafeAppointmentSlots!=='function')return{slots:[],reason:'Motor de encaixes não carregado.'};const slotsFound=utils.findSafeAppointmentSlots({patientId:pid,serviceId:sid,dates,appointments:rows,scheduleBlocks,servicesById,settings,period:input.requested_period||input.period,limit:5}).map(slot=>Object.assign(slot,{service_price_at_time:Number(getServiceDefaultPrice(sid))}));return{slots:slotsFound,reason:slotsFound.length?'Horários encontrados, priorizando vagas em blocos já ocupados.':'Nenhum horário seguro encontrado nas datas sugeridas.'}}
 async function confirmAssistantAppointmentProposal(input={}){const checked=await validateAssistantAppointment(input);if(!checked.valid)throw new Error(checked.reason);const saved=await persistAppointment(null,checked.payload);await loadAll(true);return{saved,patient:patientById(saved.patient_id),service:serviceById(saved.service_id)}}
 function findPatientFutureAppointments(patientId, types){
   if(!patientId) return [];
@@ -717,7 +876,7 @@ async function confirmAssistantRecurringProgram(input={}){
   return {created};
 }
 window.FEMICAgendaRuntime={
-  getState:function(){return{patients:[...patients],payers:[...payers],services:[...services],packages:[...packages],appointments:[...appointments],movements:[...movements],clinicRules:[...clinicRules],settings:Object.assign({},settings)}},
+  getState:function(){return{patients:[...patients],payers:[...payers],services:[...services],packages:[...packages],appointments:[...appointments],movements:[...movements],clinicRules:[...clinicRules],scheduleBlocks:[...scheduleBlocks],settings:Object.assign({},settings)}},
   suggestAppointmentSlots:suggestAssistantAppointmentSlots,
   suggestRecurringPrograms:suggestAssistantRecurringPrograms,
   validateAppointmentProposal:validateAssistantAppointment,
@@ -888,6 +1047,14 @@ function syncForms(){
   $('setEnd').value=settings.end_time||'20:00';
   if($('setPeriods')) $('setPeriods').value=settings.working_periods||((settings.start_time||'08:00')+'-'+(settings.end_time||'20:00'));
   $('setInterval').value=String(settings.slot_interval_minutes||30);
+  if($('tplReminder')) $('tplReminder').value=settings.whatsapp_template_appointment||localStorage.femic_tpl_reminder||DEFAULT_WHATSAPP_REMINDER_TEMPLATE;
+  if($('whatsappProvider')) $('whatsappProvider').value=settings.whatsapp_provider||localStorage.femic_whatsapp_provider||'wa_me';
+  if($('whatsappServiceName')) $('whatsappServiceName').value=settings.whatsapp_service_name||localStorage.femic_whatsapp_service_name||'baileys-main';
+  if($('whatsappEndpoint')) $('whatsappEndpoint').value=localStorage.femic_whatsapp_endpoint||'';
+  if($('whatsappTplAppointment')) $('whatsappTplAppointment').value=localStorage.femic_whatsapp_tpl_appointment||'lembrete_sessao';
+  if($('whatsappTplForm')) $('whatsappTplForm').value=localStorage.femic_whatsapp_tpl_form||'formulario_pos_sessao';
+  renderWhatsappProviderBadge();
+  renderWhatsappServiceStatus();
   populateAgendaFilters();
   ['apptPatient','pkgPatient'].forEach(enhancePatientSelect);
   syncPatientPickers();
@@ -1108,7 +1275,7 @@ function toggleRecDayCard(i){const card=$('recCard'+i);if(card)card.classList.to
 function syncRecurrenceTimes(){document.querySelectorAll('.recTime').forEach(inp=>{if(!inp.value)inp.value=$('apptStart').value||'08:00'});document.querySelectorAll('.recDay').forEach(ch=>toggleRecDayCard(ch.value));}
 function previewRecurringEnd(i){const inp=$('recTime'+i),out=$('recEnd'+i),s=serviceById($('apptService').value);if(!inp||!out)return;if(!$('apptService').value){out.textContent='Selecione o serviço';return}const start=inp.value||$('apptStart').value||'08:00';const end=addMinutes(start,Number(s.duration_minutes||45));out.textContent='Fim previsto: '+end;}function onServiceChange(updatePrice=false){const sid=$('apptService').value;if(!sid){$('apptEnd').value='';if(updatePrice)$('apptPrice').value='';showSaldoInfo();document.querySelectorAll('.recDay:checked').forEach(ch=>previewRecurringEnd(ch.value));return}const s=serviceById(sid);$('apptEnd').value=addMinutes($('apptStart').value||settings.start_time,Number(s.duration_minutes||45));if(updatePrice)setAppointmentPriceFromService(true);showSaldoInfo();document.querySelectorAll('.recDay:checked').forEach(ch=>previewRecurringEnd(ch.value))}
 function showSaldoInfo(){const pid=$('apptPatient').value,sid=$('apptService').value;if(!pid&&!sid){$('saldoInfo').innerHTML='Selecione paciente e serviço para visualizar pacote e saldo.';return}if(!pid){$('saldoInfo').innerHTML='Selecione o paciente para visualizar pacote e saldo.';return}if(!sid){$('saldoInfo').innerHTML='Selecione o serviço para visualizar pacote e saldo.';return}const pk=activePackageForService(pid,sid);let future=0;for(const a of appointments){if(String(a.patient_id)===String(pid)&&String(a.service_id)===String(sid)&&['agendado','confirmado'].includes(a.status)&&String(a.appointment_date||'')>=todayIso())future++;}if(!pk)$('saldoInfo').innerHTML='Sem pacote ativo para este paciente/serviço.';else $('saldoInfo').innerHTML=`Pacote: ${pk.total_sessions} sessões · saldo ${pk.remaining_sessions} · futuras agendadas ${future} · disponível aproximado ${Number(pk.remaining_sessions||0)-future}`}
-function conflictInAppointmentList(candidate,list,ignoreId=null){const sNew=serviceById(candidate.service_id);const n1=timeToMin(candidate.start_time),n2=timeToMin(candidate.end_time);const sameDay=(list||[]).filter(a=>a.appointment_date===candidate.appointment_date&&a.status!=='cancelado'&&String(a.id)!==String(ignoreId));const overlaps=sameDay.filter(a=>timeToMin(normalizeTime(a.start_time))<n2 && timeToMin(normalizeTime(a.end_time))>n1);if(!overlaps.length)return null;if((sNew.appointment_mode||'grupo')==='individual')return 'Serviço individual exige horário exclusivo.';if(overlaps.some(a=>(serviceById(a.service_id).appointment_mode||'grupo')==='individual'))return 'Já existe atendimento individual neste intervalo.';const max=Number(sNew.max_patients||settings.max_patients_per_slot||4);if(overlaps.length>=max)return 'Limite de pacientes simultâneos atingido.';return null}
+function conflictInAppointmentList(candidate,list,ignoreId=null){if(activeScheduleBlockForSlot(candidate.appointment_date,candidate.start_time,candidate.end_time))return 'Horário bloqueado manualmente.';const sNew=serviceById(candidate.service_id);const n1=timeToMin(candidate.start_time),n2=timeToMin(candidate.end_time);const sameDay=(list||[]).filter(a=>a.appointment_date===candidate.appointment_date&&a.status!=='cancelado'&&String(a.id)!==String(ignoreId));const overlaps=sameDay.filter(a=>timeToMin(normalizeTime(a.start_time))<n2 && timeToMin(normalizeTime(a.end_time))>n1);if(!overlaps.length)return null;if((sNew.appointment_mode||'grupo')==='individual')return 'Serviço individual exige horário exclusivo.';if(overlaps.some(a=>(serviceById(a.service_id).appointment_mode||'grupo')==='individual'))return 'Já existe atendimento individual neste intervalo.';const max=Number(sNew.max_patients||settings.max_patients_per_slot||4);if(overlaps.length>=max)return 'Limite de pacientes simultâneos atingido.';return null}
 function hasConflict(candidate,ignoreId=null){return conflictInAppointmentList(candidate,appointments,ignoreId)}
 function recurringWeekdayName(day,short=false){const names=short?['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']:['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];return names[Number(day)]||''}
 function recurringBasePayload(){
@@ -1346,6 +1513,7 @@ async function deleteAppointment(){const id=$('apptId').value;if(!id||!confirm('
 function renderDay(){
   const date=$('dayDate').value||todayIso();$('dayDate').value=date;
   const list=appointments.filter(a=>a.appointment_date===date).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));
+  const dayBlocks=activeScheduleBlocksForDate(date).sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));
   const packageAlertCache=Object.create(null);
   const dayStatusLabels={concluido:'Concluídos',cancelado:'Cancelados'};
   const statusCounts={concluido:0,cancelado:0};
@@ -1362,8 +1530,9 @@ function renderDay(){
     const count=list.filter(a=>a.status!=='cancelado'&&timeToMin(normalizeTime(a.start_time))<slotEnd&&timeToMin(normalizeTime(a.end_time))>slotStart).length;
     return Math.max(max,count);
   },0);
-  $('dayKpis').innerHTML=`<div class="day-operational-strip"><div class="day-operational-copy"><strong>${fmtWeekday(date)}, ${fmtDate(date)}</strong><span>${list.length} atendimento(s) · pico ${peak}/${Number(settings.max_patients_per_slot||4)}</span></div><div class="day-status-row compact">`+['concluido','cancelado'].map(st=>`<div class="day-status-pill ${st}"><span>${dayStatusLabels[st]}</span><strong>${statusCounts[st]||0}</strong></div>`).join('')+`</div></div>`;
-  $('dayList').innerHTML=list.length?list.map(a=>{
+  $('dayKpis').innerHTML=`<div class="day-operational-strip"><div class="day-operational-copy"><strong>${fmtWeekday(date)}, ${fmtDate(date)}</strong><span>${list.length} atendimento(s) · ${dayBlocks.length} bloqueio(s) · pico ${peak}/${Number(settings.max_patients_per_slot||4)}</span></div><div class="day-status-row compact">`+['concluido','cancelado'].map(st=>`<div class="day-status-pill ${st}"><span>${dayStatusLabels[st]}</span><strong>${statusCounts[st]||0}</strong></div>`).join('')+`<button class="btn warning" type="button" onclick="quickBlockDay('${date}')">Bloquear horário</button></div></div>`;
+  const blockHtml=dayBlocks.length?`<div class="item" style="padding:10px 12px;border-color:#fed7aa;background:#fff7ed"><div style="display:flex;flex-direction:column;gap:8px"><strong>Horários bloqueados para o bot</strong>${dayBlocks.map(block=>`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="status-chip cancelado">${normalizeTime(block.start_time)}-${normalizeTime(block.end_time)}</span><span class="muted small">${esc(block.reason||'Bloqueio manual')}</span><button class="btn small" type="button" onclick="reopenScheduleBlock('${esc(block.id)}')">Reabrir</button></div>`).join('')}</div></div>`:'';
+  const appointmentHtml=list.length?list.map(a=>{
     const label={agendado:'Agendado',confirmado:'Confirmado',concluido:'Concluído',cancelado:'Cancelado'}[a.status]||a.status;
     const nextStatuses=getNextStatuses(a.status);
     const patientLabel=patientNames[String(a.patient_id)]||'Paciente';
@@ -1384,6 +1553,7 @@ function renderDay(){
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:8px">
           <button class="btn" style="padding:6px 10px;font-size:.72rem" onclick="openPatient('${a.patient_id}')" title="Ficha">👤 Ficha</button>
           <button class="btn" style="padding:6px 10px;font-size:.72rem" onclick="openAppt('${a.appointment_date}','${a.id}')" title="Editar">✏️ Editar</button>
+          <button class="btn warning" style="padding:6px 10px;font-size:.72rem" onclick="quickBlockSlot('${a.appointment_date}','${normalizeTime(a.start_time)}','${normalizeTime(a.end_time)}')" title="Bloquear este intervalo">🚫 Bloquear</button>
           <button class="btn primary" style="padding:6px 10px;font-size:.72rem" onclick="sendWhatsapp('${a.id}',false,'appointment')" title="WhatsApp">💬 WhatsApp</button>
           <select onchange="quickStatus('${a.id}',this.value);this.value=''" style="width:auto;padding:6px 10px;font-size:.72rem;border-radius:10px;min-width:42px" title="Alterar status">
             <option value="">⚡ Status</option>
@@ -1393,6 +1563,7 @@ function renderDay(){
       </div>
     </div>`;
   }).join(''):'<div class="muted">Nenhum agendamento.</div>';
+  $('dayList').innerHTML=blockHtml+appointmentHtml;
 }
 function reminderFlag(a,kind){return kind==='form'?!!a.form_reminder_sent:!!(a.appointment_reminder_sent||a.reminder_sent)}
 function appointmentDateTime(a,field='start_time'){
@@ -1401,10 +1572,16 @@ function appointmentDateTime(a,field='start_time'){
   const d=new Date(date+'T'+time+':00');
   return Number.isNaN(d.getTime())?null:d;
 }
+function appointmentReminderHoursBefore(){
+  const value=Number(settings.whatsapp_confirmation_hours_before||12);
+  return Number.isFinite(value)&&value>0?value:12;
+}
 function reminderDueAt(a,kind){
+  const utils=reminderUtils();
+  if(kind!=='form'&&utils&&typeof utils.reminderDueAt==='function') return utils.reminderDueAt(a,{hoursBefore:appointmentReminderHoursBefore()});
   const base=appointmentDateTime(a,kind==='form'?'end_time':'start_time');
   if(!base) return null;
-  return kind==='form'?new Date(base.getTime()+(5*60*60*1000)):new Date(base.getTime()-(12*60*60*1000));
+  return kind==='form'?new Date(base.getTime()+(5*60*60*1000)):new Date(base.getTime()-(appointmentReminderHoursBefore()*60*60*1000));
 }
 function isReminderCandidate(a,kind){
   return kind==='form'?a.status==='concluido':['agendado','confirmado'].includes(a.status);
@@ -1421,12 +1598,30 @@ function reminderDueLabel(a,kind){
   return 'Vence em '+hours+'h'+(rest?String(rest).padStart(2,'0'):'');
 }
 function getReminderMode(){return localStorage.getItem('femic_reminder_mode')==='auto'?'auto':'manual'}
+function isBaileysProviderOnline(){
+  return whatsappProviderValue()==='baileys'&&!!(whatsappServiceStatus&&whatsappServiceStatus.connection_status==='connected');
+}
+function buildAppointmentReminderPatch(provider,deliveryStatus,errorMessage,externalMessageId){
+  const utils=reminderUtils();
+  if(utils&&typeof utils.buildAppointmentReminderAuditPatch==='function'){
+    return utils.buildAppointmentReminderAuditPatch({
+      provider:provider,
+      deliveryStatus:deliveryStatus,
+      sentAt:new Date().toISOString(),
+      errorMessage:errorMessage||null,
+      externalMessageId:externalMessageId||null
+    });
+  }
+  return deliveryStatus==='sent'
+    ? {appointment_reminder_sent:true,appointment_reminder_sent_at:new Date().toISOString(),reminder_sent:true,reminder_sent_at:new Date().toISOString()}
+    : {appointment_reminder_sent:false,reminder_sent:false};
+}
 function setReminderMode(mode){
   localStorage.setItem('femic_reminder_mode',mode==='auto'?'auto':'manual');
   renderReminderAutomationStatus();
   renderReminders();
   if(mode==='auto'){
-    toast('Envio automático ativado. Mantenha a agenda aberta para disparar os WhatsApps.','info');
+    toast(whatsappProviderValue()==='baileys'?'Envio automático via Baileys ativado. O worker assume as confirmações quando estiver conectado.':'Envio automático ativado. Mantenha a agenda aberta para disparar os WhatsApps.','info');
     processAutomaticReminders();
   }else{
     toast('Envio manual ativado.','info');
@@ -1434,9 +1629,14 @@ function setReminderMode(mode){
 }
 function renderReminderAutomationStatus(){
   const mode=getReminderMode();
+  const provider=whatsappProviderValue();
   const badge=$('reminderModeBadge'),status=$('reminderAutoStatus'),manual=$('manualModeBtn'),auto=$('autoModeBtn');
   if(badge){badge.className='mode-badge '+mode;badge.textContent=mode==='auto'?'Automático':'Manual'}
-  if(status) status.textContent=mode==='auto'?'Automático ativo: verifica vencidos a cada minuto e abre o WhatsApp quando chegar a hora.':'Manual: você escolhe quando enviar.';
+  if(status){
+    if(mode!=='auto') status.textContent='Manual: você escolhe quando enviar.';
+    else if(provider==='baileys') status.textContent=isBaileysProviderOnline()?'Automático via Baileys: o worker conectado envia confirmações '+appointmentReminderHoursBefore()+'h antes do atendimento.':'Automático via Baileys: aguardando conexão do worker. Enquanto isso, use o envio manual.';
+    else status.textContent='Automático ativo: verifica vencidos a cada minuto e abre o WhatsApp quando chegar a hora.';
+  }
   if(manual) manual.classList.toggle('primary',mode==='manual');
   if(auto) auto.classList.toggle('primary',mode==='auto');
 }
@@ -1446,6 +1646,7 @@ function reminderListFor(kind,date){
     .sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));
 }
 function dueAutomaticReminders(){
+  if(whatsappProviderValue()!=='wa_me') return [];
   const now=Date.now();
   const patientsById=Object.create(null);
   patients.forEach(patient=>{patientsById[String(patient.id)]=patient});
@@ -1679,6 +1880,7 @@ function renderReminders(){
   const date=$('reminderDate').value||isoDate(new Date(Date.now()+86400000));
   $('reminderDate').value=date;
   renderReminderAutomationStatus();
+  refreshWhatsappServiceStatus();
   const list=reminderListFor(kind,date);
   const patientsById=Object.create(null);
   const servicesById=Object.create(null);
@@ -1692,15 +1894,15 @@ function renderReminders(){
   const due=pending.filter(a=>{const d=reminderDueAt(a,kind);return d&&d.getTime()<=Date.now();});
   $('reminderKpis').innerHTML=`<div class="kpi"><div class="small muted">Pendentes</div><strong>${pending.length}</strong></div><div class="kpi"><div class="small muted">Vencidos agora</div><strong>${due.length}</strong></div><div class="kpi"><div class="small muted">Enviados</div><strong>${sent.length}</strong></div><div class="kpi"><div class="small muted">Sem WhatsApp</div><strong>${no.length}</strong></div>`;
   $('reminderList').innerHTML=list.length?list.map(a=>{
-    const p=patientsById[String(a.patient_id)]||{},service=servicesById[String(a.service_id)]||{},sentFlag=reminderFlag(a,kind),phoneOk=hasReminderPhone(a),dueText=sentFlag?'Enviado':reminderDueLabel(a,kind),cls=sentFlag?'reminder-enviado':phoneOk?'reminder-pendente':'reminder-semwhats';
-    return `<div class="item ${cls}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)} — ${esc(p.name||'Paciente')}</strong><div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(service.name||'Sem serviço')} · <span class="status-chip ${a.status}">${a.status}</span> · <span class="reminder-state ${cls}">${esc(dueText)}</span></div></div><div class="toolbar">${sentFlag?'<span class="status-chip concluido">Enviado</span>':phoneOk?`<button class="btn primary" onclick="sendWhatsapp('${a.id}',true,'${kind}')">Enviar</button><button class="btn" onclick="markReminder('${a.id}','${kind}')">Marcar enviado</button>`:'<span class="status-chip cancelado">Sem WhatsApp</span>'}</div></div></div>`;
+    const p=patientsById[String(a.patient_id)]||{},service=servicesById[String(a.service_id)]||{},sentFlag=reminderFlag(a,kind),phoneOk=hasReminderPhone(a),providerLabel=a.appointment_reminder_provider_used?` · ${esc(a.appointment_reminder_provider_used)}`:'',dueText=sentFlag?'Enviado':reminderDueLabel(a,kind),cls=sentFlag?'reminder-enviado':phoneOk?'reminder-pendente':'reminder-semwhats';
+    return `<div class="item ${cls}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)} — ${esc(p.name||'Paciente')}</strong><div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(service.name||'Sem serviço')} · <span class="status-chip ${a.status}">${a.status}</span> · <span class="reminder-state ${cls}">${esc(dueText)}</span>${providerLabel}</div></div><div class="toolbar">${sentFlag?'<span class="status-chip concluido">Enviado</span>':phoneOk?`<button class="btn primary" onclick="sendWhatsapp('${a.id}',true,'${kind}')">Enviar</button><button class="btn" onclick="markReminder('${a.id}','${kind}')">Marcar enviado</button>`:'<span class="status-chip cancelado">Sem WhatsApp</span>'}</div></div></div>`;
   }).join(''):'<div class="muted">Nenhum lembrete nesta data.</div>';
 }
 async function markReminder(id,kind='appointment'){
   const now=new Date().toISOString();
   const body=kind==='form'
     ? {form_reminder_sent:true,form_reminder_sent_at:now}
-    : {appointment_reminder_sent:true,appointment_reminder_sent_at:now,reminder_sent:true,reminder_sent_at:now};
+    : buildAppointmentReminderPatch('wa_me','sent',null,null);
   await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});
   await loadAll(true);
   renderReminders();
@@ -1708,7 +1910,7 @@ async function markReminder(id,kind='appointment'){
 }
 async function sendWhatsapp(id,mark=false,kind='appointment'){
   const a=appointments.find(x=>String(x.id)===String(id));if(!a)return false;
-  if((localStorage.femic_whatsapp_provider||'wa_me')==='api'){
+  if(whatsappProviderValue()==='api'){
     toast('API preparada, mas envio real ainda usa link seguro até a Edge Function estar implementada.','info');
   }
   const p=patientById(a.patient_id);const phone='55'+cleanPhone(p.whatsapp);
@@ -1716,7 +1918,7 @@ async function sendWhatsapp(id,mark=false,kind='appointment'){
   const defaultTpl=kind==='form'?'Olá, {nome}! Obrigado por comparecer à FEMIC. Quando puder, responda o formulário pós-atendimento: {form_link}':'';
   const tpl=kind==='form'
     ? (localStorage.femic_tpl_form_reminder||($('tplFormReminder')?.value)||defaultTpl)
-    : ((localStorage.femic_tpl_reminder||$('tplReminder').value)||'');
+    : ((settings.whatsapp_template_appointment||localStorage.femic_tpl_reminder||$('tplReminder').value||DEFAULT_WHATSAPP_REMINDER_TEMPLATE));
   const msg=tpl.replaceAll('{nome}',p.name||'').replaceAll('{data}',fmtDate(a.appointment_date)).replaceAll('{hora}',normalizeTime(a.start_time)).replaceAll('{servico}',serviceName(a.service_id)).replaceAll('{form_link}',localStorage.femic_form_link||($('formLinkInput')?.value)||'');
   const opened=window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');
   if(!opened){toast('O navegador bloqueou a janela do WhatsApp. Use o modo manual ou libere pop-ups para a agenda.','warning');return false}
@@ -1724,6 +1926,10 @@ async function sendWhatsapp(id,mark=false,kind='appointment'){
   return true;
 }
 function sendNextReminder(){
+  if(whatsappProviderValue()==='baileys'){
+    toast(isBaileysProviderOnline()?'O worker Baileys cuida dos envios automáticos. Use os botões de WhatsApp manual para contingência.':'Baileys indisponível. Use o envio manual até o serviço reconectar.','info');
+    return;
+  }
   const kind=$('reminderType')?$('reminderType').value:'appointment';
   const date=$('reminderDate').value;
   const patientsById=Object.create(null);
@@ -1732,25 +1938,40 @@ function sendNextReminder(){
   if(!next)toast('Nenhum lembrete pendente.','info');else sendWhatsapp(next.id,true,kind);
 }
 function renderWhatsappProviderBadge(){
-  const provider=$('whatsappProvider')?.value||localStorage.femic_whatsapp_provider||'wa_me';
+  const provider=$('whatsappProvider')?.value||whatsappProviderValue();
   const badge=$('whatsappProviderBadge');
   if(!badge) return;
-  badge.className='mode-badge '+(provider==='api'?'auto':'manual');
-  badge.textContent=provider==='api'?'API preparada':'wa.me';
+  badge.className='mode-badge '+(provider==='baileys'?'auto':provider==='api'?'auto':'manual');
+  badge.textContent=provider==='baileys'?'Baileys':provider==='api'?'API preparada':'wa.me';
+  renderWhatsappServiceStatus();
 }
-function saveWhatsappApiConfig(){
+async function saveWhatsappApiConfig(){
   const provider=$('whatsappProvider')?.value||'wa_me';
+  const serviceName=($('whatsappServiceName')?.value||'baileys-main').trim()||'baileys-main';
   localStorage.femic_whatsapp_provider=provider;
   localStorage.femic_whatsapp_endpoint=($('whatsappEndpoint')?.value||'').trim();
   localStorage.femic_whatsapp_tpl_appointment=($('whatsappTplAppointment')?.value||'lembrete_sessao').trim()||'lembrete_sessao';
   localStorage.femic_whatsapp_tpl_form=($('whatsappTplForm')?.value||'formulario_pos_sessao').trim()||'formulario_pos_sessao';
-  renderWhatsappProviderBadge();
-  if(provider==='api') toast('Configuração salva. O envio pela API fica preparado, mas o sistema mantém fallback seguro por link até a Edge Function ser implementada.','info');
-  else toast('WhatsApp por link seguro ativado.','success');
+  localStorage.femic_whatsapp_service_name=serviceName;
+  try{
+    const payload={whatsapp_provider:provider,whatsapp_service_name:serviceName,whatsapp_confirmation_hours_before:appointmentReminderHoursBefore()};
+    if(settings.id) await api('schedule_settings?id=eq.'+settings.id,{method:'PATCH',body:JSON.stringify(payload)});
+    else await api('schedule_settings',{method:'POST',body:JSON.stringify(Object.assign({start_time:settings.start_time||'08:00',end_time:settings.end_time||'20:00',working_days:settings.working_days||'1,2,3,4,5,6',working_periods:settings.working_periods||'08:00-12:00,16:00-20:00',max_patients_per_slot:Number(settings.max_patients_per_slot||4),slot_interval_minutes:Number(settings.slot_interval_minutes||30),whatsapp_template_appointment:settings.whatsapp_template_appointment||DEFAULT_WHATSAPP_REMINDER_TEMPLATE},payload))});
+    settings.whatsapp_provider=provider;
+    settings.whatsapp_service_name=serviceName;
+    renderWhatsappProviderBadge();
+    refreshWhatsappServiceStatus();
+    if(provider==='baileys') toast('Configuração salva. O worker Baileys passa a ser o canal automático de confirmação.','success');
+    else if(provider==='api') toast('Configuração salva. O envio pela API continua preparado para uma integração futura.','info');
+    else toast('WhatsApp por link seguro ativado.','success');
+  }catch(e){
+    toast(isMissingWhatsappSettingsSchemaError(e)?'Atualize o Supabase com o patch incremental de WhatsApp/Baileys antes de salvar esse provedor.':'Erro ao salvar configuração do WhatsApp: '+e.message,isMissingWhatsappSettingsSchemaError(e)?'warning':'error');
+  }
 }
 function testWhatsappApiConfig(){
   const provider=$('whatsappProvider')?.value||'wa_me';
   const endpoint=($('whatsappEndpoint')?.value||'').trim();
+  if(provider==='baileys'){toast('Baileys usa o serviço Node externo. Confira o status do canal e o nome do serviço configurado.','success');return}
   if(provider==='wa_me'){toast('Configuração atual usa link WhatsApp seguro.','success');return}
   if(!endpoint||!/^https:\/\/[a-z0-9-]+\.functions\.supabase\.co\/[a-z0-9-_/]+$/i.test(endpoint)){
     toast('Informe uma URL de Supabase Edge Function válida.','warning');
@@ -2029,6 +2250,9 @@ function downloadJsonFile(filename, payload){
 async function fetchTableForBackup(table){
   return await api(table + '?select=*');
 }
+async function fetchOptionalTableForBackup(table, missingCheck){
+  try{return await fetchTableForBackup(table)}catch(e){if(missingCheck&&missingCheck(e))return[];throw e}
+}
 
 function startServiceEdit(id){
   const service = services.find(s => String(s.id) === String(id));
@@ -2075,6 +2299,7 @@ async function exportAgendaBackup(){
         services: await fetchTableForBackup('services'),
         schedule_settings: await fetchTableForBackup('schedule_settings'),
         clinic_rules: await loadClinicRulesCollection(),
+        schedule_blocks: await fetchOptionalTableForBackup('schedule_blocks', isMissingScheduleBlocksTableError),
         session_packages: await fetchTableForBackup('session_packages'),
         appointments: await fetchTableForBackup('appointments'),
         session_movements: await fetchTableForBackup('session_movements')
@@ -2146,6 +2371,7 @@ async function restoreAgendaBackup(event){
     await deleteAllRows('health_insurances');
     await deleteAllRows('schedule_settings');
     try{await deleteAllRows('clinic_rules')}catch(e){if(!isMissingClinicRulesTableError(e))throw e}
+    try{await deleteAllRows('schedule_blocks')}catch(e){if(!isMissingScheduleBlocksTableError(e))throw e}
 
     // Pacientes: upsert seguro, sem apagar pacientes externos.
     await upsertRows('patients', tables.patients);
@@ -2157,6 +2383,9 @@ async function restoreAgendaBackup(event){
       try{await upsertRows('clinic_rules', tables.clinic_rules)}catch(e){if(!isMissingClinicRulesTableError(e))throw e}
     }else{
       writeClinicRulesCache([]);
+    }
+    if(Array.isArray(tables.schedule_blocks)){
+      try{await upsertRows('schedule_blocks', tables.schedule_blocks)}catch(e){if(!isMissingScheduleBlocksTableError(e))throw e}
     }
     await upsertRows('session_packages', tables.session_packages);
     await upsertRows('appointments', tables.appointments);
@@ -2172,7 +2401,7 @@ async function restoreAgendaBackup(event){
   }
 }
 
-function saveTemplates(){localStorage.femic_tpl_reminder=$('tplReminder').value;toast('Modelo salvo.','success')}async function copySql(){const ok=confirm('Este SQL faz RESET COMPLETO e apaga tabelas operacionais antes de recriar a estrutura. Use apenas em banco vazio ou depois de backup JSON. Deseja copiar mesmo assim?');if(!ok)return;await navigator.clipboard.writeText(SQL_SCHEMA);toast('SQL destrutivo copiado.','warning')}
+async function saveTemplates(){const template=($('tplReminder')?.value||'').trim()||DEFAULT_WHATSAPP_REMINDER_TEMPLATE;localStorage.femic_tpl_reminder=template;try{const payload={whatsapp_template_appointment:template};if(settings.id)await api('schedule_settings?id=eq.'+settings.id,{method:'PATCH',body:JSON.stringify(payload)});else await api('schedule_settings',{method:'POST',body:JSON.stringify({start_time:settings.start_time||'08:00',end_time:settings.end_time||'20:00',working_days:settings.working_days||'1,2,3,4,5,6',working_periods:settings.working_periods||'08:00-12:00,16:00-20:00',max_patients_per_slot:Number(settings.max_patients_per_slot||4),slot_interval_minutes:Number(settings.slot_interval_minutes||30),whatsapp_provider:settings.whatsapp_provider||'wa_me',whatsapp_template_appointment:template,whatsapp_confirmation_hours_before:appointmentReminderHoursBefore(),whatsapp_service_name:settings.whatsapp_service_name||'baileys-main'})});settings.whatsapp_template_appointment=template;toast('Modelo salvo.','success')}catch(e){toast(isMissingWhatsappSettingsSchemaError(e)?'Atualize o Supabase com o patch incremental de WhatsApp/Baileys antes de salvar o modelo.':'Erro ao salvar modelo: '+e.message,isMissingWhatsappSettingsSchemaError(e)?'warning':'error')}}async function copySql(){const ok=confirm('Este SQL faz RESET COMPLETO e apaga tabelas operacionais antes de recriar a estrutura. Use apenas em banco vazio ou depois de backup JSON. Deseja copiar mesmo assim?');if(!ok)return;await navigator.clipboard.writeText(SQL_SCHEMA);toast('SQL destrutivo copiado.','warning')}
 $('sqlBox').textContent=SQL_SCHEMA;loadConfig();checkFemicAuth();$('dayDate').value=todayIso();$('reminderDate').value=isoDate(new Date(Date.now()+86400000));$('reportMonth').value=new Date().toISOString().slice(0,7);
 /* =========================================================
    FEMIC Agenda v1.4.36 - Ficha com dia da semana — Correção robusta de consumo de pacote
