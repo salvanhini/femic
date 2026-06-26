@@ -9,6 +9,7 @@ import pino from 'pino';
 import qrcodeTerminal from 'qrcode-terminal';
 
 import slotUtils from '../../js/femic-appointment-slot-utils.js';
+import aiUtils from '../../js/femic-whatsapp-ai-utils.js';
 import pendingTaskUtils from '../../js/femic-pending-task-utils.js';
 import reminderUtils from '../../js/femic-whatsapp-reminder-utils.js';
 
@@ -27,6 +28,12 @@ const {
   findSafeAppointmentSlots,
 } = slotUtils;
 
+const {
+  chooseServiceForConversationIntent,
+  parseGroqConversationJson,
+  serviceCatalogForPrompt,
+} = aiUtils;
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const runtimeRoot = path.resolve(__dirname, '.runtime');
 const sessionDir = process.env.FEMIC_BAILEYS_SESSION_DIR || path.resolve(__dirname, '.session');
@@ -36,6 +43,8 @@ const pairingPhone = normalizePhone(process.env.FEMIC_BAILEYS_PAIRING_PHONE || '
 const logLevel = process.env.FEMIC_BAILEYS_LOG_LEVEL || 'info';
 const supabaseUrl = String(process.env.FEMIC_SUPABASE_URL || '').trim();
 const supabaseServiceRoleKey = String(process.env.FEMIC_SUPABASE_SERVICE_ROLE_KEY || '').trim();
+const groqApiKey = String(process.env.FEMIC_GROQ_API_KEY || '').trim();
+const groqModel = String(process.env.FEMIC_GROQ_MODEL || 'llama-3.3-70b-versatile').trim() || 'llama-3.3-70b-versatile';
 const logger = pino({ level: logLevel });
 
 if(!supabaseUrl || !supabaseServiceRoleKey){
@@ -55,6 +64,7 @@ let syncing = false;
 let connectionState = 'disconnected';
 let pairingCodeRequested = false;
 let whatsappStatusTableMissing = false;
+let scheduleSettingsTableMissing = false;
 
 function nowIso(){
   return new Date().toISOString();
@@ -128,12 +138,27 @@ async function upsertServiceStatus(patch = {}){
 }
 
 async function readScheduleSettings(){
+  if(scheduleSettingsTableMissing) return {};
   const { data, error } = await supabase
     .from('schedule_settings')
     .select('*')
     .limit(1)
     .maybeSingle();
-  if(error) throw error;
+  if(error){
+    if(/schedule_settings|relation .* does not exist|Could not find the table|schema cache|PGRST205/i.test(String(error.message || error.code || error))){
+      scheduleSettingsTableMissing = true;
+      logger.warn('Tabela schedule_settings ausente; usando configuracoes padrao do bot. Rode o patch SQL para editar pelo FEMIC.');
+      await upsertServiceStatus({
+        last_error: null,
+        meta: {
+          schedule_settings_status: 'missing_using_defaults',
+          hours_before: 12,
+        },
+      });
+      return {};
+    }
+    throw error;
+  }
   return data || {};
 }
 
@@ -249,6 +274,86 @@ function chooseServiceFromText(services, text){
   }) || null;
 }
 
+function buildGroqConversationPrompt({ text, patient, services, today }){
+  return [
+    'Voce e a atendente virtual da FEMIC Fisioterapia no WhatsApp.',
+    'Sua tarefa e interpretar a mensagem do paciente e responder APENAS um JSON valido, sem markdown.',
+    'Nunca confirme, marque, cancele ou prometa horario definitivo. A equipe humana sempre confirma no painel FEMIC.',
+    'Classifique fisioterapia pelo convenio como service_category="convenio_group". Convenios comuns: Unimed, Hapvida, Pro Unica e outros.',
+    'Classifique quiropraxia e liberacao miofascial como service_category="individual_bodywork".',
+    'Se o paciente nao deixar claro se quer convenio, quiropraxia ou liberacao miofascial, marque needs_clarification=true e escreva uma pergunta curta.',
+    'Se for mensagem casual sem pedido operacional, use should_create_task=false e reply vazio.',
+    '',
+    'JSON esperado:',
+    '{"should_create_task":true,"action":"marcacao|remarcacao|cancelamento|duvida","service_category":"convenio_group|individual_bodywork|unknown","service_query":"","payer_name":"","shift":"manha|tarde|noite|","dates":["YYYY-MM-DD"],"needs_clarification":false,"clarification_question":"","reply":"","confidence":"high|medium|low"}',
+    '',
+    `Data de hoje: ${today}`,
+    `Paciente cadastrado: ${patient && patient.name ? patient.name : 'nao identificado'}`,
+    `Servicos cadastrados: ${JSON.stringify(serviceCatalogForPrompt(services))}`,
+    '',
+    `Mensagem do paciente: ${text}`,
+  ].join('\n');
+}
+
+async function classifyWithGroq({ text, patient, services, today }){
+  if(!groqApiKey) return null;
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${groqApiKey}`,
+    },
+    body: JSON.stringify({
+      model: groqModel,
+      temperature: 0.1,
+      messages: [
+        { role: 'system', content: 'Voce interpreta conversas de WhatsApp para uma clinica e responde somente JSON valido.' },
+        { role: 'user', content: buildGroqConversationPrompt({ text, patient, services, today }) },
+      ],
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if(!response.ok){
+    throw new Error((data && data.error && data.error.message) || `Falha no Groq (${response.status})`);
+  }
+  const content = data && data.choices && data.choices[0] && data.choices[0].message
+    ? data.choices[0].message.content
+    : '';
+  return parseGroqConversationJson(content);
+}
+
+function classificationFromAi(aiIntent, fallback){
+  if(!aiIntent) return fallback;
+  if(!aiIntent.shouldCreateTask){
+    return {
+      shouldCreateTask: false,
+      reason: 'groq_no_task',
+      action: aiIntent.action,
+      shift: aiIntent.shift,
+      dates: aiIntent.dates,
+      text: fallback.text,
+    };
+  }
+  if(aiIntent.action === 'cancelamento'){
+    return {
+      shouldCreateTask: false,
+      reason: 'cancellation_not_supported_by_bot_v1',
+      action: 'cancelamento',
+      shift: aiIntent.shift,
+      dates: aiIntent.dates,
+      text: fallback.text,
+    };
+  }
+  return {
+    shouldCreateTask: true,
+    reason: 'groq_scheduling_intent',
+    action: aiIntent.action === 'remarcacao' ? 'remarcacao' : 'marcacao',
+    shift: aiIntent.shift || fallback.shift || '',
+    dates: aiIntent.dates && aiIntent.dates.length ? aiIntent.dates : fallback.dates,
+    text: fallback.text,
+  };
+}
+
 function defaultCandidateDates(classification){
   const parsed = classification && Array.isArray(classification.dates) ? classification.dates : [];
   if(parsed.length) return parsed.slice(0, 4);
@@ -267,7 +372,10 @@ function formatSlotLine(slot, index){
   return `${index + 1}. ${formatDate(slot.appointment_date)} às ${normalizeTime(slot.start_time)} (${slot.load}/${slot.capacity} vagas ocupadas)`;
 }
 
-function buildSchedulingReply(slots){
+function buildSchedulingReply(slots, options = {}){
+  if(options.clarificationQuestion){
+    return options.clarificationQuestion;
+  }
   if(!slots.length){
     return 'Recebi seu pedido de agendamento e deixei para a equipe revisar. Assim que conferirem a agenda, retornam por aqui com as melhores opções.';
   }
@@ -276,7 +384,23 @@ function buildSchedulingReply(slots){
     + '\n\nA equipe FEMIC vai revisar e confirmar antes de marcar.';
 }
 
-async function createSchedulingTask({ text, remotePhone, patient, service, slots, action, shift, dates }){
+function taskNotes(text, aiIntent, serviceMatch){
+  const lines = [tidySpeechText(text)];
+  if(aiIntent){
+    lines.push('');
+    lines.push('Interpretação IA:');
+    lines.push(`- categoria: ${aiIntent.serviceCategory || 'unknown'}`);
+    lines.push(`- serviço/pedido: ${aiIntent.serviceQuery || '-'}`);
+    lines.push(`- convênio: ${aiIntent.payerName || '-'}`);
+    lines.push(`- confiança: ${aiIntent.confidence || '-'}`);
+  }
+  if(serviceMatch && serviceMatch.reason){
+    lines.push(`- decisão de serviço: ${serviceMatch.reason}`);
+  }
+  return lines.join('\n');
+}
+
+async function createSchedulingTask({ text, remotePhone, patient, service, slots, action, shift, dates, aiIntent, serviceMatch }){
   const now = nowIso();
   const titleName = patient && patient.name ? patient.name : normalizePhone(remotePhone);
   const payload = {
@@ -289,11 +413,11 @@ async function createSchedulingTask({ text, remotePhone, patient, service, slots
     patient_name: patient && patient.name ? patient.name : '',
     service_id: service && service.id ? service.id : null,
     service_name: service && service.name ? service.name : '',
-    suggestion_reason: slots.length ? 'Bot sugeriu horários seguros; equipe precisa confirmar.' : 'Bot não encontrou horário seguro; equipe precisa revisar.',
+    suggestion_reason: slots.length ? 'Bot sugeriu horários seguros; equipe precisa confirmar.' : (serviceMatch && serviceMatch.reason ? serviceMatch.reason : 'Bot não encontrou horário seguro; equipe precisa revisar.'),
     phone: normalizePhone(remotePhone),
     origin: 'whatsapp_bot',
     requested_action: action,
-    notes: tidySpeechText(text),
+    notes: taskNotes(text, aiIntent, serviceMatch),
     suggested_slots: slots,
     candidates: slots,
     parsed_shift: shift || '',
@@ -325,10 +449,33 @@ async function handleIncomingSchedulingMessage(message){
   const text = tidySpeechText(rawText);
   if(!text) return;
   const remotePhone = String(remoteJid).split('@')[0];
-  const classification = classifyWhatsappBotMessage(text, { today: localIsoDate(new Date()) });
-  logger.info({ remotePhone: normalizePhone(remotePhone), preview: text.slice(0, 120), reason: classification.reason }, 'Mensagem recebida no WhatsApp');
+  const today = localIsoDate(new Date());
+  const fallbackClassification = classifyWhatsappBotMessage(text, { today });
+  const settings = await readScheduleSettings();
+  const patients = await fetchPatients();
+  const services = await fetchServices();
+  const patient = findPatientByPhone(patients, remotePhone);
+  let aiIntent = null;
+  try{
+    aiIntent = await classifyWithGroq({ text, patient, services, today });
+  }catch(error){
+    logger.warn({ err: error, remotePhone: normalizePhone(remotePhone) }, 'Groq falhou; usando classificador local');
+    await upsertServiceStatus({
+      last_error: error && error.message ? `Groq: ${error.message}` : 'Groq indisponivel',
+    });
+  }
+  const classification = classificationFromAi(aiIntent, fallbackClassification);
+  logger.info({
+    remotePhone: normalizePhone(remotePhone),
+    preview: text.slice(0, 120),
+    reason: classification.reason,
+    ai: !!aiIntent,
+  }, 'Mensagem recebida no WhatsApp');
   if(!classification.shouldCreateTask){
     logger.info({ remotePhone: normalizePhone(remotePhone), reason: classification.reason }, 'Mensagem ignorada pelo bot de agenda');
+    if(aiIntent && aiIntent.reply){
+      await socket.sendMessage(remoteJid, { text: aiIntent.reply });
+    }
     await upsertServiceStatus({
       last_error: null,
       meta: {
@@ -342,14 +489,13 @@ async function handleIncomingSchedulingMessage(message){
   }
 
   const action = classification.action;
-
-  const settings = await readScheduleSettings();
-  const patients = await fetchPatients();
-  const services = await fetchServices();
-  const patient = findPatientByPhone(patients, remotePhone);
-  const service = chooseServiceFromText(services, text);
+  const serviceMatch = aiIntent
+    ? chooseServiceForConversationIntent(services, aiIntent)
+    : { service: chooseServiceFromText(services, text), confidence: 'medium', reason: 'Serviço encontrado pelo texto.' };
+  const service = serviceMatch.service;
   const dates = defaultCandidateDates(classification);
   const shift = classification.shift;
+  const needsClarification = !!(aiIntent && (aiIntent.needsClarification || !service || serviceMatch.confidence === 'low'));
   const from = dates[0] || localIsoDate(new Date());
   const to = dates[dates.length - 1] || from;
   const [appointments, scheduleBlocks] = await Promise.all([
@@ -357,7 +503,7 @@ async function handleIncomingSchedulingMessage(message){
     fetchScheduleBlocks(from, to),
   ]);
 
-  const slots = service ? findSafeAppointmentSlots({
+  const slots = service && !needsClarification ? findSafeAppointmentSlots({
     patientId: patient && patient.id ? patient.id : `whatsapp-${normalizePhone(remotePhone)}`,
     serviceId: service.id,
     dates,
@@ -369,8 +515,11 @@ async function handleIncomingSchedulingMessage(message){
     limit: 5,
   }) : [];
 
-  const task = await createSchedulingTask({ text, remotePhone, patient, service, slots, action, shift, dates });
-  await socket.sendMessage(remoteJid, { text: buildSchedulingReply(slots) });
+  const task = await createSchedulingTask({ text, remotePhone, patient, service, slots, action, shift, dates, aiIntent, serviceMatch });
+  const clarificationQuestion = needsClarification
+    ? (aiIntent && aiIntent.clarificationQuestion) || 'Só para confirmar: seria fisioterapia pelo convênio, quiropraxia ou liberação miofascial?'
+    : '';
+  await socket.sendMessage(remoteJid, { text: buildSchedulingReply(slots, { clarificationQuestion }) });
   await upsertServiceStatus({
     last_message_at: nowIso(),
     last_error: null,
@@ -381,6 +530,8 @@ async function handleIncomingSchedulingMessage(message){
       last_inbound_at: nowIso(),
       last_task_id: task && task.id,
       last_suggested_slots: slots.length,
+      last_ai_provider: aiIntent ? 'groq' : 'local',
+      last_service_match_confidence: serviceMatch.confidence,
     },
   });
   logger.info({ phone: normalizePhone(remotePhone), action, slots: slots.length, taskId: task && task.id }, 'Pedido de agenda processado pelo bot');
