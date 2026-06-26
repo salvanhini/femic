@@ -21,7 +21,10 @@ const {
 
 const {
   classifyWhatsappBotMessage,
+  humanReplyDelayMs,
+  isWhatsappAudioMessage,
   tidySpeechText,
+  whatsappAudioUnsupportedReply,
 } = pendingTaskUtils;
 
 const {
@@ -31,6 +34,7 @@ const {
 const {
   chooseServiceForConversationIntent,
   courteousClarificationQuestion,
+  hasMinimumSchedulingInfo,
   mergeConversationIntentState,
   parseGroqConversationJson,
   serviceCatalogForPrompt,
@@ -43,6 +47,8 @@ const pollMs = Math.max(15000, Number(process.env.FEMIC_BAILEYS_POLL_MS || 60000
 const serviceName = String(process.env.FEMIC_BAILEYS_SERVICE_NAME || 'baileys-main').trim() || 'baileys-main';
 const pairingPhone = normalizePhone(process.env.FEMIC_BAILEYS_PAIRING_PHONE || '');
 const adminPhone = normalizePhone(process.env.FEMIC_BAILEYS_ADMIN_PHONE || '');
+const replyDelayMinMs = Math.max(0, Number(process.env.FEMIC_BAILEYS_REPLY_DELAY_MIN_MS || 1800));
+const replyDelayMaxMs = Math.max(replyDelayMinMs, Number(process.env.FEMIC_BAILEYS_REPLY_DELAY_MAX_MS || 4200));
 const logLevel = process.env.FEMIC_BAILEYS_LOG_LEVEL || 'info';
 const supabaseUrl = String(process.env.FEMIC_SUPABASE_URL || '').trim();
 const supabaseServiceRoleKey = String(process.env.FEMIC_SUPABASE_SERVICE_ROLE_KEY || '').trim();
@@ -146,6 +152,15 @@ function formatReminderMessage(template, reminder){
 
 function toJid(phone){
   return `${phone}@s.whatsapp.net`;
+}
+
+function sleep(ms){
+  return new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms) || 0)));
+}
+
+async function sendBotText(remoteJid, text){
+  await sleep(humanReplyDelayMs(replyDelayMinMs, replyDelayMaxMs));
+  return socket.sendMessage(remoteJid, { text });
 }
 
 async function notifyAdminConnectionOpen(){
@@ -433,7 +448,7 @@ function buildSchedulingReply(slots, options = {}){
     return options.clarificationQuestion;
   }
   if(!slots.length){
-    return 'Recebi seu pedido de agendamento e deixei para a equipe revisar. Assim que conferirem a agenda, retornam por aqui com as melhores opções.';
+    return 'Obrigada, recebi seu pedido de agendamento e já deixei para a equipe FEMIC revisar. No momento não encontrei um horário seguro automaticamente.\n\nPor gentileza, me envie o melhor período para você, por exemplo: manhã, tarde ou um dia específico. Assim a equipe consegue conferir a agenda e retornar com as melhores opções.';
   }
   return 'Recebi seu pedido e deixei para a equipe confirmar no sistema. Encontrei estas opções possíveis:\n\n'
     + slots.slice(0, 3).map(formatSlotLine).join('\n')
@@ -459,6 +474,7 @@ function taskNotes(text, aiIntent, serviceMatch){
 async function createSchedulingTask({ text, remotePhone, patient, service, slots, action, shift, dates, aiIntent, serviceMatch }){
   const now = nowIso();
   const titleName = patient && patient.name ? patient.name : normalizePhone(remotePhone);
+  const serviceIsInferred = !!(service && service.inferred);
   const payload = {
     id: `wa_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     title: `${action === 'remarcacao' ? 'Remarcação' : 'Marcação'} via bot · ${titleName}`,
@@ -467,7 +483,7 @@ async function createSchedulingTask({ text, remotePhone, patient, service, slots
     priority: 'normal',
     patient_id: patient && patient.id ? String(patient.id) : null,
     patient_name: patient && patient.name ? patient.name : '',
-    service_id: service && service.id ? service.id : null,
+    service_id: service && service.id && !serviceIsInferred ? service.id : null,
     service_name: service && service.name ? service.name : '',
     suggestion_reason: slots.length ? 'Bot sugeriu horários seguros; equipe precisa confirmar.' : (serviceMatch && serviceMatch.reason ? serviceMatch.reason : 'Bot não encontrou horário seguro; equipe precisa revisar.'),
     phone: normalizePhone(remotePhone),
@@ -498,13 +514,27 @@ async function createSchedulingTask({ text, remotePhone, patient, service, slots
 async function handleIncomingSchedulingMessage(message){
   const remoteJid = message && message.key && message.key.remoteJid;
   if(!remoteJid || remoteJid.endsWith('@g.us')) return;
+  const remotePhone = String(remoteJid).split('@')[0];
+  if(isWhatsappAudioMessage(message)){
+    logger.info({ remotePhone: normalizePhone(remotePhone) }, 'Audio recebido no WhatsApp; solicitando mensagem em texto');
+    await sendBotText(remoteJid, whatsappAudioUnsupportedReply());
+    await upsertServiceStatus({
+      last_message_at: nowIso(),
+      last_error: null,
+      meta: {
+        last_inbound_status: 'audio_unsupported',
+        last_inbound_phone: normalizePhone(remotePhone),
+        last_inbound_at: nowIso(),
+      },
+    });
+    return;
+  }
   const rawText = message.message?.conversation
     || message.message?.extendedTextMessage?.text
     || message.message?.imageMessage?.caption
     || '';
   const text = tidySpeechText(rawText);
   if(!text) return;
-  const remotePhone = String(remoteJid).split('@')[0];
   const today = localIsoDate(new Date());
   const fallbackClassification = classifyWhatsappBotMessage(text, { today });
   const settings = await readScheduleSettings();
@@ -536,7 +566,7 @@ async function handleIncomingSchedulingMessage(message){
   if(!classification.shouldCreateTask){
     logger.info({ remotePhone: normalizePhone(remotePhone), reason: classification.reason }, 'Mensagem ignorada pelo bot de agenda');
     if(aiIntent && aiIntent.reply){
-      await socket.sendMessage(remoteJid, { text: aiIntent.reply });
+      await sendBotText(remoteJid, aiIntent.reply);
     }
     await upsertServiceStatus({
       last_error: null,
@@ -557,7 +587,7 @@ async function handleIncomingSchedulingMessage(message){
   const service = serviceMatch.service;
   const dates = defaultCandidateDates(classification);
   const shift = classification.shift;
-  const intentHasEnoughContext = !!(aiIntent && service && aiIntent.serviceCategory !== 'unknown' && aiIntent.serviceQuery && (aiIntent.payerName || aiIntent.serviceCategory === 'individual_bodywork'));
+  const intentHasEnoughContext = !!(aiIntent && hasMinimumSchedulingInfo(aiIntent));
   const needsClarification = !!(aiIntent && !intentHasEnoughContext && (aiIntent.needsClarification || !service || serviceMatch.confidence === 'low'));
   if(!needsClarification && service){
     clearConversationState(remotePhone);
@@ -568,6 +598,10 @@ async function handleIncomingSchedulingMessage(message){
     fetchAppointmentsRange(from, to),
     fetchScheduleBlocks(from, to),
   ]);
+  const schedulingServicesById = servicesById(services);
+  if(service && service.inferred){
+    schedulingServicesById[String(service.id)] = service;
+  }
 
   const slots = service && !needsClarification ? findSafeAppointmentSlots({
     patientId: patient && patient.id ? patient.id : `whatsapp-${normalizePhone(remotePhone)}`,
@@ -575,7 +609,7 @@ async function handleIncomingSchedulingMessage(message){
     dates,
     appointments,
     scheduleBlocks,
-    servicesById: servicesById(services),
+    servicesById: schedulingServicesById,
     settings,
     period: shift,
     limit: 5,
@@ -585,7 +619,7 @@ async function handleIncomingSchedulingMessage(message){
   const clarificationQuestion = needsClarification
     ? (aiIntent && aiIntent.clarificationQuestion) || courteousClarificationQuestion(aiIntent)
     : '';
-  await socket.sendMessage(remoteJid, { text: buildSchedulingReply(slots, { clarificationQuestion }) });
+  await sendBotText(remoteJid, buildSchedulingReply(slots, { clarificationQuestion }));
   await upsertServiceStatus({
     last_message_at: nowIso(),
     last_error: null,

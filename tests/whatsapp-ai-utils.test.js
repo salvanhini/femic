@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const {
   chooseServiceForConversationIntent,
   courteousClarificationQuestion,
+  hasMinimumSchedulingInfo,
   mergeConversationIntentState,
   parseGroqConversationJson,
 } = require('../js/femic-whatsapp-ai-utils.js');
@@ -204,4 +205,37 @@ test('mergeConversationIntentState understands numbered attendance choices', () 
 
   assert.equal(quiro.intent.serviceCategory, 'individual_bodywork');
   assert.equal(quiro.intent.serviceQuery, 'quiropraxia');
+});
+
+test('hasMinimumSchedulingInfo considers convenio type and payer enough for human review', () => {
+  assert.equal(hasMinimumSchedulingInfo({
+    serviceCategory: 'convenio_group',
+    serviceQuery: 'fisioterapia',
+    payerName: 'unimed',
+  }), true);
+
+  assert.equal(hasMinimumSchedulingInfo({
+    serviceCategory: 'convenio_group',
+    serviceQuery: 'fisioterapia',
+    payerName: '',
+  }), false);
+
+  assert.equal(hasMinimumSchedulingInfo({
+    serviceCategory: 'individual_bodywork',
+    serviceQuery: 'quiropraxia',
+    payerName: '',
+  }), true);
+});
+
+test('chooseServiceForConversationIntent creates inferred scheduling service when cadastro does not match', () => {
+  const match = chooseServiceForConversationIntent([], {
+    serviceCategory: 'convenio_group',
+    serviceQuery: 'fisioterapia',
+    payerName: 'unimed',
+  });
+
+  assert.equal(match.service.inferred, true);
+  assert.equal(match.service.appointment_mode, 'grupo');
+  assert.equal(match.service.max_patients, 4);
+  assert.equal(match.confidence, 'inferred');
 });

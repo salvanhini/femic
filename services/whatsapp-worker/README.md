@@ -14,6 +14,10 @@ Serviço Node separado para enviar confirmações automáticas via Baileys e reg
   - opcional, default: `services/whatsapp-worker/.session`
 - `FEMIC_BAILEYS_LOG_LEVEL`
   - opcional, default: `info`
+- `FEMIC_BAILEYS_REPLY_DELAY_MIN_MS`
+  - opcional, default: `1800`
+- `FEMIC_BAILEYS_REPLY_DELAY_MAX_MS`
+  - opcional, default: `4200`
 - `FEMIC_BAILEYS_ADMIN_PHONE`
   - opcional, telefone com DDI para receber aviso quando o bot conectar/reconectar
 - `FEMIC_GROQ_API_KEY`
@@ -48,6 +52,8 @@ Na primeira execução, o Baileys imprime o QR no terminal. Depois de conectado,
 - atualiza a tabela `whatsapp_service_status` para o painel do FEMIC.
 - escuta mensagens recebidas pedindo marcação/remarcação;
 - usa Groq, quando configurado, para entender frases naturais do paciente;
+- espera alguns segundos antes de responder para a conversa ficar mais natural;
+- avisa educadamente quando receber áudio e pede para o paciente escrever a solicitação;
 - diferencia fisioterapia por convênio/grupo de quiropraxia e liberação miofascial individuais;
 - pergunta antes de sugerir horário quando o tipo de atendimento estiver ambíguo;
 - calcula sugestões respeitando expediente, bloqueios manuais, serviço individual/grupo e limite de vagas;
@@ -75,6 +81,8 @@ FEMIC_SUPABASE_SERVICE_ROLE_KEY=service-role-key
 FEMIC_BAILEYS_SERVICE_NAME=baileys-main
 FEMIC_BAILEYS_SESSION_DIR=.session
 FEMIC_BAILEYS_POLL_MS=60000
+FEMIC_BAILEYS_REPLY_DELAY_MIN_MS=1800
+FEMIC_BAILEYS_REPLY_DELAY_MAX_MS=4200
 FEMIC_BAILEYS_PAIRING_PHONE=
 FEMIC_BAILEYS_ADMIN_PHONE=
 FEMIC_GROQ_API_KEY=

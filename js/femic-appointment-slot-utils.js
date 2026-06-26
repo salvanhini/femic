@@ -143,17 +143,18 @@
             servicesById: input.servicesById || {},
             settings: input.settings || {}
           });
-          if(reason) return;
-          var load = activeOverlaps(candidate, input.appointments || []).length;
-          var capacity = serviceCapacity(service, input.settings || {});
-          slots.push(Object.assign({}, candidate, {
-            date: date,
-            start: start,
-            end: end,
-            load: load,
-            capacity: capacity,
-            remaining_capacity: Math.max(0, capacity - load)
-          }));
+          if(!reason){
+            var load = activeOverlaps(candidate, input.appointments || []).length;
+            var capacity = serviceCapacity(service, input.settings || {});
+            slots.push(Object.assign({}, candidate, {
+              date: date,
+              start: start,
+              end: end,
+              load: load,
+              capacity: capacity,
+              remaining_capacity: Math.max(0, capacity - load)
+            }));
+          }
         }
       });
     });

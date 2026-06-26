@@ -18,6 +18,21 @@
     return String(text || '').replace(/\s+/g, ' ').trim();
   }
 
+  function isWhatsappAudioMessage(message){
+    return !!(message && message.message && message.message.audioMessage);
+  }
+
+  function whatsappAudioUnsupportedReply(){
+    return 'Recebi seu áudio, mas por enquanto não consigo escutar mensagens de voz por aqui. Por gentileza, poderia escrever sua solicitação em texto para eu te ajudar melhor?';
+  }
+
+  function humanReplyDelayMs(minMs, maxMs){
+    var min = Math.max(0, Number(minMs || 0));
+    var max = Math.max(min, Number(maxMs || min));
+    if(max === min) return min;
+    return Math.floor(min + Math.random() * (max - min + 1));
+  }
+
   function mergeSpeechPart(current, part){
     current = tidySpeechText(current);
     part = tidySpeechText(part);
@@ -191,10 +206,13 @@
     detectAction: detectAction,
     detectDates: detectDates,
     detectShift: detectShift,
+    humanReplyDelayMs: humanReplyDelayMs,
+    isWhatsappAudioMessage: isWhatsappAudioMessage,
     mergeSpeechPart: mergeSpeechPart,
     norm: norm,
     speechErrorMessage: speechErrorMessage,
     taskTypeLabel: taskTypeLabel,
-    tidySpeechText: tidySpeechText
+    tidySpeechText: tidySpeechText,
+    whatsappAudioUnsupportedReply: whatsappAudioUnsupportedReply
   };
 });

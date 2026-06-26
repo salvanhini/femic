@@ -74,7 +74,24 @@ test('findSafeAppointmentSlots excludes manually blocked times and reopens inact
   });
 
   assert.equal(blocked.some((slot) => slot.start_time === '08:00'), false);
+  assert.equal(blocked[0].start_time, '08:30');
   assert.equal(reopened[0].start_time, '08:00');
+});
+
+test('findSafeAppointmentSlots keeps scanning after the first candidate conflicts', () => {
+  const slots = findSafeAppointmentSlots({
+    patientId: 'p1',
+    serviceId: 'convenio',
+    dates: ['2026-07-01'],
+    appointments: [
+      { id: 'a1', service_id: 'individual', appointment_date: '2026-07-01', start_time: '08:00', end_time: '08:30', status: 'agendado' },
+    ],
+    servicesById,
+    settings,
+  });
+
+  assert.equal(slots.some((slot) => slot.start_time === '08:00'), false);
+  assert.equal(slots[0].start_time, '08:30');
 });
 
 test('slotConflictReason refuses an individual service when another appointment overlaps', () => {

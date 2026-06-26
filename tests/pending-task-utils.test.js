@@ -4,8 +4,11 @@ const assert = require('node:assert/strict');
 const {
   buildPendingTaskDraft,
   classifyWhatsappBotMessage,
+  humanReplyDelayMs,
+  isWhatsappAudioMessage,
   mergeSpeechPart,
   buildSpeechText,
+  whatsappAudioUnsupportedReply,
 } = require('../js/femic-pending-task-utils.js');
 
 test('buildPendingTaskDraft creates a manual pending task from typed text', () => {
@@ -67,4 +70,28 @@ test('classifyWhatsappBotMessage ignores casual messages without scheduling inte
 
   assert.equal(result.shouldCreateTask, false);
   assert.equal(result.reason, 'no_scheduling_intent');
+});
+
+test('isWhatsappAudioMessage detects voice notes and audio messages', () => {
+  assert.equal(isWhatsappAudioMessage({ message: { audioMessage: { ptt: true } } }), true);
+  assert.equal(isWhatsappAudioMessage({ message: { audioMessage: { ptt: false } } }), true);
+  assert.equal(isWhatsappAudioMessage({ message: { conversation: 'Oi' } }), false);
+});
+
+test('whatsappAudioUnsupportedReply asks the patient to write politely', () => {
+  const reply = whatsappAudioUnsupportedReply();
+
+  assert.match(reply, /áudio/i);
+  assert.match(reply, /por gentileza/i);
+  assert.match(reply, /escrever/i);
+});
+
+test('humanReplyDelayMs keeps bot delay inside configured limits', () => {
+  for(let i = 0; i < 20; i += 1){
+    const delay = humanReplyDelayMs(1200, 2500);
+    assert.ok(delay >= 1200);
+    assert.ok(delay <= 2500);
+  }
+
+  assert.equal(humanReplyDelayMs(2000, 1000), 2000);
 });

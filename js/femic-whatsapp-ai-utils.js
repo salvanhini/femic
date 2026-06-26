@@ -207,20 +207,50 @@
     }) || null;
   }
 
+  function inferredServiceForIntent(intent){
+    intent = intent || {};
+    if(!hasMinimumSchedulingInfo(intent)) return null;
+    if(intent.serviceCategory === 'convenio_group'){
+      return {
+        id: '__inferred_fisioterapia_convenio',
+        name: 'Fisioterapia pelo convênio' + (intent.payerName ? ' ' + intent.payerName : ''),
+        duration_minutes: 45,
+        appointment_mode: 'grupo',
+        max_patients: 4,
+        active: true,
+        inferred: true,
+      };
+    }
+    if(intent.serviceCategory === 'individual_bodywork'){
+      var query = norm(intent.serviceQuery || '');
+      var isMio = /miofasc|liberacao/.test(query);
+      return {
+        id: isMio ? '__inferred_liberacao_miofascial' : '__inferred_quiropraxia',
+        name: isMio ? 'Liberação miofascial' : 'Quiropraxia',
+        duration_minutes: 45,
+        appointment_mode: 'individual',
+        max_patients: 1,
+        active: true,
+        inferred: true,
+      };
+    }
+    return null;
+  }
+
   function chooseServiceForConversationIntent(services, intent){
     intent = intent || {};
     if(intent.serviceCategory === 'convenio_group'){
       var convenio = chooseConvenioService(services, intent);
       return convenio
         ? { service: convenio, confidence: intent.payerName ? 'high' : 'medium', reason: 'Serviço de fisioterapia por convênio/grupo.' }
-        : { service: null, confidence: 'low', reason: 'Precisa confirmar qual convênio ou serviço de fisioterapia.' };
+        : { service: inferredServiceForIntent(intent), confidence: hasMinimumSchedulingInfo(intent) ? 'inferred' : 'low', reason: hasMinimumSchedulingInfo(intent) ? 'Serviço inferido para sugerir horários; equipe confirma no FEMIC.' : 'Precisa confirmar qual convênio ou serviço de fisioterapia.' };
     }
 
     if(intent.serviceCategory === 'individual_bodywork'){
       var individual = chooseIndividualBodyworkService(services, intent);
       return individual
         ? { service: individual, confidence: 'high', reason: 'Serviço individual identificado.' }
-        : { service: null, confidence: 'low', reason: 'Precisa confirmar se é quiropraxia ou liberação miofascial.' };
+        : { service: inferredServiceForIntent(intent), confidence: hasMinimumSchedulingInfo(intent) ? 'inferred' : 'low', reason: hasMinimumSchedulingInfo(intent) ? 'Serviço individual inferido para sugerir horários; equipe confirma no FEMIC.' : 'Precisa confirmar se é quiropraxia ou liberação miofascial.' };
     }
 
     var exact = exactTextMatch(services, intent.serviceQuery);
@@ -254,9 +284,20 @@
     return 'Obrigada pelas informações. Por gentileza, poderia me confirmar o tipo de atendimento desejado para eu encaminhar corretamente à equipe FEMIC?';
   }
 
+  function hasMinimumSchedulingInfo(intent){
+    intent = intent || {};
+    var category = intent.serviceCategory || 'unknown';
+    var query = norm(intent.serviceQuery || '');
+    var payer = canonicalPayer(intent.payerName || '');
+    if(category === 'convenio_group') return !!query && !!payer;
+    if(category === 'individual_bodywork') return !!query;
+    return false;
+  }
+
   return {
     chooseServiceForConversationIntent: chooseServiceForConversationIntent,
     courteousClarificationQuestion: courteousClarificationQuestion,
+    hasMinimumSchedulingInfo: hasMinimumSchedulingInfo,
     mergeConversationIntentState: mergeConversationIntentState,
     parseGroqConversationJson: parseGroqConversationJson,
     serviceCatalogForPrompt: serviceCatalogForPrompt,
