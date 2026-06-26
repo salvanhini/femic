@@ -107,9 +107,37 @@
       });
   }
 
+  function getDueFeedbackReminders(input){
+    var patients = Array.isArray(input && input.patients) ? input.patients : [];
+    var now = new Date(input && input.now || Date.now());
+    var minDays = Number(input && input.minDays) || 15;
+    var maxDays = Number(input && input.maxDays) || 20;
+    if(!Number.isFinite(minDays)) minDays = 15;
+    if(!Number.isFinite(maxDays)) maxDays = 20;
+
+    return patients
+      .filter(function(patient){
+        if(!patient.archived) return false;
+        if(patient.feedback_sent) return false;
+        if(!patient.archived_at) return false;
+        var archivedDate = new Date(patient.archived_at);
+        if(Number.isNaN(archivedDate.getTime())) return false;
+        var daysSince = (now.getTime() - archivedDate.getTime()) / 86400000;
+        if(daysSince < minDays || daysSince > maxDays) return false;
+        return true;
+      })
+      .map(function(patient){
+        return {
+          patient: patient,
+          phone: normalizePhone(patient.whatsapp),
+        };
+      });
+  }
+
   return {
     appointmentDateTime: appointmentDateTime,
     buildAppointmentReminderAuditPatch: buildAppointmentReminderAuditPatch,
+    getDueFeedbackReminders: getDueFeedbackReminders,
     getDueWhatsappConfirmationReminders: getDueWhatsappConfirmationReminders,
     normalizeAppointmentStatus: normalizeAppointmentStatus,
     normalizeWhatsappProvider: normalizeWhatsappProvider,

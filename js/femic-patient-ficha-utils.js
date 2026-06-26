@@ -157,7 +157,8 @@
       secondaryActions: [
         { key: 'prontuario', label: 'Abrir prontuário' },
         { key: 'documents', label: 'Abrir documentos' },
-        { key: 'export', label: 'Exportar ficha' }
+        { key: 'export', label: 'Exportar ficha' },
+        { key: 'encerrar', label: 'Encerrar tratamento' }
       ]
     };
   }

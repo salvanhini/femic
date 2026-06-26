@@ -15,6 +15,7 @@ import reminderUtils from '../../js/femic-whatsapp-reminder-utils.js';
 
 const {
   buildAppointmentReminderAuditPatch,
+  getDueFeedbackReminders,
   getDueWhatsappConfirmationReminders,
   normalizeWhatsappProvider,
 } = reminderUtils;
@@ -54,6 +55,9 @@ const supabaseUrl = String(process.env.FEMIC_SUPABASE_URL || '').trim();
 const supabaseServiceRoleKey = String(process.env.FEMIC_SUPABASE_SERVICE_ROLE_KEY || '').trim();
 const groqApiKey = String(process.env.FEMIC_GROQ_API_KEY || '').trim();
 const groqModel = String(process.env.FEMIC_GROQ_MODEL || 'llama-3.3-70b-versatile').trim() || 'llama-3.3-70b-versatile';
+const clinicAddress = String(process.env.FEMIC_CLINIC_ADDRESS || 'Rua Dr. Cristiano Infante Vieira, 560, Pq Laranjeiras, Araraquara-SP').trim();
+const clinicMapsUrl = String(process.env.FEMIC_CLINIC_MAPS_URL || 'https://share.google/xHA1PkuiVG0iCNfBQ').trim();
+const schedulingUrl = String(process.env.FEMIC_SCHEDULING_URL || '').trim();
 const logger = pino({ level: logLevel });
 
 if(!supabaseUrl || !supabaseServiceRoleKey){
@@ -175,6 +179,24 @@ async function notifyAdminConnectionOpen(){
     logger.warn({ err: error, adminPhone }, 'Nao foi possivel enviar aviso de conexao ao administrador');
   }finally{
     openedOnce = true;
+  }
+}
+
+async function notifyAdminNewTask(task, reason){
+  if(!adminPhone || !socket) return;
+  const text = [
+    `🔔 NOVA SOLICITAÇÃO de ${reason || 'agendamento'}`,
+    `Paciente: ${task.patient_name || 'Não identificado'}`,
+    task.phone ? `WhatsApp: ${task.phone}` : '',
+    task.notes ? `Obs: ${task.notes.slice(0, 200)}` : '',
+    '',
+    '👉 Abra o FEMIC para revisar na Agenda Assistida.'
+  ].filter(Boolean).join('\n');
+  try{
+    await socket.sendMessage(toJid(adminPhone), { text });
+    logger.info({ adminPhone, taskId: task.id }, 'Notificacao enviada ao administrador');
+  }catch(error){
+    logger.warn({ err: error, adminPhone }, 'Falha ao notificar administrador');
   }
 }
 
@@ -615,11 +637,27 @@ async function handleIncomingSchedulingMessage(message){
     limit: 5,
   }) : [];
 
+  const isNewPatient = !patient;
+  const isPrivate = !!(aiIntent && (aiIntent.payerName === 'particular' || norm(aiIntent.payerName || '') === 'particular') || /particular/i.test(text));
+
   const task = await createSchedulingTask({ text, remotePhone, patient, service, slots, action, shift, dates, aiIntent, serviceMatch });
   const clarificationQuestion = needsClarification
     ? (aiIntent && aiIntent.clarificationQuestion) || courteousClarificationQuestion(aiIntent)
     : '';
-  await sendBotText(remoteJid, buildSchedulingReply(slots, { clarificationQuestion }));
+
+  let replyText = '';
+  if(isNewPatient && schedulingUrl && needsClarification === false){
+    replyText = `Olá! 👋\n\nPara agilizar seu primeiro atendimento na FEMIC, use nosso link de agendamento rápido:\n\n🔗 ${schedulingUrl}\n\nSe preferir falar comigo agora, é só continuar enviando mensagem 😊`;
+  }else if(isPrivate && !needsClarification){
+    replyText = `Entendi! Vou encaminhar seu pedido para o Dr. Marco analisar e ele responde em breve. 😊`;
+  }else{
+    replyText = buildSchedulingReply(slots, { clarificationQuestion });
+  }
+
+  await sendBotText(remoteJid, replyText);
+  if(task){
+    notifyAdminNewTask(task, isPrivate ? 'atendimento particular' : 'agendamento via WhatsApp').catch(() => {});
+  }
   await upsertServiceStatus({
     last_message_at: nowIso(),
     last_error: null,
@@ -634,7 +672,7 @@ async function handleIncomingSchedulingMessage(message){
       last_service_match_confidence: serviceMatch.confidence,
     },
   });
-  logger.info({ phone: normalizePhone(remotePhone), action, slots: slots.length, taskId: task && task.id }, 'Pedido de agenda processado pelo bot');
+  logger.info({ phone: normalizePhone(remotePhone), action, slots: slots.length, taskId: task && task.id, isNewPatient, isPrivate }, 'Pedido de agenda processado pelo bot');
 }
 
 async function patchAppointmentReminder(appointmentId, patch){
@@ -732,13 +770,152 @@ async function syncRemindersOnce(){
   }
 }
 
+async function sendFeedbackMessage(patient){
+  if(!socket || !patient) return null;
+  const phone = normalizePhone(patient.whatsapp || '');
+  if(!phone) return null;
+  const name = patient.name || 'Paciente';
+  const text = [
+    `Olá ${name}! 👋`,
+    ``,
+    `Faz um tempinho desde que você finalizou seu tratamento na FEMIC.`,
+    `Gostaríamos de saber como você está se sentindo! 😊`,
+    ``,
+    `Seu quadro melhorou? Precisa de alguma orientação?`,
+    `É só responder esta mensagem que o Dr. Marco terá o maior prazer em ajudar.`,
+    ``,
+    `Agradecemos pela confiança! 💙`,
+  ].join('\n');
+  try{
+    const response = await socket.sendMessage(toJid(phone), { text });
+    return response && response.key && response.key.id ? String(response.key.id) : null;
+  }catch(error){
+    logger.warn({ err: error, phone }, 'Falha ao enviar feedback pós-tratamento');
+    return null;
+  }
+}
+
+async function syncFeedbackOnce(){
+  if(syncing) return;
+  syncing = true;
+  try{
+    const { data, error } = await supabase
+      .from('patients')
+      .select('*')
+      .eq('archived', true)
+      .is('feedback_sent', null);
+    if(error){
+      if(/feedback_sent|column .* does not exist|schema cache/i.test(String(error.message || error))){
+        logger.warn('Coluna feedback_sent ausente; rode o patch SQL.');
+        return;
+      }
+      throw error;
+    }
+    const patients = data || [];
+    if(!patients.length) return;
+    const dueList = getDueFeedbackReminders({
+      patients,
+      now: nowIso(),
+      minDays: 15,
+      maxDays: 20,
+    });
+    for(const item of dueList){
+      const externalId = await sendFeedbackMessage(item.patient);
+      await supabase
+        .from('patients')
+        .update({ feedback_sent: true, feedback_sent_at: nowIso() })
+        .eq('id', item.patient.id);
+      logger.info({ patientId: item.patient.id }, 'Feedback pós-tratamento enviado');
+    }
+  }catch(error){
+    logger.error({ err: error }, 'Falha no ciclo de feedback pós-tratamento');
+  }finally{
+    syncing = false;
+  }
+}
+
+async function sendWelcomeMessage(appointment, patient){
+  if(!socket || !patient) return null;
+  const phone = normalizePhone(patient.whatsapp || '');
+  if(!phone) return null;
+  const date = formatDate(appointment.appointment_date);
+  const time = normalizeTime(appointment.start_time);
+  const text = [
+    `✅ Sua avaliação na FEMIC está confirmada!`,
+    ``,
+    `📅 ${date}`,
+    `⏰ ${time}h`,
+    `📍 ${clinicAddress}`,
+    `🗺️ ${clinicMapsUrl}`,
+    ``,
+    `Trazer: documento com foto, carteirinha do convênio e exames (se tiver).`,
+    ``,
+    `Qualquer dúvida, é só chamar! 😊`,
+  ].join('\n');
+  try{
+    const response = await socket.sendMessage(toJid(phone), { text });
+    return response && response.key && response.key.id ? String(response.key.id) : null;
+  }catch(error){
+    logger.warn({ err: error, phone }, 'Falha ao enviar mensagem de boas-vindas');
+    return null;
+  }
+}
+
+async function syncWelcomeOnce(){
+  if(syncing) return;
+  syncing = true;
+  try{
+    const { data, error } = await supabase
+      .from('appointments')
+      .select('*')
+      .is('welcome_sent', null)
+      .in('status', ['agendado', 'confirmado'])
+      .gte('appointment_date', localIsoDate(new Date(Date.now() - 7 * 86400000)))
+      .order('created_at', { ascending: true });
+    if(error){
+      if(/welcome_sent|column .* does not exist|schema cache/i.test(String(error.message || error))){
+        logger.warn('Coluna welcome_sent ausente; rode o patch SQL.');
+        return;
+      }
+      throw error;
+    }
+    const appointments = data || [];
+    if(!appointments.length) return;
+    const patientIds = appointments.map(a => a.patient_id);
+    const [patientsById] = await Promise.all([
+      fetchEntityMap('patients', patientIds),
+    ]);
+    for(const appointment of appointments){
+      const patient = patientsById[String(appointment.patient_id)];
+      if(!patient) continue;
+      const externalId = await sendWelcomeMessage(appointment, patient);
+      await supabase
+        .from('appointments')
+        .update({ welcome_sent: true, welcome_sent_at: nowIso() })
+        .eq('id', appointment.id);
+      logger.info({ appointmentId: appointment.id, patientId: patient.id }, 'Mensagem de boas-vindas enviada');
+    }
+  }catch(error){
+    logger.error({ err: error }, 'Falha no ciclo de boas-vindas');
+  }finally{
+    syncing = false;
+  }
+}
+
 function ensureSyncLoop(){
   if(syncInterval) return;
-  syncInterval = setInterval(() => {
-    syncRemindersOnce().catch((error) => {
-      logger.error({ err: error }, 'Erro inesperado no loop de sincronizacao');
+  async function syncAll(){
+    await syncRemindersOnce().catch((error) => {
+      logger.error({ err: error }, 'Erro no sync de lembretes');
     });
-  }, pollMs);
+    await syncWelcomeOnce().catch((error) => {
+      logger.error({ err: error }, 'Erro no sync de boas-vindas');
+    });
+    await syncFeedbackOnce().catch((error) => {
+      logger.error({ err: error }, 'Erro no sync de feedback');
+    });
+  }
+  syncInterval = setInterval(syncAll, pollMs);
 }
 
 function stopSyncLoop(){

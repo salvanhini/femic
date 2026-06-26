@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const {
   buildAppointmentReminderAuditPatch,
+  getDueFeedbackReminders,
   getDueWhatsappConfirmationReminders,
   normalizeWhatsappProvider,
   reminderDueAt,
@@ -177,4 +178,47 @@ test('buildAppointmentReminderAuditPatch keeps reminder open on failure and reco
   assert.equal(patch.appointment_reminder_delivery_status, 'failed');
   assert.equal(patch.appointment_reminder_error_message, 'Socket disconnected');
   assert.equal(patch.appointment_reminder_last_attempt_at, '2026-06-25T09:12:00.000Z');
+});
+
+test('getDueFeedbackReminders returns archived patients due within 15-20 day window', () => {
+  const due = getDueFeedbackReminders({
+    patients: [
+      { id: 'p1', name: 'Ana', whatsapp: '(16) 99999-1111', archived: true, archived_at: '2026-06-06T10:00:00.000Z', feedback_sent: null },
+      { id: 'p2', name: 'Beto', whatsapp: '(16) 99999-2222', archived: true, archived_at: '2026-06-01T10:00:00.000Z', feedback_sent: null },
+      { id: 'p3', name: 'Caio', whatsapp: '(16) 99999-3333', archived: false, archived_at: '2026-06-10T10:00:00.000Z', feedback_sent: null },
+      { id: 'p4', name: 'Dora', whatsapp: '(16) 99999-4444', archived: true, archived_at: '2026-06-10T10:00:00.000Z', feedback_sent: true },
+    ],
+    now: '2026-06-25T12:00:00.000Z',
+    minDays: 15,
+    maxDays: 20,
+  });
+
+  assert.equal(due.length, 1);
+  assert.equal(due[0].patient.id, 'p1');
+  assert.equal(due[0].patient.name, 'Ana');
+  assert.equal(due[0].phone, '5516999991111');
+});
+
+test('getDueFeedbackReminders excludes patients without archived_at', () => {
+  const due = getDueFeedbackReminders({
+    patients: [
+      { id: 'p1', name: 'Ana', whatsapp: '(16) 99999-1111', archived: true, archived_at: null, feedback_sent: null },
+    ],
+    now: '2026-06-25T12:00:00.000Z',
+  });
+
+  assert.equal(due.length, 0);
+});
+
+test('getDueFeedbackReminders returns empty when no patients match the window', () => {
+  const due = getDueFeedbackReminders({
+    patients: [
+      { id: 'p1', name: 'Ana', whatsapp: '(16) 99999-1111', archived: true, archived_at: '2026-06-01T10:00:00.000Z', feedback_sent: null },
+    ],
+    now: '2026-06-05T12:00:00.000Z',
+    minDays: 15,
+    maxDays: 20,
+  });
+
+  assert.equal(due.length, 0);
 });

@@ -180,6 +180,7 @@
         '<button class="btn primary" onclick="openProntuarioPatient(\'' + escHtml(pid) + '\')">' + escHtml(model.secondaryActions[0].label) + '</button>' +
         '<button class="btn" onclick="openDocumentsPatient(\'' + escHtml(pid) + '\')">' + escHtml(model.secondaryActions[1].label) + '</button>' +
         '<button class="btn" onclick="openPatientClinicalExport(\'' + escHtml(pid) + '\')">' + escHtml(model.secondaryActions[2].label) + '</button>' +
+        '<button class="btn danger" onclick="encerrarTratamento(\'' + escHtml(pid) + '\')" id="btnEncerrar-' + escHtml(pid) + '">' + escHtml(model.secondaryActions[3].label) + '</button>' +
       '</section>' +
     '</div>';
   }
@@ -2244,6 +2245,66 @@
     if(!payload.html) return;
     openPatientExportInWindow(payload, true);
     if(el('patientExportModal')) el('patientExportModal').classList.remove('show');
+  };
+
+  window.encerrarTratamento = async function(pid){
+    if(!pid) return;
+    var patient = getPatientById(pid);
+    if(!patient) return;
+    if(patient.archived){
+      if(typeof window.toast === 'function') window.toast('Paciente já está arquivado.', 'warning');
+      return;
+    }
+    var name = patient.name || 'Paciente';
+    if(!window.confirm('Encerrar tratamento de ' + name + '?\n\nIsso vai:\n• Arquivar o paciente\n• Inativar pacotes ativos\n• Cancelar agendamentos futuros\n\nO paciente continuará no histórico, apenas será marcado como inativo.')) return;
+    if(!confirm('Tem certeza? Essa ação pode ser desfeita manualmente.')) return;
+    var btn = document.getElementById('btnEncerrar-' + pid);
+    if(btn){ btn.disabled = true; btn.textContent = 'Encerrando...'; }
+    try{
+      var now = new Date().toISOString();
+      var errors = [];
+      var agendaRuntime = window.FEMICAgendaRuntime;
+      if(!agendaRuntime || typeof agendaRuntime.api !== 'function') throw new Error('Agenda runtime não disponível.');
+      var supabaseApi = agendaRuntime.api;
+      await supabaseApi('patients?id=eq.' + encodeURIComponent(pid), {
+        method: 'PATCH',
+        body: JSON.stringify({ archived: true, archived_at: now })
+      });
+      var state = agendaRuntime.getState ? agendaRuntime.getState() : { packages: [], appointments: [] };
+      var activePackages = (state.packages || []).filter(function(pkg){
+        return String(pkg.patient_id) === String(pid) && pkg.active !== false;
+      });
+      for(var i = 0; i < activePackages.length; i++){
+        var pkg = activePackages[i];
+        try{
+          await supabaseApi('session_packages?id=eq.' + encodeURIComponent(pkg.id), {
+            method: 'PATCH',
+            body: JSON.stringify({ active: false, ended_at: now })
+          });
+        }catch(e){ errors.push('pacote: ' + e.message); }
+      }
+      var futureAppointments = (state.appointments || []).filter(function(a){
+        return String(a.patient_id) === String(pid) && ['agendado','confirmado'].indexOf(a.status) !== -1 && String(a.appointment_date) >= todayIsoSafe();
+      });
+      for(var j = 0; j < futureAppointments.length; j++){
+        var appt = futureAppointments[j];
+        try{
+          await supabaseApi('appointments?id=eq.' + encodeURIComponent(appt.id), {
+            method: 'PATCH',
+            body: JSON.stringify({ status: 'cancelado' })
+          });
+        }catch(e){ errors.push('agenda: ' + e.message); }
+      }
+      await agendaRuntime.loadAll(true);
+      if(typeof window.toast === 'function') window.toast('Tratamento de ' + name + ' encerrado. Paciente arquivado.', 'success');
+      if(errors.length && typeof window.toast === 'function') window.toast('Alguns itens tiveram erro: ' + errors.join('; '), 'warning');
+      var modal = document.getElementById('patientModal');
+      if(modal) modal.classList.remove('show');
+    }catch(e){
+      if(typeof window.toast === 'function') window.toast('Erro ao encerrar tratamento: ' + e.message, 'error');
+    }finally{
+      if(btn){ btn.disabled = false; btn.textContent = 'Encerrar tratamento'; }
+    }
   };
 
   window.FEMICUnifiedRuntime = {

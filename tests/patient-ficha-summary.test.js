@@ -72,8 +72,9 @@ test('buildPatientFichaSummaryModel prioritizes the operational summary and keep
   assert.match(result.sections[2].body, /Quadro mecanico/);
   assert.match(result.sections[3].body, /Melhora parcial/);
 
-  assert.equal(result.secondaryActions.length, 3);
+  assert.equal(result.secondaryActions.length, 4);
   assert.equal(result.secondaryActions[0].label, 'Abrir prontuário');
+  assert.equal(result.secondaryActions[3].label, 'Encerrar tratamento');
 
   assert.equal(result.sections.some((item) => /Documentos|guias|Sessões realizadas/i.test(item.title + item.body)), false);
 });

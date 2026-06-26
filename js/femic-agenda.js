@@ -26,6 +26,8 @@ CREATE TABLE patients (
   referral_source TEXT,
   archived BOOLEAN DEFAULT FALSE,
   archived_at TEXT,
+  feedback_sent BOOLEAN DEFAULT FALSE,
+  feedback_sent_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
@@ -88,6 +90,8 @@ CREATE TABLE appointments (
   reminder_sent_at TIMESTAMP WITH TIME ZONE,
   service_price_at_time NUMERIC DEFAULT 0,
   notes TEXT,
+  welcome_sent BOOLEAN DEFAULT FALSE,
+  welcome_sent_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
