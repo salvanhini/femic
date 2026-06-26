@@ -20,6 +20,8 @@
   function canonicalPayer(value){
     var text = norm(value);
     if(!text) return '';
+    if(/unimed/.test(text)) return 'unimed';
+    if(/hapvida/.test(text)) return 'hapvida';
     if(/pro\s*unica|prounica/.test(text)) return 'pro unica';
     return text;
   }
@@ -79,6 +81,22 @@
     var text = norm(message);
     var patch = {};
     if(!text) return patch;
+    if(/^1\b|opcao 1|opção 1|primeir/.test(text)){
+      patch.serviceQuery = 'fisioterapia';
+      patch.serviceCategory = 'convenio_group';
+    }
+    if(/^2\b|opcao 2|opção 2|segunda/.test(text)){
+      patch.serviceQuery = 'fisioterapia particular';
+      patch.serviceCategory = 'individual_bodywork';
+    }
+    if(/^3\b|opcao 3|opção 3|terceir/.test(text)){
+      patch.serviceQuery = 'quiropraxia';
+      patch.serviceCategory = 'individual_bodywork';
+    }
+    if(/^4\b|opcao 4|opção 4|quart/.test(text)){
+      patch.serviceQuery = 'liberacao miofascial';
+      patch.serviceCategory = 'individual_bodywork';
+    }
     if(/convenio|convênio/.test(text)) patch.serviceCategory = 'convenio_group';
     if(/unimed|hapvida|pro\s*unica|prounica/.test(text)) patch.payerName = canonicalPayer(text);
     if(/fisioterapia|fisio/.test(text)){
@@ -100,8 +118,10 @@
     var previous = previousState && previousState.intent ? previousState.intent : {};
     var inferred = inferIntentFromShortAnswer(message);
     var next = nextIntent || {};
+    var hasPreviousSchedulingContext = previous.shouldCreateTask !== false && !!(previous.serviceCategory || previous.serviceQuery || previous.payerName);
+    var nextAddsUsefulContext = !!(inferred.serviceCategory || inferred.serviceQuery || inferred.payerName || next.serviceCategory !== 'unknown' || next.serviceQuery || next.payerName);
     var merged = {
-      shouldCreateTask: next.shouldCreateTask !== false && previous.shouldCreateTask !== false,
+      shouldCreateTask: next.shouldCreateTask !== false || hasPreviousSchedulingContext || nextAddsUsefulContext,
       action: next.action && next.action !== 'marcacao' ? next.action : (previous.action || next.action || 'marcacao'),
       serviceCategory: next.serviceCategory && next.serviceCategory !== 'unknown'
         ? next.serviceCategory
@@ -226,7 +246,7 @@
       return 'Perfeito. Por gentileza, você poderia me informar qual é o seu convênio? Atendemos opções como Unimed, Hapvida, Pro Única e outros.';
     }
     if(intent.serviceCategory === 'unknown' || (!intent.serviceCategory && !intent.serviceQuery)){
-      return 'Claro, vou te ajudar pelo atendimento da FEMIC. Por gentileza, você procura fisioterapia pelo convênio, quiropraxia ou liberação miofascial?';
+      return 'Claro, vou te ajudar pelo atendimento da FEMIC. Por gentileza, me informe qual atendimento você deseja:\n\n1. Fisioterapia pelo convênio\n2. Fisioterapia particular\n3. Quiropraxia\n4. Liberação miofascial';
     }
     if(intent.serviceCategory === 'individual_bodywork' && !intent.serviceQuery){
       return 'Claro. Por gentileza, você deseja atendimento de quiropraxia ou liberação miofascial?';

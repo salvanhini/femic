@@ -132,6 +132,39 @@ test('mergeConversationIntentState keeps short answers from the same patient con
   assert.equal(match.confidence, 'high');
 });
 
+test('mergeConversationIntentState keeps scheduling context when short payer answer is parsed as no task', () => {
+  const first = mergeConversationIntentState(null, parseGroqConversationJson(JSON.stringify({
+    should_create_task: true,
+    action: 'marcacao',
+    service_category: 'convenio_group',
+    needs_clarification: true,
+    clarification_question: 'Você tem convênio médico?'
+  })), 'Fisioterapia');
+
+  const second = mergeConversationIntentState(first, parseGroqConversationJson(JSON.stringify({
+    should_create_task: false,
+    action: 'duvida',
+    service_category: 'unknown',
+    payer_name: 'Sim unimed',
+    needs_clarification: false
+  })), 'Sim unimed');
+
+  const third = mergeConversationIntentState(second, parseGroqConversationJson(JSON.stringify({
+    should_create_task: true,
+    action: 'marcacao',
+    service_category: 'unknown',
+    service_query: 'Fisioterapia',
+    needs_clarification: true,
+    clarification_question: 'Qual tipo de atendimento você precisa?'
+  })), 'Fisioterapia');
+
+  assert.equal(third.intent.shouldCreateTask, true);
+  assert.equal(third.intent.serviceCategory, 'convenio_group');
+  assert.equal(third.intent.payerName, 'unimed');
+  assert.equal(third.intent.serviceQuery, 'fisioterapia');
+  assert.equal(third.intent.needsClarification, false);
+});
+
 test('courteousClarificationQuestion sounds like a polite clinic secretary', () => {
   const question = courteousClarificationQuestion({
     serviceCategory: 'unknown',
@@ -141,5 +174,34 @@ test('courteousClarificationQuestion sounds like a polite clinic secretary', () 
 
   assert.match(question, /Por gentileza/i);
   assert.match(question, /FEMIC/i);
-  assert.match(question, /convênio|quiropraxia|liberação/i);
+  assert.match(question, /1\./);
+  assert.match(question, /fisioterapia pelo convênio/i);
+  assert.match(question, /2\./);
+  assert.match(question, /fisioterapia particular/i);
+  assert.match(question, /3\./);
+  assert.match(question, /quiropraxia/i);
+  assert.match(question, /4\./);
+  assert.match(question, /liberação miofascial/i);
+});
+
+test('mergeConversationIntentState understands numbered attendance choices', () => {
+  const convenio = mergeConversationIntentState(null, parseGroqConversationJson(JSON.stringify({
+    should_create_task: true,
+    action: 'marcacao',
+    service_category: 'unknown',
+    needs_clarification: true
+  })), '1');
+
+  assert.equal(convenio.intent.serviceCategory, 'convenio_group');
+  assert.equal(convenio.intent.serviceQuery, 'fisioterapia');
+
+  const quiro = mergeConversationIntentState(null, parseGroqConversationJson(JSON.stringify({
+    should_create_task: true,
+    action: 'marcacao',
+    service_category: 'unknown',
+    needs_clarification: true
+  })), '3');
+
+  assert.equal(quiro.intent.serviceCategory, 'individual_bodywork');
+  assert.equal(quiro.intent.serviceQuery, 'quiropraxia');
 });

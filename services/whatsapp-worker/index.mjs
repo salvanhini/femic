@@ -335,7 +335,8 @@ function buildGroqConversationPrompt({ text, patient, services, today, conversat
     'Nunca confirme, marque, cancele ou prometa horario definitivo. A equipe humana sempre confirma no painel FEMIC.',
     'Classifique fisioterapia pelo convenio como service_category="convenio_group". Convenios comuns: Unimed, Hapvida, Pro Unica e outros.',
     'Classifique quiropraxia e liberacao miofascial como service_category="individual_bodywork".',
-    'Se o paciente nao deixar claro se quer convenio, quiropraxia ou liberacao miofascial, marque needs_clarification=true e escreva uma pergunta curta.',
+    'Se o paciente nao deixar claro o tipo de atendimento, marque needs_clarification=true e use exatamente esta lista no campo clarification_question: "Claro, vou te ajudar pelo atendimento da FEMIC. Por gentileza, me informe qual atendimento você deseja:\\n\\n1. Fisioterapia pelo convênio\\n2. Fisioterapia particular\\n3. Quiropraxia\\n4. Liberação miofascial"',
+    'Se o paciente responder 1, trate como fisioterapia pelo convenio. Se responder 2, fisioterapia particular. Se responder 3, quiropraxia. Se responder 4, liberacao miofascial.',
     'Se for mensagem casual sem pedido operacional, use should_create_task=false e reply vazio.',
     '',
     'JSON esperado:',
@@ -556,7 +557,8 @@ async function handleIncomingSchedulingMessage(message){
   const service = serviceMatch.service;
   const dates = defaultCandidateDates(classification);
   const shift = classification.shift;
-  const needsClarification = !!(aiIntent && (aiIntent.needsClarification || !service || serviceMatch.confidence === 'low'));
+  const intentHasEnoughContext = !!(aiIntent && service && aiIntent.serviceCategory !== 'unknown' && aiIntent.serviceQuery && (aiIntent.payerName || aiIntent.serviceCategory === 'individual_bodywork'));
+  const needsClarification = !!(aiIntent && !intentHasEnoughContext && (aiIntent.needsClarification || !service || serviceMatch.confidence === 'low'));
   if(!needsClarification && service){
     clearConversationState(remotePhone);
   }
