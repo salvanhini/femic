@@ -205,7 +205,7 @@
   function getAgendaState(){
     return window.FEMICAgendaRuntime && typeof window.FEMICAgendaRuntime.getState === 'function'
       ? window.FEMICAgendaRuntime.getState()
-      : { patients:[], payers:[], services:[], packages:[], appointments:[], movements:[], clinicRules:[], settings:{} };
+      : { patients:[], payers:[], services:[], packages:[], appointments:[], movements:[], clinicRules:[], scheduleBlocks:[], settings:{} };
   }
   function getPatients(){ return getAgendaState().patients || []; }
   function getPatientById(pid){ return getPatients().find(function(p){ return String(p.id) === String(pid); }) || null; }
@@ -1447,6 +1447,7 @@
       services: agenda.services || [],
       schedule_settings: agenda.settings && agenda.settings.id ? [agenda.settings] : (agenda.settings ? [agenda.settings] : []),
       clinic_rules: agenda.clinicRules || [],
+      schedule_blocks: agenda.scheduleBlocks || [],
       session_packages: agenda.packages || [],
       appointments: agenda.appointments || [],
       session_movements: agenda.movements || []
@@ -1458,6 +1459,7 @@
         services: await fetchTableForBackup('services'),
         schedule_settings: await fetchTableForBackup('schedule_settings'),
         clinic_rules: await loadClinicRulesCollection(),
+        schedule_blocks: await fetchOptionalTableForBackup('schedule_blocks', typeof isMissingScheduleBlocksTableError === 'function' ? isMissingScheduleBlocksTableError : function(){return false}),
         session_packages: await fetchTableForBackup('session_packages'),
         appointments: await fetchTableForBackup('appointments'),
         session_movements: await fetchTableForBackup('session_movements')
@@ -1498,6 +1500,7 @@
     await deleteAllRows('health_insurances');
     await deleteAllRows('schedule_settings');
     try{ await deleteAllRows('clinic_rules'); }catch(e){ if(!(typeof isMissingClinicRulesTableError === 'function' && isMissingClinicRulesTableError(e))) throw e; }
+    try{ await deleteAllRows('schedule_blocks'); }catch(e){ if(!(typeof isMissingScheduleBlocksTableError === 'function' && isMissingScheduleBlocksTableError(e))) throw e; }
     await upsertRows('patients', (tables.patients || []).map(normalizePatientRecord));
     await upsertRows('health_insurances', tables.health_insurances || []);
     await upsertRows('services', tables.services || []);
@@ -1506,19 +1509,19 @@
       if(typeof writeClinicRulesCache === 'function') writeClinicRulesCache(tables.clinic_rules);
       try{ await upsertRows('clinic_rules', tables.clinic_rules); }catch(e){ if(!(typeof isMissingClinicRulesTableError === 'function' && isMissingClinicRulesTableError(e))) throw e; }
     }
+    if(Array.isArray(tables.schedule_blocks)){
+      try{ await upsertRows('schedule_blocks', tables.schedule_blocks); }catch(e){ if(!(typeof isMissingScheduleBlocksTableError === 'function' && isMissingScheduleBlocksTableError(e))) throw e; }
+    }
     // Filtra órfãos e restaura individualmente para evitar FK violation
     var validPatientIds = new Set((tables.patients||[]).map(function(p){return String(p.id)}));
     var validServiceIds = new Set((tables.services||[]).map(function(s){return String(s.id)}));
-    var restoredPkgIds = new Set();
-    (tables.session_packages||[]).forEach(function(pkg){
-      if(validPatientIds.has(String(pkg.patient_id)) && (!pkg.service_id || validServiceIds.has(String(pkg.service_id)))){
-        restoredPkgIds.add(String(pkg.id));
-      }
+    var cleanPackages = (tables.session_packages||[]).filter(function(pkg){
+      return validPatientIds.has(String(pkg.patient_id)) && (!pkg.service_id || validServiceIds.has(String(pkg.service_id)));
     });
-    var pkgsToRestore = (tables.session_packages||[]).filter(function(p){return restoredPkgIds.has(String(p.id))});
-    for(var i=0;i<pkgsToRestore.length;i++){
-      try{ await upsertRows('session_packages', [pkgsToRestore[i]]); }
-      catch(e){ console.warn('Falha pacote '+pkgsToRestore[i].id+': '+e.message); restoredPkgIds['delete'](String(pkgsToRestore[i].id)); }
+    var restoredPkgIds = new Set();
+    for(var i=0;i<cleanPackages.length;i++){
+      try{ await upsertRows('session_packages', [cleanPackages[i]]); restoredPkgIds.add(String(cleanPackages[i].id)); }
+      catch(e){ console.warn('Falha pacote '+cleanPackages[i].id+': '+e.message); }
     }
     var apptsToRestore = (tables.appointments||[]).filter(function(a){
       return validPatientIds.has(String(a.patient_id)) && (!a.service_id || validServiceIds.has(String(a.service_id))) && (!a.session_package_id || restoredPkgIds.has(String(a.session_package_id)));

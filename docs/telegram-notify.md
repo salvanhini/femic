@@ -84,7 +84,7 @@ Acesse o `captacao.html`, preencha o formulário e envie. A mensagem deve aparec
 Para testar diretamente pela API:
 
 ```bash
-curl -X POST https://uhpyinpugdvcsmghgimd.supabase.co/functions/v1/telegram-notify \
+curl -X POST https://uhpyinpugdvcsmghgimd.supabase.co/functions/v1/telegram_notify \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Teste",

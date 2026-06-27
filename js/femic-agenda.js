@@ -2463,8 +2463,10 @@ async function deleteAllRows(table){
 function sanitizeDateFields(row){
   if(!row || typeof row!=='object') return row;
   const out=Object.assign({},row);
-  const dateCols=['appointment_date','birth_date','ended_at','archived_at','created_at','updated_at','reminder_sent_at','appointment_reminder_sent_at','appointment_reminder_last_attempt_at'];
+  const dateCols=['appointment_date','birth_date','block_date','ended_at','archived_at','created_at','updated_at','reminder_sent_at','appointment_reminder_sent_at','appointment_reminder_last_attempt_at','document_date','date'];
   dateCols.forEach(function(c){if(out[c]===''||out[c]===undefined) out[c]=null;});
+  if(out.birth_date && typeof out.birth_date==='string' && out.birth_date.length>10) out.birth_date=out.birth_date.slice(0,10);
+  if(out.appointment_date && typeof out.appointment_date==='string' && out.appointment_date.length>10) out.appointment_date=out.appointment_date.slice(0,10);
   return out;
 }
 async function upsertRows(table, rows){
@@ -2513,17 +2515,19 @@ async function restoreAgendaBackup(event){
     toast('Restaurando backup...', 'info');
 
     // Apaga somente tabelas operacionais da agenda, em ordem segura.
-    await deleteAllRows('session_movements');
-    await deleteAllRows('appointments');
-    await deleteAllRows('session_packages');
-    await deleteAllRows('services');
-    await deleteAllRows('health_insurances');
-    await deleteAllRows('schedule_settings');
+    var delErrors=[];
+    async function safeDelete(t){try{await deleteAllRows(t)}catch(e){delErrors.push(t+': '+e.message);console.warn('Delete falhou em '+t+':',e.message)}}
+    await safeDelete('session_movements');
+    await safeDelete('appointments');
+    await safeDelete('session_packages');
+    await safeDelete('services');
+    await safeDelete('health_insurances');
+    await safeDelete('schedule_settings');
     try{await deleteAllRows('clinic_rules')}catch(e){if(!isMissingClinicRulesTableError(e))throw e}
     try{await deleteAllRows('schedule_blocks')}catch(e){if(!isMissingScheduleBlocksTableError(e))throw e}
 
-    // Pacientes: upsert seguro, sem apagar pacientes externos.
-    await upsertRows('patients', tables.patients);
+    // Pacientes: normaliza e upsert seguro, sem apagar pacientes externos.
+    await upsertRows('patients', (tables.patients||[]).map(sanitizeDateFields));
     await upsertRows('health_insurances', tables.health_insurances);
     await upsertRows('services', tables.services);
     await upsertRows('schedule_settings', tables.schedule_settings);
@@ -2604,7 +2608,10 @@ async function restoreAgendaBackup(event){
     }
 
     await loadAll(true);
-    toast('Backup restaurado com sucesso.', 'success');
+    var skipped=orphanPackages.length+orphanAppts.length+orphanMoves.length+delErrors.length;
+    var msg='Backup restaurado com sucesso.';
+    if(skipped) msg+=' ('+skipped+' registro(s) ignorado(s))';
+    toast(msg, skipped?'warning':'success');
   }catch(e){
     console.error(e);
     toast('Erro ao restaurar backup: ' + e.message, 'error');
