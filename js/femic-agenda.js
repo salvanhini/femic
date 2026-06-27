@@ -2448,12 +2448,20 @@ async function deleteAllRows(table){
   return await api(table + '?id=not.is.null', {method:'DELETE'});
 }
 
+function sanitizeDateFields(row){
+  if(!row || typeof row!=='object') return row;
+  const out=Object.assign({},row);
+  const dateCols=['appointment_date','birth_date','ended_at','archived_at','created_at','updated_at','reminder_sent_at','appointment_reminder_sent_at','appointment_reminder_last_attempt_at'];
+  dateCols.forEach(function(c){if(out[c]===''||out[c]===undefined) out[c]=null;});
+  return out;
+}
 async function upsertRows(table, rows){
   if(!Array.isArray(rows) || !rows.length) return [];
+  const clean=rows.map(sanitizeDateFields);
   const res = await fetch(base() + '/rest/v1/' + table + '?on_conflict=id', {
     method:'POST',
     headers:Object.assign({}, headers(), {Prefer:'resolution=merge-duplicates,return=representation'}),
-    body: JSON.stringify(rows)
+    body: JSON.stringify(clean)
   });
   const txt = await res.text();
   let data; try{ data = txt ? JSON.parse(txt) : null; }catch(e){ data = txt; }
