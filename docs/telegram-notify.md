@@ -15,7 +15,7 @@ A Edge Function é escrita em Deno/TypeScript e roda serverless no próprio Supa
 ## Pré-requisitos
 
 - [Supabase CLI](https://supabase.com/docs/guides/cli) instalado
-- Acesso ao projeto Supabase (project ref: `gclmzliduvmckvoxderj`)
+- Acesso ao projeto Supabase (project ref: `uhpyinpugdvcsmghgimd`)
 - Token de bot do Telegram (criado via [@BotFather](https://t.me/BotFather))
 - Chat ID de destino (obtido via [@userinfobot](https://t.me/userinfobot))
 
@@ -46,7 +46,7 @@ Abra o link que aparecer no terminal e faça o login no browser.
 ### 3. Linkar com o projeto
 
 ```bash
-supabase link --project-ref gclmzliduvmckvoxderj
+supabase link --project-ref uhpyinpugdvcsmghgimd
 ```
 
 Será solicitada uma database password — é a senha que você definiu quando criou o projeto no Supabase. Se não lembrar, redefina em **Project Settings → Database → Reset Database Password**.
@@ -84,7 +84,7 @@ Acesse o `captacao.html`, preencha o formulário e envie. A mensagem deve aparec
 Para testar diretamente pela API:
 
 ```bash
-curl -X POST https://gclmzliduvmckvoxderj.supabase.co/functions/v1/telegram-notify \
+curl -X POST https://uhpyinpugdvcsmghgimd.supabase.co/functions/v1/telegram-notify \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Teste",

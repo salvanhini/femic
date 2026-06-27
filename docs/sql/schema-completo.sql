@@ -298,6 +298,10 @@ GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 
+-- Anon: SELECT + INSERT para captação pública (pacientes e pendências)
+GRANT SELECT, INSERT ON patients TO anon;
+GRANT SELECT, INSERT ON assistant_tasks TO anon;
+
 CREATE POLICY "authenticated_full_access_patients" ON patients FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_health_insurances" ON health_insurances FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_services" ON services FOR ALL TO authenticated USING (true) WITH CHECK (true);
