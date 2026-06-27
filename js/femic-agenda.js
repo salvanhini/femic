@@ -2464,7 +2464,7 @@ function sanitizeDateFields(row){
   if(!row || typeof row!=='object') return row;
   const out=Object.assign({},row);
   const dateCols=['appointment_date','birth_date','block_date','ended_at','archived_at','created_at','updated_at','reminder_sent_at','appointment_reminder_sent_at','appointment_reminder_last_attempt_at','document_date','date'];
-  dateCols.forEach(function(c){if(out[c]===''||out[c]===undefined) out[c]=null;});
+  dateCols.forEach(function(c){if(out.hasOwnProperty(c)&&(out[c]===''||out[c]===undefined)) out[c]=null;});
   if(out.birth_date && typeof out.birth_date==='string' && out.birth_date.length>10) out.birth_date=out.birth_date.slice(0,10);
   if(out.appointment_date && typeof out.appointment_date==='string' && out.appointment_date.length>10) out.appointment_date=out.appointment_date.slice(0,10);
   return out;
