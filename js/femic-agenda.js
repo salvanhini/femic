@@ -9,7 +9,6 @@ DROP TABLE IF EXISTS clinical_anamneses CASCADE;
 DROP TABLE IF EXISTS femic_generated_documents CASCADE;
 DROP TABLE IF EXISTS clinic_rules CASCADE;
 DROP TABLE IF EXISTS schedule_blocks CASCADE;
-DROP TABLE IF EXISTS assistant_tasks CASCADE;
 DROP TABLE IF EXISTS services CASCADE;
 DROP TABLE IF EXISTS health_insurances CASCADE;
 DROP TABLE IF EXISTS schedule_settings CASCADE;
@@ -26,8 +25,7 @@ CREATE TABLE patients (
   referral_source TEXT,
   archived BOOLEAN DEFAULT FALSE,
   archived_at TEXT,
-  feedback_sent BOOLEAN DEFAULT FALSE,
-  feedback_sent_at TIMESTAMP WITH TIME ZONE,
+
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
@@ -84,14 +82,10 @@ CREATE TABLE appointments (
   appointment_reminder_error_message TEXT,
   appointment_reminder_last_attempt_at TIMESTAMP WITH TIME ZONE,
   appointment_reminder_external_id TEXT,
-  form_reminder_sent BOOLEAN DEFAULT FALSE,
-  form_reminder_sent_at TIMESTAMP WITH TIME ZONE,
   reminder_sent BOOLEAN DEFAULT FALSE,
   reminder_sent_at TIMESTAMP WITH TIME ZONE,
   service_price_at_time NUMERIC DEFAULT 0,
   notes TEXT,
-  welcome_sent BOOLEAN DEFAULT FALSE,
-  welcome_sent_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
@@ -168,33 +162,6 @@ CREATE TABLE clinic_rules (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- PENDÊNCIAS OPERACIONAIS DO ASSISTENTE
-CREATE TABLE assistant_tasks (
-  id TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
-  type TEXT DEFAULT 'outro',
-  status TEXT DEFAULT 'aberta',
-  priority TEXT DEFAULT 'normal',
-  patient_id TEXT REFERENCES patients(id) ON DELETE SET NULL,
-  patient_name TEXT,
-  service_id UUID REFERENCES services(id) ON DELETE SET NULL,
-  service_name TEXT,
-  suggestion_reason TEXT,
-  phone TEXT,
-  origin TEXT DEFAULT 'manual',
-  requested_action TEXT,
-  notes TEXT,
-  suggested_slots JSONB DEFAULT '[]'::jsonb,
-  candidates JSONB DEFAULT '[]'::jsonb,
-  parsed_shift TEXT,
-  parsed_dates JSONB DEFAULT '[]'::jsonb,
-  extension_fingerprint TEXT,
-  needs_review BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  completed_at TIMESTAMP WITH TIME ZONE
-);
-
 -- CONFIGURAÇÕES DA AGENDA
 CREATE TABLE schedule_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -208,6 +175,7 @@ CREATE TABLE schedule_settings (
   whatsapp_template_appointment TEXT,
   whatsapp_confirmation_hours_before INTEGER DEFAULT 12,
   whatsapp_service_name TEXT DEFAULT 'baileys-main',
+  slots_config JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
@@ -248,7 +216,8 @@ INSERT INTO schedule_settings (
   whatsapp_provider,
   whatsapp_template_appointment,
   whatsapp_confirmation_hours_before,
-  whatsapp_service_name
+  whatsapp_service_name,
+  slots_config
 ) VALUES (
   '08:00',
   '20:00',
@@ -259,7 +228,8 @@ INSERT INTO schedule_settings (
   'baileys',
   'Olá, {nome}! Tudo bem? Passando para confirmar seu atendimento na FEMIC: 📅 {data} ⏰ {hora}. Por favor, responda esta mensagem com: ✅ CONFIRMAR para manter o horário ou ❌ CANCELAR se não puder comparecer. Se precisar remarcar, é só avisar 😊',
   12,
-  'baileys-main'
+  'baileys-main',
+  '{"1":["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"],"2":["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"],"3":["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"],"4":["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"],"5":["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"],"6":["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30"]}'
 );
 
 -- ÍNDICES PARA USO NO PLANO FREE
@@ -272,9 +242,6 @@ CREATE INDEX idx_movements_patient ON session_movements(patient_id);
 CREATE INDEX idx_clinical_evolutions_patient_date ON clinical_evolutions(patient_id, date DESC);
 CREATE INDEX idx_femic_generated_documents_patient ON femic_generated_documents(patient_id);
 CREATE INDEX idx_femic_generated_documents_created ON femic_generated_documents(created_at DESC);
-CREATE INDEX idx_assistant_tasks_status_updated ON assistant_tasks(status, updated_at DESC);
-CREATE INDEX idx_assistant_tasks_origin ON assistant_tasks(origin);
-CREATE INDEX idx_assistant_tasks_fingerprint ON assistant_tasks(extension_fingerprint);
 CREATE INDEX idx_schedule_blocks_date_status ON schedule_blocks(block_date, status);
 CREATE INDEX idx_whatsapp_service_status_updated ON whatsapp_service_status(updated_at DESC);
 
@@ -287,7 +254,6 @@ ALTER TABLE session_packages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE session_movements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinic_rules ENABLE ROW LEVEL SECURITY;
-ALTER TABLE assistant_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE schedule_blocks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE whatsapp_service_status ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinical_anamneses ENABLE ROW LEVEL SECURITY;
@@ -308,14 +274,13 @@ CREATE POLICY "authenticated_full_access_session_packages" ON session_packages F
 CREATE POLICY "authenticated_full_access_appointments" ON appointments FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_session_movements" ON session_movements FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_clinic_rules" ON clinic_rules FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "authenticated_full_access_assistant_tasks" ON assistant_tasks FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_schedule_blocks" ON schedule_blocks FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_whatsapp_service_status" ON whatsapp_service_status FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_clinical_anamneses" ON clinical_anamneses FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_clinical_evolutions" ON clinical_evolutions FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_femic_generated_documents" ON femic_generated_documents FOR ALL TO authenticated USING (true) WITH CHECK (true);
 NOTIFY pgrst, 'reload schema';`;
-const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],reportAppointments=[],movements=[],clinicRules=[],scheduleBlocks=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4,whatsapp_provider:'baileys',whatsapp_template_appointment:'',whatsapp_confirmation_hours_before:12,whatsapp_service_name:'baileys-main'};let currentDate=new Date();let editingServiceId='';let loadedAppointmentQuery='',loadedReportQuery='',aiRadarQuery='',aiRadarAppointments=[],aiRadarLoaded=false,aiRadarLastWeeks=[],recurringSuggestionCache=[];let sessionPackagesEndedAtSupported=null;let whatsappServiceStatus=null;let lastUserInteractionAt=Date.now();const appointmentSearchSelected=new Set();
+const $=id=>document.getElementById(id);let patients=[],payers=[],services=[],packages=[],appointments=[],reportAppointments=[],movements=[],clinicRules=[],scheduleBlocks=[],settings={start_time:'08:00',end_time:'20:00',working_days:'1,2,3,4,5,6',slot_interval_minutes:30,max_patients_per_slot:4,whatsapp_provider:'baileys',whatsapp_template_appointment:'',whatsapp_confirmation_hours_before:12,whatsapp_service_name:'baileys-main',slots_config:{}};let currentDate=new Date();let editingServiceId='';let loadedAppointmentQuery='',loadedReportQuery='',aiRadarQuery='',aiRadarAppointments=[],aiRadarLoaded=false,aiRadarLastWeeks=[],recurringSuggestionCache=[];let sessionPackagesEndedAtSupported=null;let whatsappServiceStatus=null;let lastUserInteractionAt=Date.now();const appointmentSearchSelected=new Set();
 const packageScheduleCache=new Map();
 let showArchivedPatients=false,showInactivePackages=false;
 const dayAppointmentCache=new Map();
@@ -361,8 +326,7 @@ async function detectSessionPackagesEndedAtSupport(){
   return sessionPackagesEndedAtSupported;
 }
 function whatsappProviderValue(){
-  const value=String(settings.whatsapp_provider||localStorage.femic_whatsapp_provider||'baileys').toLowerCase();
-  return value==='wa_me'?'wa_me':'baileys';
+  return 'baileys';
 }
 function whatsappServiceNameValue(){
   return settings.whatsapp_service_name||localStorage.femic_whatsapp_service_name||'baileys-main';
@@ -388,30 +352,25 @@ async function refreshWhatsappServiceStatus(){
 }
 function renderWhatsappServiceStatus(){
   const targets=['whatsappServiceStatusPanel','whatsappServiceStatusInline'];
-  const provider=whatsappProviderValue();
   const status=whatsappServiceStatus||null;
   const serviceName=whatsappServiceNameValue();
   let message='',severity='info';
-  if(provider==='baileys'){
-    const lastSeen=status&&status.last_seen_at?new Date(status.last_seen_at):null;
-    const stale=lastSeen&&!Number.isNaN(lastSeen.getTime())&&(Date.now()-lastSeen.getTime()>3*60*1000);
-    if(status&&status.connection_status==='connected'){
-      severity=stale?'warning':'success';
-      message=stale?'Atenção: bot Baileys sem heartbeat recente.':'Canal WhatsApp: Baileys conectado';
-      if(status.last_connected_at) message+=' · conectado em '+fmtDateTime(status.last_connected_at);
-      if(status.last_message_at) message+=' · último envio '+fmtDateTime(status.last_message_at);
-      if(stale&&status.last_seen_at) message+=' · último sinal '+fmtDateTime(status.last_seen_at);
-    }else if(status&&status.connection_status){
-      severity='danger';
-      message='Atenção: bot Baileys '+status.connection_status+'. O envio automático pode estar parado.';
-      if(status.last_error) message+=' · '+String(status.last_error).slice(0,120);
-      if(status.last_seen_at) message+=' · último sinal '+fmtDateTime(status.last_seen_at);
-    }else{
-      severity='warning';
-      message='Atenção: FEMIC ainda não recebeu heartbeat do bot "'+serviceName+'". Confirme se o Discloud está rodando.';
-    }
+  const lastSeen=status&&status.last_seen_at?new Date(status.last_seen_at):null;
+  const stale=lastSeen&&!Number.isNaN(lastSeen.getTime())&&(Date.now()-lastSeen.getTime()>3*60*1000);
+  if(status&&status.connection_status==='connected'){
+    severity=stale?'warning':'success';
+    message=stale?'Atenção: bot Baileys sem heartbeat recente.':'Canal WhatsApp: Baileys conectado';
+    if(status.last_connected_at) message+=' · conectado em '+fmtDateTime(status.last_connected_at);
+    if(status.last_message_at) message+=' · último envio '+fmtDateTime(status.last_message_at);
+    if(stale&&status.last_seen_at) message+=' · último sinal '+fmtDateTime(status.last_seen_at);
+  }else if(status&&status.connection_status){
+    severity='danger';
+    message='Atenção: bot Baileys '+status.connection_status+'. O envio automático pode estar parado.';
+    if(status.last_error) message+=' · '+String(status.last_error).slice(0,120);
+    if(status.last_seen_at) message+=' · último sinal '+fmtDateTime(status.last_seen_at);
   }else{
-    message='Canal WhatsApp: contingência manual por wa.me disponível. O envio automático é do bot Baileys.';
+    severity='warning';
+    message='Atenção: FEMIC ainda não recebeu heartbeat do bot "'+serviceName+'". Confirme se o Discloud está rodando.';
   }
   targets.forEach(function(id){
     const node=$(id);
@@ -466,7 +425,7 @@ function rebuildReferenceIndexes(){
 }
 async function loadClinicRulesCollection(){try{const rows=await api('clinic_rules?select=*&order=priority.asc,created_at.asc');writeClinicRulesCache(rows||[]);return rows||[]}catch(e){if(isMissingClinicRulesTableError(e))return readClinicRulesCache();throw e}}
 clinicRules=readClinicRulesCache();
-function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||DEFAULT_WHATSAPP_REMINDER_TEMPLATE;$('tplReminder').value=tpl;localStorage.femic_whatsapp_provider='baileys';if($('whatsappProvider'))$('whatsappProvider').value='baileys';if($('whatsappServiceName'))$('whatsappServiceName').value=localStorage.femic_whatsapp_service_name||'baileys-main';renderWhatsappProviderBadge()}
+function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||DEFAULT_WHATSAPP_REMINDER_TEMPLATE;$('tplReminder').value=tpl;localStorage.femic_whatsapp_provider='baileys';if($('whatsappProvider'))$('whatsappProvider').value='baileys';if($('whatsappServiceName'))$('whatsappServiceName').value=localStorage.femic_whatsapp_service_name||'baileys-main';renderWhatsappProviderBadge();if($('setSlotStart'))$('setSlotStart').value=settings.start_time||'08:00';if($('setSlotEnd'))$('setSlotEnd').value=settings.end_time||'20:00';if(typeof renderSlotsConfig==='function')renderSlotsConfig()}
 async function testConnection(){try{await api('patients?select=id&limit=1');toast('Conexão e carregamento funcionando.','success')}catch(e){toast('Erro real: '+e.message,'error')}}
 function appointmentWindowQuery(){
   const mode = $('viewMode') ? $('viewMode').value : 'week';
@@ -517,7 +476,7 @@ async function refreshReportMonthIfNeeded(month){
     toast('Erro ao carregar relatório mensal: ' + e.message, 'error');
   }
 }
-async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const apQuery=appointmentWindowQuery();const [pa,hi,sv,pk,ap,mv,st,cr,blocks,endedAtSupport]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api(apQuery),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection(),loadScheduleBlocksCollection(),detectSessionPackagesEndedAtSupport()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];scheduleBlocks=blocks||[];loadedAppointmentQuery=apQuery;loadedReportQuery='';reportAppointments=[];aiRadarQuery='';aiRadarLoaded=false;movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});sessionPackagesEndedAtSupported=endedAtSupport;rebuildReferenceIndexes();patientPickerItemsCache=null;packageScheduleCache.clear();packageHistoryCache.clear();packagePatternCache.clear();dayAppointmentCache.clear();syncForms();refreshWhatsappServiceStatus();recordSystemLoad(true);renderActivePanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);recordSystemLoad(false,e.message);toast('Erro ao carregar: '+e.message,'error')}}
+async function loadAll(silent=false){if(!base()||!key()){if(!silent)toast('Preencha URL e anon key.','warning');return}try{const apQuery=appointmentWindowQuery();const [pa,hi,sv,pk,ap,mv,st,cr,blocks,endedAtSupport]=await Promise.all([api('patients?select=*&order=name'),api('health_insurances?select=*&order=name'),api('services?select=*&order=name'),api('session_packages?select=*&order=created_at.desc'),api(apQuery),api('session_movements?select=*&order=created_at.desc'),api('schedule_settings?select=*&limit=1'),loadClinicRulesCollection(),loadScheduleBlocksCollection(),detectSessionPackagesEndedAtSupport()]);patients=pa||[];payers=hi||[];services=sv||[];packages=pk||[];appointments=ap||[];scheduleBlocks=blocks||[];loadedAppointmentQuery=apQuery;loadedReportQuery='';reportAppointments=[];aiRadarQuery='';aiRadarLoaded=false;movements=mv||[];clinicRules=cr||[];settings=Object.assign(settings,(st&&st[0])||{});sessionPackagesEndedAtSupported=endedAtSupport;if(typeof renderSlotsConfig==='function')renderSlotsConfig();rebuildReferenceIndexes();patientPickerItemsCache=null;packageScheduleCache.clear();packageHistoryCache.clear();packagePatternCache.clear();dayAppointmentCache.clear();syncForms();refreshWhatsappServiceStatus();recordSystemLoad(true);renderActivePanel();document.dispatchEvent(new CustomEvent('femic:state-updated'));if(!silent)toast('Dados carregados.','success')}catch(e){console.error(e);recordSystemLoad(false,e.message);toast('Erro ao carregar: '+e.message,'error')}}
 function toggleSidebar(){
   $('sidebar')?.classList.toggle('show');
   $('overlay')?.classList.toggle('show');
@@ -763,7 +722,7 @@ async function runSystemHealthCheck(){
   const lastAt=localStorage.getItem('femic_last_load_at');
   if(lastAt)items.push({status:localStorage.getItem('femic_last_load_status')==='error'?'danger':'ok',title:'Última atualização',detail:new Date(lastAt).toLocaleString('pt-BR')+(localStorage.getItem('femic_last_load_message')?' · '+localStorage.getItem('femic_last_load_message'):'')});
   if(base()&&key()&&hasValidSession()){
-    const optional=['clinical_anamneses','clinical_evolutions','assistant_tasks','clinic_rules','schedule_blocks','whatsapp_service_status'];
+    const optional=['clinical_anamneses','clinical_evolutions','clinic_rules','schedule_blocks','whatsapp_service_status'];
     const checked=await Promise.all(optional.map(checkOptionalTable));
     items.push(...checked);
   }else{
@@ -782,6 +741,8 @@ function renderPanel(name){
       renderDay();
       break;
     case 'patients':
+      renderLists();
+      break;
     case 'packages':
     case 'settings':
       renderLists();
@@ -791,18 +752,13 @@ function renderPanel(name){
     case 'reminders':
       renderReminders();
       break;
-    case 'ai':
-      renderAIRadar();
+    case 'agenda-assistida':
       break;
     case 'report':
       renderReport();
       break;
     case 'backup':
       renderBackupPanel();
-      break;
-    case 'agenda-assistida':
-    case 'pendencias':
-      if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks();
       break;
     default:
       break;
@@ -820,7 +776,7 @@ function showPanel(name){
   closeSidebar();
   renderPanel(name);
 }
-function renderAll(){renderAgenda();renderDay();renderReminders();renderAIRadar();renderReport();renderLists();renderBackupPanel();renderAppointmentSearch();if(window.renderExtensionPendingTasks) window.renderExtensionPendingTasks()}function patientById(id){return patientIndex[String(id)]||patients.find(p=>String(p.id)===String(id))||{}}function serviceById(id){return serviceIndex[String(id)]||services.find(s=>String(s.id)===String(id))||{}}function payerName(id){return (payerIndex[String(id)]||payers.find(p=>String(p.id)===String(id))||{}).name||'Particular'}function patientName(id){return patientById(id).name||'Paciente'}function serviceName(id){return serviceById(id).name||'Sem serviço'}
+function renderAll(){renderAgenda();renderDay();renderReminders();renderAIRadar();renderReport();renderLists();renderBackupPanel();renderAppointmentSearch()}function patientById(id){return patientIndex[String(id)]||patients.find(p=>String(p.id)===String(id))||{}}function serviceById(id){return serviceIndex[String(id)]||services.find(s=>String(s.id)===String(id))||{}}function payerName(id){return (payerIndex[String(id)]||payers.find(p=>String(p.id)===String(id))||{}).name||'Particular'}function patientName(id){return patientById(id).name||'Paciente'}function serviceName(id){return serviceById(id).name||'Sem serviço'}
 function assistantPeriodMatches(start,period){const p=String(period||'').toLowerCase();const m=timeToMin(start);if(p==='manha')return m<12*60;if(p==='tarde')return m>=12*60&&m<18*60;if(p==='noite')return m>=18*60;return true}
 function assistantAppointmentPayload(input={}){const sid=input.service_id||input.serviceId,pid=input.patient_id||input.patientId,date=input.appointment_date||input.date,start=normalizeTime(input.start_time||input.start);if(!pid)throw new Error('Paciente não identificado.');if(!sid)throw new Error('Serviço não identificado.');if(!date)throw new Error('Data não informada.');if(!start)throw new Error('Horário inicial não informado.');const s=serviceById(sid);if(!s||!s.id)throw new Error('Serviço não encontrado.');const duration=Number(input.duration_minutes||s.duration_minutes||45);const end=normalizeTime(input.end_time||input.end||addMinutes(start,duration));return{patient_id:pid,service_id:sid,appointment_date:date,start_time:start,end_time:end,duration_minutes:duration,status:input.status||'agendado',service_price_at_time:Number(input.service_price_at_time!=null?input.service_price_at_time:getServiceDefaultPrice(sid))}}
 async function validateAssistantAppointment(input={}){const payload=assistantAppointmentPayload(input);if(timeToMin(payload.end_time)<=timeToMin(payload.start_time))return{valid:false,reason:'O horário final precisa ser maior que o inicial.',payload};if(!isTodayDate(payload.appointment_date)&&!isWorking(payload.appointment_date))return{valid:false,reason:'Dia fora do expediente.',payload};if(!isInsideWorkingTime(payload.appointment_date,payload.start_time,payload.end_time))return{valid:false,reason:'Horário fora dos períodos de expediente configurados.',payload};let rows=appointments.filter(a=>a.appointment_date===payload.appointment_date);try{rows=await fetchAppointmentsForDate(payload.appointment_date)}catch(e){}const conflict=conflictInAppointmentList(payload,rows,input.ignore_id||input.ignoreId||null);if(conflict)return{valid:false,reason:conflict,payload};return{valid:true,reason:'Horário disponível.',payload,patient:patientById(payload.patient_id),service:serviceById(payload.service_id)}}
@@ -1059,10 +1015,10 @@ function syncForms(){
   const pay='<option value="">Sem pagador</option>'+payers.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
   $('svcPayer').innerHTML=pay;
 
-  $('setStart').value=settings.start_time||'08:00';
-  $('setEnd').value=settings.end_time||'20:00';
+  if($('setStart')) $('setStart').value=settings.start_time||'08:00';
+  if($('setEnd')) $('setEnd').value=settings.end_time||'20:00';
   if($('setPeriods')) $('setPeriods').value=settings.working_periods||((settings.start_time||'08:00')+'-'+(settings.end_time||'20:00'));
-  $('setInterval').value=String(settings.slot_interval_minutes||30);
+  if($('setInterval')) $('setInterval').value=String(settings.slot_interval_minutes||30);
   if($('tplReminder')) $('tplReminder').value=settings.whatsapp_template_appointment||localStorage.femic_tpl_reminder||DEFAULT_WHATSAPP_REMINDER_TEMPLATE;
   if($('whatsappProvider')) $('whatsappProvider').value='baileys';
   if($('whatsappServiceName')) $('whatsappServiceName').value=settings.whatsapp_service_name||localStorage.femic_whatsapp_service_name||'baileys-main';
@@ -1073,12 +1029,12 @@ function syncForms(){
   syncPatientPickers();
   renderWorkDays()
 }
-function renderWorkDays(){const names=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];const active=String(settings.working_days||'1,2,3,4,5').split(',');$('workDays').innerHTML=names.map((n,i)=>`<label class="day-check"><input type="checkbox" class="wd" value="${i}" ${active.includes(String(i))?'checked':''}>${n}</label>`).join('');$('recDays').innerHTML=names.map((n,i)=>`<div class="rec-day-card" id="recCard${i}"><label class="rec-title"><input type="checkbox" class="recDay" value="${i}" onchange="toggleRecDayCard(${i})">${n}</label><input type="time" class="recTime" id="recTime${i}" onchange="previewRecurringEnd(${i})"><div class="muted small" id="recEnd${i}">Fim calculado pelo serviço</div></div>`).join('')}
+function renderWorkDays(){const names=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];const active=String(settings.working_days||'1,2,3,4,5').split(',');$('workDays').innerHTML=names.map((n,i)=>`<label class="day-check"><input type="checkbox" class="wd" value="${i}" ${active.includes(String(i))?'checked':''} onchange="renderSlotsConfig()">${n}</label>`).join('');$('recDays').innerHTML=names.map((n,i)=>`<div class="rec-day-card" id="recCard${i}"><label class="rec-title"><input type="checkbox" class="recDay" value="${i}" onchange="toggleRecDayCard(${i})">${n}</label><input type="time" class="recTime" id="recTime${i}" onchange="previewRecurringEnd(${i})"><div class="muted small" id="recEnd${i}">Fim calculado pelo serviço</div></div>`).join('');if(typeof renderSlotsConfig==='function')renderSlotsConfig()}
 function weekStart(d){const x=new Date(d);const day=x.getDay();x.setDate(x.getDate()-(day===0?6:day-1));return x}function isTodayDate(dateStr){return String(dateStr)===todayIso()}function isWorking(dateStr){return String(settings.working_days||'1,2,3,4,5,6').split(',').includes(String(dateDay(dateStr)))}function isClosedForView(dateStr){return !isTodayDate(dateStr)&&!isWorking(dateStr)}
 function parsePeriods(){const raw=String(settings.working_periods||((settings.start_time||'08:00')+'-'+(settings.end_time||'20:00')));return raw.split(',').map(x=>x.trim()).filter(Boolean).map(p=>{const parts=p.split('-').map(v=>v.trim());return {start:parts[0],end:parts[1]};}).filter(p=>/^\d{2}:\d{2}$/.test(p.start)&&/^\d{2}:\d{2}$/.test(p.end)&&timeToMin(p.start)<timeToMin(p.end));}
 function agendaSlotStep(){const step=Number(settings.slot_interval_minutes||30);return Number.isFinite(step)&&step>0?step:30}
-function slots(){const set=new Set(),step=agendaSlotStep();parsePeriods().forEach(p=>{let m=timeToMin(p.start),end=timeToMin(p.end);while(m<end){set.add(minToTime(m));m+=step}});return [...set].sort()}
-function isInsideWorkingTime(dateStr,start,end){if(!isTodayDate(dateStr)&&!isWorking(dateStr)) return false;const s=timeToMin(start),e=timeToMin(end);return parsePeriods().some(p=>s>=timeToMin(p.start)&&e<=timeToMin(p.end));}
+function slots(forDay){if(forDay!==undefined&&settings.slots_config&&settings.slots_config[forDay])return settings.slots_config[forDay].slice().sort();const set=new Set(),step=agendaSlotStep();parsePeriods().forEach(p=>{let m=timeToMin(p.start),end=timeToMin(p.end);while(m<end){set.add(minToTime(m));m+=step}});return [...set].sort()}
+function isInsideWorkingTime(dateStr,start,end){if(!isTodayDate(dateStr)&&!isWorking(dateStr)) return false;const dow=dateDay(dateStr);if(settings.slots_config&&settings.slots_config[dow]){const daySlots=settings.slots_config[dow];return daySlots.some(s=>normalizeTime(s)===normalizeTime(start));}const s=timeToMin(start),e=timeToMin(end);return parsePeriods().some(p=>s>=timeToMin(p.start)&&e<=timeToMin(p.end));}
 function prevPeriod(){if($('viewMode').value==='month')currentDate.setMonth(currentDate.getMonth()-1);else currentDate.setDate(currentDate.getDate()-7);renderAgenda()}function nextPeriod(){if($('viewMode').value==='month')currentDate.setMonth(currentDate.getMonth()+1);else currentDate.setDate(currentDate.getDate()+7);renderAgenda()}function goToday(){currentDate=new Date();$('dayDate').value=todayIso();$('reminderDate').value=isoDate(new Date(Date.now()+86400000));renderActivePanel()}
 function agendaActiveFilters(){return{status:$('agendaStatusFilter')?.value||'all',serviceId:$('agendaServiceFilter')?.value||'all'}}
 function matchesAgendaFilters(appointment,filters){if(filters.status!=='all'&&appointment.status!==filters.status)return false;if(filters.serviceId!=='all'&&String(appointment.service_id)!==String(filters.serviceId))return false;return true}
@@ -1101,7 +1057,55 @@ function buildWeekAgendaData(visibleDays){
   return {byDate,openCountByDate};
 }
 function populateAgendaFilters(){const sel=$('agendaServiceFilter');if(sel){const current=sel.value||'all';sel.innerHTML='<option value="all">Todos os serviços</option>'+services.filter(s=>s.active!==false).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');sel.value=[...sel.options].some(o=>o.value===current)?current:'all'}const searchSel=$('apptSearchService');if(searchSel){const currentSearch=searchSel.value||'all';searchSel.innerHTML='<option value="all">Todos os serviços</option>'+services.filter(s=>s.active!==false).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');searchSel.value=[...searchSel.options].some(o=>o.value===currentSearch)?currentSearch:'all'}}
-function clearAgendaFilters(){if($('agendaStatusFilter'))$('agendaStatusFilter').value='all';if($('agendaServiceFilter'))$('agendaServiceFilter').value='all';renderAgenda()}
+function clearAgendaFilters(){
+  const statusEl=$('agendaStatusFilter');
+  if(statusEl) statusEl.value='all';
+  const serviceEl=$('agendaServiceFilter');
+  if(serviceEl) serviceEl.value='all';
+  document.querySelectorAll('#agendaFilterChips .filter-chip').forEach(c=>c.classList.toggle('active',c.dataset.value==='all'));
+  renderAgenda()
+}
+function setAgendaStatusFilter(value){
+  const el=$('agendaStatusFilter');
+  if(el) el.value=value;
+  document.querySelectorAll('#agendaFilterChips .filter-chip').forEach(c=>c.classList.toggle('active',c.dataset.value===value));
+  renderAgenda()
+}
+function openBlockModal(){
+  const existing=document.getElementById('femicBlockModalOverlay');
+  if(existing)existing.remove();
+  const today=todayIso();
+  const nextSlot=slots()[0]||'08:00';
+  const overlay=document.createElement('div');
+  overlay.id='femicBlockModalOverlay';
+  overlay.className='block-modal-overlay';
+  overlay.innerHTML='<div class="block-modal" onclick="event.stopPropagation()">'+
+    '<h3>🔒 Bloquear horário</h3>'+
+    '<p class="muted small">Impede agendamentos neste período.</p>'+
+    '<div class="field"><label>Data</label><input id="blockDate" type="date" value="'+today+'"></div>'+
+    '<div class="field"><label>Início</label><input id="blockStart" type="time" value="'+nextSlot+'"></div>'+
+    '<div class="field"><label>Fim</label><input id="blockEnd" type="time" value="'+addMinutes(nextSlot,agendaSlotStep())+'"></div>'+
+    '<div class="field"><label>Motivo (opcional)</label><input id="blockReason" placeholder="Ex.: feriado, reunião, manutenção"></div>'+
+    '<div class="block-modal-actions">'+
+    '<button class="btn secondary" onclick="closeBlockModal()">Cancelar</button>'+
+    '<button class="btn primary" onclick="confirmBlock()">Bloquear</button>'+
+    '</div></div>';
+  overlay.addEventListener('click',closeBlockModal);
+  document.body.appendChild(overlay);
+  $('blockDate').focus();
+}
+function closeBlockModal(){
+  const el=document.getElementById('femicBlockModalOverlay');
+  if(el)el.remove();
+}
+function confirmBlock(){
+  const date=$('blockDate')?.value;
+  const start=$('blockStart')?.value;
+  const end=$('blockEnd')?.value;
+  const reason=$('blockReason')?.value.trim();
+  blockScheduleSlot(date,start,end,reason);
+  closeBlockModal();
+}
 function getAppointmentSearchResults(){
   const rawQuery=String($('apptSearchText')?.value||'');
   const queryText=rawQuery.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
@@ -1255,8 +1259,10 @@ function renderMonth(){
       const count=list.filter(a=>a.status!=='cancelado'&&timeToMin(normalizeTime(a.start_time))<slotEnd&&timeToMin(normalizeTime(a.end_time))>slotStart).length;
       return Math.max(max,count);
     },0);
+    const dayBlocks=activeScheduleBlocksForDate(ds);
+    const hasBlocks=dayBlocks.length>0;
     html+=`<section class="month-agenda-day ${ds===todayIso()?'today':''} ${isClosedForView(ds)?'off':''}">`;
-    html+=`<div class="month-agenda-day-head"><div><div class="month-agenda-date">${names[d.getDay()]}, ${fmtDate(ds)}</div><div class="muted small">${list.length?`${list.length} atendimento(s) no dia`:'Dia livre'}</div></div><div class="month-agenda-summary"><span>${counts.agendado} ag.</span><span>${counts.confirmado} conf.</span><span>${counts.concluido} concl.</span><span>Pico ${peak}/${Number(settings.max_patients_per_slot||4)}</span><button class="btn" type="button" onclick="openAppt('${ds}')">+ Agendar</button></div></div>`;
+    html+=`<div class="month-agenda-day-head"><div><div class="month-agenda-date">${names[d.getDay()]}, ${fmtDate(ds)}${hasBlocks?' <span class="month-block-indicator" title="Horários bloqueados — clique para reabrir" onclick="event.stopPropagation();reopenScheduleBlock(\''+dayBlocks[0].id+'\')">🔒</span>':''}</div><div class="muted small">${list.length?`${list.length} atendimento(s) no dia`:'Dia livre'}</div></div><div class="month-agenda-summary"><span>${counts.agendado} ag.</span><span>${counts.confirmado} conf.</span><span>${counts.concluido} concl.</span><span>Pico ${peak}/${Number(settings.max_patients_per_slot||4)}</span><button class="btn" type="button" onclick="openAppt('${ds}')">+ Agendar</button></div></div>`;
     html+=list.length?`<div class="month-agenda-items">`+list.map(a=>{
       const patient=patientNames[String(a.patient_id)]||'Paciente';
       const service=serviceNames[String(a.service_id)]||'Sem serviço';
@@ -1567,7 +1573,6 @@ function renderDay(){
           <button class="btn" style="padding:6px 10px;font-size:.72rem" onclick="openPatient('${a.patient_id}')" title="Ficha">👤 Ficha</button>
           <button class="btn" style="padding:6px 10px;font-size:.72rem" onclick="openAppt('${a.appointment_date}','${a.id}')" title="Editar">✏️ Editar</button>
           <button class="btn warning" style="padding:6px 10px;font-size:.72rem" onclick="quickBlockSlot('${a.appointment_date}','${normalizeTime(a.start_time)}','${normalizeTime(a.end_time)}')" title="Bloquear este intervalo">🚫 Bloquear</button>
-          <button class="btn primary" style="padding:6px 10px;font-size:.72rem" onclick="sendWhatsapp('${a.id}',false,'appointment')" title="WhatsApp">💬 WhatsApp</button>
           <select onchange="quickStatus('${a.id}',this.value);this.value=''" style="width:auto;padding:6px 10px;font-size:.72rem;border-radius:10px;min-width:42px" title="Alterar status">
             <option value="">⚡ Status</option>
             ${nextStatuses.map(s=>`<option value="${s.value}">${s.label}</option>`).join('')}
@@ -1578,7 +1583,7 @@ function renderDay(){
   }).join(''):'<div class="muted">Nenhum agendamento.</div>';
   $('dayList').innerHTML=blockHtml+appointmentHtml;
 }
-function reminderFlag(a,kind){return kind==='form'?!!a.form_reminder_sent:!!(a.appointment_reminder_sent||a.reminder_sent)}
+function reminderFlag(a){return!!(a.appointment_reminder_sent||a.reminder_sent)}
 function appointmentDateTime(a,field='start_time'){
   const date=String(a.appointment_date||'');
   const time=normalizeTime(a[field]||a.start_time||'00:00');
@@ -1589,19 +1594,18 @@ function appointmentReminderHoursBefore(){
   const value=Number(settings.whatsapp_confirmation_hours_before||12);
   return Number.isFinite(value)&&value>0?value:12;
 }
-function reminderDueAt(a,kind){
+function reminderDueAt(a){
   const utils=reminderUtils();
-  if(kind!=='form'&&utils&&typeof utils.reminderDueAt==='function') return utils.reminderDueAt(a,{hoursBefore:appointmentReminderHoursBefore()});
-  const base=appointmentDateTime(a,kind==='form'?'end_time':'start_time');
+  if(utils&&typeof utils.reminderDueAt==='function') return utils.reminderDueAt(a,{hoursBefore:appointmentReminderHoursBefore()});
+  const base=appointmentDateTime(a);
   if(!base) return null;
-  return kind==='form'?new Date(base.getTime()+(5*60*60*1000)):new Date(base.getTime()-(appointmentReminderHoursBefore()*60*60*1000));
+  return new Date(base.getTime()-(appointmentReminderHoursBefore()*60*60*1000));
 }
-function isReminderCandidate(a,kind){
-  return kind==='form'?a.status==='concluido':['agendado','confirmado'].includes(a.status);
+function isReminderCandidate(a){
+  return ['agendado','confirmado'].includes(a.status);
 }
-function reminderPhoneOk(a){return cleanPhone(patientById(a.patient_id).whatsapp).length>=10}
-function reminderDueLabel(a,kind){
-  const due=reminderDueAt(a,kind);
+function reminderDueLabel(a){
+  const due=reminderDueAt(a);
   if(!due) return 'Sem horário válido';
   const diff=due.getTime()-Date.now();
   if(diff<=0) return 'Vencido para envio';
@@ -1611,33 +1615,15 @@ function reminderDueLabel(a,kind){
   return 'Vence em '+hours+'h'+(rest?String(rest).padStart(2,'0'):'');
 }
 function isBaileysProviderOnline(){
-  return whatsappProviderValue()==='baileys'&&!!(whatsappServiceStatus&&whatsappServiceStatus.connection_status==='connected');
-}
-function buildAppointmentReminderPatch(provider,deliveryStatus,errorMessage,externalMessageId){
-  const utils=reminderUtils();
-  if(utils&&typeof utils.buildAppointmentReminderAuditPatch==='function'){
-    return utils.buildAppointmentReminderAuditPatch({
-      provider:provider,
-      deliveryStatus:deliveryStatus,
-      sentAt:new Date().toISOString(),
-      errorMessage:errorMessage||null,
-      externalMessageId:externalMessageId||null
-    });
-  }
-  return deliveryStatus==='sent'
-    ? {appointment_reminder_sent:true,appointment_reminder_sent_at:new Date().toISOString(),reminder_sent:true,reminder_sent_at:new Date().toISOString()}
-    : {appointment_reminder_sent:false,reminder_sent:false};
+  return !!(whatsappServiceStatus&&whatsappServiceStatus.connection_status==='connected');
 }
 function renderReminderAutomationStatus(){
-  const badge=$('reminderModeBadge'),status=$('reminderAutoStatus');
+  const badge=$('reminderModeBadge');
   if(badge){badge.className='mode-badge auto';badge.textContent='Baileys'}
-  if(status){
-    status.textContent=isBaileysProviderOnline()?'Bot Baileys conectado: confirmações automáticas '+appointmentReminderHoursBefore()+'h antes do atendimento.':'Aguardando conexão do bot Baileys. Verifique Discloud e whatsapp_service_status.';
-  }
 }
-function reminderListFor(kind,date){
+function reminderListFor(date){
   return appointments
-    .filter(a=>a.appointment_date===date&&isReminderCandidate(a,kind))
+    .filter(a=>a.appointment_date===date&&isReminderCandidate(a))
     .sort((a,b)=>normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time)));
 }
 function aiRadarWeekStartValue(){
@@ -1855,53 +1841,27 @@ async function renderAIRadar(force=false){
   }
 }
 function renderReminders(){
-  const kind=$('reminderType')?$('reminderType').value:'appointment';
   const date=$('reminderDate').value||isoDate(new Date(Date.now()+86400000));
   $('reminderDate').value=date;
   renderReminderAutomationStatus();
   refreshWhatsappServiceStatus();
-  const list=reminderListFor(kind,date);
+  const list=reminderListFor(date);
   const patientsById=Object.create(null);
   const servicesById=Object.create(null);
   patients.forEach(patient=>{patientsById[String(patient.id)]=patient});
   services.forEach(service=>{servicesById[String(service.id)]=service});
   const hasReminderPhone=a=>cleanPhone((patientsById[String(a.patient_id)]||{}).whatsapp).length>=10;
-  $('reminderTitle').textContent=kind==='form'?'Formulários pós-atendimento':'Lembretes de sessão';
-  const pending=list.filter(a=>!reminderFlag(a,kind)&&hasReminderPhone(a));
-  const sent=list.filter(a=>reminderFlag(a,kind));
-  const no=list.filter(a=>!reminderFlag(a,kind)&&!hasReminderPhone(a));
-  const due=pending.filter(a=>{const d=reminderDueAt(a,kind);return d&&d.getTime()<=Date.now();});
-  $('reminderKpis').innerHTML=`<div class="kpi"><div class="small muted">Pendentes</div><strong>${pending.length}</strong></div><div class="kpi"><div class="small muted">Vencidos agora</div><strong>${due.length}</strong></div><div class="kpi"><div class="small muted">Enviados</div><strong>${sent.length}</strong></div><div class="kpi"><div class="small muted">Sem WhatsApp</div><strong>${no.length}</strong></div>`;
+  const pending=list.filter(a=>!reminderFlag(a)&&hasReminderPhone(a));
+  const sent=list.filter(a=>reminderFlag(a));
+  const no=list.filter(a=>!reminderFlag(a)&&!hasReminderPhone(a));
+  const due=pending.filter(a=>{const d=reminderDueAt(a);return d&&d.getTime()<=Date.now();});
+  $('reminderKpis').innerHTML=`<div class="kpi"><div class="small muted">Pendentes</div><strong>${pending.length}</strong></div><div class="kpi"><div class="small muted">Vencidos</div><strong>${due.length}</strong></div><div class="kpi"><div class="small muted">Enviados</div><strong>${sent.length}</strong></div>`;
   $('reminderList').innerHTML=list.length?list.map(a=>{
-    const p=patientsById[String(a.patient_id)]||{},service=servicesById[String(a.service_id)]||{},sentFlag=reminderFlag(a,kind),phoneOk=hasReminderPhone(a),providerLabel=a.appointment_reminder_provider_used?` · ${esc(a.appointment_reminder_provider_used)}`:'',dueText=sentFlag?'Enviado':reminderDueLabel(a,kind),cls=sentFlag?'reminder-enviado':phoneOk?'reminder-pendente':'reminder-semwhats';
-    return `<div class="item ${cls}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)} — ${esc(p.name||'Paciente')}</strong><div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(service.name||'Sem serviço')} · <span class="status-chip ${a.status}">${a.status}</span> · <span class="reminder-state ${cls}">${esc(dueText)}</span>${providerLabel}</div></div><div class="toolbar">${sentFlag?'<span class="status-chip concluido">Enviado</span>':phoneOk?`<button class="btn primary" onclick="sendWhatsapp('${a.id}',true,'${kind}')">Enviar</button><button class="btn" onclick="markReminder('${a.id}','${kind}')">Marcar enviado</button>`:'<span class="status-chip cancelado">Sem WhatsApp</span>'}</div></div></div>`;
+    const p=patientsById[String(a.patient_id)]||{},service=servicesById[String(a.service_id)]||{},sentFlag=reminderFlag(a),phoneOk=hasReminderPhone(a),dueText=sentFlag?'Enviado':reminderDueLabel(a),cls=sentFlag?'reminder-enviado':phoneOk?'reminder-pendente':'reminder-semwhats';
+    return `<div class="item ${cls}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)} — ${esc(p.name||'Paciente')}</strong><div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(service.name||'Sem serviço')} · <span class="status-chip ${a.status}">${a.status}</span> · <span class="reminder-state ${cls}">${esc(dueText)}</span></div></div><div class="toolbar">${sentFlag?'<span class="status-chip concluido">Enviado</span>':phoneOk?'<button class="btn btn-compact" onclick="sendReminderNow(\''+a.id+'\')">Enviar WhatsApp</button>':'<span class="status-chip cancelado">Sem WhatsApp</span>'}</div></div></div>`;
   }).join(''):'<div class="muted">Nenhum lembrete nesta data.</div>';
 }
-async function markReminder(id,kind='appointment'){
-  const now=new Date().toISOString();
-  const body=kind==='form'
-    ? {form_reminder_sent:true,form_reminder_sent_at:now}
-    : buildAppointmentReminderPatch('wa_me','sent',null,null);
-  await api('appointments?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});
-  await loadAll(true);
-  renderReminders();
-  toast('Lembrete marcado como enviado.','success');
-}
-async function sendWhatsapp(id,mark=false,kind='appointment'){
-  const a=appointments.find(x=>String(x.id)===String(id));if(!a)return false;
-  const p=patientById(a.patient_id);const phone='55'+cleanPhone(p.whatsapp);
-  if(phone.length<12){toast('Paciente sem WhatsApp válido.','warning');return false}
-  const defaultTpl=kind==='form'?'Olá, {nome}! Obrigado por comparecer à FEMIC. Quando puder, responda o formulário pós-atendimento: {form_link}':'';
-  const tpl=kind==='form'
-    ? (localStorage.femic_tpl_form_reminder||($('tplFormReminder')?.value)||defaultTpl)
-    : ((settings.whatsapp_template_appointment||localStorage.femic_tpl_reminder||$('tplReminder').value||DEFAULT_WHATSAPP_REMINDER_TEMPLATE));
-  const msg=tpl.replaceAll('{nome}',p.name||'').replaceAll('{data}',fmtDate(a.appointment_date)).replaceAll('{hora}',normalizeTime(a.start_time)).replaceAll('{servico}',serviceName(a.service_id)).replaceAll('{form_link}',localStorage.femic_form_link||($('formLinkInput')?.value)||'');
-  const opened=window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');
-  if(!opened){toast('O navegador bloqueou a janela do WhatsApp. Use o modo manual ou libere pop-ups para a agenda.','warning');return false}
-  if(mark) await markReminder(id,kind);
-  toast('WhatsApp manual aberto como contingência. O envio automático oficial é pelo bot Baileys.','info');
-  return true;
-}
+
 function renderWhatsappProviderBadge(){
   const provider='baileys';
   const badge=$('whatsappProviderBadge');
@@ -2176,7 +2136,62 @@ async function savePayer(){const name=$('payerName').value.trim();if(!name)retur
   }catch(e){
     toast('Erro: '+e.message,'error');
   }
-}async function saveSettings(){const working=[...document.querySelectorAll('.wd:checked')].map(x=>x.value).join(',')||'1,2,3,4,5,6';const payload={start_time:$('setStart').value,end_time:$('setEnd').value,working_periods:$('setPeriods').value.trim()||(($('setStart').value||'08:00')+'-'+($('setEnd').value||'20:00')),slot_interval_minutes:Number($('setInterval').value),working_days:working,max_patients_per_slot:Number(settings.max_patients_per_slot||4)};try{if(settings.id)await api('schedule_settings?id=eq.'+settings.id,{method:'PATCH',body:JSON.stringify(payload)});else await api('schedule_settings',{method:'POST',body:JSON.stringify(payload)});await loadAll(true);toast('Expediente salvo.','success')}catch(e){toast('Erro: '+e.message,'error')}}async function removePackage(id){const p=packages.find(x=>String(x.id)===String(id));if(!p)return;const used=Number(p.total_sessions||0)-Number(p.remaining_sessions||0);const linked=appointments.some(a=>String(a.session_package_id)===String(id))||movements.some(m=>String(m.session_package_id)===String(id));if(used>0||linked){if(confirm('Este pacote já tem uso ou vínculo no histórico. Para preservar os dados, ele será inativado em vez de apagado. Continuar?')){await api('session_packages?id=eq.'+id,{method:'PATCH',body:JSON.stringify({active:false,...packageEndedAtPatchValue(p.ended_at||new Date().toISOString())})});await loadAll(true);toast('Pacote inativado.','success')}return}if(confirm('Remover este pacote definitivamente?')){await api('session_packages?id=eq.'+id,{method:'DELETE'});await loadAll(true);toast('Pacote removido.','success')}}async function removeService(id){if(appointments.some(a=>String(a.service_id)===String(id))||packages.some(p=>String(p.service_id)===String(id))){toast('Serviço em uso. Não removi para preservar histórico.','warning');return}if(confirm('Remover serviço?')){await api('services?id=eq.'+id,{method:'DELETE'});await loadAll(true)}}async function removePayer(id){if(services.some(s=>String(s.health_insurance_id)===String(id))){toast('Pagador vinculado a serviço. Remova/inative serviços primeiro.','warning');return}if(confirm('Remover pagador?')){await api('health_insurances?id=eq.'+id,{method:'DELETE'});await loadAll(true)}}
+}function renderSlotsConfig(){
+  const step=Number($('setInterval')?.value||30);
+  const start=$('setSlotStart')?.value||'08:00';
+  const end=$('setSlotEnd')?.value||'20:00';
+  const names=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const days=String(settings.working_days||'1,2,3,4,5').split(',');
+  let m=timeToMin(start),endMin=timeToMin(end);
+  const slots=[];
+  while(m<endMin){slots.push(minToTime(m));m+=step}
+  const slotsConfig=settings.slots_config||{};
+  let html='';
+  days.forEach(d=>{
+    const dayNum=Number(d);
+    const enabled=slotsConfig[dayNum]||[];
+    html+=`<div class="slots-day-row"><strong class="slots-day-label">${names[dayNum]}</strong><div class="slots-day-grid">`;
+    slots.forEach(s=>{
+      const active=enabled.includes(s);
+      html+=`<label class="slot-toggle ${active?'active':''}"><input type="checkbox" data-day="${dayNum}" data-time="${s}" ${active?'checked':''} onchange="this.parentElement.classList.toggle('active')">${s}</label>`;
+    });
+    html+=`</div></div>`;
+  });
+  const grid=$('slotsConfigGrid');
+  if(grid) grid.innerHTML=html;
+}
+async function saveSettings(){
+  const working=[...document.querySelectorAll('.wd:checked')].map(x=>x.value).join(',')||'1,2,3,4,5,6';
+  const step=Number($('setInterval')?.value||30);
+  const start=$('setSlotStart')?.value||'08:00';
+  const end=$('setSlotEnd')?.value||'20:00';
+  const slotsConfig={};
+  document.querySelectorAll('#slotsConfigGrid input[type=checkbox]').forEach(cb=>{
+    if(cb.checked){
+      const day=cb.dataset.day;
+      const time=cb.dataset.time;
+      if(!slotsConfig[day]) slotsConfig[day]=[];
+      slotsConfig[day].push(time);
+    }
+  });
+  const payload={
+    start_time:start,
+    end_time:end,
+    working_periods:'',
+    slot_interval_minutes:step,
+    working_days:working,
+    max_patients_per_slot:Number(settings.max_patients_per_slot||4),
+    slots_config:slotsConfig
+  };
+  try{
+    if(settings.id) await api('schedule_settings?id=eq.'+settings.id,{method:'PATCH',body:JSON.stringify(payload)});
+    else await api('schedule_settings',{method:'POST',body:JSON.stringify(payload)});
+    await loadAll(true);
+    toast('Expediente salvo.','success')
+  }catch(e){
+    toast('Erro: '+e.message,'error')
+  }
+}async function removePackage(id){const p=packages.find(x=>String(x.id)===String(id));if(!p)return;const used=Number(p.total_sessions||0)-Number(p.remaining_sessions||0);const linked=appointments.some(a=>String(a.session_package_id)===String(id))||movements.some(m=>String(m.session_package_id)===String(id));if(used>0||linked){if(confirm('Este pacote já tem uso ou vínculo no histórico. Para preservar os dados, ele será inativado em vez de apagado. Continuar?')){await api('session_packages?id=eq.'+id,{method:'PATCH',body:JSON.stringify({active:false,...packageEndedAtPatchValue(p.ended_at||new Date().toISOString())})});await loadAll(true);toast('Pacote inativado.','success')}return}if(confirm('Remover este pacote definitivamente?')){await api('session_packages?id=eq.'+id,{method:'DELETE'});await loadAll(true);toast('Pacote removido.','success')}}async function removeService(id){if(appointments.some(a=>String(a.service_id)===String(id))||packages.some(p=>String(p.service_id)===String(id))){toast('Serviço em uso. Não removi para preservar histórico.','warning');return}if(confirm('Remover serviço?')){await api('services?id=eq.'+id,{method:'DELETE'});await loadAll(true)}}async function removePayer(id){if(services.some(s=>String(s.health_insurance_id)===String(id))){toast('Pagador vinculado a serviço. Remova/inative serviços primeiro.','warning');return}if(confirm('Remover pagador?')){await api('health_insurances?id=eq.'+id,{method:'DELETE'});await loadAll(true)}}
 
 function renderBackupPanel(){
   if($('bkPatients')) $('bkPatients').textContent = patients.length;
@@ -2340,9 +2355,72 @@ async function restoreAgendaBackup(event){
     if(Array.isArray(tables.schedule_blocks)){
       try{await upsertRows('schedule_blocks', tables.schedule_blocks)}catch(e){if(!isMissingScheduleBlocksTableError(e))throw e}
     }
-    await upsertRows('session_packages', tables.session_packages);
-    await upsertRows('appointments', tables.appointments);
-    await upsertRows('session_movements', tables.session_movements);
+
+    // Valida integridade referencial antes do upsert
+    const validPatientIds = new Set((tables.patients||[]).map(p=>String(p.id)));
+    const validServiceIds = new Set((tables.services||[]).map(s=>String(s.id)));
+
+    // Pacotes: registra órfãos e restaura apenas os válidos, um a um
+    const orphanPackages = [];
+    const cleanPackages = [];
+    (tables.session_packages||[]).forEach(pkg=>{
+      if(validPatientIds.has(String(pkg.patient_id)) && (!pkg.service_id || validServiceIds.has(String(pkg.service_id)))){
+        cleanPackages.push(pkg);
+      }else{
+        orphanPackages.push(pkg);
+      }
+    });
+    if(orphanPackages.length){
+      console.warn('Ignorando '+orphanPackages.length+' pacote(s) órfão(s) no restore:', orphanPackages.map(p=>{return{id:p.id,patient_id:p.patient_id,service_id:p.service_id}}));
+    }
+    // Upsert individual para evitar que um único erro de FK derrube o lote
+    const restoredPkgIds = new Set();
+    for(const pkg of cleanPackages){
+      try{
+        await upsertRows('session_packages', [pkg]);
+        restoredPkgIds.add(String(pkg.id));
+      }catch(e){
+        console.warn('Falha ao restaurar pacote '+pkg.id+': '+e.message, pkg);
+      }
+    }
+
+    const orphanAppts = [];
+    const cleanAppts = [];
+    (tables.appointments||[]).forEach(a=>{
+      const ok = validPatientIds.has(String(a.patient_id)) && (!a.service_id || validServiceIds.has(String(a.service_id))) && (!a.session_package_id || restoredPkgIds.has(String(a.session_package_id)));
+      if(ok) cleanAppts.push(a);
+      else orphanAppts.push(a);
+    });
+    if(orphanAppts.length){
+      console.warn('Ignorando '+orphanAppts.length+' agendamento(s) órfão(s) no restore.');
+    }
+    const restoredApptIds = new Set();
+    for(const a of cleanAppts){
+      try{
+        const r = await upsertRows('appointments', [a]);
+        if(r&&r[0]) restoredApptIds.add(String(r[0].id));
+        else if(a.id) restoredApptIds.add(String(a.id));
+      }catch(e){
+        console.warn('Falha ao restaurar agendamento '+a.id+': '+e.message, a);
+      }
+    }
+
+    const orphanMoves = [];
+    for(const m of (tables.session_movements||[])){
+      const ok = validPatientIds.has(String(m.patient_id)) && (!m.appointment_id || restoredApptIds.has(String(m.appointment_id))) && (!m.session_package_id || restoredPkgIds.has(String(m.session_package_id)));
+      if(ok){
+        try{
+          await upsertRows('session_movements', [m]);
+        }catch(e){
+          console.warn('Falha ao restaurar movimento '+m.id+': '+e.message, m);
+        }
+      }else{
+        orphanMoves.push(m);
+      }
+    }
+    if(orphanMoves.length){
+      console.warn('Ignorando '+orphanMoves.length+' movimento(s) órfão(s) no restore.');
+    }
 
     await loadAll(true);
     toast('Backup restaurado com sucesso.', 'success');
@@ -2354,6 +2432,28 @@ async function restoreAgendaBackup(event){
   }
 }
 
+async function sendReminderNow(appointmentId){
+  try{
+    const patch = {
+      appointment_reminder_sent: false,
+      reminder_sent: false,
+      appointment_reminder_sent_at: null,
+      reminder_sent_at: null,
+      appointment_reminder_delivery_status: null,
+      appointment_reminder_error_message: null,
+      appointment_reminder_last_attempt_at: new Date(Date.now() - 86400000).toISOString()
+    };
+    await api('appointments?id=eq.' + appointmentId, {method:'PATCH', body: JSON.stringify(patch)});
+    const a = appointments.find(x => String(x.id) === String(appointmentId));
+    if(a){
+      Object.assign(a, patch);
+    }
+    renderReminders();
+    toast('Lembrete redefinido. O bot Baileys enviará em instantes.','success');
+  }catch(e){
+    toast('Erro: '+e.message,'error');
+  }
+}
 async function saveTemplates(){const template=($('tplReminder')?.value||'').trim()||DEFAULT_WHATSAPP_REMINDER_TEMPLATE;localStorage.femic_tpl_reminder=template;try{const payload={whatsapp_template_appointment:template};if(settings.id)await api('schedule_settings?id=eq.'+settings.id,{method:'PATCH',body:JSON.stringify(payload)});else await api('schedule_settings',{method:'POST',body:JSON.stringify({start_time:settings.start_time||'08:00',end_time:settings.end_time||'20:00',working_days:settings.working_days||'1,2,3,4,5,6',working_periods:settings.working_periods||'08:00-12:00,16:00-20:00',max_patients_per_slot:Number(settings.max_patients_per_slot||4),slot_interval_minutes:Number(settings.slot_interval_minutes||30),whatsapp_provider:'baileys',whatsapp_template_appointment:template,whatsapp_confirmation_hours_before:appointmentReminderHoursBefore(),whatsapp_service_name:settings.whatsapp_service_name||'baileys-main'})});settings.whatsapp_template_appointment=template;toast('Modelo salvo.','success')}catch(e){toast(isMissingWhatsappSettingsSchemaError(e)?'Atualize o Supabase com o patch incremental de WhatsApp/Baileys antes de salvar o modelo.':'Erro ao salvar modelo: '+e.message,isMissingWhatsappSettingsSchemaError(e)?'warning':'error')}}async function copySql(){const ok=confirm('Este SQL faz RESET COMPLETO e apaga tabelas operacionais antes de recriar a estrutura. Use apenas em banco vazio ou depois de backup JSON. Deseja copiar mesmo assim?');if(!ok)return;await navigator.clipboard.writeText(SQL_SCHEMA);toast('SQL destrutivo copiado.','warning')}
 $('sqlBox').textContent=SQL_SCHEMA;loadConfig();checkFemicAuth();$('dayDate').value=todayIso();$('reminderDate').value=isoDate(new Date(Date.now()+86400000));$('reportMonth').value=new Date().toISOString().slice(0,7);
 /* =========================================================
@@ -3067,12 +3167,26 @@ function renderWeek(){
   html+=`<div class="week-v3-axis" style="height:${timelineHeight}px;--hour-height:${hourHeight}px">`;
   timeMarks.forEach(min=>{html+=`<div class="week-v3-axis-label" style="top:${Math.round((min-bounds.start)*pxPerMin)}px">${minToTime(min)}</div>`});
   html+=`</div>`;
+  const dayBlocksByDate=Object.create(null);
+  visibleDays.forEach(d=>{
+    const ds=isoDate(d);
+    dayBlocksByDate[ds]=activeScheduleBlocksForDate(ds);
+  });
   visibleDays.forEach(d=>{
     const ds=isoDate(d);
     const closed=isClosedForView(ds);
     const dayAppointments=weekData.byDate[ds]||[];
+    const dayBlocks=dayBlocksByDate[ds]||[];
     const items=layoutWeekV3Items(weekV3ItemsForDay(ds,dayAppointments,bounds,patientNames,serviceDurations));
     html+=`<div class="week-v3-day ${ds===todayIso()?'today':''} ${closed?'closed':''}" style="height:${timelineHeight}px;--hour-height:${hourHeight}px" onclick="femicWeekClickV1434(event,'${ds}',{start:${bounds.start},end:${bounds.end}},${pxPerMin})">`;
+    dayBlocks.forEach(block=>{
+      const bStart=timeToMin(block.start_time);
+      const bEnd=timeToMin(block.end_time);
+      if(bEnd<=bounds.start||bStart>=bounds.end)return;
+      const top=Math.round(Math.max(bStart,bounds.start)-bounds.start)*pxPerMin;
+      const h=Math.round((Math.min(bEnd,bounds.end)-Math.max(bStart,bounds.start))*pxPerMin);
+      html+=`<div class="week-v3-block" style="top:${top}px;height:${Math.max(6,h)}px" title="${esc(block.reason||'Bloqueado')} — clique para reabrir" onclick="event.stopPropagation();reopenScheduleBlock('${esc(block.id)}')"></div>`;
+    });
     items.forEach(item=>{
       const key='a'+(itemIndex++);
       const a=item.appointment;
@@ -3285,7 +3399,7 @@ function shouldBackgroundRefresh(){
   if(!base()||!key()||!sessionStorage.getItem('femic_jwt')) return false;
   if(hasOpenModal()) return false;
   if(Date.now()-lastUserInteractionAt<15000) return false;
-  return ['agenda','day','pendencias','report','reminders','ai','patients','packages','settings'].includes(getActivePanelName());
+  return ['agenda','day','report','reminders','ai','packages','settings'].includes(getActivePanelName());
 }
 ['pointerdown','keydown','visibilitychange'].forEach(function(evt){
   document.addEventListener(evt,function(){lastUserInteractionAt=Date.now();},{passive:true});

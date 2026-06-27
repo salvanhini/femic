@@ -98,10 +98,8 @@
       <div class="nav-link" data-panel="agenda-assistida" onclick="showPanel('agenda-assistida')"><span class="icon"><i data-lucide="calendar-plus-2"></i></span><span>Agenda assistida</span></div>
       <div class="nav-link" data-panel="prontuario" onclick="showPanel('prontuario')"><span class="icon"><i data-lucide="stethoscope"></i></span><span>Prontuário</span></div>
       <div class="nav-link" data-panel="packages" onclick="showPanel('packages')"><span class="icon"><i data-lucide="ticket-check"></i></span><span>Pacotes</span></div>
-      <div class="nav-link" data-panel="ai" onclick="showPanel('ai')"><span class="icon"><i data-lucide="sparkles"></i></span><span>IA</span></div>
       <div class="nav-link" data-panel="reminders" onclick="showPanel('reminders')"><span class="icon"><i data-lucide="message-circle"></i></span><span>Lembretes</span></div>
       <div class="nav-link" data-panel="report" onclick="showPanel('report')"><span class="icon"><i data-lucide="chart-column"></i></span><span>Relatório</span></div>
-      <div class="nav-link" data-panel="pendencias" onclick="showPanel('pendencias')"><span class="icon"><i data-lucide="inbox"></i></span><span>Pendências</span><span class="pending-nav-badge hidden" id="pendingNavBadge">0</span></div>
       <div class="nav-link" data-panel="documentos" onclick="showPanel('documentos')"><span class="icon"><i data-lucide="file-text"></i></span><span>Documentos</span></div>
       <div class="nav-link" data-panel="historico" onclick="showPanel('historico')"><span class="icon"><i data-lucide="history"></i></span><span>Histórico</span></div>
       <div class="nav-link" data-panel="settings" onclick="showPanel('settings')"><span class="icon"><i data-lucide="settings-2"></i></span><span>Configurações</span></div>
@@ -132,7 +130,7 @@
     <div class="wrap">
 
   <section class="panel active" id="panel-agenda">
-    <div class="card agenda-surface" style="margin-bottom:16px"><div class="toolbar agenda-toolbar"><div class="view-switch" role="tablist" aria-label="Visualização da agenda"><button class="view-chip" id="viewDayBtn" type="button" onclick="showPanel('day')">Dia</button><button class="view-chip active" id="viewWeekBtn" type="button" onclick="setAgendaViewMode('week')">Semana</button><button class="view-chip" id="viewMonthBtn" type="button" onclick="setAgendaViewMode('month')">Mês</button></div><div class="toolbar"><button class="btn" onclick="prevPeriod()">◀</button><button class="btn ghost" onclick="goToday()">Hoje</button><button class="btn" onclick="nextPeriod()">▶</button></div><select id="viewMode" onchange="renderAgenda()" style="display:none"><option value="week">Semana</option><option value="month">Mês</option></select><strong id="periodLabel" style="align-self:center;color:var(--primary)"></strong><div class="legend-row"><span class="legend"><i class="legend-dot" style="background:#f59e0b"></i>Agendado</span><span class="legend"><i class="legend-dot" style="background:#2563eb"></i>Confirmado</span><span class="legend"><i class="legend-dot" style="background:#10b981"></i>Concluído</span><span class="legend"><i class="legend-dot" style="background:#ef4444"></i>Cancelado</span><span class="legend"><i class="legend-dot package-alert"></i>Precisa renovar ou planejar pacote</span></div></div><div class="agenda-filterbar"><select id="agendaStatusFilter" onchange="renderAgenda()"><option value="all">Todos os status</option><option value="agendado">Agendado</option><option value="confirmado">Confirmado</option><option value="concluido">Concluído</option><option value="cancelado">Cancelado</option></select><select id="agendaServiceFilter" onchange="renderAgenda()"><option value="all">Todos os serviços</option></select><button class="btn ghost" onclick="clearAgendaFilters()">Limpar filtros</button></div></div>
+    <div class="card agenda-surface" style="margin-bottom:16px"><div class="toolbar agenda-toolbar"><div class="view-switch" role="tablist" aria-label="Visualização da agenda"><button class="view-chip" id="viewDayBtn" type="button" onclick="showPanel('day')">Dia</button><button class="view-chip active" id="viewWeekBtn" type="button" onclick="setAgendaViewMode('week')">Semana</button><button class="view-chip" id="viewMonthBtn" type="button" onclick="setAgendaViewMode('month')">Mês</button></div><div class="toolbar agenda-nav-compact"><button class="btn btn-compact" onclick="prevPeriod()" title="Semana anterior">◀</button><button class="btn btn-compact" onclick="goToday()">Hoje</button><button class="btn btn-compact" onclick="nextPeriod()" title="Próxima semana">▶</button></div><select id="viewMode" onchange="renderAgenda()" style="display:none"><option value="week">Semana</option><option value="month">Mês</option></select><strong id="periodLabel" style="align-self:center;color:var(--primary);font-size:.8rem"></strong><div class="legend-row"><span class="legend"><i class="legend-dot" style="background:#f59e0b"></i>Agd</span><span class="legend"><i class="legend-dot" style="background:#2563eb"></i>Conf</span><span class="legend"><i class="legend-dot" style="background:#10b981"></i>Conc</span><span class="legend"><i class="legend-dot" style="background:#ef4444"></i>Canc</span></div><button class="btn-icon-only btn-block-time" onclick="openBlockModal()" title="Bloquear horário">🔒</button></div><div class="agenda-filterbar agenda-filterbar-compact"><select id="agendaStatusFilter" onchange="renderAgenda()" style="display:none"><option value="all">Todos</option><option value="agendado">Agendado</option><option value="confirmado">Confirmado</option><option value="concluido">Concluído</option><option value="cancelado">Cancelado</option></select><div class="filter-chips" id="agendaFilterChips"><button class="filter-chip active" data-value="all" onclick="setAgendaStatusFilter('all')">Todos</button><button class="filter-chip" data-value="agendado" onclick="setAgendaStatusFilter('agendado')">Agendado</button></div><select id="agendaServiceFilter" onchange="renderAgenda()"><option value="all">Todos os serviços</option></select><button class="btn-icon-only btn-block-time-sm" onclick="openBlockModal()" title="Bloquear horário">🚫</button></div></div>
     <div id="monthView"><div class="calendar-head" id="monthHead"></div><div id="monthCalendar"></div></div>
     <div id="weekView" class="hidden"><div id="weekBoard"></div></div>
     <details class="card appointment-search-card appointment-search-drawer">
@@ -164,17 +162,16 @@
       </div>
       <div id="dayKpis"></div>
     </div>
-    <div class="card" style="margin-top:16px"><div class="section-title"><h3>Lista do dia</h3><span class="muted small">Concluir, cancelar, WhatsApp e ficha em poucos cliques</span></div><div class="list" id="dayList"></div></div>
+    <div class="card" style="margin-top:16px"><div class="section-title"><h3>Lista do dia</h3><span class="muted small">Concluir, cancelar e acessar ficha em poucos cliques</span></div><div class="list" id="dayList"></div></div>
   </section>
-
 
   <section class="panel" id="panel-patients">
     <div class="card">
-      <div class="section-title"><div><div class="eyebrow">Novo paciente</div><h3>Cadastro direto no Supabase da agenda</h3></div></div>
-        <div class="grid grid-2"><div class="field"><label>Nome completo *</label><input id="newPatientName" placeholder="Nome completo"></div><div class="field"><label>WhatsApp *</label><input id="newPatientWhatsapp" placeholder="(16) 99999-9999" inputmode="numeric" autocomplete="tel" maxlength="15" oninput="formatWhatsappInput(this)"></div></div>
-        <div class="grid grid-2" style="margin-top:12px"><div class="field"><label>Data de nascimento</label><input id="newPatientBirthDate" type="date"></div><div class="field"><label>Como nos encontrou</label><input id="newPatientReferralSource" placeholder="Instagram, indicação, médico, retorno..."></div></div>
-        <div class="field" style="margin-top:12px"><label>Patologia / observação</label><input id="newPatientPathology" placeholder="Patologia, queixa ou observação"></div>
-      <button class="btn primary" style="margin-top:12px" onclick="savePatient()">Salvar paciente no Supabase</button>
+      <div class="section-title"><div><div class="eyebrow">Novo paciente</div><h3>Cadastro</h3></div></div>
+      <div class="grid grid-2"><div class="field"><label>Nome completo *</label><input id="newPatientName" placeholder="Nome completo"></div><div class="field"><label>WhatsApp *</label><input id="newPatientWhatsapp" placeholder="(16) 99999-9999" inputmode="numeric" autocomplete="tel" maxlength="15" oninput="formatWhatsappInput(this)"></div></div>
+      <div class="grid grid-2" style="margin-top:12px"><div class="field"><label>Data de nascimento</label><input id="newPatientBirthDate" type="date"></div><div class="field"><label>Como nos encontrou</label><input id="newPatientReferralSource" placeholder="Instagram, indicação, médico, retorno..."></div></div>
+      <div class="field" style="margin-top:12px"><label>Patologia / observação</label><input id="newPatientPathology" placeholder="Patologia, queixa ou observação"></div>
+      <button class="btn primary" style="margin-top:12px" onclick="savePatient()">Salvar paciente</button>
     </div>
     <div class="card patient-search-shell" style="margin-top:16px">
       <div class="section-title"><h3>Buscar paciente ativo</h3></div>
@@ -195,93 +192,65 @@
   </section>
 
   <section class="panel" id="panel-agenda-assistida">
-    <div class="assistant-booking-shell">
-      <div class="assistant-booking-head-card">
-        <div>
-          <div class="eyebrow">Agenda assistida</div>
-          <h3>Cadastre ou localize o paciente e monte a grade com revisão</h3>
-          <p class="muted small">Escolha o paciente, informe serviço, dias, período e quantidade de sessões. O sistema organiza a grade e sugere os melhores horários para você confirmar.</p>
-        </div>
+    <section class="card">
+      <div class="section-title">
+        <div><div class="eyebrow">Agendamento rápido</div><h3>Escolha o paciente e monte a grade</h3></div>
       </div>
-
-      <details class="assistant-booking-guide card">
-        <summary><span><span class="eyebrow">Tutorial</span><strong>Como funciona a Agenda assistida</strong></span><span class="muted small">Abrir guia</span></summary>
-        <div class="assistant-guide-grid">
-          <div class="assistant-guide-step"><span>1</span><div><strong>Escolha ou crie o paciente</strong><p>Use um cadastro já existente ou abra o bloco inline para preencher nome, WhatsApp e observação.</p></div></div>
-          <div class="assistant-guide-step"><span>2</span><div><strong>Informe a necessidade</strong><p>Defina serviço, dias da semana, período, frequência, quantidade de sessões e data inicial.</p></div></div>
-          <div class="assistant-guide-step"><span>3</span><div><strong>Confirme o paciente</strong><p>Se for um cadastro novo, a confirmação cria o paciente usando a mesma regra do cadastro padrão.</p></div></div>
-          <div class="assistant-guide-step"><span>4</span><div><strong>Escolha a grade</strong><p>Compare as sugestões calculadas conforme o expediente, o serviço e os horários disponíveis.</p></div></div>
-          <div class="assistant-guide-step"><span>5</span><div><strong>Confirme os agendamentos</strong><p>Os conflitos são verificados novamente antes da gravação final de cada horário.</p></div></div>
-        </div>
-        <div class="assistant-guide-notes">
-          <p><strong>Nada é gravado automaticamente.</strong> Paciente e horários só são salvos após sua confirmação.</p>
-          <p>Na guia Pacientes, o cadastro manual avisa sobre nome ou WhatsApp parecido, mas permite confirmar uma exceção.</p>
-          <p>Solicitações assistidas salvas continuam disponíveis na fila de Pendências.</p>
-        </div>
-      </details>
-
-      <section class="card assistant-booking-card">
-        <div class="section-title">
-          <div><div class="eyebrow">Cadastro + agenda assistida</div><h3>Escolha o paciente, informe a necessidade e veja as melhores opções</h3></div>
-        </div>
-        <div class="assistant-form-grid">
-          <section class="assistant-subcard">
-            <div class="assistant-subcard-head">
-              <div>
-                <div class="eyebrow">Paciente</div>
-                <h4>Usar cadastro existente ou criar novo</h4>
-              </div>
-              <button class="btn ghost" id="assistantTogglePatientModeBtn" type="button">Novo paciente</button>
+      <div class="assistant-form-grid">
+        <section class="assistant-subcard">
+          <div class="assistant-subcard-head">
+            <div>
+              <div class="eyebrow">Paciente</div>
+              <h4>Usar cadastro existente ou criar novo</h4>
             </div>
-            <div class="field">
-              <label>Paciente já cadastrado</label>
-              <select id="assistantPatientSelect"></select>
-            </div>
-            <div class="muted small assistant-inline-note" id="assistantPatientInlineStatus">Selecione um paciente já cadastrado. Se não encontrar, abra o cadastro inline.</div>
-            <div class="assistant-new-patient hidden" id="assistantNewPatientFields">
-              <div class="grid grid-2">
-                <div class="field"><label>Nome completo *</label><input id="assistantNewPatientName" placeholder="Nome do paciente"></div>
-                <div class="field"><label>WhatsApp *</label><input id="assistantNewPatientPhone" placeholder="(16) 99999-9999" inputmode="numeric" maxlength="15" oninput="formatWhatsappInput(this)"></div>
-              </div>
-              <div class="field" style="margin-top:12px"><label>Observação</label><input id="assistantNewPatientPathology" placeholder="Observação, queixa ou patologia"></div>
-            </div>
-          </section>
-
-          <section class="assistant-subcard">
-            <div class="assistant-subcard-head">
-              <div>
-                <div class="eyebrow">Necessidades</div>
-                <h4>Critérios para o sistema montar a grade</h4>
-              </div>
-            </div>
+            <button class="btn ghost" id="assistantTogglePatientModeBtn" type="button">Novo paciente</button>
+          </div>
+          <div class="field">
+            <label>Paciente já cadastrado</label>
+            <select id="assistantPatientSelect"></select>
+          </div>
+          <div class="muted small assistant-inline-note" id="assistantPatientInlineStatus">Selecione um paciente já cadastrado.</div>
+          <div class="assistant-new-patient hidden" id="assistantNewPatientFields">
             <div class="grid grid-2">
-              <div class="field"><label>Serviço *</label><select id="assistantServiceSelect"></select></div>
-              <div class="field"><label>Data inicial *</label><input id="assistantStartDate" type="date"></div>
-              <div class="field"><label>Período</label><select id="assistantPeriod"><option value="">Qualquer período</option><option value="manha">Manhã</option><option value="tarde">Tarde</option><option value="noite">Noite</option></select></div>
-              <div class="field"><label>Quantas vezes por semana *</label><input id="assistantFrequency" type="number" min="1" max="6" placeholder="Ex.: 2"></div>
-              <div class="field"><label>Quantidade de sessões *</label><input id="assistantTotalSessions" type="number" min="1" placeholder="Ex.: 10"></div>
+              <div class="field"><label>Nome completo *</label><input id="assistantNewPatientName" placeholder="Nome do paciente"></div>
+              <div class="field"><label>WhatsApp *</label><input id="assistantNewPatientPhone" placeholder="(16) 99999-9999" inputmode="numeric" maxlength="15" oninput="formatWhatsappInput(this)"></div>
             </div>
-            <div class="field" style="margin-top:12px">
-              <label>Dias da semana *</label>
-              <div class="assistant-weekdays" id="assistantWeekdays">
-                <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="1" onchange="renderAssistantReviewDayState()"> <span>Seg</span></label>
-                <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="2" onchange="renderAssistantReviewDayState()"> <span>Ter</span></label>
-                <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="3" onchange="renderAssistantReviewDayState()"> <span>Qua</span></label>
-                <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="4" onchange="renderAssistantReviewDayState()"> <span>Qui</span></label>
-                <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="5" onchange="renderAssistantReviewDayState()"> <span>Sex</span></label>
-                <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="6" onchange="renderAssistantReviewDayState()"> <span>Sáb</span></label>
-              </div>
+            <div class="field" style="margin-top:12px"><label>Observação</label><input id="assistantNewPatientPathology" placeholder="Observação, queixa ou patologia"></div>
+          </div>
+        </section>
+        <section class="assistant-subcard">
+          <div class="assistant-subcard-head">
+            <div>
+              <div class="eyebrow">Necessidades</div>
+              <h4>Critérios para o sistema montar a grade</h4>
             </div>
-          </section>
-        </div>
-        <div class="assistant-composer-actions">
-          <button class="btn primary" id="assistantBookingStartBtn" type="button">Gerar melhores opções</button>
-          <button class="btn ghost" id="assistantSavePendingBtn" type="button">Salvar como pendência</button>
-        </div>
-        <div id="assistantBookingReview"></div>
-        <div id="assistantBookingPlans"></div>
-      </section>
-    </div>
+          </div>
+          <div class="grid grid-2">
+            <div class="field"><label>Serviço *</label><select id="assistantServiceSelect"></select></div>
+            <div class="field"><label>Data inicial *</label><input id="assistantStartDate" type="date"></div>
+            <div class="field"><label>Período</label><select id="assistantPeriod"><option value="">Qualquer período</option><option value="manha">Manhã</option><option value="tarde">Tarde</option></select></div>
+            <div class="field"><label>Vezes por semana *</label><input id="assistantFrequency" type="number" min="1" max="6" placeholder="Ex.: 2"></div>
+            <div class="field"><label>Sessões *</label><input id="assistantTotalSessions" type="number" min="1" placeholder="Ex.: 10"></div>
+          </div>
+          <div class="field" style="margin-top:12px">
+            <label>Dias da semana *</label>
+            <div class="assistant-weekdays" id="assistantWeekdays">
+              <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="1"> <span>Seg</span></label>
+              <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="2"> <span>Ter</span></label>
+              <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="3"> <span>Qua</span></label>
+              <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="4"> <span>Qui</span></label>
+              <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="5"> <span>Sex</span></label>
+              <label class="assistant-day"><input data-assistant-weekday type="checkbox" value="6"> <span>Sáb</span></label>
+            </div>
+          </div>
+        </section>
+      </div>
+      <div class="assistant-composer-actions">
+        <button class="btn primary" id="assistantBookingStartBtn" onclick="startAssistantBooking()">Gerar melhores opções</button>
+      </div>
+      <div id="assistantBookingReview"></div>
+      <div id="assistantBookingPlans"></div>
+    </section>
   </section>
 
   <section class="panel" id="panel-prontuario">
@@ -335,40 +304,9 @@
     </div>
   </section>
 
-  <section class="panel" id="panel-ai">
-    <div class="card ai-radar-head">
-      <div class="section-title">
-        <div><div class="eyebrow">IA operacional</div><h3>Radar de horários</h3></div>
-        <div class="toolbar">
-          <input type="date" id="aiRadarStart" onchange="renderAIRadar(true)" style="max-width:190px">
-          <select id="aiRadarPeriod" onchange="renderAIRadar(false)" style="max-width:150px">
-            <option value="all">Todos</option>
-            <option value="manha">Manhã</option>
-            <option value="tarde">Tarde</option>
-            <option value="noite">Noite</option>
-          </select>
-          <label class="ai-radar-toggle"><input type="checkbox" id="aiRadarIdealFocus" onchange="renderAIRadar(false)"> Encaixe ideal</label>
-          <button class="btn primary" type="button" onclick="copyAIRadarBestSlots()">Copiar melhores horários</button>
-          <button class="btn" type="button" onclick="renderAIRadar(true)">Atualizar</button>
-        </div>
-      </div>
-      <div class="ai-radar-legend">
-        <span><i class="ai-dot best"></i>Melhores encaixes</span>
-        <span><i class="ai-dot open"></i>Livre</span>
-        <span><i class="ai-dot almost"></i>1 vaga</span>
-        <span><i class="ai-dot full"></i>Lotado</span>
-      </div>
-    </div>
-    <div id="aiRadarQuick" class="ai-radar-quick" style="margin-top:16px"></div>
-    <div id="aiRadarSummary" class="ai-radar-summary" style="margin-top:16px"></div>
-    <details class="card ai-radar-full" style="margin-top:16px">
-      <summary><span>Ver radar completo</span><span class="muted small" id="aiRadarKpiLine"></span></summary>
-      <div class="ai-radar-compact-kpis" id="aiRadarKpis"></div>
-      <div id="aiRadarWeeks" class="ai-radar-weeks" style="margin-top:12px"></div>
-    </details>
-  </section>
 
-  <section class="panel" id="panel-reminders"><div class="card"><div class="section-title"><div><div class="eyebrow">Lembretes</div><h3>Auditoria do bot WhatsApp</h3></div><div id="reminderModeBadge" class="mode-badge auto">Baileys</div></div><div class="toolbar"><input type="date" id="reminderDate" onchange="renderReminders()" style="max-width:190px"><button class="btn" onclick="refreshWhatsappServiceStatus();renderReminders()">Atualizar status</button></div><div class="reminder-mode-panel" style="margin-top:12px"><div><strong>Envio automático pelo bot</strong><div class="muted small" id="reminderAutoStatus">O Discloud/Baileys envia lembretes e o FEMIC registra auditoria.</div></div></div><div class="quick-note small" style="margin-top:12px">Esta tela acompanha pendentes, enviados e falhas. A confirmação final de agendamentos recebidos pelo WhatsApp aparece em Pendências.</div><div class="quick-note small" id="whatsappServiceStatusInline" style="margin-top:12px">Canal WhatsApp: aguardando status do bot.</div></div><div class="grid grid-4" id="reminderKpis" style="margin-top:16px"></div><div class="card" style="margin-top:16px"><div class="eyebrow" id="reminderTitle">Lembretes</div><div class="list" id="reminderList"></div></div></section>
+
+  <section class="panel" id="panel-reminders"><div class="card"><div class="section-title"><div><div class="eyebrow">Lembretes</div><h3>Auditoria do bot WhatsApp (Baileys)</h3></div><div id="reminderModeBadge" class="mode-badge auto">Baileys</div></div><div class="toolbar"><input type="date" id="reminderDate" onchange="renderReminders()" style="max-width:170px"><button class="btn btn-compact" onclick="refreshWhatsappServiceStatus();renderReminders()">Atualizar</button></div><div class="quick-note small" id="whatsappServiceStatusInline" style="margin-top:12px">Canal WhatsApp: aguardando status do bot.</div></div><div class="grid grid-3" id="reminderKpis" style="margin-top:16px"></div><div class="card" style="margin-top:16px"><div class="eyebrow" id="reminderTitle">Lembretes de sessão</div><div class="list" id="reminderList"></div></div></section>
 
   <section class="panel" id="panel-report"><div class="card"><div class="toolbar"><input type="month" id="reportMonth" onchange="renderReport()" style="max-width:190px"><button class="btn" onclick="exportCsv()">Exportar CSV</button><button class="btn" onclick="window.print()">Imprimir/PDF</button></div></div><div class="grid grid-4" id="reportKpis" style="margin-top:16px"></div><div class="card" id="reportPrintArea" style="margin-top:16px"><div class="eyebrow">Relatório mensal</div><div class="table-wrap"><table><thead><tr><th>Pagador</th><th>Serviço</th><th>Qtd.</th><th>Valor</th><th>Total</th></tr></thead><tbody id="reportBody"></tbody></table></div></div></section>
 
@@ -575,44 +513,7 @@
     </div>
   </section>
 
-  <section class="panel" id="panel-pendencias">
-    <div class="pending-shell">
-      <div class="pending-head-card">
-        <div>
-          <div class="eyebrow">Pendências</div>
-          <h3>Fila operacional vinda do WhatsApp e voz</h3>
-          <p class="muted small">Esta tela mostra tarefas recebidas pelo WhatsApp Web e lembretes criados por voz no FEMIC Mobile. Pendências abertas ficam em destaque para ação rápida da equipe.</p>
-        </div>
-      </div>
-      <div class="grid grid-4 pending-kpis" id="pendingKpis">
-        <div class="card kpi"><div class="eyebrow">Abertas</div><strong>0</strong><span class="muted small">aguardando ação</span></div>
-        <div class="card kpi"><div class="eyebrow">Em andamento</div><strong>0</strong><span class="muted small">com revisão em curso</span></div>
-        <div class="card kpi"><div class="eyebrow">Concluídas</div><strong>0</strong><span class="muted small">já resolvidas</span></div>
-        <div class="card kpi"><div class="eyebrow">Canceladas</div><strong>0</strong><span class="muted small">descartadas</span></div>
-      </div>
-      <section class="card pending-card">
-        <div class="section-title">
-          <div><div class="eyebrow">WhatsApp e voz</div><h3>Tarefas recebidas para revisão</h3></div>
-          <button class="btn" id="voiceTaskBtn" type="button" title="Criar pendência por voz">🎤 Nova por voz</button>
-        </div>
-        <div class="pending-composer">
-          <textarea id="pendingTaskInput" rows="3" placeholder="Digite aqui a pendência, pedido de remarcação, cancelamento ou lembrete interno."></textarea>
-          <div class="pending-composer-actions">
-            <span class="muted small" id="pendingTaskInputStatus">Você pode digitar normalmente ou usar o microfone para preencher o texto.</span>
-            <div class="toolbar">
-              <button class="btn ghost" id="clearPendingTaskBtn" type="button">Limpar</button>
-              <button class="btn primary" id="saveTextTaskBtn" type="button" disabled>Salvar pendência</button>
-            </div>
-          </div>
-        </div>
-        <div class="pending-filters">
-          <select id="pendingTaskStatusFilter" onchange="renderExtensionPendingTasks()"><option value="open">Abertas</option><option value="all">Todas</option><option value="concluida">Concluídas</option><option value="cancelada">Canceladas</option></select>
-          <select id="pendingTaskTypeFilter" onchange="renderExtensionPendingTasks()"><option value="all">Todos os tipos</option><option value="marcacao">Marcação</option><option value="remarcacao">Remarcação</option><option value="cancelamento">Cancelamento</option></select>
-        </div>
-        <div class="pending-task-list" id="pendingTaskList"></div>
-      </section>
-    </div>
-  </section>
+
 
   <section class="panel" id="panel-packages">
     <div class="card">
@@ -653,7 +554,7 @@
         <div class="health-item neutral"><strong>Aguardando verificação</strong><span>Abra as configurações ou clique em verificar.</span></div>
       </div>
     </div>
-    <div class="grid grid-2"><div class="card"><div class="section-title"><div><div class="eyebrow">Supabase</div><h3>Conexão</h3></div></div><div class="grid grid-2"><div class="field"><label>URL</label><input id="sbUrl" placeholder="https://xxxx.supabase.co"></div><div class="field"><label>Anon key</label><input id="sbKey" placeholder="anon key"></div></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" onclick="saveConfig();loadAll()">Salvar e carregar</button><button class="btn" onclick="testConnection()">Testar conexão</button></div></div><div class="card"><div class="section-title"><div><div class="eyebrow">Expediente</div><h3>Horários da clínica</h3></div></div><div class="grid grid-3"><div class="field"><label>Início geral</label><input id="setStart" type="time" value="08:00"></div><div class="field"><label>Fim geral</label><input id="setEnd" type="time" value="20:00"></div><div class="field"><label>Intervalo grade</label><select id="setInterval"><option>15</option><option selected>30</option><option>45</option><option>60</option></select></div></div><div class="field" style="margin-top:12px"><label>Períodos de atendimento</label><input id="setPeriods" placeholder="08:00-12:00,16:00-20:00" value="08:00-12:00,16:00-20:00"><div class="period-help small">Use vírgula para separar períodos. A agenda só mostrará horários dentro dessas janelas.</div></div><div class="toolbar" id="workDays" style="margin-top:12px"></div><button class="btn primary" style="margin-top:12px" onclick="saveSettings()">Salvar expediente</button></div></div>
+    <div class="grid grid-2"><div class="card"><div class="section-title"><div><div class="eyebrow">Supabase</div><h3>Conexão</h3></div></div><div class="grid grid-2"><div class="field"><label>URL</label><input id="sbUrl" placeholder="https://xxxx.supabase.co"></div><div class="field"><label>Anon key</label><input id="sbKey" placeholder="anon key"></div></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" onclick="saveConfig();loadAll()">Salvar e carregar</button><button class="btn" onclick="testConnection()">Testar conexão</button></div></div><div class="card"><div class="section-title"><div><div class="eyebrow">Expediente</div><h3>Horários da clínica (por slot)</h3></div></div><div class="field"><label>Intervalo entre slots</label><select id="setInterval" onchange="renderSlotsConfig()"><option>15</option><option selected>30</option><option>45</option><option>60</option></select></div><div class="field" style="margin-top:8px"><label>Horário inicial / final para gerar slots</label><div class="grid grid-2"><input id="setSlotStart" type="time" value="08:00" onchange="renderSlotsConfig()"><input id="setSlotEnd" type="time" value="20:00" onchange="renderSlotsConfig()"></div></div><div class="field" style="margin-top:8px"><div class="toolbar" id="workDays" style="margin-top:4px"></div></div><div id="slotsConfigGrid" style="margin-top:10px"></div><button class="btn primary" style="margin-top:12px" onclick="saveSettings()">Salvar expediente</button></div></div>
     <div class="grid grid-2" style="margin-top:16px"><div class="card"><div class="section-title"><div><div class="eyebrow">Pagadores</div><h3>Convênios e particulares</h3></div></div><div class="toolbar"><input id="payerName" placeholder="Nome do pagador" style="max-width:260px"><button class="btn primary" onclick="savePayer()">Adicionar</button></div><div class="list" id="payerList" style="margin-top:12px"></div></div><div class="card"><div class="section-title"><div><div class="eyebrow">Serviços</div><h3>Valores, duração e modo</h3></div></div><div class="grid grid-2"><input id="svcName" placeholder="Nome do serviço"><select id="svcPayer"></select><input id="svcPrice" type="number" placeholder="Valor"><select id="svcDur"><option>30</option><option selected>45</option><option>60</option><option>90</option></select><select id="svcMode"><option value="grupo">Grupo</option><option value="individual">Individual</option></select><input id="svcMax" type="number" value="4" placeholder="Limite"></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" id="saveServiceBtn" onclick="saveService()">Adicionar serviço</button><button class="btn" id="cancelServiceEditBtn" style="display:none" onclick="cancelServiceEdit()">Cancelar edição</button></div><div class="list" id="serviceList" style="margin-top:12px"></div></div></div>
     <details class="card settings-compact-details" style="margin-top:16px" open><summary><span><span class="eyebrow">Modelos</span><strong>WhatsApp</strong></span></summary><div class="field"><label>Lembrete de sessão</label><textarea id="tplReminder" rows="4"></textarea></div><button class="btn primary" style="margin-top:12px" onclick="saveTemplates()">Salvar modelo</button></details>
     <details class="card settings-compact-details" style="margin-top:16px"><summary><span><span class="eyebrow">WhatsApp</span><strong>Bot Baileys no Discloud</strong></span><span class="mode-badge auto" id="whatsappProviderBadge">Baileys</span></summary><p class="muted small" style="margin-top:0">O envio automático de lembretes e os pedidos de agendamento/remarcação são feitos pelo bot Baileys. O FEMIC acompanha status, auditoria e pendências; a confirmação final do horário continua humana.</p><div class="grid grid-2"><input type="hidden" id="whatsappProvider" value="baileys"><div class="field"><label>Nome do serviço Baileys</label><input id="whatsappServiceName" placeholder="baileys-main"></div><div class="field"><label>Canal automático</label><input value="Baileys / Discloud" readonly></div></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" onclick="saveWhatsappApiConfig()">Salvar bot Baileys</button><button class="btn" onclick="testWhatsappApiConfig()">Atualizar status</button></div><div class="quick-note small" id="whatsappServiceStatusPanel" style="margin-top:12px">Canal WhatsApp: aguardando status do bot.</div></details>
@@ -1113,21 +1014,18 @@ if ('caches' in window) {
 <script src="js/femic-unified-appointments-utils.js?v=unified-appts-1"></script>
 <script src="js/femic-patient-ficha-utils.js?v=patient-ficha-1"></script>
 <script src="js/femic-unified.js?v=receipt-docs-2"></script>
-<script src="js/femic-pending-task-utils.js?v=pending-utils-1"></script>
 <script src="js/femic-ai-center.js?v=ai-center-5"></script>
 <script>
 (function(){
   var panelMeta = {
     agenda: ['Agenda clínica', 'Grade semanal, agenda mensal e busca rápida de atendimentos'],
-    day: ['Dia operacional', 'Acompanhamento dos atendimentos de hoje e mudança rápida de status'],
-    patients: ['Pacientes', 'Cadastro, busca e gestão da base ativa'],
-    'agenda-assistida': ['Agenda assistida', 'Cadastro revisado e sugestão de grade sem gravação automática'],
+    day: ['Dia operacional', 'Atendimentos do dia e ações rápidas'],
+    patients: ['Pacientes', 'Cadastro, busca e gestão de pacientes'],
+    'agenda-assistida': ['Agenda assistida', 'Agendamento rápido com grade inteligente'],
     prontuario: ['Prontuário', 'Anamnese, evolução clínica e histórico do paciente'],
     packages: ['Pacotes', 'Sessões, saldos e controle de créditos por paciente'],
-    ai: ['Central de IA', 'Apoio clínico, radar operacional e automações assistidas'],
-    reminders: ['Lembretes', 'Fila de WhatsApp e acompanhamento de envios'],
+    reminders: ['Lembretes', 'Auditoria de envios do bot WhatsApp'],
     report: ['Relatório financeiro', 'Fechamento mensal, pagadores e exportação'],
-    pendencias: ['Pendências', 'Tarefas vindas da extensão e itens aguardando ação'],
     documentos: ['Documentos', 'Guias, recibos, declarações e documentos clínicos'],
     historico: ['Histórico', 'Linha do tempo e indicadores consolidados'],
     settings: ['Configurações', 'Supabase, expediente, serviços e preferências'],

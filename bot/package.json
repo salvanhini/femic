@@ -1,0 +1,22 @@
+{
+  "name": "femic-whatsapp-bot",
+  "version": "1.0.0",
+  "description": "Bot WhatsApp para lembretes automáticos de consultas FEMIC",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test *.test.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.16",
+    "@supabase/supabase-js": "^2.49.4",
+    "qrcode-terminal": "^0.12.0",
+    "pino": "^9.6.0",
+    "dotenv": "^16.4.7",
+    "libsignal": "file:vendor/libsignal",
+    "ws": "^8.18.3"
+  }
+}

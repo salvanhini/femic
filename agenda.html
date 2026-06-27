@@ -138,7 +138,6 @@ window.location.replace('index.html');
       <div class="nav-link" data-panel="packages" onclick="showPanel('packages')"><span class="icon">🎟️</span><span>Pacotes</span></div>
       <div class="nav-link" data-panel="reminders" onclick="showPanel('reminders')"><span class="icon">📲</span><span>Lembretes</span></div>
       <div class="nav-link" data-panel="report" onclick="showPanel('report')"><span class="icon">💰</span><span>Relatório</span></div>
-      <div class="nav-link" data-panel="pendencias" onclick="showPanel('pendencias')"><span class="icon">🗂️</span><span>Pendências</span><span class="pending-nav-badge hidden" id="pendingNavBadge">0</span></div>
       <div class="nav-link" data-panel="settings" onclick="showPanel('settings')"><span class="icon">⚙️</span><span>Configurações</span></div>
       <div class="nav-link" data-panel="backup" onclick="showPanel('backup')"><span class="icon">☁️</span><span>Backup</span></div>
       <div class="nav-link" data-panel="sql" onclick="showPanel('sql')"><span class="icon">🧱</span><span>SQL</span></div>
@@ -174,7 +173,7 @@ window.location.replace('index.html');
     <div class="wrap">
 
   <section class="panel active" id="panel-agenda">
-    <div class="card" style="margin-bottom:16px"><div class="toolbar"><button class="btn" onclick="prevPeriod()">◀</button><button class="btn ghost" onclick="goToday()">Hoje</button><button class="btn" onclick="nextPeriod()">▶</button><select id="viewMode" onchange="renderAgenda()" style="max-width:180px"><option value="week">Semana</option><option value="month">Mês</option></select><strong id="periodLabel" style="align-self:center;color:var(--primary)"></strong><div class="legend-row"><span class="legend"><i class="legend-dot" style="background:#f59e0b"></i>Agendado</span><span class="legend"><i class="legend-dot" style="background:#2563eb"></i>Confirmado</span><span class="legend"><i class="legend-dot" style="background:#10b981"></i>Concluído</span><span class="legend"><i class="legend-dot" style="background:#ef4444"></i>Cancelado</span></div></div><div class="agenda-filterbar"><select id="agendaStatusFilter" onchange="renderAgenda()"><option value="all">Todos os status</option><option value="agendado">Agendado</option><option value="confirmado">Confirmado</option><option value="concluido">Concluído</option><option value="cancelado">Cancelado</option></select><select id="agendaServiceFilter" onchange="renderAgenda()"><option value="all">Todos os serviços</option></select><button class="btn ghost" onclick="clearAgendaFilters()">Limpar filtros</button></div></div>
+    <div class="card" style="margin-bottom:16px"><div class="toolbar"><button class="btn btn-compact" onclick="prevPeriod()">◀</button><button class="btn btn-compact" onclick="goToday()">Hoje</button><button class="btn btn-compact" onclick="nextPeriod()">▶</button><select id="viewMode" onchange="renderAgenda()" style="max-width:180px"><option value="week">Semana</option><option value="month">Mês</option></select><strong id="periodLabel" style="align-self:center;color:var(--primary);font-size:.8rem"></strong><div class="legend-row"><span class="legend"><i class="legend-dot" style="background:#f59e0b"></i>Agd</span><span class="legend"><i class="legend-dot" style="background:#2563eb"></i>Conf</span><span class="legend"><i class="legend-dot" style="background:#10b981"></i>Conc</span><span class="legend"><i class="legend-dot" style="background:#ef4444"></i>Canc</span></div></div><div class="agenda-filterbar"><select id="agendaStatusFilter" onchange="renderAgenda()" style="display:none"><option value="all">Todos</option><option value="agendado">Agendado</option><option value="confirmado">Confirmado</option><option value="concluido">Concluído</option><option value="cancelado">Cancelado</option></select><select id="agendaServiceFilter" onchange="renderAgenda()"><option value="all">Todos os serviços</option></select><button class="btn ghost" onclick="clearAgendaFilters()">Limpar filtros</button></div></div>
     <div id="monthView"><div class="calendar-head" id="monthHead"></div><div id="monthCalendar"></div></div>
     <div id="weekView" class="hidden"><div class="week-board" id="weekBoard"></div></div>
   </section>
@@ -215,48 +214,9 @@ window.location.replace('index.html');
     </div>
   </section>
 
-  <section class="panel" id="panel-reminders"><div class="card"><div class="section-title"><div><div class="eyebrow">Lembretes</div><h3>Auditoria do bot WhatsApp</h3></div><div id="reminderModeBadge" class="mode-badge auto">Baileys</div></div><div class="toolbar"><select id="reminderType" onchange="renderReminders()" style="max-width:260px"><option value="appointment">Lembrete de sessão</option><option value="form">Formulário pós-atendimento</option></select><input type="date" id="reminderDate" onchange="renderReminders()" style="max-width:190px"><button class="btn" onclick="refreshWhatsappServiceStatus();renderReminders()">Atualizar status</button></div><div class="reminder-mode-panel" style="margin-top:12px"><div><strong>Envio automático pelo bot</strong><div class="muted small" id="reminderAutoStatus">O Discloud/Baileys envia lembretes e o FEMIC registra auditoria.</div></div></div><div class="quick-note small" style="margin-top:12px">Esta tela acompanha pendentes, enviados e falhas. A confirmação final de agendamentos recebidos pelo WhatsApp aparece em Pendências.</div><div class="quick-note small" id="whatsappServiceStatusInline" style="margin-top:12px">Canal WhatsApp: aguardando status do bot.</div></div><div class="grid grid-4" id="reminderKpis" style="margin-top:16px"></div><div class="card" style="margin-top:16px"><div class="eyebrow" id="reminderTitle">Lembretes</div><div class="list" id="reminderList"></div></div></section>
+  <section class="panel" id="panel-reminders"><div class="card"><div class="section-title"><div><div class="eyebrow">Lembretes</div><h3>Auditoria do bot WhatsApp (Baileys)</h3></div><div id="reminderModeBadge" class="mode-badge auto">Baileys</div></div><div class="toolbar"><input type="date" id="reminderDate" onchange="renderReminders()" style="max-width:170px"><button class="btn btn-compact" onclick="refreshWhatsappServiceStatus();renderReminders()">Atualizar</button></div><div class="quick-note small" id="whatsappServiceStatusInline" style="margin-top:12px">Canal WhatsApp: aguardando status do bot.</div></div><div class="grid grid-3" id="reminderKpis" style="margin-top:16px"></div><div class="card" style="margin-top:16px"><div class="eyebrow" id="reminderTitle">Lembretes de sessão</div><div class="list" id="reminderList"></div></div></section>
 
   <section class="panel" id="panel-report"><div class="card"><div class="toolbar"><input type="month" id="reportMonth" onchange="renderReport()" style="max-width:190px"><button class="btn" onclick="exportCsv()">Exportar CSV</button><button class="btn" onclick="window.print()">Imprimir/PDF</button></div></div><div class="grid grid-4" id="reportKpis" style="margin-top:16px"></div><div class="card" id="reportPrintArea" style="margin-top:16px"><div class="eyebrow">Relatório mensal</div><div class="table-wrap"><table><thead><tr><th>Pagador</th><th>Serviço</th><th>Qtd.</th><th>Valor</th><th>Total</th></tr></thead><tbody id="reportBody"></tbody></table></div></div></section>
-
-  <section class="panel" id="panel-pendencias">
-    <div class="pending-shell">
-      <div class="pending-head-card">
-        <div>
-          <div class="eyebrow">Pendências</div>
-          <h3>Fila operacional vinda do WhatsApp e voz</h3>
-          <p class="muted small">Pedidos capturados pelo WhatsApp Web e lembretes por voz aparecem aqui com horários sugeridos para confirmação.</p>
-        </div>
-      </div>
-      <div class="grid grid-4 pending-kpis" id="pendingKpis">
-        <div class="card kpi"><div class="eyebrow">Abertas</div><strong>0</strong><span class="muted small">aguardando ação</span></div>
-        <div class="card kpi"><div class="eyebrow">Em andamento</div><strong>0</strong><span class="muted small">com revisão em curso</span></div>
-        <div class="card kpi"><div class="eyebrow">Concluídas</div><strong>0</strong><span class="muted small">já resolvidas</span></div>
-        <div class="card kpi"><div class="eyebrow">Canceladas</div><strong>0</strong><span class="muted small">descartadas</span></div>
-      </div>
-      <section class="card pending-card">
-        <div class="section-title">
-          <div><div class="eyebrow">WhatsApp e voz</div><h3>Tarefas recebidas para revisão</h3></div>
-          <button class="btn" id="voiceTaskBtn" type="button" title="Criar pendência por voz">🎤 Nova por voz</button>
-        </div>
-        <div class="pending-composer">
-          <textarea id="pendingTaskInput" rows="3" placeholder="Digite aqui a pendência, pedido de remarcação, cancelamento ou lembrete interno."></textarea>
-          <div class="pending-composer-actions">
-            <span class="muted small" id="pendingTaskInputStatus">Você pode digitar normalmente ou usar o microfone para preencher o texto.</span>
-            <div class="toolbar">
-              <button class="btn ghost" id="clearPendingTaskBtn" type="button">Limpar</button>
-              <button class="btn primary" id="saveTextTaskBtn" type="button" disabled>Salvar pendência</button>
-            </div>
-          </div>
-        </div>
-        <div class="pending-filters">
-          <select id="pendingTaskStatusFilter" onchange="renderExtensionPendingTasks()"><option value="open">Abertas</option><option value="all">Todas</option><option value="concluida">Concluídas</option><option value="cancelada">Canceladas</option></select>
-          <select id="pendingTaskTypeFilter" onchange="renderExtensionPendingTasks()"><option value="all">Todos os tipos</option><option value="marcacao">Marcação</option><option value="remarcacao">Remarcação</option><option value="cancelamento">Cancelamento</option></select>
-        </div>
-        <div class="pending-task-list" id="pendingTaskList"></div>
-      </section>
-    </div>
-  </section>
 
   
   <section class="panel" id="panel-packages">
@@ -627,7 +587,6 @@ if ('caches' in window) {
 <script src="js/femic-appointment-slot-utils.js?v=slot-utils-1"></script>
 <script src="js/femic-whatsapp-reminder-utils.js?v=wa-reminder-utils-1"></script>
 <script src="js/femic-agenda.js?v=secure-cloud-9"></script>
-<script src="js/femic-pending-task-utils.js?v=pending-utils-1"></script>
 <script src="js/femic-ai-center.js?v=ai-center-5"></script>
 <script src="js/femic-assistant-rules.js?v=assistant-rules-4"></script>
 <script src="js/femic-assistant.js?v=assistant-ui-5"></script>

@@ -1,0 +1,23 @@
+{
+  "name": "libsignal",
+  "version": "6.0.0",
+  "description": "Open Whisper Systems' libsignal for Node.js",
+  "repository": "WhiskeySockets/libsignal-node",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "keywords": [
+    "signal",
+    "whispersystems",
+    "crypto"
+  ],
+  "license": "GPL-3.0",
+  "dependencies": {
+    "curve25519-js": "^0.0.4",
+    "protobufjs": "^7.5.5"
+  },
+  "files": [
+    "src/*",
+    "index.js",
+    "index.d.ts"
+  ]
+}

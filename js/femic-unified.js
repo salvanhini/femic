@@ -1506,9 +1506,39 @@
       if(typeof writeClinicRulesCache === 'function') writeClinicRulesCache(tables.clinic_rules);
       try{ await upsertRows('clinic_rules', tables.clinic_rules); }catch(e){ if(!(typeof isMissingClinicRulesTableError === 'function' && isMissingClinicRulesTableError(e))) throw e; }
     }
-    await upsertRows('session_packages', tables.session_packages || []);
-    await upsertRows('appointments', tables.appointments || []);
-    await upsertRows('session_movements', tables.session_movements || []);
+    // Filtra órfãos e restaura individualmente para evitar FK violation
+    var validPatientIds = new Set((tables.patients||[]).map(function(p){return String(p.id)}));
+    var validServiceIds = new Set((tables.services||[]).map(function(s){return String(s.id)}));
+    var restoredPkgIds = new Set();
+    (tables.session_packages||[]).forEach(function(pkg){
+      if(validPatientIds.has(String(pkg.patient_id)) && (!pkg.service_id || validServiceIds.has(String(pkg.service_id)))){
+        restoredPkgIds.add(String(pkg.id));
+      }
+    });
+    var pkgsToRestore = (tables.session_packages||[]).filter(function(p){return restoredPkgIds.has(String(p.id))});
+    for(var i=0;i<pkgsToRestore.length;i++){
+      try{ await upsertRows('session_packages', [pkgsToRestore[i]]); }
+      catch(e){ console.warn('Falha pacote '+pkgsToRestore[i].id+': '+e.message); restoredPkgIds['delete'](String(pkgsToRestore[i].id)); }
+    }
+    var apptsToRestore = (tables.appointments||[]).filter(function(a){
+      return validPatientIds.has(String(a.patient_id)) && (!a.service_id || validServiceIds.has(String(a.service_id))) && (!a.session_package_id || restoredPkgIds.has(String(a.session_package_id)));
+    });
+    var restoredApptIds = new Set();
+    for(var i=0;i<apptsToRestore.length;i++){
+      try{
+        var r = await upsertRows('appointments', [apptsToRestore[i]]);
+        if(r&&r[0]) restoredApptIds.add(String(r[0].id));
+        else if(apptsToRestore[i].id) restoredApptIds.add(String(apptsToRestore[i].id));
+      }catch(e){ console.warn('Falha agendamento '+apptsToRestore[i].id+': '+e.message); }
+    }
+    var moves = (tables.session_movements||[]);
+    for(var i=0;i<moves.length;i++){
+      var m = moves[i];
+      if(validPatientIds.has(String(m.patient_id)) && (!m.appointment_id || restoredApptIds.has(String(m.appointment_id))) && (!m.session_package_id || restoredPkgIds.has(String(m.session_package_id)))){
+        try{ await upsertRows('session_movements', [m]); }
+        catch(e){ console.warn('Falha movimento '+m.id+': '+e.message); }
+      }
+    }
     return { restored:true };
   }
 
