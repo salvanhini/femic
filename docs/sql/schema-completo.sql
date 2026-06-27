@@ -13,6 +13,7 @@ DROP TABLE IF EXISTS clinical_anamneses CASCADE;
 DROP TABLE IF EXISTS femic_generated_documents CASCADE;
 DROP TABLE IF EXISTS clinic_rules CASCADE;
 DROP TABLE IF EXISTS schedule_blocks CASCADE;
+DROP TABLE IF EXISTS whatsapp_service_status CASCADE;
 DROP TABLE IF EXISTS assistant_tasks CASCADE;
 DROP TABLE IF EXISTS services CASCADE;
 DROP TABLE IF EXISTS health_insurances CASCADE;
@@ -30,6 +31,8 @@ CREATE TABLE patients (
   whatsapp TEXT,
   birth_date DATE,
   referral_source TEXT,
+  feedback_sent BOOLEAN DEFAULT FALSE,
+  feedback_sent_at TIMESTAMP WITH TIME ZONE,
   archived BOOLEAN DEFAULT FALSE,
   archived_at TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
@@ -211,6 +214,23 @@ CREATE TABLE whatsapp_service_status (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+-- PENDÊNCIAS DE CAPTAÇÃO (usado por captacao.html + bot)
+CREATE TABLE assistant_tasks (
+  id TEXT PRIMARY KEY,
+  patient_id TEXT,
+  patient_name TEXT,
+  phone TEXT,
+  service_name TEXT,
+  service_id TEXT,
+  status TEXT DEFAULT 'aberta',
+  notes TEXT,
+  suggested_slots TEXT,
+  origin TEXT,
+  needs_review BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
 -- ===================== CONFIGURAÇÃO INICIAL =====================
 
 INSERT INTO schedule_settings (
@@ -252,6 +272,8 @@ CREATE INDEX idx_femic_generated_documents_patient ON femic_generated_documents(
 CREATE INDEX idx_femic_generated_documents_created ON femic_generated_documents(created_at DESC);
 CREATE INDEX idx_schedule_blocks_date_status ON schedule_blocks(block_date, status);
 CREATE INDEX idx_whatsapp_service_status_updated ON whatsapp_service_status(updated_at DESC);
+CREATE INDEX idx_assistant_tasks_status ON assistant_tasks(status);
+CREATE INDEX idx_assistant_tasks_origin ON assistant_tasks(origin);
 
 -- ===================== RLS (Row Level Security) =====================
 
@@ -268,6 +290,7 @@ ALTER TABLE whatsapp_service_status ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinical_anamneses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinical_evolutions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE femic_generated_documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assistant_tasks ENABLE ROW LEVEL SECURITY;
 
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon;
@@ -288,5 +311,10 @@ CREATE POLICY "authenticated_full_access_whatsapp_service_status" ON whatsapp_se
 CREATE POLICY "authenticated_full_access_clinical_anamneses" ON clinical_anamneses FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_clinical_evolutions" ON clinical_evolutions FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_full_access_femic_generated_documents" ON femic_generated_documents FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_all_assistant_tasks" ON assistant_tasks FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- Policies para anon (captação pública)
+CREATE POLICY "anon_insert_patients" ON patients FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "anon_insert_assistant_tasks" ON assistant_tasks FOR INSERT TO anon WITH CHECK (true);
 
 NOTIFY pgrst, 'reload schema';

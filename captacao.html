@@ -463,7 +463,11 @@
       };
       fetch(`${SUPABASE_URL}/functions/v1/telegram-notify`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY
+        },
         body: JSON.stringify(telegramPayload)
       }).catch(function(e){ console.warn('[Telegram notify]', e); });
 

@@ -96,6 +96,7 @@
       <div class="nav-link" data-panel="day" onclick="showPanel('day')"><span class="icon"><i data-lucide="clipboard-list"></i></span><span>Dia</span></div>
       <div class="nav-link" data-panel="patients" onclick="showPanel('patients')"><span class="icon"><i data-lucide="users-round"></i></span><span>Pacientes</span></div>
       <div class="nav-link" data-panel="agenda-assistida" onclick="showPanel('agenda-assistida')"><span class="icon"><i data-lucide="calendar-plus-2"></i></span><span>Agenda assistida</span></div>
+      <div class="nav-link" data-panel="pendencias" onclick="showPanel('pendencias')"><span class="icon"><i data-lucide="inbox"></i></span><span>Pendências</span></div>
       <div class="nav-link" data-panel="prontuario" onclick="showPanel('prontuario')"><span class="icon"><i data-lucide="stethoscope"></i></span><span>Prontuário</span></div>
       <div class="nav-link" data-panel="packages" onclick="showPanel('packages')"><span class="icon"><i data-lucide="ticket-check"></i></span><span>Pacotes</span></div>
       <div class="nav-link" data-panel="reminders" onclick="showPanel('reminders')"><span class="icon"><i data-lucide="message-circle"></i></span><span>Lembretes</span></div>
@@ -251,6 +252,19 @@
       <div id="assistantBookingReview"></div>
       <div id="assistantBookingPlans"></div>
     </section>
+  </section>
+
+  <section class="panel" id="panel-pendencias">
+    <div class="card">
+      <div class="section-title">
+        <div><div class="eyebrow">Captação</div><h3>Pendências de avaliação</h3><p class="muted small">Solicitações de primeira avaliação enviadas pelo formulário de captação.</p></div>
+        <div class="toolbar">
+          <button class="btn" onclick="renderPendencias()">Atualizar</button>
+        </div>
+      </div>
+      <div id="pendenciasStatus" class="muted" style="margin-bottom:16px"></div>
+      <div class="list" id="pendenciasList"></div>
+    </div>
   </section>
 
   <section class="panel" id="panel-prontuario">
@@ -1029,6 +1043,7 @@ if ('caches' in window) {
     documentos: ['Documentos', 'Guias, recibos, declarações e documentos clínicos'],
     historico: ['Histórico', 'Linha do tempo e indicadores consolidados'],
     settings: ['Configurações', 'Supabase, expediente, serviços e preferências'],
+    pendencias: ['Pendências', 'Solicitações de captação aguardando avaliação'],
     backup: ['Backup', 'Exportação, restauração e integridade dos dados']
   };
 

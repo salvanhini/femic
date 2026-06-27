@@ -754,6 +754,9 @@ function renderPanel(name){
       break;
     case 'agenda-assistida':
       break;
+    case 'pendencias':
+      renderPendencias();
+      break;
     case 'report':
       renderReport();
       break;
@@ -767,6 +770,164 @@ function renderPanel(name){
 
 function renderActivePanel(){
   renderPanel(getActivePanelName());
+}
+async function renderPendencias(){
+  var target=$('pendenciasList'),status=$('pendenciasStatus');
+  if(!target)return;
+  if(status)status.textContent='Carregando pendências...';
+  target.innerHTML='';
+  try{
+    var rows=await api('assistant_tasks?select=*&order=created_at.desc&limit=50');
+    var pendentes=(Array.isArray(rows)?rows:[]).filter(function(t){
+      return t.origin==='captacao_publica'&&t.status==='aberta';
+    });
+    if(!pendentes.length){
+      if(status)status.textContent='Nenhuma pendência de captação no momento.';
+      target.innerHTML='<div class="muted" style="padding:32px;text-align:center">Nenhuma pendência encontrada.</div>';
+      return;
+    }
+    if(status)status.textContent=pendentes.length+' pendência(s) de avaliação.';
+    target.innerHTML=pendentes.map(function(t){
+      var slots='';
+      try{var s=typeof t.suggested_slots==='string'?JSON.parse(t.suggested_slots):(t.suggested_slots||[]);if(s.length)slots='📅 '+s.map(function(x){return(x.day||'')+' - '+(x.period||'')}).join(', ');}catch(e){}
+      var phone=t.phone?assistantFormatPhone(t.phone):'';
+      var created=t.created_at?fmtDate(t.created_at.slice(0,10)):'';
+      return '<div class="item"><div style="display:flex;flex-direction:column;gap:6px">'+
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+        '<strong>'+esc(t.patient_name||'Paciente')+'</strong>'+
+        (phone?'<span class="muted small">'+esc(phone)+'</span>':'')+
+        '<span class="muted small">'+created+'</span></div>'+
+        (t.service_name?'<div class="muted small">🏥 '+esc(t.service_name)+'</div>':'')+
+        (t.notes?'<div class="muted small">💬 '+esc(t.notes).slice(0,120)+'</div>':'')+
+        (slots?'<div class="small">'+slots+'</div>':'')+
+        '<div style="display:flex;gap:6px;margin-top:4px">'+
+        '<button class="btn primary small" onclick="agendarPendencia(\''+esc(t.id)+'\')">Agendar</button>'+
+        '<button class="btn small" onclick="agendarPendenciaDireto(\''+esc(t.id)+'\')" title="Abrir na agenda normal">📅</button>'+
+        '<button class="btn success small" onclick="concluirPendencia(\''+esc(t.id)+'\')">Concluir</button>'+
+        '<button class="btn danger small" onclick="ignorarPendencia(\''+esc(t.id)+'\')">Ignorar</button>'+
+        '</div></div></div>';
+    }).join('');
+  }catch(e){
+    console.error('[Pendencias]',e);
+    if(status)status.textContent='Erro ao carregar.';
+    target.innerHTML='<div class="muted" style="padding:32px;text-align:center">Erro ao carregar pendências.</div>';
+  }
+}
+function pendenciaDayToWeekday(day){
+  return ({segunda:1,terca:2,quarta:3,quinta:4,sexta:5,sabado:6}[String(day||'').toLowerCase()]||null);
+}
+function pendenciaNextDateForWeekday(targetDow){
+  var d=new Date();d.setDate(d.getDate()+1);
+  for(var i=0;i<14;i++){
+    if(d.getDay()===targetDow) return d.toISOString().slice(0,10);
+    d.setDate(d.getDate()+1);
+  }
+  return todayIso();
+}
+async function agendarPendencia(id){
+  try{
+    var rows=await api('assistant_tasks?id=eq.'+encodeURIComponent(id)+'&limit=1');
+    var t=Array.isArray(rows)?rows[0]:null;
+    if(!t){toast('Pendência não encontrada.','warning');return}
+    var pid=t.patient_id,phone=t.phone,slots=[];
+    try{slots=typeof t.suggested_slots==='string'?JSON.parse(t.suggested_slots):(t.suggested_slots||[])}catch(e){}
+    var dayPeriod=slots[0]||{};
+    if(pid){
+      var patient=patientById(pid);
+      if(!patient&&phone){
+        try{
+          var pRows=await api('patients?select=id&or=(whatsapp.eq.'+phone+',whatsapp.ilike.%'+phone.slice(-8)+')&limit=1');
+          pid=(Array.isArray(pRows)&&pRows[0])?pRows[0].id:pid;
+        }catch(e){}
+      }
+    }
+    var svc=null;
+    if(t.service_name){
+      var sn=String(t.service_name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+      svc=(services||[]).find(function(s){var n=String(s.name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();return n.indexOf(sn)!==-1||sn.indexOf(n)!==-1});
+    }
+    var weekday=pendenciaDayToWeekday(dayPeriod.day);
+    var startDate=pendenciaNextDateForWeekday(weekday||1);
+    var period=dayPeriod.period||'';
+    var weekdays=weekday?[weekday]:[1,3,5];
+    if(typeof window.state==='undefined'||!window.state){toast('Sistema ainda não carregou. Tente novamente.','warning');return}
+    if(!window.state.assistantBookingData)window.state.assistantBookingData={}
+    window.state.assistantBookingData={
+      patient_mode:'existing',
+      patient_id:pid||'',
+      patient_name:t.patient_name||'',
+      patient_phone:phone||'',
+      patient_pathology:t.notes||'',
+      service_id:svc?svc.id:'',
+      service_name:svc?svc.name:(t.service_name||''),
+      weekdays:weekdays,
+      period:period,
+      frequency_per_week:1,
+      total_sessions:1,
+      start_date:startDate,
+      notes:''
+    };
+    window.state.assistantBookingPlans=[];
+    window.state.assistantBookingSelectedPlan=-1;
+    window.state.assistantBookingPatientCandidates=[];
+    if(typeof renderAssistantBookingWorkspace==='function')renderAssistantBookingWorkspace();
+    showPanel('agenda-assistida');
+    setTimeout(function(){
+      if(typeof window.startAssistantBooking==='function')window.startAssistantBooking();
+    },200);
+  }catch(e){
+    toast('Erro ao carregar pendência: '+e.message,'error');
+  }
+}
+async function agendarPendenciaDireto(id){
+  try{
+    var rows=await api('assistant_tasks?id=eq.'+encodeURIComponent(id)+'&limit=1');
+    var t=Array.isArray(rows)?rows[0]:null;
+    if(!t){toast('Pendência não encontrada.','warning');return}
+    var pid=t.patient_id,phone=t.phone,slots=[];
+    try{slots=typeof t.suggested_slots==='string'?JSON.parse(t.suggested_slots):(t.suggested_slots||[])}catch(e){}
+    var dayPeriod=slots[0]||{};
+    var startDate=t.created_at?t.created_at.slice(0,10):todayIso();
+    if(pid){
+      var patient=patientById(pid);
+      if(!patient&&phone){
+        try{
+          var pRows=await api('patients?select=id&or=(whatsapp.eq.'+phone+',whatsapp.ilike.%'+phone.slice(-8)+')&limit=1');
+          pid=(Array.isArray(pRows)&&pRows[0])?pRows[0].id:pid;
+        }catch(e){}
+      }
+    }
+    openAppt(startDate,null,dayPeriod.time||'08:00');
+    if(pid)$('apptPatient').value=pid;
+    if(t.service_name){
+      var sn=String(t.service_name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+      var svc=(services||[]).find(function(s){var n=String(s.name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();return n.indexOf(sn)!==-1||sn.indexOf(n)!==-1});
+      if(svc)$('apptService').value=svc.id;
+    }
+    $('apptStatus').value='agendado';
+    syncPatientPickers();
+    onServiceChange(true);
+    toast('Pendência carregada na agenda. Ajuste os dados e salve.','info');
+    showPanel('agenda');
+  }catch(e){
+    toast('Erro: '+e.message,'error');
+  }
+}
+async function concluirPendencia(id){
+  if(!confirm('Marcar esta pendência como concluída?'))return;
+  try{
+    await api('assistant_tasks?id=eq.'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status:'concluida'})});
+    toast('Pendência concluída.','success');
+    renderPendencias();
+  }catch(e){toast('Erro: '+e.message,'error')}
+}
+async function ignorarPendencia(id){
+  if(!confirm('Ignorar esta pendência?'))return;
+  try{
+    await api('assistant_tasks?id=eq.'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status:'cancelada'})});
+    toast('Pendência ignorada.','info');
+    renderPendencias();
+  }catch(e){toast('Erro: '+e.message,'error')}
 }
 
 function showPanel(name){
@@ -3399,7 +3560,7 @@ function shouldBackgroundRefresh(){
   if(!base()||!key()||!sessionStorage.getItem('femic_jwt')) return false;
   if(hasOpenModal()) return false;
   if(Date.now()-lastUserInteractionAt<15000) return false;
-  return ['agenda','day','report','reminders','ai','packages','settings'].includes(getActivePanelName());
+  return ['agenda','day','report','reminders','ai','packages','settings','pendencias'].includes(getActivePanelName());
 }
 ['pointerdown','keydown','visibilitychange'].forEach(function(evt){
   document.addEventListener(evt,function(){lastUserInteractionAt=Date.now();},{passive:true});

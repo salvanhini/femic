@@ -11,6 +11,8 @@ const pino = require('pino');
 const qrcode = require('qrcode-terminal');
 const { processReminders } = require('./reminder.js');
 const { updateServiceStatus } = require('./supabase.js');
+const { detectIntent } = require('./intent-detector.js');
+const { handleBookingIntent, getPhoneFromJid } = require('./booking-flow.js');
 
 const serviceName = process.env.WHATSAPP_SERVICE_NAME || 'baileys-main';
 const authDir = './baileys-auth-' + serviceName;
@@ -171,6 +173,36 @@ async function startBot() {
   });
 
   sock.ev.on('creds.update', saveCreds);
+
+  sock.ev.on('messages.upsert', async function({ messages }) {
+    for (const msg of messages) {
+      try {
+        if (msg.key.fromMe) continue;
+        if (msg.key.remoteJid && msg.key.remoteJid.endsWith('@g.us')) continue;
+
+        const text = msg.message?.conversation
+          || msg.message?.extendedTextMessage?.text
+          || msg.message?.imageMessage?.caption
+          || '';
+        if (!text.trim()) continue;
+
+        const jid = msg.key.remoteJid;
+        const phone = getPhoneFromJid(jid);
+        if (!phone) continue;
+
+        const { intent, confidence } = await detectIntent(text);
+        if (intent === 'booking' && confidence >= 0.7) {
+          console.log('[Bot] Booking intent detectado de', phone.slice(0, 4) + '...');
+          handleBookingIntent(sock, jid, text).catch(function(err) {
+            console.error('[Bot] Erro no booking flow:', err.message);
+          });
+        }
+      } catch (err) {
+        console.error('[Bot] Erro ao processar mensagem:', err.message);
+      }
+    }
+  });
+
   startReminderScheduler();
   startHeartbeatScheduler();
 }
