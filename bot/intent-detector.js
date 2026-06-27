@@ -1,37 +1,60 @@
 const GROQ_API = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
-const SYSTEM_PROMPT = `Você é um classificador de intenção de uma clínica de fisioterapia (FEMIC).
+const SYSTEM_PROMPT = `Você é um classificador de mensagens de WhatsApp de uma clínica de fisioterapia (FEMIC).
 Analise a mensagem do paciente e responda APENAS com um JSON sem formatação adicional:
 
-{"intent":"booking","confidence":0.95}
-ou
-{"intent":"other","confidence":0.8}
+{"category":"agendamento","confidence":0.95}
 
-"booking" = paciente quer marcar primeira consulta/avaliação/sessão, perguntar sobre valores,
+Categorias possíveis:
+
+"agendamento" = paciente quer MARCAR primeira consulta/avaliação/sessão, perguntar sobre valores,
 convenios (unimed, hapvida, amil, bradesco, sulamerica, particular),
 disponibilidade, como agendar, ou quer iniciar tratamento.
 Inclui frases como: "quero marcar", "gostaria de agendar", "como faço para",
 "tem como marcar", "quero fazer fisioterapia", "avaliação", "primeira vez",
 "quanto custa", "voces atendem [convenio]", "marcar pelo unimed".
 
-"other" = qualquer outro assunto: reclamação, já sou paciente, cancelar,
-remarcar, informações sobre horário já agendado, etc.`;
+"remarcar" = paciente já é paciente e quer REMARCAR, CANCELAR, ou mudar horário de consulta existente.
+Inclui: "remarcar", "cancelar", "trocar horário", "adiar", "não vou poder ir", "mudar data".
+
+"duvida" = paciente tem DÚVIDA sobre tratamento, valores, convênios, endereço, horário de funcionamento,
+documentos necessários, ou qualquer informação geral.
+Inclui: "qual o valor", "funciona de segunda", "onde fica", "preciso de encaminhamento".
+
+"tarefa" = paciente precisa de ALGUMA ACAO da clinica: aguarda retorno, envio de documento,
+confirmação de presença, resultado, ou qualquer coisa que precise de follow-up.
+Inclui: "pode me enviar", "aguardo retorno", "quando vai sair", "confirmação".
+
+"geral" = qualquer outro assunto: cumprimento, agradecimento, reclamação, mensagem sem sentido, etc.`;
 
 const FALLBACK_KEYWORDS = [
-  /quero (marcar|agendar|fazer).*(avaliação|consulta|sessão|atendimento|fisioterapia)/i,
-  /gostaria de (marcar|agendar|fazer).*(avaliação|consulta|sessão|fisioterapia)/i,
-  /primeira (vez|consulta|avaliação|sessão)/i,
-  /como (faço|faz) para (marcar|agendar|iniciar)/i,
-  /quero (começar|iniciar) (tratamento|fisioterapia)/i,
-  /marcar.*(fisioterapia|consulta|atendimento).*(pelo|com|no|para)/i,
-  /(unimed|hapvida|amil|bradesco|sulamerica|particular)/i,
-  /preço|valor|quanto custa|tabela/i,
-  /tem vaga|horário disponível|disponibilidade/i,
-  /vocês (atendem|fazem|aceitam).*(convênio|particular|plano)/i,
-  /quero me (consultar|inscrever|matricular)/i,
-  /marcar.*(fisioterapia|consulta|sessao|avaliacao).*(pelo|com|no|para).*(unimed|hapvida|amil|bradesco|sulamerica|particular)/i,
-  /quero.*(fisioterapia|tratamento).*(pelo|com|na|no).*(unimed|hapvida|amil|bradesco|sulamerica|particular)/i,
+  // agendamento
+  { regex: /quero (marcar|agendar|fazer).*(avaliação|consulta|sessão|atendimento|fisioterapia)/i, cat: 'agendamento' },
+  { regex: /gostaria de (marcar|agendar|fazer).*(avaliação|consulta|sessão|fisioterapia)/i, cat: 'agendamento' },
+  { regex: /primeira (vez|consulta|avaliação|sessão)/i, cat: 'agendamento' },
+  { regex: /como (faço|faz) para (marcar|agendar|iniciar)/i, cat: 'agendamento' },
+  { regex: /quero (começar|iniciar) (tratamento|fisioterapia)/i, cat: 'agendamento' },
+  { regex: /marcar.*(fisioterapia|consulta|atendimento).*(pelo|com|no|para)/i, cat: 'agendamento' },
+  { regex: /(unimed|hapvida|amil|bradesco|sulamerica|particular)/i, cat: 'agendamento' },
+  { regex: /preço|valor|quanto custa|tabela/i, cat: 'agendamento' },
+  { regex: /tem vaga|horário disponível|disponibilidade/i, cat: 'agendamento' },
+  { regex: /vocês (atendem|fazem|aceitam).*(convênio|particular|plano)/i, cat: 'agendamento' },
+  { regex: /quero me (consultar|inscrever|matricular)/i, cat: 'agendamento' },
+  // remarcar
+  { regex: /remarcar|reagendar|trocar.*(horário|dia|data)/i, cat: 'remarcar' },
+  { regex: /cancelar.*(consulta|agendamento|sessão)/i, cat: 'remarcar' },
+  { regex: /não vou poder|não posso ir|adiar/i, cat: 'remarcar' },
+  { regex: /mudar.*(horário|data|dia)/i, cat: 'remarcar' },
+  // duvida
+  { regex: /funciona (de|das|nos)/i, cat: 'duvida' },
+  { regex: /onde fica|endereço|localização/i, cat: 'duvida' },
+  { regex: /preciso de (encaminhamento|laudo|documento)/i, cat: 'duvida' },
+  { regex: /qual (o )?horário (de funcionamento|de atendimento)/i, cat: 'duvida' },
+  // tarefa
+  { regex: /pode me (enviar|mandar|passar)/i, cat: 'tarefa' },
+  { regex: /aguardo (retorno|resposta)/i, cat: 'tarefa' },
+  { regex: /confirmação|confirmar (presença|presenca)/i, cat: 'tarefa' },
 ];
 
 async function detectWithGroq(text) {
@@ -71,8 +94,8 @@ async function detectWithGroq(text) {
     const content = data.choices?.[0]?.message?.content || '';
     const parsed = JSON.parse(content.replace(/```json|```/g, '').trim());
 
-    if (parsed && (parsed.intent === 'booking' || parsed.intent === 'other')) {
-      return parsed;
+    if (parsed && parsed.category && ['agendamento', 'remarcar', 'duvida', 'tarefa', 'geral'].includes(parsed.category)) {
+      return { category: parsed.category, confidence: parsed.confidence || 0.8 };
     }
 
     return null;
@@ -87,17 +110,17 @@ async function detectWithGroq(text) {
 }
 
 function detectWithKeywords(text) {
-  for (const regex of FALLBACK_KEYWORDS) {
+  for (const { regex, cat } of FALLBACK_KEYWORDS) {
     if (regex.test(text)) {
-      return { intent: 'booking', confidence: 0.7 };
+      return { category: cat, confidence: 0.7 };
     }
   }
-  return { intent: 'other', confidence: 0.8 };
+  return { category: 'geral', confidence: 0.8 };
 }
 
 async function detectIntent(text) {
   if (!text || typeof text !== 'string') {
-    return { intent: 'other', confidence: 1 };
+    return { category: 'geral', confidence: 1 };
   }
 
   const originalText = text.trim();
@@ -105,13 +128,13 @@ async function detectIntent(text) {
   const groqResult = await detectWithGroq(originalText);
 
   if (groqResult && groqResult.confidence >= 0.7) {
-    console.log('[IntentDetector] Groq:', groqResult.intent, groqResult.confidence, '| Texto:', originalText.slice(0, 80));
+    console.log('[IntentDetector] Groq:', groqResult.category, groqResult.confidence, '| Texto:', originalText.slice(0, 80));
     return groqResult;
   }
 
   const normalizedText = originalText.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const fallback = detectWithKeywords(normalizedText);
-  console.log('[IntentDetector] Fallback:', fallback.intent, fallback.confidence, '| Texto:', originalText.slice(0, 80));
+  console.log('[IntentDetector] Fallback:', fallback.category, fallback.confidence, '| Texto:', originalText.slice(0, 80));
   return fallback;
 }
 

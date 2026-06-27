@@ -765,9 +765,13 @@ function renderPanel(name){
       renderReminders();
       break;
     case 'agenda-assistida':
+      if(typeof renderAssistantBookingWorkspace === 'function') renderAssistantBookingWorkspace();
       break;
     case 'pendencias':
       renderPendencias();
+      break;
+    case 'inbox':
+      renderInbox();
       break;
     case 'report':
       renderReport();
@@ -940,6 +944,100 @@ async function ignorarPendencia(id){
     toast('Pendência ignorada.','info');
     renderPendencias();
   }catch(e){toast('Erro: '+e.message,'error')}
+}
+
+const INBOX_CATEGORY_LABELS = {agendamento:'Agendamento',remarcar:'Remarcar',duvida:'Dúvida',tarefa:'Tarefa',geral:'Geral'};
+const INBOX_CATEGORY_COLORS = {agendamento:'#10b981',remarcar:'#f59e0b',duvida:'#3b82f6',tarefa:'#8b5cf6',geral:'#6b7280'};
+const INBOX_STATUS_LABELS = {pendente:'Pendente',lida:'Lida',resolvida:'Resolvida'};
+
+async function renderInbox(){
+  const statusEl = $('inboxStatus');
+  const listEl = $('inboxList');
+  const kpiEl = $('inboxKpis');
+  const catFilter = $('inboxFilterCategory')?.value || '';
+  const statusFilter = $('inboxFilterStatus')?.value || '';
+  statusEl.textContent = 'Carregando...';
+  listEl.innerHTML = '';
+
+  try {
+    let query = 'whatsapp_inbox?select=*&order=received_at.desc&limit=200';
+    if (catFilter) query += '&category=eq.' + encodeURIComponent(catFilter);
+    if (statusFilter) query += '&status=eq.' + encodeURIComponent(statusFilter);
+    const rows = await api(query);
+    statusEl.textContent = rows.length + ' mensagem(ns) encontrada(s).';
+
+    // KPIs
+    const all = await api('whatsapp_inbox?select=category,status');
+    const counts = {total: all.length, pendente: 0, lida: 0, resolvida: 0, agendamento: 0, remarcar: 0, duvida: 0, tarefa: 0, geral: 0};
+    all.forEach(r => { counts[r.status] = (counts[r.status]||0) + 1; counts[r.category] = (counts[r.category]||0) + 1; });
+    kpiEl.innerHTML = [
+      {label:'Pendentes',value:counts.pendente,color:'#f59e0b'},
+      {label:'Lidas',value:counts.lida,color:'#3b82f6'},
+      {label:'Resolvidas',value:counts.resolvida,color:'#10b981'},
+      {label:'Total',value:counts.total,color:'var(--text)'},
+    ].map(k => '<div class="card kpi" style="padding:12px;text-align:center"><div class="kpi-value" style="font-size:1.4em;font-weight:700;color:'+k.color+'">'+k.value+'</div><div class="kpi-label muted small">'+k.label+'</div></div>').join('');
+
+    if (!rows.length) {
+      listEl.innerHTML = '<div class="muted" style="padding:32px;text-align:center">Nenhuma mensagem encontrada.</div>';
+      return;
+    }
+
+    listEl.innerHTML = rows.map(r => {
+      const catColor = INBOX_CATEGORY_COLORS[r.category] || '#6b7280';
+      const catLabel = INBOX_CATEGORY_LABELS[r.category] || r.category;
+      const statusLabel = INBOX_STATUS_LABELS[r.status] || r.status;
+      const time = r.received_at ? new Date(r.received_at).toLocaleString('pt-BR') : '-';
+      const phoneFmt = r.phone ? r.phone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') : '';
+      const msgPreview = (r.message_text || '').slice(0, 120) + (r.message_text && r.message_text.length > 120 ? '...' : '');
+      return '<div class="inbox-row" style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start" data-id="'+r.id+'">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px">' +
+            '<span style="background:'+catColor+'22;color:'+catColor+';padding:2px 8px;border-radius:12px;font-size:0.75em;font-weight:600">'+catLabel+'</span>' +
+            '<span style="font-size:0.75em;color:var(--muted)">'+statusLabel+'</span>' +
+            '<span style="font-size:0.7em;color:var(--muted)">'+time+'</span>' +
+          '</div>' +
+          '<div style="font-size:0.85em;color:var(--muted);margin-bottom:4px">'+phoneFmt+(r.sender_name ? ' — '+r.sender_name : '')+'</div>' +
+          '<div style="font-size:0.9em;word-break:break-word">'+msgPreview+'</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:4px;flex-shrink:0">' +
+          (r.status !== 'lida' ? '<button class="btn" style="font-size:0.75em" onclick="inboxMarkStatus(\''+r.id+'\',\'lida\')">Marcar lida</button>' : '') +
+          (r.status !== 'resolvida' ? '<button class="btn primary" style="font-size:0.75em" onclick="inboxMarkStatus(\''+r.id+'\',\'resolvida\')">Resolver</button>' : '') +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    statusEl.textContent = 'Erro ao carregar inbox: ' + e.message;
+  }
+}
+
+async function inboxMarkStatus(id, status) {
+  try {
+    const payload = { status };
+    if (status === 'resolvida') payload.resolved_at = new Date().toISOString();
+    await api('whatsapp_inbox?id=eq.' + encodeURIComponent(id), { method: 'PATCH', body: JSON.stringify(payload) });
+    toast('Status atualizado.', 'success');
+    renderInbox();
+  } catch(e) { toast('Erro: ' + e.message, 'error'); }
+}
+
+async function cleanupInboxOld() {
+  if (!confirm('Apagar todas as mensagens com mais de 30 dias?')) return;
+  try {
+    const cutoff = new Date(Date.now() - 30 * 86400000).toISOString();
+    await api('whatsapp_inbox?received_at=lt.' + encodeURIComponent(cutoff), { method: 'DELETE' });
+    toast('Mensagens antigas removidas.', 'success');
+    renderInbox();
+  } catch(e) { toast('Erro: ' + e.message, 'error'); }
+}
+
+async function cleanupInboxAll() {
+  if (!confirm('APAGAR TODAS as mensagens do inbox? Esta ação não pode ser desfeita.')) return;
+  if (!confirm('Tem certeza absoluta? Todas as mensagens serão perdidas.')) return;
+  try {
+    await api('whatsapp_inbox?id=not.is.null', { method: 'DELETE' });
+    toast('Todas as mensagens foram removidas.', 'success');
+    renderInbox();
+  } catch(e) { toast('Erro: ' + e.message, 'error'); }
 }
 
 function showPanel(name){

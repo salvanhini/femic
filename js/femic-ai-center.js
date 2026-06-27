@@ -1110,6 +1110,9 @@
     fillConfigInputs();
     renderAssistantAiProviderBadge();
     renderAssistantBookingWorkspace();
+    document.addEventListener('femic:state-updated', function(){
+      renderAssistantBookingWorkspace();
+    });
     setDebug('IA clinica pronta para apoiar o prontuario. Cadastros assistidos podem ser feitos na Agenda inteligente.');
     var assistantToggleBtn = el('assistantTogglePatientModeBtn');
     if(assistantToggleBtn) assistantToggleBtn.addEventListener('click', function(){

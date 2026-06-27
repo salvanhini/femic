@@ -10,9 +10,10 @@ const {
 const pino = require('pino');
 const qrcode = require('qrcode-terminal');
 const { processReminders } = require('./reminder.js');
-const { updateServiceStatus } = require('./supabase.js');
+const { updateServiceStatus, storeInboxMessage, cleanupOldInboxMessages } = require('./supabase.js');
 const { detectIntent } = require('./intent-detector.js');
 const { handleBookingIntent, getPhoneFromJid } = require('./booking-flow.js');
+const { getAutoReply } = require('./auto-replies.js');
 
 const serviceName = process.env.WHATSAPP_SERVICE_NAME || 'baileys-main';
 const authDir = './baileys-auth-' + serviceName;
@@ -190,12 +191,30 @@ async function startBot() {
         const phone = getPhoneFromJid(jid);
         if (!phone) continue;
 
-        const { intent, confidence } = await detectIntent(text);
-        if (intent === 'booking' && confidence >= 0.7) {
-          console.log('[Bot] Booking intent detectado de', phone.slice(0, 4) + '...');
+        const { category, confidence } = await detectIntent(text);
+
+        // Save every incoming message to inbox
+        storeInboxMessage({
+          phone,
+          message_text: text.trim(),
+          category,
+          confidence,
+        }).catch(function(err) {
+          console.error('[Bot] Erro ao salvar inbox:', err.message);
+        });
+
+        if (category === 'agendamento' && confidence >= 0.7) {
+          console.log('[Bot] Agendamento detectado de', phone.slice(0, 4) + '...');
           handleBookingIntent(sock, jid, text).catch(function(err) {
             console.error('[Bot] Erro no booking flow:', err.message);
           });
+        } else if (['tarefa', 'remarcar', 'duvida'].includes(category) && confidence >= 0.7) {
+          const reply = getAutoReply(category);
+          if (reply) {
+            sock.sendMessage(jid, { text: reply }).catch(function(err) {
+              console.error('[Bot] Erro ao enviar auto-resposta:', err.message);
+            });
+          }
         }
       } catch (err) {
         console.error('[Bot] Erro ao processar mensagem:', err.message);
@@ -203,6 +222,7 @@ async function startBot() {
     }
   });
 
+  cleanupOldInboxMessages(30);
   startReminderScheduler();
   startHeartbeatScheduler();
 }

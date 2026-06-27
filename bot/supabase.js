@@ -127,4 +127,42 @@ async function getTemplate() {
   return data.whatsapp_template_appointment;
 }
 
-module.exports = { supabase, fetchDueReminders, markReminderSent, updateServiceStatus, getTemplate };
+async function storeInboxMessage(payload) {
+  if (!payload || !payload.phone || !payload.message_text) return;
+
+  const record = {
+    phone: payload.phone,
+    sender_name: payload.sender_name || null,
+    message_text: payload.message_text.slice(0, 2000),
+    category: payload.category || 'geral',
+    confidence: payload.confidence || 0,
+    status: 'pendente',
+    patient_id: payload.patient_id || null,
+  };
+
+  const { error } = await supabase
+    .from('whatsapp_inbox')
+    .insert(record);
+
+  if (error) {
+    console.error('[Inbox] Erro ao salvar mensagem:', error.message);
+  }
+}
+
+async function cleanupOldInboxMessages(daysToKeep) {
+  const days = Number(daysToKeep) || 30;
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+
+  const { error, count } = await supabase
+    .from('whatsapp_inbox')
+    .delete({ count: 'exact' })
+    .lt('received_at', cutoff);
+
+  if (error) {
+    console.error('[Inbox] Erro na limpeza:', error.message);
+  } else {
+    console.log('[Inbox] Removidas', count || 0, 'mensagens com mais de', days, 'dias.');
+  }
+}
+
+module.exports = { supabase, fetchDueReminders, markReminderSent, updateServiceStatus, getTemplate, storeInboxMessage, cleanupOldInboxMessages };

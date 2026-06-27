@@ -97,6 +97,7 @@
       <div class="nav-link" data-panel="patients" onclick="showPanel('patients')"><span class="icon"><i data-lucide="users-round"></i></span><span>Pacientes</span></div>
       <div class="nav-link" data-panel="agenda-assistida" onclick="showPanel('agenda-assistida')"><span class="icon"><i data-lucide="calendar-plus-2"></i></span><span>Agenda assistida</span></div>
       <div class="nav-link" data-panel="pendencias" onclick="showPanel('pendencias')"><span class="icon"><i data-lucide="inbox"></i></span><span>Pendências</span></div>
+      <div class="nav-link" data-panel="inbox" onclick="showPanel('inbox')"><span class="icon"><i data-lucide="mail"></i></span><span>Inbox</span></div>
       <div class="nav-link" data-panel="prontuario" onclick="showPanel('prontuario')"><span class="icon"><i data-lucide="stethoscope"></i></span><span>Prontuário</span></div>
       <div class="nav-link" data-panel="packages" onclick="showPanel('packages')"><span class="icon"><i data-lucide="ticket-check"></i></span><span>Pacotes</span></div>
       <div class="nav-link" data-panel="reminders" onclick="showPanel('reminders')"><span class="icon"><i data-lucide="message-circle"></i></span><span>Lembretes</span></div>
@@ -264,6 +265,36 @@
       </div>
       <div id="pendenciasStatus" class="muted" style="margin-bottom:16px"></div>
       <div class="list" id="pendenciasList"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-inbox">
+    <div class="card">
+      <div class="section-title">
+        <div><div class="eyebrow">WhatsApp</div><h3>Inbox de mensagens</h3><p class="muted small">Todas as mensagens recebidas no WhatsApp, classificadas por categoria.</p></div>
+        <div class="toolbar">
+          <select id="inboxFilterCategory" onchange="renderInbox()" style="min-width:140px">
+            <option value="">Todas</option>
+            <option value="agendamento">Agendamento</option>
+            <option value="remarcar">Remarcar</option>
+            <option value="duvida">Dúvida</option>
+            <option value="tarefa">Tarefa</option>
+            <option value="geral">Geral</option>
+          </select>
+          <select id="inboxFilterStatus" onchange="renderInbox()" style="min-width:120px">
+            <option value="">Todas</option>
+            <option value="pendente">Pendente</option>
+            <option value="lida">Lida</option>
+            <option value="resolvida">Resolvida</option>
+          </select>
+          <button class="btn" onclick="renderInbox()">Atualizar</button>
+          <button class="btn" onclick="cleanupInboxOld()" title="Apagar mensagens com mais de 30 dias">🗑 Antigos (>30d)</button>
+          <button class="btn" onclick="cleanupInboxAll()" title="Apagar todas as mensagens" style="color:#ef4444">⚠ Limpar tudo</button>
+        </div>
+      </div>
+      <div id="inboxStatus" class="muted" style="margin-bottom:16px"></div>
+      <div id="inboxKpis" class="grid grid-4" style="margin-bottom:16px"></div>
+      <div class="list" id="inboxList"></div>
     </div>
   </section>
 
