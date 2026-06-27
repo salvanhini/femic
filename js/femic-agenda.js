@@ -425,7 +425,19 @@ function rebuildReferenceIndexes(){
 }
 async function loadClinicRulesCollection(){try{const rows=await api('clinic_rules?select=*&order=priority.asc,created_at.asc');writeClinicRulesCache(rows||[]);return rows||[]}catch(e){if(isMissingClinicRulesTableError(e))return readClinicRulesCache();throw e}}
 clinicRules=readClinicRulesCache();
-function saveConfig(){localStorage.femic_agenda_url=$('sbUrl').value.trim();localStorage.femic_agenda_key=$('sbKey').value.trim();toast('Configuração salva.','success')}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||DEFAULT_WHATSAPP_REMINDER_TEMPLATE;$('tplReminder').value=tpl;localStorage.femic_whatsapp_provider='baileys';if($('whatsappProvider'))$('whatsappProvider').value='baileys';if($('whatsappServiceName'))$('whatsappServiceName').value=localStorage.femic_whatsapp_service_name||'baileys-main';renderWhatsappProviderBadge();if($('setSlotStart'))$('setSlotStart').value=settings.start_time||'08:00';if($('setSlotEnd'))$('setSlotEnd').value=settings.end_time||'20:00';if(typeof renderSlotsConfig==='function')renderSlotsConfig()}
+function saveConfig(){
+  const newUrl=$('sbUrl').value.trim();
+  const oldUrl=localStorage.femic_agenda_url||'';
+  if(newUrl && oldUrl && newUrl!==oldUrl){
+    sessionStorage.removeItem('femic_jwt');
+    sessionStorage.removeItem('femic_refresh_token');
+    sessionStorage.removeItem('femic_token_expiry');
+    sessionStorage.removeItem('femic_user');
+  }
+  localStorage.femic_agenda_url=newUrl;
+  localStorage.femic_agenda_key=$('sbKey').value.trim();
+  toast('Configuração salva.','success');
+}function loadConfig(){$('sbUrl').value=localStorage.femic_agenda_url||'';$('sbKey').value=localStorage.femic_agenda_key||'';const tpl=localStorage.femic_tpl_reminder||DEFAULT_WHATSAPP_REMINDER_TEMPLATE;$('tplReminder').value=tpl;localStorage.femic_whatsapp_provider='baileys';if($('whatsappProvider'))$('whatsappProvider').value='baileys';if($('whatsappServiceName'))$('whatsappServiceName').value=localStorage.femic_whatsapp_service_name||'baileys-main';renderWhatsappProviderBadge();if($('setSlotStart'))$('setSlotStart').value=settings.start_time||'08:00';if($('setSlotEnd'))$('setSlotEnd').value=settings.end_time||'20:00';if(typeof renderSlotsConfig==='function')renderSlotsConfig()}
 async function testConnection(){try{await api('patients?select=id&limit=1');toast('Conexão e carregamento funcionando.','success')}catch(e){toast('Erro real: '+e.message,'error')}}
 function appointmentWindowQuery(){
   const mode = $('viewMode') ? $('viewMode').value : 'week';
