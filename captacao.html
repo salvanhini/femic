@@ -456,6 +456,17 @@
         throw new Error(msg);
       }
 
+      const telegramPayload = {
+        name, whatsapp: phone, pathology, insurance,
+        preferred_day: day, preferred_period: period,
+        history, patient_id: patientId
+      };
+      fetch(`${SUPABASE_URL}/functions/v1/telegram-notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(telegramPayload)
+      }).catch(function(e){ console.warn('[Telegram notify]', e); });
+
       btn.classList.add('sent');
       if(icon) icon.textContent = '✔';
       if(label) label.textContent = 'Enviado!';
