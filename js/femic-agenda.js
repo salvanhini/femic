@@ -765,7 +765,7 @@ function renderPanel(name){
       renderReminders();
       break;
     case 'agenda-assistida':
-      if(typeof renderAssistantBookingWorkspace === 'function') renderAssistantBookingWorkspace();
+      if(typeof window.renderAssistantBookingWorkspace === 'function') window.renderAssistantBookingWorkspace();
       break;
     case 'pendencias':
       renderPendencias();
@@ -886,7 +886,7 @@ async function agendarPendencia(id){
     window.state.assistantBookingPlans=[];
     window.state.assistantBookingSelectedPlan=-1;
     window.state.assistantBookingPatientCandidates=[];
-    if(typeof renderAssistantBookingWorkspace==='function')renderAssistantBookingWorkspace();
+    if(typeof window.renderAssistantBookingWorkspace==='function')window.renderAssistantBookingWorkspace();
     showPanel('agenda-assistida');
     setTimeout(function(){
       if(typeof window.startAssistantBooking==='function')window.startAssistantBooking();

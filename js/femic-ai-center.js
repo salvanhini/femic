@@ -15,6 +15,7 @@
     assistantBookingSelectedPlan: -1,
     assistantBookingPatientCandidates: []
   };
+  window.state = state;
 
   var DEFAULT_ASSISTANT_RULES = [
     'Use sempre os dados internos do sistema como contexto de apoio quando eles estiverem disponiveis.',
@@ -416,6 +417,7 @@
     renderAssistantReview();
     renderAssistantPlans();
   }
+  window.renderAssistantBookingWorkspace = renderAssistantBookingWorkspace;
 
   window.startAssistantBooking = async function(){
     var form = readAssistantReviewForm();
