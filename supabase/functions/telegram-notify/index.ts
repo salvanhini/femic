@@ -55,7 +55,15 @@ function formatMessage(data: {
 
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
-    return respond(204, {});
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, apikey, authorization',
+        'Access-Control-Max-Age': '86400',
+      },
+    });
   }
 
   if (req.method !== 'POST') {

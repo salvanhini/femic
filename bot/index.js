@@ -10,10 +10,10 @@ const {
 const pino = require('pino');
 const qrcode = require('qrcode-terminal');
 const { processReminders } = require('./reminder.js');
-const { updateServiceStatus, storeInboxMessage, cleanupOldInboxMessages } = require('./supabase.js');
+const { updateServiceStatus, storeInboxMessage, getConversationHistory, cleanupOldInboxMessages } = require('./supabase.js');
 const { detectIntent } = require('./intent-detector.js');
+const { generateReply } = require('./response-generator.js');
 const { handleBookingIntent, getPhoneFromJid } = require('./booking-flow.js');
-const { getAutoReply } = require('./auto-replies.js');
 
 const serviceName = process.env.WHATSAPP_SERVICE_NAME || 'baileys-main';
 const authDir = './baileys-auth-' + serviceName;
@@ -28,6 +28,20 @@ let heartbeatStarted = false;
 let reconnectTimer = null;
 let authResetInProgress = false;
 let lastAuthResetAt = 0;
+
+function delay(ms) {
+  return new Promise(function(resolve) { setTimeout(resolve, ms); });
+}
+
+const FALLBACK_REPLIES = {
+  tarefa: 'Recebemos sua mensagem! Nossa equipe vai analisar e retornar em breve. ⏳',
+  remarcar: 'Para remarcar, informe o dia e horário desejado que em breve retornamos com a confirmação. 📅',
+  duvida: 'Sua dúvida foi registrada! Responderemos em breve. 📞',
+};
+
+function getFallbackReply(category) {
+  return FALLBACK_REPLIES[category] || null;
+}
 
 function runReminderCheck() {
   if (!latestSock || !whatsappConnected) {
@@ -147,6 +161,7 @@ async function startBot() {
         reconnectTimer = null;
       }
       console.log('Bot "' + serviceName + '" conectado ao WhatsApp!');
+      console.log('[Bot] Detalhes da conexão:', JSON.stringify({ isOnline: update.isOnline, receivedPendingNotifications: update.receivedPendingNotifications }));
       sendHeartbeat('connected');
       runReminderCheck();
     }
@@ -175,11 +190,17 @@ async function startBot() {
 
   sock.ev.on('creds.update', saveCreds);
 
+  console.log('[Bot] Registrando handler messages.upsert...');
   sock.ev.on('messages.upsert', async function({ messages }) {
+    console.log('[Bot] messages.upsert disparado!', messages ? messages.length + ' mensagens' : 'sem messages');
+    if (!messages || !Array.isArray(messages)) return;
+
     for (const msg of messages) {
       try {
         if (msg.key.fromMe) continue;
         if (msg.key.remoteJid && msg.key.remoteJid.endsWith('@g.us')) continue;
+
+        console.log('[Bot] Mensagem bruta recebida:', JSON.stringify({ key: msg.key, hasMessage: !!msg.message }));
 
         const text = msg.message?.conversation
           || msg.message?.extendedTextMessage?.text
@@ -190,6 +211,8 @@ async function startBot() {
         const jid = msg.key.remoteJid;
         const phone = getPhoneFromJid(jid);
         if (!phone) continue;
+
+        console.log('[Bot] Mensagem de', phone.slice(0, 4) + '...:', text.trim().slice(0, 60));
 
         const { category, confidence } = await detectIntent(text);
 
@@ -203,17 +226,25 @@ async function startBot() {
           console.error('[Bot] Erro ao salvar inbox:', err.message);
         });
 
+        // Human-like delay before responding
+        await delay(1500 + Math.random() * 1500);
+
         if (category === 'agendamento' && confidence >= 0.7) {
           console.log('[Bot] Agendamento detectado de', phone.slice(0, 4) + '...');
           handleBookingIntent(sock, jid, text).catch(function(err) {
             console.error('[Bot] Erro no booking flow:', err.message);
           });
-        } else if (['tarefa', 'remarcar', 'duvida'].includes(category) && confidence >= 0.7) {
-          const reply = getAutoReply(category);
+        } else if (['tarefa', 'remarcar', 'duvida'].includes(category) && confidence >= 0.5) {
+          const history = await getConversationHistory(phone, 5);
+          let reply = await generateReply(category, text, history);
+
+          if (!reply) {
+            reply = getFallbackReply(category);
+          }
+
           if (reply) {
-            sock.sendMessage(jid, { text: reply }).catch(function(err) {
-              console.error('[Bot] Erro ao enviar auto-resposta:', err.message);
-            });
+            console.log('[Bot] Respondendo para', phone.slice(0, 4) + '...:', reply.slice(0, 60));
+            await sock.sendMessage(jid, { text: reply });
           }
         }
       } catch (err) {

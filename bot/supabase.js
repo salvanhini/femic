@@ -4,9 +4,9 @@ const { buildReminderUpdate, buildReminderWindow } = require('./reminder-utils.j
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.FEMIC_SUPABASE_URL;
 const supabaseKey =
-  process.env.SUPABASE_ANON_KEY ||
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.FEMIC_SUPABASE_SERVICE_ROLE_KEY;
+  process.env.FEMIC_SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('Faltam SUPABASE_URL e SUPABASE_ANON_KEY no .env ou FEMIC_SUPABASE_URL e FEMIC_SUPABASE_SERVICE_ROLE_KEY no ambiente.');
@@ -149,6 +149,22 @@ async function storeInboxMessage(payload) {
   }
 }
 
+async function getConversationHistory(phone, limit = 10) {
+  const digits = phone.replace(/\D/g, '');
+  const { data, error } = await supabase
+    .from('whatsapp_inbox')
+    .select('message_text, category, received_at')
+    .eq('phone', digits)
+    .order('received_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('[Inbox] Erro ao buscar histórico:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
 async function cleanupOldInboxMessages(daysToKeep) {
   const days = Number(daysToKeep) || 30;
   const cutoff = new Date(Date.now() - days * 86400000).toISOString();
@@ -165,4 +181,4 @@ async function cleanupOldInboxMessages(daysToKeep) {
   }
 }
 
-module.exports = { supabase, fetchDueReminders, markReminderSent, updateServiceStatus, getTemplate, storeInboxMessage, cleanupOldInboxMessages };
+module.exports = { supabase, fetchDueReminders, markReminderSent, updateServiceStatus, getTemplate, storeInboxMessage, getConversationHistory, cleanupOldInboxMessages };

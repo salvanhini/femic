@@ -459,7 +459,7 @@
         preferred_day: day, preferred_period: period,
         history, patient_id: patientId
       };
-      fetch(`${SUPABASE_URL}/functions/v1/telegram_notify`, {
+      fetch(`${SUPABASE_URL}/functions/v1/telegram-notify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

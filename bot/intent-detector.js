@@ -55,6 +55,11 @@ const FALLBACK_KEYWORDS = [
   { regex: /pode me (enviar|mandar|passar)/i, cat: 'tarefa' },
   { regex: /aguardo (retorno|resposta)/i, cat: 'tarefa' },
   { regex: /confirmação|confirmar (presença|presenca)/i, cat: 'tarefa' },
+  // standalone patterns
+  { regex: /^(quero )?marcar$/i, cat: 'agendamento' },
+  { regex: /^(quero )?agendar$/i, cat: 'agendamento' },
+  { regex: /^agendamento$/i, cat: 'agendamento' },
+  { regex: /^(quero uma|quero )?consulta$/i, cat: 'agendamento' },
 ];
 
 async function detectWithGroq(text) {

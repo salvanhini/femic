@@ -337,9 +337,9 @@
 
   function populateAssistantBookingForm(){
     var data = state.assistantBookingData || {};
-    if(!data.patient_name && !data.service_id) return;
     renderAssistantPatientSelect(data.patient_id || '');
     renderAssistantServiceSelect(data.service_id || '');
+    if(!data.patient_name && !data.service_id) return;
     if(el('assistantStartDate')) el('assistantStartDate').value = data.start_date || '';
     if(el('assistantPeriod')) el('assistantPeriod').value = data.period || '';
     if(el('assistantFrequency')) el('assistantFrequency').value = data.frequency_per_week || '';

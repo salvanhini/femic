@@ -1,7 +1,7 @@
 const { normalizeWhatsappJid } = require('./reminder-utils.js');
 const { supabase } = require('./supabase.js');
 
-const CAPTACAO_URL = process.env.CAPTACAO_URL || 'https://femic.vercel.app/captacao.html';
+const CAPTACAO_URL = process.env.CAPTACAO_URL || 'https://salvanhini.github.io/agendar/';
 
 function getPhoneFromJid(jid) {
   if (!jid) return '';
