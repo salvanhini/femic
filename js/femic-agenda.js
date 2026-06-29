@@ -815,6 +815,7 @@ async function renderPendencias(){
         '<div style="display:flex;gap:6px;margin-top:4px">'+
         '<button class="btn primary small" onclick="agendarPendencia(\''+esc(t.id)+'\')">Agendar</button>'+
         '<button class="btn small" onclick="agendarPendenciaDireto(\''+esc(t.id)+'\')" title="Abrir na agenda normal">📅</button>'+
+        '<button class="btn small" onclick="confirmarPendenciaWhatsApp(\''+esc(t.id)+'\')">📤 WhatsApp</button>'+
         '<button class="btn success small" onclick="concluirPendencia(\''+esc(t.id)+'\')">Concluir</button>'+
         '<button class="btn danger small" onclick="ignorarPendencia(\''+esc(t.id)+'\')">Ignorar</button>'+
         '</div></div></div>';
@@ -2735,6 +2736,20 @@ async function sendReminderManual(appointmentId){
     }).catch(function(e){
       toast('Erro ao marcar lembrete como enviado: '+e.message,'error');
     });
+  }catch(e){
+    toast('Erro: '+e.message,'error');
+  }
+}
+async function confirmarPendenciaWhatsApp(taskId){
+  try{
+    var rows=await api('assistant_tasks?id=eq.'+encodeURIComponent(taskId)+'&select=id,patient_name,phone&limit=1');
+    var t=Array.isArray(rows)?rows[0]:null;
+    if(!t){toast('Pendencia nao encontrada.','warning');return}
+    var phone=cleanPhone(t.phone);
+    if(!phone){toast('Pendencia sem telefone.','warning');return}
+    var msg='Ola '+esc(t.patient_name||'Paciente')+'! Sua avaliacao na FEMIC foi agendada! Agora e so aguardar que entraremos em contato para confirmar os detalhes. 😊';
+    window.open('https://wa.me/55'+phone.replace(/^55/,'')+'?text='+encodeURIComponent(msg),'_blank');
+    toast('WhatsApp aberto com mensagem de confirmacao.','success');
   }catch(e){
     toast('Erro: '+e.message,'error');
   }
