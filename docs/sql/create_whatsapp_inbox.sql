@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS whatsapp_inbox (
   patient_id TEXT,
   received_at TIMESTAMPTZ DEFAULT now(),
   resolved_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT now(),
+  jid TEXT
 );
 
 ALTER TABLE whatsapp_inbox ENABLE ROW LEVEL SECURITY;

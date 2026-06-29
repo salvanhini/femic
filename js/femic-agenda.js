@@ -2129,7 +2129,7 @@ function renderReminders(){
   $('reminderKpis').innerHTML=`<div class="kpi"><div class="small muted">Pendentes</div><strong>${pending.length}</strong></div><div class="kpi"><div class="small muted">Vencidos</div><strong>${due.length}</strong></div><div class="kpi"><div class="small muted">Enviados</div><strong>${sent.length}</strong></div>`;
   $('reminderList').innerHTML=list.length?list.map(a=>{
     const p=patientsById[String(a.patient_id)]||{},service=servicesById[String(a.service_id)]||{},sentFlag=reminderFlag(a),phoneOk=hasReminderPhone(a),dueText=sentFlag?'Enviado':reminderDueLabel(a),cls=sentFlag?'reminder-enviado':phoneOk?'reminder-pendente':'reminder-semwhats';
-    return `<div class="item ${cls}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)} — ${esc(p.name||'Paciente')}</strong><div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(service.name||'Sem serviço')} · <span class="status-chip ${a.status}">${a.status}</span> · <span class="reminder-state ${cls}">${esc(dueText)}</span></div></div><div class="toolbar">${sentFlag?'<span class="status-chip concluido">Enviado</span>':phoneOk?'<button class="btn btn-compact" onclick="sendReminderNow(\''+a.id+'\')">Enviar WhatsApp</button>':'<span class="status-chip cancelado">Sem WhatsApp</span>'}</div></div></div>`;
+    return `<div class="item ${cls}"><div class="item-top"><div><strong>${normalizeTime(a.start_time)} — ${esc(p.name||'Paciente')}</strong><div class="muted small">${esc(p.whatsapp||'Sem WhatsApp')} · ${esc(service.name||'Sem serviço')} · <span class="status-chip ${a.status}">${a.status}</span> · <span class="reminder-state ${cls}">${esc(dueText)}</span></div></div><div class="toolbar">${sentFlag?'<span class="status-chip concluido">Enviado</span>':phoneOk?'<button class="btn btn-compact" onclick="sendReminderManual(\''+a.id+'\')">📤 Enviar WhatsApp</button>':'<span class="status-chip cancelado">Sem WhatsApp</span>'}</div></div></div>`;
   }).join(''):'<div class="muted">Nenhum lembrete nesta data.</div>';
 }
 
@@ -2718,24 +2718,16 @@ async function restoreAgendaBackup(event){
   }
 }
 
-async function sendReminderNow(appointmentId){
+async function sendReminderManual(appointmentId){
   try{
-    const patch = {
-      appointment_reminder_sent: false,
-      reminder_sent: false,
-      appointment_reminder_sent_at: null,
-      reminder_sent_at: null,
-      appointment_reminder_delivery_status: null,
-      appointment_reminder_error_message: null,
-      appointment_reminder_last_attempt_at: new Date(Date.now() - 86400000).toISOString()
-    };
-    await api('appointments?id=eq.' + appointmentId, {method:'PATCH', body: JSON.stringify(patch)});
     const a = appointments.find(x => String(x.id) === String(appointmentId));
-    if(a){
-      Object.assign(a, patch);
-    }
-    renderReminders();
-    toast('Lembrete redefinido. O bot Baileys enviará em instantes.','success');
+    if(!a) return toast('Agendamento nao encontrado.','warning');
+    const p = patientsById[String(a.patient_id)];
+    if(!p?.whatsapp) return toast('Paciente sem WhatsApp.','warning');
+    const template = settings.whatsapp_template_appointment || localStorage.femic_tpl_reminder || DEFAULT_WHATSAPP_REMINDER_TEMPLATE;
+    const msg = template.replace(/\{nome\}/g, p.name || 'Paciente').replace(/\{data\}/g, a.appointment_date || '').replace(/\{hora\}/g, (a.start_time || '').slice(0, 5));
+    const phone = p.whatsapp.replace(/\D/g, '');
+    window.open('https://wa.me/55' + phone + '?text=' + encodeURIComponent(msg), '_blank');
   }catch(e){
     toast('Erro: '+e.message,'error');
   }

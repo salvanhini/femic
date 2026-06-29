@@ -1,22 +1,17 @@
 {
   "name": "femic-whatsapp-bot",
-  "version": "1.0.0",
-  "description": "Bot WhatsApp para lembretes automáticos de consultas FEMIC",
+  "version": "3.0.0",
+  "description": "Bot WhatsApp FEMIC Fisioterapia",
   "main": "index.js",
-  "engines": {
-    "node": ">=20"
-  },
-  "scripts": {
-    "start": "node index.js",
-    "test": "node --test *.test.js"
-  },
+  "engines": { "node": ">=20" },
+  "scripts": { "start": "node index.js" },
   "dependencies": {
-    "@whiskeysockets/baileys": "^6.7.16",
-    "@supabase/supabase-js": "^2.49.4",
-    "qrcode-terminal": "^0.12.0",
-    "pino": "^9.6.0",
-    "dotenv": "^16.4.7",
+    "@whiskeysockets/baileys": "6.7.22",
+    "@supabase/supabase-js": "2.108.2",
     "libsignal": "file:vendor/libsignal",
-    "ws": "^8.18.3"
+    "qrcode-terminal": "0.12.0",
+    "pino": "9.6.0",
+    "dotenv": "16.4.7",
+    "ws": "8.18.3"
   }
 }
