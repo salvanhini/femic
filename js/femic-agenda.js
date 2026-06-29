@@ -2722,7 +2722,7 @@ async function sendReminderManual(appointmentId){
   try{
     const a = appointments.find(x => String(x.id) === String(appointmentId));
     if(!a) return toast('Agendamento nao encontrado.','warning');
-    const p = patientsById[String(a.patient_id)];
+    const p = patients.find(x => String(x.id) === String(a.patient_id)) || {};
     if(!p?.whatsapp) return toast('Paciente sem WhatsApp.','warning');
     const template = settings.whatsapp_template_appointment || localStorage.femic_tpl_reminder || DEFAULT_WHATSAPP_REMINDER_TEMPLATE;
     const msg = template.replace(/\{nome\}/g, p.name || 'Paciente').replace(/\{data\}/g, a.appointment_date || '').replace(/\{hora\}/g, (a.start_time || '').slice(0, 5));
