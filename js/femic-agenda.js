@@ -2728,6 +2728,10 @@ async function sendReminderManual(appointmentId){
     const msg = template.replace(/\{nome\}/g, p.name || 'Paciente').replace(/\{data\}/g, a.appointment_date || '').replace(/\{hora\}/g, (a.start_time || '').slice(0, 5));
     const phone = p.whatsapp.replace(/\D/g, '');
     window.open('https://wa.me/55' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+    api('appointments?id=eq.' + appointmentId, {method:'PATCH', body: JSON.stringify({reminder_sent: true, appointment_reminder_sent: true, appointment_reminder_sent_at: new Date().toISOString(), reminder_sent_at: new Date().toISOString(), appointment_reminder_provider_used: 'wa_me', appointment_reminder_delivery_status: 'sent', appointment_reminder_last_attempt_at: new Date().toISOString()}).then(function(){
+      renderReminders();
+    });
+    Object.assign(a, {reminder_sent: true, appointment_reminder_sent: true});
   }catch(e){
     toast('Erro: '+e.message,'error');
   }
