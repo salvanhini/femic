@@ -15,7 +15,7 @@ A Edge Function é escrita em Deno/TypeScript e roda serverless no próprio Supa
 ## Pré-requisitos
 
 - [Supabase CLI](https://supabase.com/docs/guides/cli) instalado
-- Acesso ao projeto Supabase (project ref: `uhpyinpugdvcsmghgimd`)
+- Acesso ao projeto Supabase (project ref: `SEU_PROJECT_REF`)
 - Token de bot do Telegram (criado via [@BotFather](https://t.me/BotFather))
 - Chat ID de destino (obtido via [@userinfobot](https://t.me/userinfobot))
 
@@ -46,7 +46,7 @@ Abra o link que aparecer no terminal e faça o login no browser.
 ### 3. Linkar com o projeto
 
 ```bash
-supabase link --project-ref uhpyinpugdvcsmghgimd
+supabase link --project-ref SEU_PROJECT_REF
 ```
 
 Será solicitada uma database password — é a senha que você definiu quando criou o projeto no Supabase. Se não lembrar, redefina em **Project Settings → Database → Reset Database Password**.
@@ -54,8 +54,8 @@ Será solicitada uma database password — é a senha que você definiu quando c
 ### 4. Configurar os segredos (variáveis de ambiente)
 
 ```bash
-supabase secrets set TELEGRAM_BOT_TOKEN=8245510284:AAGLWQNKY-IgeTNAfrlBFWe5HdKX3h67wZA
-supabase secrets set TELEGRAM_CHAT_ID=1053536284
+supabase secrets set TELEGRAM_BOT_TOKEN=SEU_TELEGRAM_BOT_TOKEN
+supabase secrets set TELEGRAM_CHAT_ID=SEU_CHAT_ID
 ```
 
 Para verificar se foram criados:
@@ -84,7 +84,7 @@ Acesse o `captacao.html`, preencha o formulário e envie. A mensagem deve aparec
 Para testar diretamente pela API:
 
 ```bash
-curl -X POST https://uhpyinpugdvcsmghgimd.supabase.co/functions/v1/telegram-notify \
+curl -X POST https://SEU_PROJECT_REF.supabase.co/functions/v1/telegram-notify \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Teste",

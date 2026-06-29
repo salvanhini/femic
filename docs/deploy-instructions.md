@@ -19,7 +19,7 @@ supabase login                 # logar no Supabase
 
 **No terminal, dentro da pasta do projeto:**
 ```bash
-supabase link --project-ref uhpyinpugdvcsmghgimd
+supabase link --project-ref SEU_PROJECT_REF
 # (vai pedir a database password)
 supabase functions deploy telegram-notify
 ```
@@ -29,8 +29,8 @@ Verificar segredos:
 supabase secrets list
 # Deve mostrar TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID
 # Se não tiver, rodar:
-supabase secrets set TELEGRAM_BOT_TOKEN=8245510284:AAGLWQNKY-IgeTNAfrlBFWe5HdKX3h67wZA
-supabase secrets set TELEGRAM_CHAT_ID=1053536284
+supabase secrets set TELEGRAM_BOT_TOKEN=SEU_TELEGRAM_BOT_TOKEN
+supabase secrets set TELEGRAM_CHAT_ID=SEU_CHAT_ID
 ```
 
 ---
@@ -48,8 +48,8 @@ supabase secrets set TELEGRAM_CHAT_ID=1053536284
 **Configurar variáveis de ambiente no DisCloud:**
 No painel do bot → "Environment Variables", adicionar:
 ```
-SUPABASE_URL=https://uhpyinpugdvcsmghgimd.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVocHlpbnB1Z2R2Y3NtZ2hnaW1kIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjU4MjE4MiwiZXhwIjoyMDk4MTU4MTgyfQ.k08XHD5nP3J9wgYj-yO5FocXDGJGofYjDWnL4AlubKA
+SUPABASE_URL=https://SEU_PROJECT.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
 GROQ_API_KEY=<sua chave Groq>
 GROQ_MODEL=llama-3.3-70b-versatile
 CLINIC_TIME_ZONE=America/Sao_Paulo

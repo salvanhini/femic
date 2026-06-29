@@ -4,3 +4,5 @@ services/whatsapp-worker/.session/
 services/whatsapp-worker/.runtime/
 .env
 .env.discloud
+env.txt
+supabase/.temp/
