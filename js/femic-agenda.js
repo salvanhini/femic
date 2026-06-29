@@ -294,11 +294,7 @@ function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&l
 function localIsoDate(d){const x=new Date(d);return String(x.getFullYear())+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}function todayIso(){return localIsoDate(new Date())}function isoDate(d){return localIsoDate(d)}function dateDay(dateStr){const [y,m,d]=String(dateStr).split('-').map(Number);return new Date(y,m-1,d).getDay()}function fmtDate(s){if(!s)return'';const [y,m,d]=String(s).split('-');return d+'/'+m+'/'+y}function fmtDateTime(value){if(!value)return'';const dt=new Date(value);if(Number.isNaN(dt.getTime()))return fmtDate(String(value).slice(0,10));return dt.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}function fmtWeekday(s){if(!s)return'';const [y,m,d]=String(s).split('-').map(Number);const dias=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];return dias[new Date(y,m-1,d).getDay()]||''}function cleanPhone(v){return String(v||'').replace(/\D/g,'')}function brl(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}function normalizeTime(t){return String(t||'').slice(0,5)}function timeToMin(t){const [h,m]=normalizeTime(t).split(':').map(Number);return h*60+(m||0)}function minToTime(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}function addMinutes(t,m){return minToTime(timeToMin(t)+Number(m||0))}function base(){return ($('sbUrl').value||localStorage.femic_agenda_url||'').trim().replace(/\/$/,'')}function key(){return ($('sbKey').value||localStorage.femic_agenda_key||'').trim()}function hasValidSession(){const jwt=sessionStorage.getItem('femic_jwt');const expiry=Number(sessionStorage.getItem('femic_token_expiry')||0);return !!(jwt&&expiry&&Date.now()<expiry)}async function ensureSession(){if(hasValidSession())return true;if(sessionStorage.getItem('femic_refresh_token')&&await femicRefreshToken())return true;throw new Error('Faça login para acessar os dados do Supabase.')}function headers(){
   const jwt = sessionStorage.getItem('femic_jwt');
   const expiry = Number(sessionStorage.getItem('femic_token_expiry') || 0);
-  const tokenValid = jwt && expiry && Date.now() < expiry;
-  const authJwt = tokenValid ? jwt : '';
-  if (jwt && expiry && Date.now() > expiry && sessionStorage.getItem('femic_refresh_token')) {
-    femicRefreshToken().catch(function(){});
-  }
+  const authJwt = jwt && expiry && Date.now() < expiry ? jwt : '';
   return{apikey:key(),Authorization:'Bearer '+authJwt,'Content-Type':'application/json',Prefer:'return=representation'};
 }
 async function api(path,opt={}){await ensureSession();const res=await fetch(base()+'/rest/v1/'+path,{headers:headers(),...opt});const txt=await res.text();let data;try{data=txt?JSON.parse(txt):null}catch(e){data=txt}if(!res.ok){console.error('Supabase error',path,res.status,data);throw new Error((data&&data.message)||txt||('HTTP '+res.status))}return data}
@@ -1245,9 +1241,14 @@ function enhancePatientSelect(selectId){
     selectPatientPickerValue(selectId, '');
     input.focus();
   });
-  document.addEventListener('click', function(event){
-    if(!wrapper.contains(event.target)) list.classList.add('hidden');
-  });
+  if(!window._patientPickerDocListener){
+    window._patientPickerDocListener = true;
+    document.addEventListener('click', function(event){
+      Object.values(patientPickerState).forEach(function(state){
+        if(state.wrapper && !state.wrapper.contains(event.target)) state.list.classList.add('hidden');
+      });
+    });
+  }
   select.addEventListener('change', ()=>syncPatientPicker(selectId));
   syncPatientPicker(selectId);
 }
@@ -2729,9 +2730,11 @@ async function sendReminderManual(appointmentId){
     const phone = p.whatsapp.replace(/\D/g, '');
     window.open('https://wa.me/55' + phone + '?text=' + encodeURIComponent(msg), '_blank');
     api('appointments?id=eq.' + appointmentId, {method:'PATCH', body: JSON.stringify({reminder_sent: true, appointment_reminder_sent: true, appointment_reminder_sent_at: new Date().toISOString(), reminder_sent_at: new Date().toISOString(), appointment_reminder_provider_used: 'wa_me', appointment_reminder_delivery_status: 'sent', appointment_reminder_last_attempt_at: new Date().toISOString()})}).then(function(){
+      Object.assign(a, {reminder_sent: true, appointment_reminder_sent: true});
       renderReminders();
+    }).catch(function(e){
+      toast('Erro ao marcar lembrete como enviado: '+e.message,'error');
     });
-    Object.assign(a, {reminder_sent: true, appointment_reminder_sent: true});
   }catch(e){
     toast('Erro: '+e.message,'error');
   }
@@ -3579,10 +3582,15 @@ function femicSaveSetup(){
 async function femicLogin(){
   const urlVal = (localStorage.femic_agenda_url || '').trim();
   const keyVal = (localStorage.femic_agenda_key || '').trim();
-  const email    = (document.getElementById('loginEmail').value || '').trim();
-  const password = document.getElementById('loginPassword').value || '';
-  const errEl    = document.getElementById('loginError');
-  const btn      = document.getElementById('loginBtn');
+  const emailEl = document.getElementById('loginEmail');
+  const passEl  = document.getElementById('loginPassword');
+  const errEl   = document.getElementById('loginError');
+  const btn     = document.getElementById('loginBtn');
+  const overlay = document.getElementById('femicLoginOverlay');
+
+  if(!emailEl || !passEl || !errEl || !btn) return;
+  const email    = (emailEl.value || '').trim();
+  const password = passEl.value || '';
 
   if(!urlVal || !keyVal){ femicShowSetup(); return; }
   if(!email || !password){
@@ -3608,7 +3616,7 @@ async function femicLogin(){
     var expiresAt = Date.now() + ((data.expires_in || 3600) - 60) * 1000;
     sessionStorage.setItem('femic_token_expiry', String(expiresAt));
     sessionStorage.setItem('femic_user', email);
-    document.getElementById('femicLoginOverlay').style.display = 'none';
+    if(overlay) overlay.style.display = 'none';
     const lbl = document.getElementById('loginUserLabel');
     if(lbl) lbl.textContent = email.split('@')[0] + ' · Sair';
     if(base() && key()) loadAll(true);
