@@ -1,0 +1,201 @@
+/* =============================================================
+   FEMIC Theme for ZapZap (WhatsApp Web)
+   Cores da marca: Navy #0b3c6f · Cyan #1fb6e9 · Verde #10b981
+   Fonte: DM Sans
+   Como usar: ZapZap → Configurações → Customizações →
+              CSS Global → colar este conteúdo
+   ============================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+/* ── Variáveis principais ── */
+:root {
+  --primary-strong: #0b3c6f;
+  --primary-weak: #e8f0f9;
+  --primary-dim: rgba(11, 60, 111, 0.08);
+
+  --background-default: #f5f8fc;
+  --background-default-active: #e8f0f9;
+  --background-chat: linear-gradient(170deg, #f5f8fc 0%, #edf3f9 50%, #f0f6fc 100%);
+
+  --conversation-header: #0b3c6f;
+  --panel-header-background: #0b3c6f;
+  --panel-header-icon: #ffffff;
+  --panel-header-text: #ffffff;
+
+  --incoming-background: #ffffff;
+  --incoming-background-deeper: #f8faff;
+  --outgoing-background: linear-gradient(135deg, #0b3c6f 0%, #1fb6e9 100%);
+  --outgoing-background-deeper: linear-gradient(135deg, #0a3563 0%, #1aa6c8 100%);
+
+  --intro-background: #f5f8fc;
+  --compose-primary: #0b3c6f;
+
+  --icon-primary: #6b7f92;
+  --icon-strong: #0b3c6f;
+  --icon-fixed: #0b3c6f;
+
+  --text-primary: #1a2c3e;
+  --text-secondary: #6b7f92;
+  --text-tertiary: #9aafc2;
+
+  --badge-primary: #0b3c6f;
+  --notification-bg: #0b3c6f;
+  --notification-text: #ffffff;
+
+  --bubble-meta: rgba(255, 255, 255, 0.75);
+  --outgoing-bubble-meta: rgba(255, 255, 255, 0.8);
+
+  --search-container-background: #e8f0f9;
+  --search-input-background: #ffffff;
+
+  --border-list: rgba(11, 60, 111, 0.08);
+  --border-default: rgba(11, 60, 111, 0.10);
+
+  --button-primary-background: #0b3c6f;
+  --button-primary-text: #ffffff;
+  --button-primary-hover-background: #0a3563;
+
+  --link: #1fb6e9;
+  --link-hover: #0b3c6f;
+
+  --shadow-default: 0 1px 3px rgba(11, 60, 111, 0.08);
+  --shadow-elevated: 0 8px 24px rgba(11, 60, 111, 0.12);
+
+  --font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-size-default: 15px;
+  --font-size-sm: 13px;
+  --font-size-xs: 11px;
+  --font-size-lg: 17px;
+}
+
+/* ── Fonte global ── */
+* {
+  font-family: var(--font-family) !important;
+}
+
+/* ── Header da conversa ── */
+header, [data-testid="conversation-header"], ._amie, ._amif {
+  background: var(--conversation-header) !important;
+  color: #fff !important;
+}
+header span, header svg {
+  color: #fff !important;
+}
+
+/* ── Barra lateral ── */
+[data-testid="chat-list"], ._akbu, ._akbv {
+  background: var(--background-default) !important;
+}
+[data-testid="chat-list"] [data-testid="cell-frame-container"]:hover {
+  background: var(--primary-dim) !important;
+}
+
+/* ── Campo de busca ── */
+[data-testid="chat-list-search"], ._amk, ._aml {
+  background: var(--search-container-background) !important;
+}
+[data-testid="chat-list-search"] input {
+  background: var(--search-input-background) !important;
+}
+
+/* ── Bolha recebida ── */
+.message-in, [data-testid="msg-container"] .message-in,
+div.message-in, div[data-testid="conversation-panel-messages"] .message-in {
+  background: var(--incoming-background) !important;
+  border-radius: 8px 18px 18px 8px !important;
+  box-shadow: 0 1px 4px rgba(11, 60, 111, 0.06) !important;
+}
+
+/* ── Bolha enviada ── */
+.message-out, [data-testid="msg-container"] .message-out,
+div.message-out, div[data-testid="conversation-panel-messages"] .message-out {
+  background: var(--outgoing-background) !important;
+  border-radius: 18px 8px 8px 18px !important;
+  box-shadow: 0 2px 8px rgba(11, 60, 111, 0.15) !important;
+  color: #fff !important;
+}
+.message-out span, .message-out .selectable-text {
+  color: #fff !important;
+}
+.message-out [data-testid="msg-meta"], .message-out [data-testid="msg-dblcheck"],
+.message-out [data-testid="msg-check"], .message-out [data-testid="msg-time"] {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* ── Fundo da conversa ── */
+[data-testid="conversation-panel-wrapper"], ._akbu, ._akbv,
+div[data-testid="conversation-panel-messages"] {
+  background: var(--background-chat) !important;
+}
+
+/* ── Input de mensagem ── */
+[data-testid="compose"], ._akby, ._akbz,
+footer, [data-testid="conversation-footer"] {
+  background: var(--background-default) !important;
+  border-top: 1px solid var(--border-default) !important;
+}
+[contenteditable="true"], .copyable-text, .selectable-text {
+  font-family: var(--font-family) !important;
+}
+
+/* ── Botão de envio ── */
+[data-testid="compose-btn-send"], button[aria-label="Enviar"] {
+  background: var(--compose-primary) !important;
+  border-radius: 50% !important;
+}
+
+/* ── Badges / notificações não lidas ── */
+[data-testid="icon-unread-count"], ._ak8q, ._ak8r {
+  background: var(--badge-primary) !important;
+  color: #fff !important;
+}
+
+/* ── Avatar ── */
+img[data-testid="user-avatar"], [data-testid="contact-avatar"],
+._ak8s img, ._ak8t img {
+  border-radius: 50% !important;
+  border: 2px solid rgba(11, 60, 111, 0.10) !important;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px !important;
+}
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(11, 60, 111, 0.18) !important;
+  border-radius: 10px !important;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(11, 60, 111, 0.30) !important;
+}
+
+/* ── Tela inicial (sem conversa) ── */
+[data-testid="intro"], ._akbz, ._akbz > div {
+  background: var(--intro-background) !important;
+}
+[data-testid="intro"] h1, [data-testid="intro"] span, [data-testid="intro"] div {
+  color: var(--text-primary) !important;
+}
+
+/* ── Links ── */
+a, [data-testid="link"] {
+  color: var(--link) !important;
+}
+a:hover {
+  color: var(--link-hover) !important;
+}
+
+/* ── Checkbox, radio ── */
+input[type="checkbox"], input[type="radio"] {
+  accent-color: var(--primary-strong) !important;
+}
+
+/* ── Tooltip, popup ── */
+[data-testid="popup"], ._ak8v, ._ak8w {
+  border-radius: 12px !important;
+  box-shadow: var(--shadow-elevated) !important;
+}

@@ -205,7 +205,8 @@ async function handleMessage(activeSock, msg) {
     return;
   }
 
-  // QUESTIONS — Groq responde, não salva no inbox
+  // QUESTIONS — Groq responde, permanece em QUESTIONS (não volta pro MENU)
+  // Para sair, paciente digita "menu"/"voltar"/"0"
   if (session.state === S.QUESTIONS) {
     try { await activeSock.sendPresenceUpdate('composing', jid); } catch (_) {}
     const history = await getHistory(phone, 4);
@@ -215,7 +216,6 @@ async function handleMessage(activeSock, msg) {
       await delay();
       await activeSock.sendMessage(jid, { text: reply });
     }
-    setState(jid, S.MENU);
     try { await activeSock.sendPresenceUpdate('paused', jid); } catch (_) {}
     return;
   }

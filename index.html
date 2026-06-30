@@ -253,6 +253,40 @@
       <div id="assistantBookingReview"></div>
       <div id="assistantBookingPlans"></div>
     </section>
+
+    <section class="card" style="margin-top:16px">
+      <details>
+        <summary class="section-title" style="cursor:pointer">
+          <div><div class="eyebrow">Radar de horários</div><h3>Visão de ocupação da agenda</h3></div>
+        </summary>
+        <div class="ai-radar-head">
+          <div class="toolbar" style="margin-top:8px;flex-wrap:wrap">
+            <input type="date" id="aiRadarStart" onchange="renderAIRadar(false)" style="max-width:170px">
+            <select id="aiRadarPeriod" onchange="renderAIRadar(false)" style="max-width:170px">
+              <option value="all">Todos os períodos</option>
+              <option value="manha">Manhã</option>
+              <option value="tarde">Tarde</option>
+            </select>
+            <input type="text" id="aiRadarPatient" placeholder="Filtrar paciente..." oninput="renderAIRadar(false)" style="max-width:200px">
+            <label class="ai-radar-toggle">
+              <input type="checkbox" id="aiRadarIdealFocus" onchange="renderAIRadar(false)">
+              Só encaixes ideais
+            </label>
+          </div>
+          <div class="ai-radar-legend">
+            <span><span class="ai-dot best"></span> Encaixe ideal</span>
+            <span><span class="ai-dot open"></span> Livre</span>
+            <span><span class="ai-dot almost"></span> 1 vaga</span>
+            <span><span class="ai-dot full"></span> Lotado</span>
+          </div>
+        </div>
+        <div id="aiRadarKpis" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px"></div>
+        <span id="aiRadarKpiLine" class="muted small"></span>
+        <div id="aiRadarSummary" class="ai-radar-summary" style="margin-top:12px"></div>
+        <div id="aiRadarQuick" class="ai-radar-quick" style="margin-top:12px"></div>
+        <div id="aiRadarWeeks" class="ai-radar-weeks" style="margin-top:12px"></div>
+      </details>
+    </section>
   </section>
 
   <section class="panel" id="panel-pendencias">

@@ -762,6 +762,7 @@ function renderPanel(name){
       break;
     case 'agenda-assistida':
       if(typeof window.renderAssistantBookingWorkspace === 'function') window.renderAssistantBookingWorkspace();
+      renderAIRadar(false);
       break;
     case 'pendencias':
       renderPendencias();
@@ -1140,6 +1141,7 @@ function normalizePatientSearch(value){
   return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
 }
 function formatPatientPhone(value){
+  if (value && value.endsWith('@lid')) return 'WhatsApp';
   const digits = cleanPhone(value).replace(/^55(?=\d{10,11}$)/, '');
   if(digits.length === 11) return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
   if(digits.length === 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
@@ -2742,12 +2744,24 @@ async function sendReminderManual(appointmentId){
 }
 async function confirmarPendenciaWhatsApp(taskId){
   try{
-    var rows=await api('assistant_tasks?id=eq.'+encodeURIComponent(taskId)+'&select=id,patient_name,phone&limit=1');
+    var rows=await api('assistant_tasks?id=eq.'+encodeURIComponent(taskId)+'&select=id,patient_name,phone,patient_id&limit=1');
     var t=Array.isArray(rows)?rows[0]:null;
     if(!t){toast('Pendencia nao encontrada.','warning');return}
     var phone=cleanPhone(t.phone);
     if(!phone){toast('Pendencia sem telefone.','warning');return}
-    var msg='Ola '+esc(t.patient_name||'Paciente')+'! Sua avaliacao na FEMIC foi agendada! Agora e so aguardar que entraremos em contato para confirmar os detalhes. 😊';
+    var msg='Ola '+esc(t.patient_name||'Paciente')+'! Sua avaliacao na FEMIC foi agendada!';
+    if(t.patient_id){
+      try{
+        var apptRows=await api('appointments?select=appointment_date,start_time&patient_id=eq.'+encodeURIComponent(t.patient_id)+'&in=(status,agendado,confirmado)&order=appointment_date.asc,start_time.asc&limit=1');
+        var appt=Array.isArray(apptRows)?apptRows[0]:null;
+        if(appt&&appt.appointment_date){
+          var d=fmtDate(appt.appointment_date);
+          var h=normalizeTime(appt.start_time||'');
+          msg+='\n\n📅 '+d+(h?' as '+h:'');
+        }
+      }catch(e){}
+    }
+    msg+='\n\nAgora e so aguardar que entraremos em contato para confirmar os detalhes. 😊';
     window.open('https://wa.me/55'+phone.replace(/^55/,'')+'?text='+encodeURIComponent(msg),'_blank');
     toast('WhatsApp aberto com mensagem de confirmacao.','success');
   }catch(e){

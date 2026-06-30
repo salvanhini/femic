@@ -12,7 +12,9 @@ const MENU_TXT = `Ola! Eu sou a assistente virtual da FEMIC Fisioterapia Escolha
 3 - Remarcar / cancelar
 4 - Falar comigo (equipe da FEMIC)
 
-Digite o numero da opcao desejada.`;
+Digite o numero da opcao desejada.
+
+📍 Digite "voltar" ou "menu" a qualquer momento para ver este menu novamente.`;
 
 const HINT = `📍 Digite "menu" a qualquer momento para voltar.`;
 
@@ -50,30 +52,30 @@ async function notifyTelegram(phone, msg, tipo) {
 }
 
 async function handleMenu(sock, jid, phone, text) {
-  const opt = text.trim();
+  const opt = text.trim().toLowerCase();
 
-  if (opt === '1') {
+  if (opt === '1' || /^(marcar|agendar|consulta)/i.test(text.trim()) || /marcar|agendar|consulta/.test(opt)) {
     setState(jid, S.EXISTING_PATIENT);
     return { reply: `Ja fez alguma avaliacao conosco antes? (sim / nao)
 
 ${HINT}`, storeInbox: false };
   }
 
-  if (opt === '2') {
+  if (opt === '2' || /^(duvida|horario|convenio|valor|preço|preco|tratamento)/i.test(text.trim()) || /duvida|horario|convenio|valor|preço|preco|tratamento/.test(opt)) {
     setState(jid, S.QUESTIONS);
     return { reply: `Claro! Pode perguntar. Sobre convenios, tratamento ou valores, estou aqui para ajudar
 
 ${HINT}`, storeInbox: false };
   }
 
-  if (opt === '3') {
+  if (opt === '3' || /^(remarcar|cancelar)/i.test(text.trim()) || /remarcar|cancelar/.test(opt)) {
     setState(jid, S.RESCHEDULE);
     return { reply: `Entendi que quer remarcar. Por favor informe o novo dia e horario desejado e nossa equipe confirma em breve
 
 ${HINT}`, storeInbox: false };
   }
 
-  if (opt === '4') {
+  if (opt === '4' || /^(falar|humano|pessoa|equipe|atendente)/i.test(text.trim()) || /falar|humano|pessoa|equipe|atendente/.test(opt)) {
     setState(jid, S.HUMAN);
     notifyTelegram(phone, 'Quer falar com a equipe', 'human').catch(() => {});
     return { reply: msgHumanTransfer(), storeInbox: true, inboxTipo: 'human' };
