@@ -1381,7 +1381,7 @@ function confirmBlock(){
   blockScheduleSlot(date,start,end,reason);
   closeBlockModal();
 }
-function getAppointmentSearchResults(){
+async function getAppointmentSearchResults(){
   const rawQuery=String($('apptSearchText')?.value||'');
   const queryText=rawQuery.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
   const queryPhone=cleanPhone(rawQuery);
@@ -1389,6 +1389,33 @@ function getAppointmentSearchResults(){
   const to=$('apptSearchTo')?.value||'';
   const status=$('apptSearchStatus')?.value||'all';
   const service=$('apptSearchService')?.value||'all';
+
+  // Se data preenchida, busca direto da API (não só da semana carregada)
+  if(from || to){
+    try{
+      const params=['select=*','order=appointment_date.asc,start_time.asc'];
+      if(from) params.push('appointment_date=gte.'+from);
+      if(to) params.push('appointment_date=lte.'+to);
+      var source=await api('appointments?'+params.join('&'));
+      source=Array.isArray(source)?source:[];
+      const patientsById=Object.create(null);
+      patients.forEach(p=>{patientsById[String(p.id)]=p});
+      return source.filter(a=>{
+        const patient=patientsById[String(a.patient_id)]||{};
+        const patientText=String((patient.name||'')+' '+(patient.whatsapp||'')).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+        const phone=cleanPhone(patient.whatsapp||'');
+        if(queryText && patientText.indexOf(queryText)===-1 && (!queryPhone || phone.indexOf(queryPhone)===-1)) return false;
+        if(status!=='all' && a.status!==status) return false;
+        if(service!=='all' && String(a.service_id)!==String(service)) return false;
+        return true;
+      }).sort((a,b)=>String(a.appointment_date||'').localeCompare(String(b.appointment_date||''))||normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time))).slice(0,200);
+    }catch(e){
+      console.error('[ApptSearch]',e);
+      return [];
+    }
+  }
+
+  // Sem data — busca na memória (semana carregada)
   const patientsById=Object.create(null);
   patients.forEach(patient=>{patientsById[String(patient.id)]=patient});
   return appointments.filter(a=>{
@@ -1403,10 +1430,10 @@ function getAppointmentSearchResults(){
     return true;
   }).sort((a,b)=>String(a.appointment_date||'').localeCompare(String(b.appointment_date||''))||normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time))).slice(0,200);
 }
-function renderAppointmentSearch(){
+async function renderAppointmentSearch(){
   const target=$('apptSearchResults');
   if(!target)return;
-  const results=getAppointmentSearchResults();
+  const results=await getAppointmentSearchResults();
   const patientsById=Object.create(null);
   const servicesById=Object.create(null);
   patients.forEach(patient=>{patientsById[String(patient.id)]=patient});

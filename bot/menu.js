@@ -81,7 +81,9 @@ ${HINT}`, storeInbox: false };
     return { reply: msgHumanTransfer(), storeInbox: true, inboxTipo: 'human' };
   }
 
-  return { reply: MENU_TXT, storeInbox: false };
+  // Fallback: qualquer coisa não reconhecida vai pra Groq naturalmente
+  setState(jid, S.QUESTIONS);
+  return { reply: `Pode perguntar! Sobre horarios, convenios, tratamento ou valores, estou aqui para ajudar.\n\n${HINT}`, storeInbox: false };
 }
 
 async function handleExistingAnswer(sock, jid, phone, text, intent) {
