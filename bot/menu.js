@@ -18,6 +18,19 @@ Digite o numero da opcao desejada.
 
 const HINT = `📍 Digite "menu" a qualquer momento para voltar.`;
 
+const SAUDACAO = `Ola! 😊 Bem-vinda a FEMIC Fisioterapia!
+
+Escolha uma opcao abaixo:
+
+1 - Marcar consulta / avaliacao
+2 - Duvidas (convenios, valores, horarios)
+3 - Remarcar / cancelar
+4 - Falar com a equipe
+
+Digite o numero da opcao desejada.
+
+💡 Depois, e so digitar "menu" se precisar voltar aqui.`;
+
 function msgNewPatient() {
   return `Entendi que e sua primeira vez conosco Para agilizar, preencha seus dados pelo link abaixo e nossa equipe confirma o melhor horario:
 
@@ -81,9 +94,8 @@ ${HINT}`, storeInbox: false };
     return { reply: msgHumanTransfer(), storeInbox: true, inboxTipo: 'human' };
   }
 
-  // Fallback: qualquer coisa não reconhecida vai pra Groq naturalmente
-  setState(jid, S.QUESTIONS);
-  return { reply: `Pode perguntar! Sobre horarios, convenios, tratamento ou valores, estou aqui para ajudar.\n\n${HINT}`, storeInbox: false };
+  // Fallback: mostra saudação + menu (estado permanece MENU)
+  return { reply: SAUDACAO, storeInbox: false };
 }
 
 async function handleExistingAnswer(sock, jid, phone, text, intent) {

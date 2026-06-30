@@ -2779,8 +2779,15 @@ async function confirmarPendenciaWhatsApp(taskId){
     var msg='Ola '+esc(t.patient_name||'Paciente')+'! Sua avaliacao na FEMIC foi agendada!';
     if(t.patient_id){
       try{
-        var apptRows=await api('appointments?select=appointment_date,start_time&patient_id=eq.'+encodeURIComponent(t.patient_id)+'&in=(status,agendado,confirmado)&order=appointment_date.asc,start_time.asc&limit=1');
+        var apptRows=await api('appointments?select=appointment_date,start_time&patient_id=eq.'+encodeURIComponent(t.patient_id)+'&status=in.(agendado,confirmado)&order=appointment_date.asc,start_time.asc&limit=1');
         var appt=Array.isArray(apptRows)?apptRows[0]:null;
+        if(!appt && t.phone){
+          var fallbackRows=await api('appointments?select=appointment_date,start_time,patient_id&status=in.(agendado,confirmado)&order=appointment_date.asc,start_time.asc&limit=30');
+          appt=(Array.isArray(fallbackRows)?fallbackRows:[]).find(function(a){
+            var p=patientById(a.patient_id);
+            return p&&cleanPhone(p.whatsapp)===cleanPhone(t.phone);
+          });
+        }
         if(appt&&appt.appointment_date){
           var d=fmtDate(appt.appointment_date);
           var h=normalizeTime(appt.start_time||'');

@@ -142,6 +142,7 @@ async function handleMessage(activeSock, msg) {
   if (!text) return;
   const jid   = msg.key.remoteJid;
   const phone = jidToPhone(jid);
+  const senderName = msg.pushName || '';
   tag('Msg', phone.slice(0,6) + '***:', text.slice(0,80));
 
   const { generateReply }  = require('./reply');
@@ -162,7 +163,7 @@ async function handleMessage(activeSock, msg) {
   // session-based routing
   if (session.state === S.MENU) {
     const result = await handleMenu(activeSock, jid, phone, text);
-    storeInbox(phone, text, null, !result.storeInbox, jid).catch(() => {});
+    storeInbox(phone, text, null, !result.storeInbox, jid, senderName).catch(() => {});
     await delay();
     await activeSock.sendMessage(jid, { text: result.reply });
     return;
@@ -170,20 +171,20 @@ async function handleMessage(activeSock, msg) {
 
   if (session.state === S.EXISTING_PATIENT) {
     const result = await handleExistingAnswer(activeSock, jid, phone, text);
-    storeInbox(phone, text, null, true, jid).catch(() => {});
+    storeInbox(phone, text, null, true, jid, senderName).catch(() => {});
     await delay();
     await activeSock.sendMessage(jid, { text: result.reply });
     return;
   }
 
   if (session.state === S.NEW_PATIENT) {
-    storeInbox(phone, text, null, true, jid).catch(() => {});
+    storeInbox(phone, text, null, true, jid, senderName).catch(() => {});
     await bookingNew(activeSock, jid, phone);
     return;
   }
 
   if (session.state === S.COLLECTING_DATE) {
-    storeInboxTyped(phone, text, 'booking_existing', false, jid).catch(() => {});
+    storeInboxTyped(phone, text, 'booking_existing', false, jid, senderName).catch(() => {});
     await delay();
     await activeSock.sendMessage(jid, { text: 'Anotei! Nossa equipe vai verificar a disponibilidade e confirma em breve.\n\n📍 Digite "menu" a qualquer momento para voltar.' });
     const { notifyTelegram } = require('./menu');
@@ -193,12 +194,12 @@ async function handleMessage(activeSock, msg) {
   }
 
   if (session.state === S.HUMAN) {
-    storeInboxTyped(phone, text, 'human', false, jid).catch(() => {});
+    storeInboxTyped(phone, text, 'human', false, jid, senderName).catch(() => {});
     return;
   }
 
   if (session.state === S.RESCHEDULE) {
-    storeInboxTyped(phone, text, 'reschedule', false, jid).catch(() => {});
+    storeInboxTyped(phone, text, 'reschedule', false, jid, senderName).catch(() => {});
     await delay();
     await activeSock.sendMessage(jid, { text: 'Anotei! Nossa equipe vai analisar e retorna em breve.\n\n📍 Digite "menu" a qualquer momento para voltar.' });
     setState(jid, S.MENU);
@@ -211,7 +212,7 @@ async function handleMessage(activeSock, msg) {
     try { await activeSock.sendPresenceUpdate('composing', jid); } catch (_) {}
     const history = await getHistory(phone, 4);
     const reply   = await generateReply('duvida', text, history);
-    storeInbox(phone, text, { category: 'duvida', confidence: 0.8 }, true, jid).catch(() => {});
+    storeInbox(phone, text, { category: 'duvida', confidence: 0.8 }, true, jid, senderName).catch(() => {});
     if (reply) {
       await delay();
       await activeSock.sendMessage(jid, { text: reply });

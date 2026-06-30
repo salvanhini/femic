@@ -46,14 +46,14 @@ async function updateStatus(name, status, errMsg) {
   await sb.from('whatsapp_service_status').upsert({ service_name: name, provider: 'baileys', connection_status: status, last_seen_at: n, last_error: errMsg ? String(errMsg).slice(0, 500) : null, updated_at: n, ...(status === 'connected' ? { last_connected_at: n } : {}) }, { onConflict: 'service_name' }).then(r => { if (r.error) console.error('[Supabase] updateStatus:', r.error.message); });
 }
 
-async function storeInbox(phone, text, intent, skipInbox, jid) {
+async function storeInbox(phone, text, intent, skipInbox, jid, senderName) {
   if (skipInbox) return;
-  await sb.from('whatsapp_inbox').insert({ phone, jid, message_text: text.slice(0, 2000), category: intent?.category || 'geral', confidence: intent?.confidence || 0, status: 'pendente' }).then(r => { if (r.error) console.error('[Supabase] storeInbox:', r.error.message); });
+  await sb.from('whatsapp_inbox').insert({ phone, jid, sender_name: senderName || null, message_text: text.slice(0, 2000), category: intent?.category || 'geral', confidence: intent?.confidence || 0, status: 'pendente' }).then(r => { if (r.error) console.error('[Supabase] storeInbox:', r.error.message); });
 }
 
-async function storeInboxTyped(phone, text, tipo, skipInbox, jid) {
+async function storeInboxTyped(phone, text, tipo, skipInbox, jid, senderName) {
   if (skipInbox) return;
-  await sb.from('whatsapp_inbox').insert({ phone, jid, message_text: text.slice(0, 2000), category: tipo || 'geral', status: 'pendente' }).then(r => { if (r.error) console.error('[Supabase] storeInbox:', r.error.message); });
+  await sb.from('whatsapp_inbox').insert({ phone, jid, sender_name: senderName || null, message_text: text.slice(0, 2000), category: tipo || 'geral', status: 'pendente' }).then(r => { if (r.error) console.error('[Supabase] storeInbox:', r.error.message); });
 }
 
 async function getHistory(phone, limit = 5) {
