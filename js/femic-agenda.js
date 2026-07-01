@@ -997,9 +997,11 @@ async function renderInbox(){
           '<div style="font-size:0.85em;color:var(--muted);margin-bottom:4px">'+phoneFmt+(r.sender_name ? ' — '+r.sender_name : '')+'</div>' +
           '<div style="font-size:0.9em;word-break:break-word">'+msgPreview+'</div>' +
         '</div>' +
-        '<div style="display:flex;gap:4px;flex-shrink:0">' +
+        '<div style="display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap">' +
           (r.status !== 'lida' ? '<button class="btn" style="font-size:0.75em" onclick="inboxMarkStatus(\''+r.id+'\',\'lida\')">Marcar lida</button>' : '') +
           (r.status !== 'resolvida' ? '<button class="btn primary" style="font-size:0.75em" onclick="inboxMarkStatus(\''+r.id+'\',\'resolvida\')">Resolver</button>' : '') +
+          (r.jid ? '<button class="btn" style="font-size:0.7em;color:#ef4444;border-color:#ef4444" onclick="mutePatient(\''+r.jid.replace(/'/g,'\\\'')+'\',30)">🔇 30min</button>' : '') +
+          (r.jid ? '<button class="btn" style="font-size:0.7em;color:#ef4444;border-color:#ef4444" onclick="mutePatient(\''+r.jid.replace(/'/g,'\\\'')+'\',120)">🔇 2h</button>' : '') +
         '</div>' +
       '</div>';
     }).join('');
@@ -1014,6 +1016,34 @@ async function inboxMarkStatus(id, status) {
     if (status === 'resolvida') payload.resolved_at = new Date().toISOString();
     await api('whatsapp_inbox?id=eq.' + encodeURIComponent(id), { method: 'PATCH', body: JSON.stringify(payload) });
     toast('Status atualizado.', 'success');
+    renderInbox();
+  } catch(e) { toast('Erro: ' + e.message, 'error'); }
+}
+
+async function mutePatient(jid, minutes) {
+  if (!jid) return toast('JID inválido.', 'error');
+  const expiresAt = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+  try {
+    await api('bot_mutes', { method: 'POST', body: JSON.stringify({ jid, expires_at: expiresAt, active: true }) });
+    toast('🔇 Paciente silenciado por ' + minutes + 'min.', 'success');
+    renderInbox();
+  } catch(e) {
+    // Fallback: upsert via RPC se POST falhar (conflito de chave)
+    try {
+      await api('rpc/mute_patient', { method: 'POST', body: JSON.stringify({ p_jid: jid, p_expires_at: expiresAt }) });
+      toast('🔇 Paciente silenciado por ' + minutes + 'min.', 'success');
+      renderInbox();
+    } catch(e2) {
+      toast('Erro ao silenciar: ' + e2.message, 'error');
+    }
+  }
+}
+
+async function unmutePatient(jid) {
+  if (!jid) return toast('JID inválido.', 'error');
+  try {
+    await api('bot_mutes?jid=eq.' + encodeURIComponent(jid), { method: 'PATCH', body: JSON.stringify({ active: false }) });
+    toast('🔊 Paciente reativado.', 'success');
     renderInbox();
   } catch(e) { toast('Erro: ' + e.message, 'error'); }
 }

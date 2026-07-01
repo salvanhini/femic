@@ -1,13 +1,14 @@
 'use strict';
 const path = require('path');
 const fs   = require('fs/promises');
-const { Browsers, DisconnectReason, fetchLatestWaWebVersion, makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const { Browsers, DisconnectReason, fetchLatestWaWebVersion, makeWASocket, useMultiFileAuthState, downloadMediaMessage } = require('@whiskeysockets/baileys');
 const pino   = require('pino');
 const qrcode = require('qrcode-terminal');
 const { tag } = require('./log');
-const { updateStatus } = require('./supabase');
+const { updateStatus, patientExists } = require('./supabase');
 const { S, getSession, setState, touch } = require('./session');
 const { detectHuman, notifyTelegram } = require('./menu');
+const { staffReplied, isMuted, loadMutes } = require('./mute');
 
 const SVC_NAME  = process.env.WHATSAPP_SERVICE_NAME || 'baileys-main';
 const AUTH_DIR  = path.join(__dirname, 'auth-' + SVC_NAME);
@@ -48,6 +49,10 @@ function jidToPhone(jid) {
 }
 
 function delay() { return new Promise(r => setTimeout(r, 1000 + Math.random() * 2000)); }
+function smartDelay(text) {
+  const ms = text && text.length < 80 ? 1000 : text && text.length < 180 ? 1800 : 2500;
+  return new Promise(r => setTimeout(r, ms + Math.random() * 800));
+}
 
 async function startBot() {
   if (starting) return;
@@ -98,6 +103,8 @@ async function startBot() {
         if (reconnTimer) { clearTimeout(reconnTimer); reconnTimer = null; }
         tag('Bot', 'Conectado!');
         updateStatus(SVC_NAME, 'connected');
+        const { sb } = require('./supabase');
+        loadMutes(sb);
       }
       if (u.connection === 'close') {
         connected = false;
@@ -127,9 +134,14 @@ async function startBot() {
     });
 
     sock.ev.on('creds.update', (creds) => { if (curGen === sockGen) saveCreds(creds); });
-    sock.ev.on('messages.upsert', ({ messages }) => {
-      if (curGen !== sockGen || !messages) return;
-      for (const m of messages) handleMessage(sock, m).catch(e => tag('Msg', e.message));
+    sock.ev.on('messages.upsert', ({ messages, type }) => {
+      if (curGen !== sockGen || !messages || type !== 'notify') return;
+      for (const m of messages) {
+        if (m.key.fromMe && !m.key.remoteJid?.endsWith('@g.us')) {
+          staffReplied(m.key.remoteJid);
+        }
+        handleMessage(sock, m).catch(e => tag('Msg', e.message));
+      }
     });
 
   } finally { starting = false; }
@@ -138,11 +150,27 @@ async function startBot() {
 async function handleMessage(activeSock, msg) {
   if (msg.key.fromMe) return;
   if (msg.key.remoteJid?.endsWith('@g.us')) return;
-  const text = (msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || msg.message?.videoMessage?.caption || '').trim();
+
+  // Extrai texto ou áudio
+  let text = (msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || msg.message?.videoMessage?.caption || '').trim();
+
+  // Áudio → transcrição com Whisper
+  if (!text && msg.message?.audioMessage) {
+    try {
+      const buffer = await downloadMediaMessage(msg, {});
+      const { transcribeAudio } = require('./transcribe');
+      text = (await transcribeAudio(buffer)) || '';
+    } catch (_) {}
+  }
+
   if (!text) return;
   const jid   = msg.key.remoteJid;
   const phone = jidToPhone(jid);
   const senderName = msg.pushName || '';
+
+  // Verifica se esse paciente está mutado (staff respondeu ou mute manual)
+  if (isMuted(jid)) return;
+
   tag('Msg', phone.slice(0,6) + '***:', text.slice(0,80));
 
   const { generateReply } = require('./reply');
@@ -155,7 +183,7 @@ async function handleMessage(activeSock, msg) {
     setState(jid, S.HUMAN);
     storeInboxTyped(phone, text, 'human', false, jid, senderName).catch(() => {});
     notifyTelegram(phone, text, 'human').catch(() => {});
-    await delay();
+    await smartDelay(text);
     await activeSock.sendMessage(jid, { text: 'Certo! Estou transferindo para nossa equipe. Em breve alguem fala com voce por aqui mesmo. 😊' });
     return;
   }
@@ -169,7 +197,16 @@ async function handleMessage(activeSock, msg) {
   // TUDO o resto → Groq responde naturalmente
   setState(jid, S.QUESTIONS);
 
-  // Monta histórico da sessão em memória (até 10 mensagens)
+  // Descobre se é paciente existente (só para números regulares)
+  let patientContext = '';
+  if (phone && !phone.endsWith('@lid')) {
+    try {
+      const exists = await patientExists(phone);
+      if (exists) patientContext = ' (paciente existente)';
+    } catch (_) {}
+  }
+
+  // Monta histórico da sessão em memória
   if (!session.msgs) session.msgs = [];
   session.msgs.push({ role: 'user', content: text.slice(0, 2000) });
   const histArr = session.msgs
@@ -178,11 +215,11 @@ async function handleMessage(activeSock, msg) {
     .map(m => ({ message_text: m.content }));
 
   try { await activeSock.sendPresenceUpdate('composing', jid); } catch (_) {}
-  const reply = await generateReply('geral', text, histArr);
+  const reply = await generateReply('geral', text, histArr, senderName);
   if (reply) {
     session.msgs.push({ role: 'assistant', content: reply });
     if (session.msgs.length > 40) session.msgs = session.msgs.slice(-40);
-    await delay();
+    await smartDelay(reply);
     await activeSock.sendMessage(jid, { text: reply });
   }
   try { await activeSock.sendPresenceUpdate('paused', jid); } catch (_) {}

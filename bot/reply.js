@@ -1,6 +1,7 @@
 'use strict';
 const GROQ_API   = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+const FALLBACK_MODEL = 'llama-3.1-8b-instant';
 const URL_AGE    = process.env.CAPTACAO_URL || 'https://salvanhini.github.io/agendar/';
 
 const SYSTEM = `Voce e a assistente virtual oficial da FEMIC Fisioterapia Especializada em Araraquara-SP. Atende no WhatsApp da clinica.
@@ -62,28 +63,38 @@ const FALLBACK = {
   geral:       'Ola! Como posso ajudar? 😊',
 };
 
-async function generateReply(category, text, history = []) {
+async function generateReply(category, text, history = [], senderName = '') {
   const key = process.env.GROQ_API_KEY;
   if (!key) return FALLBACK[category] || FALLBACK.geral;
 
   const hist = history.slice().reverse().slice(0, 4).map((h, i) => `[${i+1}] ${h.message_text}`).join('\n');
-  const user = (hist ? 'HISTORICO:\n' + hist + '\n' : '') + 'MENSAGEM: "' + text + '"\n\nResponda como assistente da FEMIC:';
 
-  const ctrl = new AbortController();
-  const t    = setTimeout(() => ctrl.abort(), 8000);
-  try {
-    const r = await fetch(GROQ_API, {
-      method: 'POST', signal: ctrl.signal,
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
-      body: JSON.stringify({ model: GROQ_MODEL, messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: user }], temperature: 0.65, max_tokens: 220 }),
-    });
-    clearTimeout(t);
-    if (!r.ok) return FALLBACK[category] || FALLBACK.geral;
-    const d     = await r.json();
-    const reply = d.choices?.[0]?.message?.content?.trim();
-    console.log('[Reply]', reply?.slice(0, 80));
-    return reply || FALLBACK[category] || FALLBACK.geral;
-  } catch (e) { clearTimeout(t); return FALLBACK[category] || FALLBACK.geral; }
+  const parts = [];
+  if (hist) parts.push('HISTORICO:\n' + hist);
+  if (senderName) parts.push('NOME: ' + senderName);
+  parts.push('MENSAGEM: "' + text + '"');
+  parts.push('\nResponda como assistente da FEMIC:');
+  const user = parts.join('\n');
+
+  const models = [GROQ_MODEL, FALLBACK_MODEL];
+  for (const model of models) {
+    const ctrl = new AbortController();
+    const t    = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      const r = await fetch(GROQ_API, {
+        method: 'POST', signal: ctrl.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+        body: JSON.stringify({ model, messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: user }], temperature: 0.65, max_tokens: 220 }),
+      });
+      clearTimeout(t);
+      if (!r.ok) { if (model === models[models.length - 1]) return FALLBACK[category] || FALLBACK.geral; else continue; }
+      const d     = await r.json();
+      const reply = d.choices?.[0]?.message?.content?.trim();
+      console.log('[Reply]', model, reply?.slice(0, 60));
+      return reply || FALLBACK[category] || FALLBACK.geral;
+    } catch (e) { clearTimeout(t); if (model === models[models.length - 1]) return FALLBACK[category] || FALLBACK.geral; }
+  }
+  return FALLBACK[category] || FALLBACK.geral;
 }
 
 module.exports = { generateReply };
