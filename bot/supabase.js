@@ -56,7 +56,7 @@ async function storeInboxTyped(phone, text, tipo, skipInbox, jid, senderName) {
   await sb.from('whatsapp_inbox').insert({ phone, jid, sender_name: senderName || null, message_text: text.slice(0, 2000), category: tipo || 'geral', status: 'pendente' }).then(r => { if (r.error) console.error('[Supabase] storeInbox:', r.error.message); });
 }
 
-async function getHistory(phone, limit = 5) {
+async function getHistory(phone, limit = 20) {
   const { data, error } = await sb.from('whatsapp_inbox').select('message_text, category, received_at').eq('phone', phone.replace(/\D/g, '')).not('category', 'in', '("human")').order('received_at', { ascending: false }).limit(limit);
   if (error) { console.error('[Supabase] getHistory:', error.message); return []; }
   return data || [];
@@ -92,5 +92,8 @@ async function pollTask(phone, ms = 120000) {
     setTimeout(check, 3000);
   });
 }
+
+// Limpeza automatica do historico a cada 24h (remove >30 dias)
+setInterval(() => cleanupInbox(30), 24 * 60 * 60 * 1000);
 
 module.exports = { sb, fetchDueReminders, markReminderSent, getTemplate, updateStatus, storeInbox, storeInboxTyped, getHistory, cleanupInbox, patientExists, pollTask };

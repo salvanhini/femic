@@ -3,13 +3,8 @@
 const TIMEOUT = 30 * 60 * 1000; // 30 min
 
 const S = {
-  MENU: 'MENU',
   QUESTIONS: 'QUESTIONS',
-  NEW_PATIENT: 'NEW_PATIENT',
-  EXISTING_PATIENT: 'EXISTING_PATIENT',
-  COLLECTING_DATE: 'COLLECTING_DATE',
   HUMAN: 'HUMAN',
-  RESCHEDULE: 'RESCHEDULE',
 };
 
 const sessions = new Map();
@@ -24,7 +19,7 @@ setInterval(() => {
 function getSession(jid) {
   const s = sessions.get(jid);
   if (s && Date.now() - s.createdAt < TIMEOUT) return s;
-  const neu = { state: S.MENU, createdAt: Date.now() };
+  const neu = { state: S.QUESTIONS, createdAt: Date.now() };
   sessions.set(jid, neu);
   return neu;
 }

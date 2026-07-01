@@ -7,7 +7,7 @@ const qrcode = require('qrcode-terminal');
 const { tag } = require('./log');
 const { updateStatus } = require('./supabase');
 const { S, getSession, setState, touch } = require('./session');
-const { handleMenu, handleExistingAnswer, MENU_TXT } = require('./menu');
+const { detectHuman, notifyTelegram } = require('./menu');
 
 const SVC_NAME  = process.env.WHATSAPP_SERVICE_NAME || 'baileys-main';
 const AUTH_DIR  = path.join(__dirname, 'auth-' + SVC_NAME);
@@ -145,89 +145,47 @@ async function handleMessage(activeSock, msg) {
   const senderName = msg.pushName || '';
   tag('Msg', phone.slice(0,6) + '***:', text.slice(0,80));
 
-  const { generateReply }  = require('./reply');
-  const { bookingNew } = require('./booking');
-  const { storeInbox, storeInboxTyped, getHistory } = require('./supabase');
-
+  const { generateReply } = require('./reply');
+  const { storeInboxTyped } = require('./supabase');
   const session = getSession(jid);
   touch(jid);
 
-  // "voltar" / "menu" / "0" — sempre volta pro MENU
-  if (/^(voltar|menu|0)$/i.test(text.trim())) {
-    setState(jid, S.MENU);
+  // HUMAN — detecta antes de Groq
+  if (detectHuman(text)) {
+    setState(jid, S.HUMAN);
+    storeInboxTyped(phone, text, 'human', false, jid, senderName).catch(() => {});
+    notifyTelegram(phone, text, 'human').catch(() => {});
     await delay();
-    await activeSock.sendMessage(jid, { text: MENU_TXT });
+    await activeSock.sendMessage(jid, { text: 'Certo! Estou transferindo para nossa equipe. Em breve alguem fala com voce por aqui mesmo. 😊' });
     return;
   }
 
-  // session-based routing
-  if (session.state === S.MENU) {
-    const result = await handleMenu(activeSock, jid, phone, text);
-    if (result.reply) {
-      storeInbox(phone, text, null, !result.storeInbox, jid, senderName).catch(() => {});
-      await delay();
-      await activeSock.sendMessage(jid, { text: result.reply });
-      return;
-    }
-    // reply null → handleMenu redirecionou (QUESTIONS), cai no Groq abaixo
-  }
-
-  if (session.state === S.EXISTING_PATIENT) {
-    const result = await handleExistingAnswer(activeSock, jid, phone, text);
-    storeInbox(phone, text, null, true, jid, senderName).catch(() => {});
-    await delay();
-    await activeSock.sendMessage(jid, { text: result.reply });
-    return;
-  }
-
-  if (session.state === S.NEW_PATIENT) {
-    storeInbox(phone, text, null, true, jid, senderName).catch(() => {});
-    await bookingNew(activeSock, jid, phone);
-    return;
-  }
-
-  if (session.state === S.COLLECTING_DATE) {
-    storeInboxTyped(phone, text, 'booking_existing', false, jid, senderName).catch(() => {});
-    await delay();
-    await activeSock.sendMessage(jid, { text: 'Anotei! Nossa equipe vai verificar a disponibilidade e confirma em breve.\n\n📍 Digite "menu" a qualquer momento para voltar.' });
-    const { notifyTelegram } = require('./menu');
-    notifyTelegram(phone, 'Prefere: ' + text.slice(0, 200), 'booking_existing').catch(() => {});
-    setState(jid, S.MENU);
-    return;
-  }
-
+  // HUMAN state — só armazena, bot não responde
   if (session.state === S.HUMAN) {
     storeInboxTyped(phone, text, 'human', false, jid, senderName).catch(() => {});
     return;
   }
 
-  if (session.state === S.RESCHEDULE) {
-    storeInboxTyped(phone, text, 'reschedule', false, jid, senderName).catch(() => {});
+  // TUDO o resto → Groq responde naturalmente
+  setState(jid, S.QUESTIONS);
+
+  // Monta histórico da sessão em memória (até 10 mensagens)
+  if (!session.msgs) session.msgs = [];
+  session.msgs.push({ role: 'user', content: text.slice(0, 2000) });
+  const histArr = session.msgs
+    .filter(m => m.role === 'user')
+    .slice(-6)
+    .map(m => ({ message_text: m.content }));
+
+  try { await activeSock.sendPresenceUpdate('composing', jid); } catch (_) {}
+  const reply = await generateReply('geral', text, histArr);
+  if (reply) {
+    session.msgs.push({ role: 'assistant', content: reply });
+    if (session.msgs.length > 40) session.msgs = session.msgs.slice(-40);
     await delay();
-    await activeSock.sendMessage(jid, { text: 'Anotei! Nossa equipe vai analisar e retorna em breve.\n\n📍 Digite "menu" a qualquer momento para voltar.' });
-    setState(jid, S.MENU);
-    return;
+    await activeSock.sendMessage(jid, { text: reply });
   }
-
-  // QUESTIONS — Groq responde, permanece em QUESTIONS (não volta pro MENU)
-  // Para sair, paciente digita "menu"/"voltar"/"0"
-  if (session.state === S.QUESTIONS) {
-    try { await activeSock.sendPresenceUpdate('composing', jid); } catch (_) {}
-    const history = await getHistory(phone, 4);
-    const reply   = await generateReply('duvida', text, history);
-    storeInbox(phone, text, { category: 'duvida', confidence: 0.8 }, false, jid, senderName).catch(() => {});
-    if (reply) {
-      await delay();
-      await activeSock.sendMessage(jid, { text: reply });
-    }
-    try { await activeSock.sendPresenceUpdate('paused', jid); } catch (_) {}
-    return;
-  }
-
-  // fallback — mostra o menu
-  setState(jid, S.MENU);
-  await delay();
-  await activeSock.sendMessage(jid, { text: MENU_TXT });
+  try { await activeSock.sendPresenceUpdate('paused', jid); } catch (_) {}
 }
 
 module.exports = { startBot, closeSock, getSock: () => sock, isConnected: () => connected, jidToPhone };
