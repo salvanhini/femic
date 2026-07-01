@@ -163,10 +163,13 @@ async function handleMessage(activeSock, msg) {
   // session-based routing
   if (session.state === S.MENU) {
     const result = await handleMenu(activeSock, jid, phone, text);
-    storeInbox(phone, text, null, !result.storeInbox, jid, senderName).catch(() => {});
-    await delay();
-    await activeSock.sendMessage(jid, { text: result.reply });
-    return;
+    if (result.reply) {
+      storeInbox(phone, text, null, !result.storeInbox, jid, senderName).catch(() => {});
+      await delay();
+      await activeSock.sendMessage(jid, { text: result.reply });
+      return;
+    }
+    // reply null → handleMenu redirecionou (QUESTIONS), cai no Groq abaixo
   }
 
   if (session.state === S.EXISTING_PATIENT) {
@@ -212,7 +215,7 @@ async function handleMessage(activeSock, msg) {
     try { await activeSock.sendPresenceUpdate('composing', jid); } catch (_) {}
     const history = await getHistory(phone, 4);
     const reply   = await generateReply('duvida', text, history);
-    storeInbox(phone, text, { category: 'duvida', confidence: 0.8 }, true, jid, senderName).catch(() => {});
+    storeInbox(phone, text, { category: 'duvida', confidence: 0.8 }, false, jid, senderName).catch(() => {});
     if (reply) {
       await delay();
       await activeSock.sendMessage(jid, { text: reply });

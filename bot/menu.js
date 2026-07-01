@@ -5,7 +5,7 @@ const TG_TOKEN  = process.env.TELEGRAM_BOT_TOKEN;
 const TG_CHAT   = process.env.TELEGRAM_CHAT_ID;
 const URL_AGE   = process.env.CAPTACAO_URL || 'https://salvanhini.github.io/agendar/';
 
-const MENU_TXT = `Ola! Eu sou a assistente virtual da FEMIC Fisioterapia Escolha uma opcao:
+const MENU_TXT = `Ola! Escolha uma opcao:
 
 1 - Marcar consulta / avaliacao
 2 - Duvidas (convenios, tratamento, valores)
@@ -17,19 +17,6 @@ Digite o numero da opcao desejada.
 📍 Digite "voltar" ou "menu" a qualquer momento para ver este menu novamente.`;
 
 const HINT = `📍 Digite "menu" a qualquer momento para voltar.`;
-
-const SAUDACAO = `Ola! 😊 Bem-vinda a FEMIC Fisioterapia!
-
-Escolha uma opcao abaixo:
-
-1 - Marcar consulta / avaliacao
-2 - Duvidas (convenios, valores, horarios)
-3 - Remarcar / cancelar
-4 - Falar com a equipe
-
-Digite o numero da opcao desejada.
-
-💡 Depois, e so digitar "menu" se precisar voltar aqui.`;
 
 function msgNewPatient() {
   return `Entendi que e sua primeira vez conosco Para agilizar, preencha seus dados pelo link abaixo e nossa equipe confirma o melhor horario:
@@ -94,8 +81,9 @@ ${HINT}`, storeInbox: false };
     return { reply: msgHumanTransfer(), storeInbox: true, inboxTipo: 'human' };
   }
 
-  // Fallback: mostra saudação + menu (estado permanece MENU)
-  return { reply: SAUDACAO, storeInbox: false };
+  // Fallback: vai pro Groq responder naturalmente
+  setState(jid, S.QUESTIONS);
+  return { reply: null, storeInbox: false };
 }
 
 async function handleExistingAnswer(sock, jid, phone, text, intent) {
