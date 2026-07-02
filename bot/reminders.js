@@ -23,7 +23,8 @@ async function sendReminders(sock) {
   if (!apts.length) { tag('Reminder', 'Nenhum lembrete.'); return; }
   tag('Reminder', apts.length + ' lembrete(s).');
   const tpl = await getTemplate();
-  for (const apt of apts) {
+  for (let i = 0; i < apts.length; i++) {
+    const apt = apts[i];
     const p   = apt.patients;
     const jid = normalizeJid(p.whatsapp);
     if (!jid) continue;
@@ -35,6 +36,9 @@ async function sendReminders(sock) {
     } catch (e) {
       await markReminderSent(apt.id, 'failed', e.message);
       tag('Reminder', 'Erro para', p.name, e.message);
+    }
+    if (i < apts.length - 1) {
+      await new Promise(r => setTimeout(r, 1500 + Math.random() * 1500));
     }
   }
 }

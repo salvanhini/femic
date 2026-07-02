@@ -24,6 +24,7 @@ const {
   classifyWhatsappBotMessage,
   humanReplyDelayMs,
   isWhatsappAudioMessage,
+  norm,
   tidySpeechText,
   whatsappAudioUnsupportedReply,
 } = pendingTaskUtils;
@@ -281,23 +282,39 @@ async function fetchEntityMap(table, ids){
   }, {});
 }
 
+let patientsCache = null;
+let patientsCacheAt = 0;
+const PATIENTS_CACHE_TTL = 5 * 60 * 1000;
+
 async function fetchPatients(){
+  const now = Date.now();
+  if(patientsCache && (now - patientsCacheAt) < PATIENTS_CACHE_TTL) return patientsCache;
   const { data, error } = await supabase
     .from('patients')
     .select('*')
     .order('name', { ascending: true });
   if(error) throw error;
-  return data || [];
+  patientsCache = data || [];
+  patientsCacheAt = now;
+  return patientsCache;
 }
 
+let servicesCache = null;
+let servicesCacheAt = 0;
+const SERVICES_CACHE_TTL = 5 * 60 * 1000;
+
 async function fetchServices(){
+  const now = Date.now();
+  if(servicesCache && (now - servicesCacheAt) < SERVICES_CACHE_TTL) return servicesCache;
   const { data, error } = await supabase
     .from('services')
     .select('*')
     .eq('active', true)
     .order('name', { ascending: true });
   if(error) throw error;
-  return data || [];
+  servicesCache = data || [];
+  servicesCacheAt = now;
+  return servicesCache;
 }
 
 async function fetchScheduleBlocks(from, to){
@@ -821,11 +838,15 @@ async function syncFeedbackOnce(){
     });
     for(const item of dueList){
       const externalId = await sendFeedbackMessage(item.patient);
-      await supabase
-        .from('patients')
-        .update({ feedback_sent: true, feedback_sent_at: nowIso() })
-        .eq('id', item.patient.id);
-      logger.info({ patientId: item.patient.id }, 'Feedback pós-tratamento enviado');
+      if(externalId){
+        await supabase
+          .from('patients')
+          .update({ feedback_sent: true, feedback_sent_at: nowIso() })
+          .eq('id', item.patient.id);
+        logger.info({ patientId: item.patient.id }, 'Feedback pós-tratamento enviado');
+      } else {
+        logger.warn({ patientId: item.patient.id }, 'Feedback não enviado; será reintentado');
+      }
     }
   }catch(error){
     logger.error({ err: error }, 'Falha no ciclo de feedback pós-tratamento');
@@ -889,11 +910,15 @@ async function syncWelcomeOnce(){
       const patient = patientsById[String(appointment.patient_id)];
       if(!patient) continue;
       const externalId = await sendWelcomeMessage(appointment, patient);
-      await supabase
-        .from('appointments')
-        .update({ welcome_sent: true, welcome_sent_at: nowIso() })
-        .eq('id', appointment.id);
-      logger.info({ appointmentId: appointment.id, patientId: patient.id }, 'Mensagem de boas-vindas enviada');
+      if(externalId){
+        await supabase
+          .from('appointments')
+          .update({ welcome_sent: true, welcome_sent_at: nowIso() })
+          .eq('id', appointment.id);
+        logger.info({ appointmentId: appointment.id, patientId: patient.id }, 'Mensagem de boas-vindas enviada');
+      } else {
+        logger.warn({ appointmentId: appointment.id, patientId: patient.id }, 'Boas-vindas não enviada; será reintentado');
+      }
     }
   }catch(error){
     logger.error({ err: error }, 'Falha no ciclo de boas-vindas');

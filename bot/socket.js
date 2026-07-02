@@ -1,7 +1,7 @@
 'use strict';
 const path = require('path');
 const fs   = require('fs/promises');
-const { Browsers, DisconnectReason, fetchLatestWaWebVersion, makeWASocket, useMultiFileAuthState, downloadMediaMessage } = require('@whiskeysockets/baileys');
+const { Browsers, DisconnectReason, fetchLatestWaWebVersion, makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const pino   = require('pino');
 const qrcode = require('qrcode-terminal');
 const { tag } = require('./log');
@@ -24,6 +24,16 @@ let reconnTimer = null;
 let resetBusy   = false;
 let starting    = false;
 let consec515   = 0;
+
+const processedMsgs = new Map();
+const queues = new Map();
+const MSG_TTL = 300_000;
+setInterval(() => {
+  const cutoff = Date.now() - MSG_TTL;
+  for (const [id, ts] of processedMsgs) {
+    if (ts < cutoff) processedMsgs.delete(id);
+  }
+}, 60_000);
 
 function closeSock() { if (sock) { try { sock.end(); } catch (_) {} sock = null; sockGen++; } }
 
@@ -137,10 +147,16 @@ async function startBot() {
     sock.ev.on('messages.upsert', ({ messages, type }) => {
       if (curGen !== sockGen || !messages || type !== 'notify') return;
       for (const m of messages) {
+        if (m.key.id && processedMsgs.has(m.key.id)) continue;
+        if (m.key.id) processedMsgs.set(m.key.id, Date.now());
+
         if (m.key.fromMe && !m.key.remoteJid?.endsWith('@g.us')) {
           staffReplied(m.key.remoteJid);
         }
-        handleMessage(sock, m).catch(e => tag('Msg', e.message));
+        const jid = m.key.remoteJid;
+        const prev = queues.get(jid) || Promise.resolve();
+        const next = prev.then(() => handleMessage(sock, m)).catch(e => tag('Msg', e.message));
+        queues.set(jid, next.then(() => queues.delete(jid)).catch(() => queues.delete(jid)));
       }
     });
 
@@ -151,22 +167,20 @@ async function handleMessage(activeSock, msg) {
   if (msg.key.fromMe) return;
   if (msg.key.remoteJid?.endsWith('@g.us')) return;
 
-  // Extrai texto ou áudio
-  let text = (msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || msg.message?.videoMessage?.caption || '').trim();
-
-  // Áudio → transcrição com Whisper
-  if (!text && msg.message?.audioMessage) {
-    try {
-      const buffer = await downloadMediaMessage(msg, {});
-      const { transcribeAudio } = require('./transcribe');
-      text = (await transcribeAudio(buffer)) || '';
-    } catch (_) {}
-  }
-
-  if (!text) return;
   const jid   = msg.key.remoteJid;
   const phone = jidToPhone(jid);
   const senderName = msg.pushName || '';
+
+  // Extrai texto ou áudio
+  let text = (msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || msg.message?.videoMessage?.caption || '').trim();
+
+  // Áudio → fallback amigável
+  if (!text && msg.message?.audioMessage) {
+    await activeSock.sendMessage(jid, { text: 'Não consegui ouvir seu áudio agora. Pode escrever a mensagem? 😊' });
+    return;
+  }
+
+  if (!text) return;
 
   // Verifica se esse paciente está mutado (staff respondeu ou mute manual)
   if (isMuted(jid)) return;
@@ -209,10 +223,9 @@ async function handleMessage(activeSock, msg) {
   // Monta histórico da sessão em memória
   if (!session.msgs) session.msgs = [];
   session.msgs.push({ role: 'user', content: text.slice(0, 2000) });
-  const histArr = session.msgs
-    .filter(m => m.role === 'user')
-    .slice(-6)
-    .map(m => ({ message_text: m.content }));
+  const histArr = session.msgs.slice(-6).map(m => ({
+    message_text: (m.role === 'user' ? '[PACIENTE] ' : '[VOCE] ') + m.content
+  }));
 
   try { await activeSock.sendPresenceUpdate('composing', jid); } catch (_) {}
   const reply = await generateReply('geral', text, histArr, senderName);

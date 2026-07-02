@@ -27,5 +27,13 @@ const ivInbox = setInterval(() => {
   if (!inboxCleaned) { inboxCleaned = true; cleanupInbox(30).catch(() => {}); }
 }, 10000);
 
-process.on('unhandledRejection', e => tag('Fatal', 'Unhandled:', e?.message || e));
-process.on('uncaughtException',  e => tag('Fatal', 'Uncaught:',  e?.message || e));
+let unhandledCount = 0;
+process.on('unhandledRejection', e => {
+  unhandledCount++;
+  tag('Fatal', 'Unhandled:', e?.message || e);
+  if (unhandledCount >= 5) { tag('Fatal', '5+ unhandled rejections, exiting.'); process.exit(1); }
+});
+process.on('uncaughtException', e => {
+  tag('Fatal', 'Uncaught:', e?.message || e);
+  process.exit(1);
+});

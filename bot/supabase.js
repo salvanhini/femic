@@ -123,7 +123,6 @@ async function sendDailySummary() {
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) return;
 
-  // Busca mensagens de ontem (BRT)
   const hoje = new Date();
   const tz = process.env.CLINIC_TIME_ZONE || 'America/Sao_Paulo';
   const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -132,10 +131,14 @@ async function sendDailySummary() {
   ontem.setDate(ontem.getDate() - 1);
   const ontemStr = fmt.format(ontem);
 
+  const fmtTz = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' });
+  const tzParts = fmtTz.formatToParts(hoje);
+  const tzOffset = (tzParts.find(p => p.type === 'timeZoneName')?.value || '-03:00').replace('GMT', 'GMT');
+
   const { data, error } = await sb.from('whatsapp_inbox')
     .select('category, status')
-    .gte('received_at', ontemStr + 'T00:00:00-03:00')
-    .lt('received_at', hojeStr + 'T00:00:00-03:00');
+    .gte('received_at', ontemStr + 'T00:00:00' + tzOffset)
+    .lt('received_at', hojeStr + 'T00:00:00' + tzOffset);
 
   if (error) { console.error('[Supabase] dailySummary:', error.message); return; }
 
