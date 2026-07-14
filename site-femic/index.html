@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FEMIC | Fisioterapia Especializada em Araraquara</title>
+  <meta name="description" content="FEMIC Fisioterapia Especializada em Araraquara. Atendimento com Marco Salvanhini para dor, reabilitação, prevenção e educação em saúde.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#132536;
+      --muted:#5d7080;
+      --line:#d9e6ee;
+      --paper:#ffffff;
+      --soft:#f3f9fb;
+      --mist:#e8f3f7;
+      --navy:#083862;
+      --cyan:#18a9d5;
+      --green:#3aa987;
+      --gold:#d9a441;
+      --shadow:0 18px 50px rgba(8,56,98,.12);
+      --radius:8px;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;font-family:"DM Sans",Arial,sans-serif;color:var(--ink);background:var(--paper);line-height:1.6}
+    body.menu-open{overflow:hidden}
+    a{color:inherit;text-decoration:none}
+    img{display:block;max-width:100%}
+    .site-nav{
+      position:fixed;inset:0 0 auto;z-index:20;
+      background:rgba(255,255,255,.9);
+      border-bottom:1px solid rgba(217,230,238,.8);
+      backdrop-filter:blur(16px);
+    }
+    .nav-inner{max-width:1180px;margin:auto;padding:14px 22px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:800;color:var(--navy);letter-spacing:.02em}
+    .brand-mark{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--navy),var(--cyan));color:#fff;display:grid;place-items:center;font-weight:800}
+    .brand small{display:block;color:var(--muted);font-size:.72rem;font-weight:600;letter-spacing:0}
+    .nav-links{display:flex;align-items:center;gap:22px;font-size:.92rem;font-weight:700;color:#476171}
+    .nav-links a:hover{color:var(--navy)}
+    .nav-action{padding:10px 16px;border:1px solid var(--line);border-radius:999px;color:var(--navy);background:#fff}
+    .nav-action.primary{border-color:transparent;background:var(--navy);color:#fff}
+    .menu-btn{display:none;border:1px solid var(--line);background:#fff;border-radius:8px;padding:9px 11px;color:var(--navy);font-weight:800}
+
+    .hero{
+      min-height:92vh;
+      padding:112px 22px 42px;
+      display:grid;
+      align-items:end;
+      position:relative;
+      color:#fff;
+      overflow:hidden;
+      background:#0c2f4e;
+    }
+    .hero::before{
+      content:"";
+      position:absolute;inset:0;
+      background:
+        linear-gradient(90deg,rgba(5,25,42,.88) 0%,rgba(5,25,42,.68) 43%,rgba(5,25,42,.15) 72%,rgba(5,25,42,.55) 100%),
+        url("assets/marco-salvanhini-portrait.jpg") center 25%/cover no-repeat;
+      transform:scale(1.01);
+    }
+    .hero-inner{position:relative;z-index:1;max-width:1180px;width:100%;margin:0 auto;display:grid;gap:44px}
+    .hero-copy{max-width:720px;padding-bottom:32px}
+    .eyebrow{display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:.12em;font-size:.76rem;font-weight:800;color:#b6f1ff;margin-bottom:16px}
+    .eyebrow::before{content:"";width:28px;height:2px;background:var(--cyan)}
+    h1,h2{font-family:"DM Serif Display",serif;font-weight:400;line-height:1.05;letter-spacing:0}
+    h1{font-size:clamp(3rem,8vw,6.7rem);margin:0 0 18px;max-width:850px}
+    .hero-copy p{font-size:clamp(1.05rem,2vw,1.32rem);max-width:610px;color:rgba(255,255,255,.84);margin:0 0 28px}
+    .hero-actions{display:flex;gap:12px;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:12px 20px;border-radius:999px;font-weight:800;border:1px solid transparent;transition:.2s ease}
+    .btn.primary{background:var(--cyan);color:#042b43}
+    .btn.primary:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(24,169,213,.25)}
+    .btn.light{border-color:rgba(255,255,255,.35);color:#fff;background:rgba(255,255,255,.08)}
+    .btn.light:hover{background:rgba(255,255,255,.16)}
+    .hero-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);backdrop-filter:blur(14px);border-radius:8px;overflow:hidden}
+    .hero-strip div{padding:18px 20px;border-right:1px solid rgba(255,255,255,.14)}
+    .hero-strip div:last-child{border-right:0}
+    .hero-strip strong{display:block;font-size:1.25rem;color:#fff}
+    .hero-strip span{display:block;color:rgba(255,255,255,.68);font-size:.86rem;margin-top:3px}
+
+    section{padding:92px 22px}
+    .section-inner{max-width:1180px;margin:auto}
+    .section-head{display:flex;justify-content:space-between;align-items:end;gap:28px;margin-bottom:34px}
+    .section-head h2{font-size:clamp(2.1rem,5vw,4rem);color:var(--navy);margin:0}
+    .section-head p{max-width:520px;color:var(--muted);margin:0}
+    .about{background:var(--paper)}
+    .about-grid{display:grid;grid-template-columns:minmax(280px,.8fr) 1fr;gap:54px;align-items:center}
+    .doctor-card{border-radius:8px;overflow:hidden;box-shadow:var(--shadow);background:var(--mist)}
+    .doctor-card img{width:100%;aspect-ratio:4/5;object-fit:cover;object-position:center 18%}
+    .about-copy h2{font-size:clamp(2rem,5vw,4rem);color:var(--navy);margin:0 0 18px}
+    .about-copy p{font-size:1.06rem;color:var(--muted);margin:0 0 18px;max-width:680px}
+    .credentials{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:30px}
+    .credential{border:1px solid var(--line);border-radius:8px;padding:16px;background:#fff}
+    .credential strong{display:block;color:var(--navy);font-size:.98rem}
+    .credential span{display:block;color:var(--muted);font-size:.86rem;margin-top:4px}
+
+    .services{background:var(--soft)}
+    .service-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+    .service{background:#fff;border:1px solid var(--line);border-radius:8px;padding:24px;min-height:260px;display:flex;flex-direction:column;justify-content:space-between;transition:.2s ease}
+    .service:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+    .service .num{color:var(--cyan);font-weight:800;font-size:.85rem}
+    .service h3{font-size:1.25rem;margin:16px 0 10px;color:var(--navy)}
+    .service p{color:var(--muted);margin:0}
+    .service ul{list-style:none;margin:22px 0 0;padding:0;display:grid;gap:8px;color:#425c6b;font-size:.92rem}
+    .service li{display:flex;gap:8px}
+    .service li::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green);margin-top:9px;flex:0 0 7px}
+
+    .journey{background:#fff}
+    .steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;counter-reset:steps}
+    .step{counter-increment:steps;border:1px solid var(--line);border-radius:8px;padding:22px;background:linear-gradient(180deg,#fff,#f8fcfd)}
+    .step::before{content:"0" counter(steps);display:inline-flex;margin-bottom:22px;color:var(--cyan);font-weight:800}
+    .step h3{margin:0 0 8px;color:var(--navy);font-size:1.05rem}
+    .step p{margin:0;color:var(--muted);font-size:.92rem}
+
+    .guides{background:var(--ink);color:#fff}
+    .guides .section-head h2{color:#fff}
+    .guides .section-head p{color:rgba(255,255,255,.72)}
+    .guide-panel{display:grid;grid-template-columns:1fr .78fr;gap:22px;align-items:stretch}
+    .guide-main{border:1px solid rgba(255,255,255,.16);border-radius:8px;padding:30px;background:rgba(255,255,255,.06)}
+    .guide-main h3{font-size:1.55rem;margin:0 0 10px}
+    .guide-main p{margin:0;color:rgba(255,255,255,.72)}
+    .guide-tags{display:flex;flex-wrap:wrap;gap:8px;margin:24px 0}
+    .guide-tags span{border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:7px 11px;color:rgba(255,255,255,.82);font-weight:700;font-size:.82rem}
+    .guide-list{display:grid;gap:10px}
+    .guide-list a{display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(255,255,255,.13);border-radius:8px;padding:14px 16px;color:#fff;background:rgba(255,255,255,.05)}
+    .guide-list a:hover{background:rgba(255,255,255,.1)}
+
+    .contact{background:linear-gradient(180deg,#fff,var(--soft))}
+    .contact-grid{display:grid;grid-template-columns:1fr .9fr;gap:28px;align-items:center}
+    .contact-card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:28px;box-shadow:var(--shadow)}
+    .contact-card h2{font-size:clamp(2rem,5vw,3.5rem);color:var(--navy);margin:0 0 12px}
+    .contact-card p{color:var(--muted);margin:0 0 22px}
+    .contact-row{display:grid;gap:10px;margin-top:22px}
+    .contact-item{border:1px solid var(--line);border-radius:8px;padding:14px 16px;color:#405a6a;background:#fff}
+    .contact-item strong{display:block;color:var(--navy)}
+    .contact-photo{border-radius:8px;overflow:hidden;box-shadow:var(--shadow);background:var(--mist)}
+    .contact-photo img{width:100%;aspect-ratio:4/5;object-fit:cover;object-position:center top}
+    .disabled-note{font-size:.86rem;color:#6d7f8d;margin-top:10px}
+
+    .footer{padding:34px 22px;background:#0c1924;color:rgba(255,255,255,.65)}
+    .footer-inner{max-width:1180px;margin:auto;display:flex;justify-content:space-between;gap:20px;align-items:center;flex-wrap:wrap}
+    .footer a{color:rgba(255,255,255,.78)}
+    .footer-links{display:flex;gap:18px;font-weight:700;font-size:.9rem}
+
+    .reveal{opacity:0;transform:translateY(24px);transition:opacity .65s ease,transform .65s ease}
+    .reveal.visible{opacity:1;transform:none}
+
+    @media(max-width:920px){
+      .nav-links{display:none;position:fixed;top:63px;left:12px;right:12px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:16px;box-shadow:var(--shadow);flex-direction:column;align-items:stretch}
+      .nav-links.open{display:flex}
+      .menu-btn{display:inline-flex}
+      .hero{min-height:88vh}
+      .hero::before{background:linear-gradient(180deg,rgba(5,25,42,.82),rgba(5,25,42,.7)),url("assets/marco-salvanhini-portrait.jpg") center top/cover no-repeat}
+      .hero-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .hero-strip div:nth-child(2){border-right:0}
+      .hero-strip div:nth-child(-n+2){border-bottom:1px solid rgba(255,255,255,.14)}
+      .about-grid,.guide-panel,.contact-grid{grid-template-columns:1fr}
+      .service-grid,.steps,.credentials{grid-template-columns:1fr}
+      .section-head{display:block}
+      .section-head p{margin-top:12px}
+      section{padding:70px 18px}
+    }
+    @media(max-width:560px){
+      .hero{padding:96px 18px 28px}
+      h1{font-size:3rem}
+      .hero-strip{grid-template-columns:1fr}
+      .hero-strip div{border-right:0;border-bottom:1px solid rgba(255,255,255,.14)}
+      .hero-strip div:last-child{border-bottom:0}
+      .btn{width:100%}
+      .footer-inner{display:grid}
+      .footer-links{flex-wrap:wrap}
+    }
+  </style>
+</head>
+<body>
+  <nav class="site-nav" id="siteNav">
+    <div class="nav-inner">
+      <a class="brand" href="#inicio" aria-label="FEMIC início">
+        <span class="brand-mark">F</span>
+        <span>FEMIC<small>Fisioterapia Especializada</small></span>
+      </a>
+      <div class="nav-links" id="navLinks">
+        <a href="#sobre">Sobre</a>
+        <a href="#servicos">Tratamentos</a>
+        <a href="#metodo">Método</a>
+        <a href="#guias">Guias</a>
+        <a class="nav-action" href="#contato">Contato</a>
+        <a class="nav-action primary" href="guias.html">Abrir guias</a>
+      </div>
+      <button class="menu-btn" id="menuBtn" type="button" aria-label="Abrir menu">Menu</button>
+    </div>
+  </nav>
+
+  <header class="hero" id="inicio">
+    <div class="hero-inner">
+      <div class="hero-copy reveal">
+        <div class="eyebrow">Araraquara, SP</div>
+        <h1>FEMIC Fisioterapia Especializada</h1>
+        <p>Atendimento individualizado com Marco Salvanhini para dor, reabilitação, prevenção e retorno seguro às atividades.</p>
+        <div class="hero-actions">
+          <a class="btn primary" href="#contato">Agendar avaliação</a>
+          <a class="btn light" href="guias.html">Guias para pacientes</a>
+        </div>
+      </div>
+      <div class="hero-strip reveal" aria-label="Diferenciais da FEMIC">
+        <div><strong>Dor e reabilitação</strong><span>Conduta personalizada para cada caso</span></div>
+        <div><strong>Educação em saúde</strong><span>Guias claros para pacientes</span></div>
+        <div><strong>Prontuário digital</strong><span>Acompanhamento organizado</span></div>
+        <div><strong>Foco em função</strong><span>Voltar a se mover com confiança</span></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="about" id="sobre">
+      <div class="section-inner about-grid">
+        <div class="doctor-card reveal">
+          <img src="assets/marco-salvanhini-clinica.jpg" alt="Marco Salvanhini, fisioterapeuta da FEMIC">
+        </div>
+        <div class="about-copy reveal">
+          <div class="eyebrow">Sobre o atendimento</div>
+          <h2>Um plano de cuidado para a pessoa, não só para a dor.</h2>
+          <p>A FEMIC trabalha com avaliação cuidadosa, explicação clara do quadro e progressão terapêutica conforme a resposta do paciente. A proposta é unir conhecimento técnico, escuta e acompanhamento contínuo.</p>
+          <p>O atendimento é conduzido por Marco Salvanhini, com foco em fisioterapia musculoesquelética, dor persistente, prevenção e reabilitação funcional.</p>
+          <div class="credentials">
+            <div class="credential"><strong>Avaliação completa</strong><span>História, movimento, dor e função</span></div>
+            <div class="credential"><strong>Conduta progressiva</strong><span>Exercícios e terapia manual quando indicado</span></div>
+            <div class="credential"><strong>Orientação clara</strong><span>Paciente participa do próprio cuidado</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="services" id="servicos">
+      <div class="section-inner">
+        <div class="section-head reveal">
+          <div>
+            <div class="eyebrow">Tratamentos</div>
+            <h2>Cuidado para recuperar movimento e confiança.</h2>
+          </div>
+          <p>Os tratamentos são estruturados conforme o diagnóstico funcional, intensidade da dor, rotina e objetivos de cada paciente.</p>
+        </div>
+        <div class="service-grid">
+          <article class="service reveal">
+            <div>
+              <span class="num">01</span>
+              <h3>Dor persistente</h3>
+              <p>Abordagem para dor lombar, cervical, ciática e quadros que limitam a rotina.</p>
+            </div>
+            <ul>
+              <li>Educação em dor</li>
+              <li>Controle de carga</li>
+              <li>Retorno gradual às atividades</li>
+            </ul>
+          </article>
+          <article class="service reveal">
+            <div>
+              <span class="num">02</span>
+              <h3>Reabilitação funcional</h3>
+              <p>Recuperação após lesões, cirurgias, imobilizações e períodos de redução de movimento.</p>
+            </div>
+            <ul>
+              <li>Progressão de força</li>
+              <li>Mobilidade e estabilidade</li>
+              <li>Prevenção de recidivas</li>
+            </ul>
+          </article>
+          <article class="service reveal">
+            <div>
+              <span class="num">03</span>
+              <h3>Prevenção e performance</h3>
+              <p>Avaliação e acompanhamento para evitar dores, melhorar função e sustentar resultados.</p>
+            </div>
+            <ul>
+              <li>Avaliação postural e funcional</li>
+              <li>Rotina de exercícios</li>
+              <li>Orientação ergonômica</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="journey" id="metodo">
+      <div class="section-inner">
+        <div class="section-head reveal">
+          <div>
+            <div class="eyebrow">Método FEMIC</div>
+            <h2>Um processo simples, seguro e acompanhado.</h2>
+          </div>
+          <p>Do primeiro contato à alta, a ideia é transformar incerteza em clareza e movimento em resultado.</p>
+        </div>
+        <div class="steps">
+          <article class="step reveal"><h3>Escuta e avaliação</h3><p>Entendimento da história, sintomas, rotina e objetivos.</p></article>
+          <article class="step reveal"><h3>Explicação do quadro</h3><p>Orientação clara sobre o que está acontecendo e o que evitar.</p></article>
+          <article class="step reveal"><h3>Plano de tratamento</h3><p>Condutas e exercícios ajustados à evolução do paciente.</p></article>
+          <article class="step reveal"><h3>Retorno à função</h3><p>Progressão para atividades do dia a dia, trabalho, esporte e lazer.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="guides" id="guias">
+      <div class="section-inner">
+        <div class="section-head reveal">
+          <div>
+            <div class="eyebrow">Guias para pacientes</div>
+            <h2>Informação que acolhe e orienta.</h2>
+          </div>
+          <p>Os guias agora fazem parte do site público, com busca por condição, região do corpo e materiais educativos.</p>
+        </div>
+        <div class="guide-panel">
+          <div class="guide-main reveal">
+            <h3>Biblioteca FEMIC de educação em saúde</h3>
+            <p>Guias com linguagem clara sobre dor lombar, cervicalgia, ciatalgia, ombro, joelho, pé, tornozelo e orientações gerais. Ideal para complementar o atendimento e ajudar o paciente a entender seu tratamento.</p>
+            <div class="guide-tags">
+              <span>Coluna</span><span>Ombro</span><span>Joelho</span><span>Pé e tornozelo</span><span>Dor crônica</span>
+            </div>
+            <a class="btn primary" href="guias.html">Abrir página de guias</a>
+          </div>
+          <div class="guide-list reveal" aria-label="Atalhos para guias">
+            <a href="guias.html#cond-lombalgia"><span>Dor lombar</span><strong>Abrir</strong></a>
+            <a href="guias.html#cond-ciatalgia"><span>Ciatalgia</span><strong>Abrir</strong></a>
+            <a href="guias.html#cond-manguito"><span>Manguito rotador</span><strong>Abrir</strong></a>
+            <a href="guias.html#cond-femoropatelar"><span>Dor femoropatelar</span><strong>Abrir</strong></a>
+            <a href="guias.html#cond-dor-cronica"><span>Dor crônica</span><strong>Abrir</strong></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="contact" id="contato">
+      <div class="section-inner contact-grid">
+        <div class="contact-card reveal">
+          <div class="eyebrow">Contato</div>
+          <h2>Pronto para começar seu cuidado?</h2>
+          <p>Agende uma avaliação para entender seu quadro, definir prioridades e iniciar um plano de tratamento seguro.</p>
+          <a class="btn primary" href="guias.html">Conhecer os guias</a>
+          <div class="disabled-note">O botão de WhatsApp fica pronto para ativação assim que o número oficial for definido.</div>
+          <div class="contact-row">
+            <div class="contact-item"><strong>Local</strong><span>Araraquara, SP</span></div>
+            <div class="contact-item"><strong>Atendimento</strong><span>Fisioterapia especializada, reabilitação e prevenção</span></div>
+          </div>
+        </div>
+        <div class="contact-photo reveal">
+          <img src="assets/marco-salvanhini-portrait.jpg" alt="Marco Salvanhini em jaleco">
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="brand">
+        <span class="brand-mark">F</span>
+        <span>FEMIC<small>Fisioterapia Especializada</small></span>
+      </div>
+      <div class="footer-links">
+        <a href="#inicio">Início</a>
+        <a href="#servicos">Tratamentos</a>
+        <a href="guias.html">Guias</a>
+      </div>
+      <span>© 2026 FEMIC. Todos os direitos reservados.</span>
+    </div>
+  </footer>
+
+  <script>
+  (function(){
+    "use strict";
+    var menuBtn = document.getElementById("menuBtn");
+    var navLinks = document.getElementById("navLinks");
+    menuBtn.addEventListener("click", function(){
+      var open = navLinks.classList.toggle("open");
+      document.body.classList.toggle("menu-open", open);
+      menuBtn.textContent = open ? "Fechar" : "Menu";
+    });
+    navLinks.querySelectorAll("a").forEach(function(link){
+      link.addEventListener("click", function(){
+        navLinks.classList.remove("open");
+        document.body.classList.remove("menu-open");
+        menuBtn.textContent = "Menu";
+      });
+    });
+    var observer = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          entry.target.classList.add("visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    }, {threshold:.14, rootMargin:"0px 0px -40px 0px"});
+    document.querySelectorAll(".reveal").forEach(function(el){ observer.observe(el); });
+  })();
+  </script>
+</body>
+</html>

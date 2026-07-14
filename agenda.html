@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="refresh" content="0; url=index.html" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FEMIC Agenda v1.4.44</title>
+<script>
+window.location.replace('index.html');
+</script>
+<meta name="theme-color" content="#0b3c6f" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<link rel="manifest" href="manifest-agenda.webmanifest" />
+<link rel="apple-touch-icon" href="logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/femic-agenda.css?v=theme-refactor-9">
+<link rel="stylesheet" href="css/femic-tokens.css?v=design-system-1">
+<link rel="stylesheet" href="css/femic-layout.css?v=design-system-1">
+<link rel="stylesheet" href="css/femic-components.css?v=design-system-1">
+</head>
+<body>
+<div class="mobile-topbar">
+  <button class="btn-icon" onclick="toggleSidebar()">☰</button>
+  <div class="mobile-brand">
+    <img src="logo.png" alt="FEMIC" class="mobile-brand-logo" />
+    <strong>FEMIC Agenda</strong>
+  </div>
+  <button class="btn-icon" onclick="toggleTheme()">🌓</button>
+</div>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+<!-- ===== FEMIC LOGIN OVERLAY ===== -->
+<div id="femicLoginOverlay" style="
+  position:fixed; inset:0; z-index:9999;
+  background: linear-gradient(135deg, #0b3c6f 0%, #0f5c5c 60%, #1fb6e9 100%);
+  display:flex; align-items:center; justify-content:center; padding:20px;
+">
+  <div style="
+    background:#fff; border-radius:28px; padding:36px 32px;
+    width:min(440px,100%); box-shadow:0 30px 60px rgba(0,0,0,.28);
+  ">
+    <div style="text-align:center; margin-bottom:24px;">
+      <div style="font-size:2.4rem; font-weight:800; letter-spacing:.08em; color:#0b3c6f;">FEMIC</div>
+      <div style="color:#678282; margin-top:6px; font-size:.95rem;">Agenda · Araraquara, SP</div>
+    </div>
+
+    <!-- PASSO 1: Configuração Supabase -->
+    <div id="loginStep1">
+      <div style="background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:16px; padding:14px 16px; margin-bottom:20px; display:flex; gap:10px;">
+        <span style="font-size:1.3rem">⚙️</span>
+        <div>
+          <strong style="color:#0369a1; font-size:.9rem;">Primeiro acesso</strong>
+          <div style="color:#0284c7; font-size:.8rem; margin-top:3px;">Informe as credenciais do Supabase. Isso é feito uma única vez.</div>
+        </div>
+      </div>
+      <div style="display:grid; gap:14px;">
+        <div>
+          <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">URL do projeto Supabase</label>
+          <input id="setupUrl" type="url" placeholder="https://xxxx.supabase.co"
+            style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px; font-size:.95rem; outline:none; box-sizing:border-box; transition:.2s;"
+            onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
+            onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+        </div>
+        <div>
+          <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">Chave anônima (anon key)</label>
+          <input id="setupKey" type="text" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px; font-size:.78rem; outline:none; box-sizing:border-box; transition:.2s; font-family:monospace;"
+            onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
+            onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+        </div>
+        <button onclick="femicSaveSetup()" style="
+          padding:14px; background:linear-gradient(135deg,#0b3c6f,#1fb6e9); color:#fff;
+          border:none; border-radius:14px; font-size:1rem; font-weight:700; cursor:pointer;
+          box-shadow:0 10px 24px rgba(11,60,111,.22); transition:.2s;
+        "
+          onmouseover="this.style.transform='translateY(-1px)'"
+          onmouseout="this.style.transform=''">
+          Salvar e continuar →
+        </button>
+        <div id="setupError" style="color:#ef4444; text-align:center; font-size:.88rem; display:none; padding:4px 0;"></div>
+      </div>
+    </div>
+
+    <!-- PASSO 2: Login email + senha -->
+    <div id="loginStep2" style="display:none;">
+      <div style="display:grid; gap:14px;">
+        <div>
+          <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">Email</label>
+          <input id="loginEmail" type="email" placeholder="seu@email.com"
+            style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px; font-size:1rem; outline:none; box-sizing:border-box; transition:.2s;"
+            onkeydown="if(event.key==='Enter')femicLogin()"
+            onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
+            onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+        </div>
+        <div>
+          <label style="display:block; font-size:.88rem; color:#678282; margin-bottom:6px;">Senha</label>
+          <input id="loginPassword" type="password" placeholder="••••••••"
+            style="width:100%; padding:13px 14px; border:1px solid #dde6e6; border-radius:14px; font-size:1rem; outline:none; box-sizing:border-box; transition:.2s;"
+            onkeydown="if(event.key==='Enter')femicLogin()"
+            onfocus="this.style.borderColor='#1fb6e9'; this.style.boxShadow='0 0 0 3px rgba(31,182,233,.15)'"
+            onblur="this.style.borderColor='#dde6e6'; this.style.boxShadow='none'">
+        </div>
+        <button id="loginBtn" onclick="femicLogin()" style="
+          padding:14px; background:linear-gradient(135deg,#0b3c6f,#1fb6e9); color:#fff;
+          border:none; border-radius:14px; font-size:1rem; font-weight:700; cursor:pointer;
+          box-shadow:0 10px 24px rgba(11,60,111,.22); transition:.2s;
+        "
+          onmouseover="this.style.transform='translateY(-1px)'"
+          onmouseout="this.style.transform=''">
+          Entrar
+        </button>
+        <div id="loginError" style="color:#ef4444; text-align:center; font-size:.88rem; display:none; padding:4px 0;"></div>
+        <button onclick="femicShowSetup()" style="background:none; border:none; color:#94a3b8; font-size:.8rem; cursor:pointer; text-decoration:underline; padding:0;">
+          ⚙️ Alterar configuração do Supabase
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand sidebar-brand">
+      <img src="logo.png" alt="Logo FEMIC" class="brand-logo" />
+      <div class="brand-text">
+        <div class="wordmark"><span class="femic-navy">FEM</span><span class="femic-cyan">IC</span></div>
+        <small>Agenda clínica · Araraquara, SP</small>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-link active" data-panel="agenda" onclick="showPanel('agenda')"><span class="icon">📅</span><span>Agenda</span></div>
+      <div class="nav-link" data-panel="day" onclick="showPanel('day')"><span class="icon">📋</span><span>Dia</span></div>
+      <div class="nav-link" data-panel="patients" onclick="showPanel('patients')"><span class="icon">👥</span><span>Pacientes</span></div>
+      <div class="nav-link" data-panel="packages" onclick="showPanel('packages')"><span class="icon">🎟️</span><span>Pacotes</span></div>
+      <div class="nav-link" data-panel="reminders" onclick="showPanel('reminders')"><span class="icon">📲</span><span>Lembretes</span></div>
+      <div class="nav-link" data-panel="report" onclick="showPanel('report')"><span class="icon">💰</span><span>Relatório</span></div>
+      <div class="nav-link" data-panel="pendencias" onclick="showPanel('pendencias')"><span class="icon">🗂️</span><span>Pendências</span><span class="pending-nav-badge hidden" id="pendingNavBadge">0</span></div>
+      <div class="nav-link" data-panel="settings" onclick="showPanel('settings')"><span class="icon">⚙️</span><span>Configurações</span></div>
+      <div class="nav-link" data-panel="backup" onclick="showPanel('backup')"><span class="icon">☁️</span><span>Backup</span></div>
+      <div class="nav-link" data-panel="sql" onclick="showPanel('sql')"><span class="icon">🧱</span><span>SQL</span></div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="side-btn" onclick="toggleTheme()">🌓 Alternar tema</button>
+      <button class="side-btn" onclick="openAppt()">+ Novo agendamento</button>
+      <button class="side-btn" onclick="goToday(); showPanel('agenda')">📅 Ir para hoje</button>
+      <button class="side-btn" onclick="loadAll()">↻ Atualizar dados</button>
+      <button class="side-btn" onclick="window.location.href='index.html'">🏠 Sistema principal</button>
+      <button class="side-btn" onclick="femicLogout()" style="border-color:rgba(239,68,68,.25); color:rgba(255,120,120,.94);">🚪 <span id="loginUserLabel">Sair</span></button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <div class="logo"></div>
+          <div>
+            <h1>FEMIC Agenda v1.4.44</h1>
+            <p>Grade semanal equilibrada · navegação lateral · sincronização segura</p>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button class="btn primary" onclick="openAppt()">+ Agendar</button>
+          <button class="btn" onclick="loadAll()">↻ Atualizar</button>
+          <button class="btn ghost" onclick="goToday()">Hoje</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="wrap">
+
+  <section class="panel active" id="panel-agenda">
+    <div class="card" style="margin-bottom:16px"><div class="toolbar"><button class="btn" onclick="prevPeriod()">◀</button><button class="btn ghost" onclick="goToday()">Hoje</button><button class="btn" onclick="nextPeriod()">▶</button><select id="viewMode" onchange="renderAgenda()" style="max-width:180px"><option value="week">Semana</option><option value="month">Mês</option></select><strong id="periodLabel" style="align-self:center;color:var(--primary)"></strong><div class="legend-row"><span class="legend"><i class="legend-dot" style="background:#f59e0b"></i>Agendado</span><span class="legend"><i class="legend-dot" style="background:#2563eb"></i>Confirmado</span><span class="legend"><i class="legend-dot" style="background:#10b981"></i>Concluído</span><span class="legend"><i class="legend-dot" style="background:#ef4444"></i>Cancelado</span></div></div><div class="agenda-filterbar"><select id="agendaStatusFilter" onchange="renderAgenda()"><option value="all">Todos os status</option><option value="agendado">Agendado</option><option value="confirmado">Confirmado</option><option value="concluido">Concluído</option><option value="cancelado">Cancelado</option></select><select id="agendaServiceFilter" onchange="renderAgenda()"><option value="all">Todos os serviços</option></select><button class="btn ghost" onclick="clearAgendaFilters()">Limpar filtros</button></div></div>
+    <div id="monthView"><div class="calendar-head" id="monthHead"></div><div id="monthCalendar"></div></div>
+    <div id="weekView" class="hidden"><div class="week-board" id="weekBoard"></div></div>
+  </section>
+
+  <section class="panel" id="panel-day">
+    <div class="card day-panel-shell"><div class="section-title day-panel-header"><div class="day-panel-copy"><div class="eyebrow">Dia operacional</div><h3>Atendimentos do dia</h3></div><div class="toolbar day-panel-controls"><input class="day-panel-date" type="date" id="dayDate" onchange="renderDay()"><button class="btn" onclick="goToday();showPanel('day')">Hoje</button><button class="btn" onclick="renderDay()">Atualizar</button></div></div><div class="quick-note small day-panel-note">Use esta tela para mudar status rapidamente sem abrir toda a agenda.</div></div>
+    <div class="grid grid-4" id="dayKpis" style="margin-top:16px"></div>
+    <div class="card" style="margin-top:16px"><div class="section-title"><h3>Lista do dia</h3><span class="muted small">Concluir, cancelar, WhatsApp e ficha em poucos cliques</span></div><div class="list" id="dayList"></div></div>
+  </section>
+
+
+  <section class="panel" id="panel-patients">
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="section-title"><div><div class="eyebrow">Novo paciente</div><h3>Cadastro direto no Supabase da agenda</h3></div></div>
+        <p class="muted small" style="margin-top:0">Quando agenda e sistema principal usarem o mesmo Supabase, este cadastro alimentará a mesma tabela <strong>patients</strong>. Em teste, fica apenas neste banco isolado.</p>
+        <div class="grid grid-2"><div class="field"><label>Nome completo *</label><input id="newPatientName" placeholder="Nome completo"></div><div class="field"><label>WhatsApp *</label><input id="newPatientWhatsapp" placeholder="(16) 99999-9999" inputmode="numeric" autocomplete="tel" maxlength="15" oninput="formatWhatsappInput(this)"></div></div>
+        <div class="field" style="margin-top:12px"><label>Patologia / observação</label><input id="newPatientPathology" placeholder="Patologia, queixa ou observação"></div>
+        <button class="btn primary" style="margin-top:12px" onclick="savePatient()">Salvar paciente no Supabase</button>
+      </div>
+      <div class="card">
+        <div class="section-title"><div><div class="eyebrow">Regras de segurança</div><h3>Correção de cadastro</h3></div></div>
+        <div class="list"><div class="item"><strong>Inativar</strong><div class="muted small">Use quando o paciente tem agendamentos, pacotes ou histórico.</div></div><div class="item"><strong>Apagar</strong><div class="muted small">Só é permitido se não houver vínculos.</div></div><div class="item"><strong>Reativar</strong><div class="muted small">Paciente volta para as listas da agenda.</div></div></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="section-title"><h3>Pacientes ativos</h3><span class="muted small" id="patientsActiveCount"></span></div>
+      <input id="patientActiveSearch" placeholder="Buscar paciente ativo por nome ou WhatsApp" oninput="renderLists()" style="margin-bottom:12px">
+      <div class="list" id="patientListActive"></div>
+      <div class="archived-toggle-row">
+        <button class="btn ghost" type="button" id="toggleArchivedPatientsBtn" onclick="toggleArchivedPatients()">Ver pacientes inativos</button>
+        <span class="muted small" id="patientsArchivedCount"></span>
+      </div>
+      <div class="archived-panel hidden" id="patientArchivedPanel">
+        <input id="patientArchivedSearch" placeholder="Buscar paciente inativo por nome ou WhatsApp" oninput="renderLists()">
+        <div class="list" id="patientListArchived"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-reminders"><div class="card"><div class="section-title"><div><div class="eyebrow">Lembretes</div><h3>Fila de WhatsApp</h3></div><div id="reminderModeBadge" class="mode-badge manual">Manual</div></div><div class="toolbar"><select id="reminderType" onchange="renderReminders()" style="max-width:260px"><option value="appointment">Lembrete de sessão</option><option value="form">Formulário pós-atendimento</option></select><input type="date" id="reminderDate" onchange="renderReminders()" style="max-width:190px"><button class="btn primary" onclick="sendNextReminder()">Enviar próximo pendente</button><button class="btn" onclick="renderReminders()">Atualizar</button></div><div class="reminder-mode-panel" style="margin-top:12px"><div><strong>Modo de envio</strong><div class="muted small" id="reminderAutoStatus">Manual: você escolhe quando enviar.</div></div><div class="toolbar"><button class="btn primary" id="manualModeBtn" onclick="setReminderMode('manual')">Manual</button><button class="btn" id="autoModeBtn" onclick="setReminderMode('auto')">Automático</button></div></div><div class="quick-note small" style="margin-top:12px">Sessão: automático 12 horas antes do atendimento. Formulário: automático 5 horas depois da sessão concluída. O navegador precisa estar aberto para disparar os envios pelo WhatsApp.</div></div><div class="grid grid-4" id="reminderKpis" style="margin-top:16px"></div><div class="card" style="margin-top:16px"><div class="eyebrow" id="reminderTitle">Lembretes</div><div class="list" id="reminderList"></div></div></section>
+
+  <section class="panel" id="panel-report"><div class="card"><div class="toolbar"><input type="month" id="reportMonth" onchange="renderReport()" style="max-width:190px"><button class="btn" onclick="exportCsv()">Exportar CSV</button><button class="btn" onclick="window.print()">Imprimir/PDF</button></div></div><div class="grid grid-4" id="reportKpis" style="margin-top:16px"></div><div class="card" id="reportPrintArea" style="margin-top:16px"><div class="eyebrow">Relatório mensal</div><div class="table-wrap"><table><thead><tr><th>Pagador</th><th>Serviço</th><th>Qtd.</th><th>Valor</th><th>Total</th></tr></thead><tbody id="reportBody"></tbody></table></div></div></section>
+
+  <section class="panel" id="panel-pendencias">
+    <div class="pending-shell">
+      <div class="pending-head-card">
+        <div>
+          <div class="eyebrow">Pendências</div>
+          <h3>Fila operacional vinda do WhatsApp e voz</h3>
+          <p class="muted small">Pedidos capturados pelo WhatsApp Web e lembretes por voz aparecem aqui com horários sugeridos para confirmação.</p>
+        </div>
+      </div>
+      <div class="grid grid-4 pending-kpis" id="pendingKpis">
+        <div class="card kpi"><div class="eyebrow">Abertas</div><strong>0</strong><span class="muted small">aguardando ação</span></div>
+        <div class="card kpi"><div class="eyebrow">Em andamento</div><strong>0</strong><span class="muted small">com revisão em curso</span></div>
+        <div class="card kpi"><div class="eyebrow">Concluídas</div><strong>0</strong><span class="muted small">já resolvidas</span></div>
+        <div class="card kpi"><div class="eyebrow">Canceladas</div><strong>0</strong><span class="muted small">descartadas</span></div>
+      </div>
+      <section class="card pending-card">
+        <div class="section-title">
+          <div><div class="eyebrow">WhatsApp e voz</div><h3>Tarefas recebidas para revisão</h3></div>
+          <button class="btn" id="voiceTaskBtn" type="button" title="Criar pendência por voz">🎤 Nova por voz</button>
+        </div>
+        <div class="pending-filters">
+          <select id="pendingTaskStatusFilter" onchange="renderExtensionPendingTasks()"><option value="open">Abertas</option><option value="all">Todas</option><option value="concluida">Concluídas</option><option value="cancelada">Canceladas</option></select>
+          <select id="pendingTaskTypeFilter" onchange="renderExtensionPendingTasks()"><option value="all">Todos os tipos</option><option value="marcacao">Marcação</option><option value="remarcacao">Remarcação</option><option value="cancelamento">Cancelamento</option></select>
+        </div>
+        <div class="pending-task-list" id="pendingTaskList"></div>
+      </section>
+    </div>
+  </section>
+
+  
+  <section class="panel" id="panel-packages">
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="eyebrow">Novo pacote</div>
+        <p class="muted small" style="margin-top:0">Cadastre o pacote vinculado ao paciente e ao serviço. O contador principal mostra sessões usadas/total, com saldo como informação secundária. Para evitar pacote no paciente errado, selecione paciente e serviço manualmente antes de salvar.</p>
+        <div class="grid grid-2"><select id="pkgPatient" required></select><select id="pkgService" required></select><input id="pkgTotal" type="number" min="1" placeholder="Total de sessões" required><input id="pkgRemain" type="number" min="0" placeholder="Saldo inicial (opcional)"></div>
+        <button class="btn primary" style="margin-top:12px" onclick="savePackage()">Adicionar pacote</button>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Como ler o contador</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="section-title"><h3>Pacotes ativos</h3><span class="muted small" id="packagesActiveCount"></span></div>
+      <input id="packageSearch" placeholder="🔍 Buscar pacote por paciente ou serviço…" oninput="renderLists()" style="margin-bottom:12px">
+      <div class="list" id="packageListActive"></div>
+      <div class="archived-toggle-row">
+        <button class="btn ghost" type="button" id="toggleInactivePackagesBtn" onclick="toggleInactivePackages()">Ver pacotes inativos</button>
+        <span class="muted small" id="packagesInactiveCount"></span>
+      </div>
+      <div class="archived-panel hidden" id="packageInactivePanel">
+        <div class="list" id="packageListInactive"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-settings">
+    <div class="grid grid-2"><div class="card"><div class="section-title"><div><div class="eyebrow">Supabase</div><h3>Conexão</h3></div></div><div class="grid grid-2"><div class="field"><label>URL</label><input id="sbUrl" placeholder="https://xxxx.supabase.co"></div><div class="field"><label>Anon key</label><input id="sbKey" placeholder="anon key"></div></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" onclick="saveConfig();loadAll()">Salvar e carregar</button><button class="btn" onclick="testConnection()">Testar conexão</button></div></div><div class="card"><div class="section-title"><div><div class="eyebrow">Expediente</div><h3>Horários da clínica</h3></div></div><div class="grid grid-3"><div class="field"><label>Início geral</label><input id="setStart" type="time" value="08:00"></div><div class="field"><label>Fim geral</label><input id="setEnd" type="time" value="20:00"></div><div class="field"><label>Intervalo grade</label><select id="setInterval"><option>15</option><option selected>30</option><option>45</option><option>60</option></select></div></div><div class="field" style="margin-top:12px"><label>Períodos de atendimento</label><input id="setPeriods" placeholder="08:00-12:00,16:00-20:00" value="08:00-12:00,16:00-20:00"><div class="period-help small">Use vírgula para separar períodos. A agenda só mostrará horários dentro dessas janelas.</div></div><div class="toolbar" id="workDays" style="margin-top:12px"></div><button class="btn primary" style="margin-top:12px" onclick="saveSettings()">Salvar expediente</button></div></div>
+    <div class="grid grid-2" style="margin-top:16px"><div class="card"><div class="section-title"><div><div class="eyebrow">Pagadores</div><h3>Convênios e particulares</h3></div></div><div class="toolbar"><input id="payerName" placeholder="Nome do pagador" style="max-width:260px"><button class="btn primary" onclick="savePayer()">Adicionar</button></div><div class="list" id="payerList" style="margin-top:12px"></div></div><div class="card"><div class="section-title"><div><div class="eyebrow">Serviços</div><h3>Valores, duração e modo</h3></div></div><div class="grid grid-2"><input id="svcName" placeholder="Nome do serviço"><select id="svcPayer"></select><input id="svcPrice" type="number" placeholder="Valor"><select id="svcDur"><option>30</option><option selected>45</option><option>60</option><option>90</option></select><select id="svcMode"><option value="grupo">Grupo</option><option value="individual">Individual</option></select><input id="svcMax" type="number" value="4" placeholder="Limite"></div><button class="btn primary" style="margin-top:12px" onclick="saveService()">Adicionar serviço</button><div class="list" id="serviceList" style="margin-top:12px"></div></div></div>
+    
+    <div class="card" style="margin-top:16px" id="clinicRulesCard">
+      <div class="section-title">
+        <div><div class="eyebrow">Regras da clínica</div><h3>Políticas complementares do assistente</h3></div>
+        <span class="muted small" id="clinicRulesStatus">Carregando…</span>
+      </div>
+      <p class="muted small" style="margin-top:0">Essas regras não substituem as validações duras da agenda. Elas complementam as respostas e futuras ações do assistente.</p>
+      <div id="clinicRulesEditor" class="clinic-rules-grid"></div>
+      <div class="toolbar" style="margin-top:12px">
+        <button class="btn primary" onclick="saveClinicRules()">Salvar regras da clínica</button>
+        <button class="btn" onclick="resetClinicRulesToDefaults()">Restaurar defaults</button>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px"><div class="eyebrow">Modelos WhatsApp</div><div class="field"><label>Lembrete de sessão</label><textarea id="tplReminder" rows="5"></textarea></div><button class="btn primary" style="margin-top:12px" onclick="saveTemplates()">Salvar modelo</button></div>
+    <div class="card" style="margin-top:16px"><div class="section-title"><div><div class="eyebrow">WhatsApp API</div><h3>Preparação segura para Meta Cloud API</h3></div><span class="mode-badge manual" id="whatsappProviderBadge">wa.me</span></div><p class="muted small" style="margin-top:0">O envio real desta versão continua pelo link seguro wa.me. A opção de API apenas guarda a URL pública de uma futura Supabase Edge Function; o token da Meta nunca deve ficar neste navegador.</p><div class="grid grid-2"><div class="field"><label>Provedor de envio</label><select id="whatsappProvider" onchange="renderWhatsappProviderBadge()"><option value="wa_me">Link WhatsApp seguro</option><option value="api">API preparada via Supabase Edge Function</option></select></div><div class="field"><label>Endpoint da Edge Function futura</label><input id="whatsappEndpoint" placeholder="https://SEU-PROJETO.functions.supabase.co/send-whatsapp-reminder"></div><div class="field"><label>Template Meta: sessão</label><input id="whatsappTplAppointment" placeholder="lembrete_sessao"></div><div class="field"><label>Template Meta: formulário</label><input id="whatsappTplForm" placeholder="formulario_pos_sessao"></div></div><div class="toolbar" style="margin-top:12px"><button class="btn primary" onclick="saveWhatsappApiConfig()">Salvar preparação da API</button><button class="btn" onclick="testWhatsappApiConfig()">Testar configuração local</button></div></div>
+    <div class="card" style="margin-top:16px" id="assistantAiConfigCard">
+      <div class="section-title">
+        <div><div class="eyebrow">IA do assistente</div><h3>Modelos e APIs externas</h3></div>
+        <span class="mode-badge manual" id="assistantAiProviderBadge">gemini</span>
+      </div>
+      <p class="muted small" style="margin-top:0">Use esta configuração para perguntas externas do chat flutuante. As consultas internas da agenda continuam sem custo de IA.</p>
+      <div class="grid grid-2">
+        <div class="field">
+          <label>Provedor padrão</label>
+          <select id="assistantAiProvider" onchange="renderAssistantAiProviderBadge()">
+            <option value="gemini">Google Gemini</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="groq">Groq</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <input id="assistantAiStatusInput" value="Consultas internas sempre usam os dados da agenda." readonly>
+        </div>
+        <div class="field">
+          <label>Modelo Gemini</label>
+          <input id="assistantGeminiModel" placeholder="gemini-2.5-flash">
+        </div>
+        <div class="field">
+          <label>Chave Gemini</label>
+          <input id="assistantGeminiKey" type="password" placeholder="AIzaSy...">
+        </div>
+        <div class="field">
+          <label>Modelo DeepSeek</label>
+          <input id="assistantDeepseekModel" placeholder="deepseek-chat">
+        </div>
+        <div class="field">
+          <label>Chave DeepSeek</label>
+          <input id="assistantDeepseekKey" type="password" placeholder="sk-...">
+        </div>
+        <div class="field">
+          <label>Modelo Groq</label>
+          <input id="assistantGroqModel" placeholder="llama-3.3-70b-versatile">
+        </div>
+        <div class="field">
+          <label>Chave Groq</label>
+          <input id="assistantGroqKey" type="password" placeholder="gsk_...">
+        </div>
+      </div>
+      <div class="toolbar" style="margin-top:12px">
+        <button class="btn primary" onclick="saveAssistantAiConfig()">Salvar IA do assistente</button>
+        <button class="btn" onclick="testAssistantAiConfig()">Testar configuração</button>
+      </div>
+    </div>
+  </section>
+
+
+  <section class="panel" id="panel-backup">
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="section-title">
+          <div><div class="eyebrow">Exportar dados</div><h3>Backup completo da agenda</h3></div>
+        </div>
+        <p class="muted small" style="margin-top:0">
+          Exporta pacientes, pagadores, serviços, pacotes, agendamentos, movimentos/histórico de sessões e configurações de expediente em um arquivo JSON.
+        </p>
+        <div class="toolbar">
+          <button class="btn primary" onclick="exportAgendaBackup()">⬇️ Exportar backup JSON</button>
+          <button class="btn" onclick="loadAll()">↻ Atualizar antes de exportar</button>
+        </div>
+        <div class="quick-note small" style="margin-top:12px">
+          Recomendação FEMIC: faça backup antes de grandes alterações, antes de limpar banco e ao final de cada mês.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <div><div class="eyebrow">Restaurar dados</div><h3>Restaurar backup JSON</h3></div>
+        </div>
+        <p class="muted small" style="margin-top:0">
+          A restauração substitui as tabelas operacionais da agenda: agendamentos, pacotes, serviços, pagadores, movimentos e configurações. 
+          Pacientes do arquivo são inseridos/atualizados, mas pacientes que já existirem no Supabase não são apagados.
+        </p>
+        <input type="file" id="restoreBackupInput" accept="application/json,.json" onchange="restoreAgendaBackup(event)">
+        <div class="quick-note small" style="margin-top:12px">
+          Segurança: essa função não apaga o sistema clínico principal. Ela usa apenas as tabelas da agenda.
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="section-title">
+        <div><div class="eyebrow">Conteúdo do backup</div><h3>O que será salvo</h3></div>
+      </div>
+      <div class="grid grid-3">
+        <div class="kpi"><div class="small muted">Pacientes</div><strong id="bkPatients">0</strong></div>
+        <div class="kpi"><div class="small muted">Agendamentos</div><strong id="bkAppointments">0</strong></div>
+        <div class="kpi"><div class="small muted">Pacotes</div><strong id="bkPackages">0</strong></div>
+        <div class="kpi"><div class="small muted">Movimentos / histórico</div><strong id="bkMovements">0</strong></div>
+        <div class="kpi"><div class="small muted">Serviços</div><strong id="bkServices">0</strong></div>
+        <div class="kpi"><div class="small muted">Pagadores</div><strong id="bkPayers">0</strong></div>
+        <div class="kpi"><div class="small muted">Regras da clínica</div><strong id="bkClinicRules">0</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-sql"><div class="card"><div class="eyebrow">SQL destrutivo de reset completo</div><button class="btn warning" onclick="copySql()">Copiar SQL de reset</button><pre class="sqlbox" id="sqlBox"></pre></div></section>
+    </div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="apptModal">
+  <div class="modal modal-appt-refined">
+    <div class="modal-head appt-head-refined">
+      <div>
+        <div class="eyebrow">Agenda FEMIC</div>
+        <h3 id="apptTitle">Novo agendamento</h3>
+        <div class="muted small">Preencha paciente, serviço, data e horário. A recorrência é opcional.</div>
+      </div>
+      <button class="btn" onclick="closeModal('apptModal')">✕</button>
+    </div>
+
+    <div class="modal-body appt-body-refined">
+      <input type="hidden" id="apptId">
+      <input type="hidden" id="rescheduleOriginId">
+      <input type="hidden" id="rescheduleCancelOriginal">
+
+      <div class="appt-section">
+        <div class="appt-section-title">
+          <span>1</span>
+          <div>
+            <strong>Paciente e serviço</strong>
+            <small>Selecione conscientemente para evitar agendamento no paciente errado.</small>
+          </div>
+        </div>
+
+        <div class="appt-grid-main">
+          <div class="field field-safe-select">
+            <label>Paciente *</label>
+            <select id="apptPatient" onchange="showSaldoInfo()"></select>
+            <div class="muted small">Obrigatório. Não vem pré-selecionado.</div>
+          </div>
+
+          <div class="field field-safe-select">
+            <label>Serviço *</label>
+            <select id="apptService" onchange="onServiceChange(true)"></select>
+            <div class="muted small">Define duração, tipo de atendimento e valor padrão.</div>
+          </div>
+
+          <div class="field">
+            <label>Status</label>
+            <select id="apptStatus">
+              <option value="agendado">Agendado</option>
+              <option value="confirmado">Confirmado</option>
+              <option value="concluido">Concluído</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+            <div class="muted small">Concluído consome sessão do pacote.</div>
+          </div>
+        </div>
+
+        <div id="saldoInfo" class="saldo-info-refined"></div>
+      </div>
+
+      <div class="appt-section">
+        <div class="appt-section-title">
+          <span>2</span>
+          <div>
+            <strong>Data, horário e valor</strong>
+            <small>O fim é calculado automaticamente pela duração do serviço.</small>
+          </div>
+        </div>
+
+        <div class="appt-grid-time">
+          <div class="field">
+            <label>Data</label>
+            <input id="apptDate" type="date">
+          </div>
+
+          <div class="field">
+            <label>Início</label>
+            <input id="apptStart" type="time" onchange="onServiceChange(false)">
+          </div>
+
+          <div class="field">
+            <label>Fim</label>
+            <input id="apptEnd" type="time" readonly>
+          </div>
+
+          <div class="field">
+            <label>Valor desta sessão</label>
+            <input id="apptPrice" type="number" min="0" step="0.01" inputmode="decimal">
+            <div class="muted small">Pode ser ajustado sem alterar o serviço.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="appt-section appt-rec-section">
+        <div class="appt-rec-top">
+          <label class="rec-toggle-refined">
+            <input type="checkbox" id="recurring" onchange="toggleRecurrence()">
+            <span>
+              <strong>Agendamento recorrente</strong>
+              <small>Use para várias sessões do mesmo paciente.</small>
+            </span>
+          </label>
+
+          <div id="recTotalTop" class="rec-total-top">
+            <label>Total de sessões</label>
+            <input id="recCount" type="number" value="4" min="1">
+          </div>
+        </div>
+
+        <div id="recFields" class="hidden rec-fields-refined">
+          <div class="muted small rec-help">
+            Marque os dias desejados e informe o horário de cada dia. O sistema tentará criar até o total informado acima.
+          </div>
+          <div class="rec-grid rec-grid-compact" id="recDays"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-foot appt-foot-refined">
+      <button class="btn" onclick="closeModal('apptModal')">Cancelar</button>
+      <button class="btn danger" id="deleteApptBtn" onclick="deleteAppointment()">Remover</button>
+      <button class="btn primary" id="saveApptBtn" onclick="saveAppointment()">Salvar agendamento</button>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop" id="patientModal"><div class="modal"><div class="modal-head"><h3>Ficha do paciente</h3><button class="btn" onclick="closeModal('patientModal')">✕</button></div><div class="modal-body" id="patientFicha"></div></div></div>
+
+<div class="modal-backdrop" id="editPatientModal">
+  <div class="modal sm">
+    <div class="modal-head">
+      <h3>✏️ Editar paciente</h3>
+      <button class="btn" onclick="closeModal('editPatientModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editPatientId">
+      <div class="grid" style="gap:14px">
+        <div class="field">
+          <label>Nome completo *</label>
+          <input id="editPatientName" placeholder="Nome completo" onkeydown="if(event.key==='Enter')saveEditPatient()">
+        </div>
+        <div class="field">
+          <label>WhatsApp *</label>
+          <input id="editPatientWhatsapp" placeholder="(16) 99999-9999" inputmode="numeric" maxlength="15" oninput="formatWhatsappInput(this)" onkeydown="if(event.key==='Enter')saveEditPatient()">
+        </div>
+        <div class="field">
+          <label>Patologia / observação</label>
+          <input id="editPatientPathology" placeholder="Patologia, queixa ou observação" onkeydown="if(event.key==='Enter')saveEditPatient()">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('editPatientModal')">Cancelar</button>
+      <button class="btn primary" onclick="saveEditPatient()">💾 Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
+<button class="assistant-fab" id="assistantFab" type="button" onclick="toggleAssistantPanel()" aria-label="Abrir assistente FEMIC">
+  <span>Assistente</span>
+  <strong>FEMIC</strong>
+</button>
+
+<section class="assistant-panel hidden" id="assistantPanel" aria-live="polite">
+  <div class="assistant-panel-head">
+    <div>
+      <div class="eyebrow">Assistente FEMIC</div>
+      <h3>Consulta da agenda</h3>
+      <div class="muted small" id="assistantBuildLabel">build assistant-live-4</div>
+    </div>
+    <button class="btn" type="button" onclick="toggleAssistantPanel(false)">✕</button>
+  </div>
+  <div class="assistant-panel-body">
+    <div class="assistant-suggestions" id="assistantSuggestions"></div>
+    <div class="assistant-chat-title">Respostas do assistente</div>
+    <div class="assistant-chat" id="assistantMessages"></div>
+    <div class="assistant-debug muted small" id="assistantDebug">Assistente iniciando…</div>
+  </div>
+  <form class="assistant-panel-foot">
+    <textarea id="assistantInput" rows="3" placeholder="Pergunte sobre horários, saldo de sessões, conflitos ou algo externo. Enter envia. Shift+Enter quebra linha."></textarea>
+    <div class="assistant-panel-actions">
+      <span class="muted small" id="assistantStatus">Consultas internas priorizam os dados da agenda. Enter envia.</span>
+      <button class="btn primary" id="assistantSendBtn" type="submit">Perguntar</button>
+    </div>
+  </form>
+</section>
+
+<script>
+window.FEMIC_ASSISTANT_BUILD = 'assistant-live-4';
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.getRegistrations().then(function (registrations) {
+      return Promise.all((registrations || []).map(function (registration) {
+        return registration.unregister();
+      }));
+    }).catch(function (err) {
+      console.warn('Falha ao remover service workers:', err);
+    });
+  });
+}
+if ('caches' in window) {
+  window.addEventListener('load', function () {
+    caches.keys().then(function (keys) {
+      return Promise.all((keys || []).filter(function (key) {
+        return String(key).indexOf('femic-agenda') !== -1;
+      }).map(function (key) {
+        return caches.delete(key);
+      }));
+    }).catch(function (err) {
+      console.warn('Falha ao limpar caches da agenda:', err);
+    });
+  });
+}
+</script>
+<script src="js/femic-agenda.js?v=secure-cloud-5"></script>
+<script src="js/femic-ai-center.js?v=ai-center-3"></script>
+<script src="js/femic-assistant-rules.js?v=assistant-rules-4"></script>
+<script src="js/femic-assistant.js?v=assistant-ui-5"></script>
+</body>
+</html>

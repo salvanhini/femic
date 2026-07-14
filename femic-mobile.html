@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>FEMIC — Lembrete por Voz</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+      background:linear-gradient(180deg,#0b3c6f 0%,#0d5ea8 40%,#1fb6e9 100%);
+      color:#fff;
+      min-height:100vh;
+      min-height:100dvh;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding:24px 16px;
+      -webkit-tap-highlight-color:transparent;
+    }
+    h1{
+      font-size:1.1rem;
+      font-weight:600;
+      opacity:.9;
+      margin-bottom:4px;
+    }
+    .subtitle{
+      font-size:.82rem;
+      opacity:.7;
+      margin-bottom:16px;
+      text-align:center;
+    }
+    .sync-card{
+      width:100%;
+      max-width:360px;
+      background:rgba(255,255,255,.12);
+      border:1px solid rgba(255,255,255,.22);
+      border-radius:16px;
+      padding:12px;
+      margin-bottom:22px;
+    }
+    .sync-card.is-compact{
+      padding:8px 10px;
+      margin-bottom:16px;
+    }
+    .sync-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .sync-card.is-compact .sync-head{
+      margin-bottom:0;
+    }
+    .sync-meta{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .sync-title{
+      font-size:.78rem;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      opacity:.78;
+    }
+    .sync-status{
+      font-size:.72rem;
+      font-weight:800;
+      padding:4px 8px;
+      border-radius:999px;
+      background:rgba(255,255,255,.14);
+      color:#fff;
+      white-space:nowrap;
+    }
+    .sync-status[data-state="online"]{background:#dcfce7;color:#166534}
+    .sync-status[data-state="offline"]{background:#fee2e2;color:#991b1b}
+    .sync-toggle{
+      width:28px;
+      height:28px;
+      border-radius:50%;
+      border:1px solid rgba(255,255,255,.24);
+      background:rgba(255,255,255,.12);
+      color:#fff;
+      font-size:.86rem;
+      line-height:1;
+      cursor:pointer;
+    }
+    .sync-grid{
+      display:grid;
+      gap:8px;
+    }
+    .sync-card.is-compact .sync-grid,
+    .sync-card.is-compact .sync-actions{
+      display:none;
+    }
+    .sync-grid input{
+      width:100%;
+      border:1px solid rgba(255,255,255,.24);
+      background:rgba(255,255,255,.9);
+      color:#0b3c6f;
+      border-radius:10px;
+      padding:10px 11px;
+      font-size:.86rem;
+      outline:none;
+    }
+    .sync-actions{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-top:8px;
+    }
+    .sync-actions button{
+      border:none;
+      border-radius:10px;
+      padding:10px;
+      font-size:.78rem;
+      font-weight:800;
+      cursor:pointer;
+    }
+    .sync-primary{background:#fff;color:#0b3c6f}
+    .sync-secondary{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.22)!important}
+    .mic-btn{
+      width:120px;
+      height:120px;
+      border-radius:50%;
+      border:3px solid rgba(255,255,255,.3);
+      background:rgba(255,255,255,.15);
+      backdrop-filter:blur(10px);
+      -webkit-backdrop-filter:blur(10px);
+      color:#fff;
+      font-size:48px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      transition:all .2s ease;
+      box-shadow:0 8px 32px rgba(0,0,0,.2);
+      margin-bottom:16px;
+    }
+    .mic-btn:active{
+      transform:scale(.95);
+    }
+    .mic-btn.is-recording{
+      background:rgba(239,68,68,.8);
+      border-color:rgba(239,68,68,.5);
+      animation:pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse{
+      0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.5)}
+      50%{box-shadow:0 0 0 16px rgba(239,68,68,0)}
+    }
+    .status{
+      font-size:.9rem;
+      opacity:.8;
+      min-height:24px;
+      text-align:center;
+      margin-bottom:24px;
+    }
+    .transcript{
+      width:100%;
+      max-width:360px;
+      min-height:60px;
+      background:rgba(255,255,255,.12);
+      border:1px solid rgba(255,255,255,.2);
+      border-radius:16px;
+      padding:14px;
+      color:#fff;
+      font-size:.95rem;
+      line-height:1.4;
+      resize:none;
+      outline:none;
+      margin-bottom:12px;
+    }
+    .transcript::placeholder{
+      color:rgba(255,255,255,.4);
+    }
+    .actions{
+      display:flex;
+      gap:10px;
+      width:100%;
+      max-width:360px;
+      margin-bottom:32px;
+    }
+    .actions button{
+      flex:1;
+      padding:14px;
+      border-radius:14px;
+      border:none;
+      font-size:.95rem;
+      font-weight:700;
+      cursor:pointer;
+      transition:all .15s ease;
+    }
+    .actions button:active{
+      transform:scale(.97);
+    }
+    .btn-send{
+      background:#fff;
+      color:#0b3c6f;
+    }
+    .btn-send:disabled{
+      opacity:.4;
+    }
+    .btn-clear{
+      background:rgba(255,255,255,.15);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.2);
+    }
+    .tasks-section{
+      width:100%;
+      max-width:360px;
+    }
+    .tasks-title{
+      font-size:.8rem;
+      text-transform:uppercase;
+      letter-spacing:.05em;
+      opacity:.6;
+      margin-bottom:10px;
+    }
+    .task-item{
+      background:rgba(255,255,255,.1);
+      border-radius:12px;
+      padding:12px;
+      margin-bottom:8px;
+      font-size:.85rem;
+    }
+    .task-item strong{
+      display:block;
+      margin-bottom:4px;
+    }
+    .task-item span{
+      opacity:.7;
+      font-size:.8rem;
+    }
+    .task-type{
+      display:inline-block;
+      background:rgba(255,255,255,.2);
+      padding:2px 8px;
+      border-radius:6px;
+      font-size:.7rem;
+      font-weight:700;
+      text-transform:uppercase;
+      margin-right:6px;
+    }
+    .empty{
+      opacity:.4;
+      font-size:.85rem;
+      text-align:center;
+      padding:20px;
+    }
+    .toast{
+      position:fixed;
+      bottom:24px;
+      left:50%;
+      transform:translateX(-50%) translateY(100px);
+      background:#fff;
+      color:#0b3c6f;
+      padding:12px 20px;
+      border-radius:14px;
+      font-size:.9rem;
+      font-weight:600;
+      box-shadow:0 8px 24px rgba(0,0,0,.2);
+      transition:transform .3s ease;
+      z-index:999;
+    }
+    .toast.show{
+      transform:translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <h1>FEMIC</h1>
+  <p class="subtitle">Toque no microfone e fale seu lembrete</p>
+
+  <section class="sync-card" id="syncCard" aria-label="Conexão Supabase">
+    <div class="sync-head">
+      <div class="sync-title">Supabase</div>
+      <div class="sync-meta">
+        <div class="sync-status" id="syncStatus" data-state="offline">Local</div>
+        <button class="sync-toggle" id="configToggle" type="button" aria-label="Mostrar configurações">⚙</button>
+      </div>
+    </div>
+    <div class="sync-grid">
+      <input id="sbUrl" type="url" placeholder="URL do projeto Supabase">
+      <input id="sbKey" type="password" placeholder="Anon key">
+      <input id="sbEmail" type="email" placeholder="E-mail">
+      <input id="sbPassword" type="password" placeholder="Senha">
+    </div>
+    <div class="sync-actions">
+      <button class="sync-primary" id="loginBtn" type="button">Conectar</button>
+      <button class="sync-secondary" id="syncBtn" type="button">Atualizar</button>
+    </div>
+  </section>
+
+  <button class="mic-btn" id="micBtn" type="button">🎤</button>
+  <p class="status" id="status">Toque para começar</p>
+
+  <textarea class="transcript" id="transcript" placeholder="O texto transcrito aparece aqui..." rows="3"></textarea>
+
+  <div class="actions">
+    <button class="btn-clear" id="clearBtn" type="button">Limpar</button>
+    <button class="btn-send" id="sendBtn" type="button" disabled>Enviar</button>
+  </div>
+
+  <section class="tasks-section">
+    <div class="tasks-title">Recentes</div>
+    <div id="taskList"></div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  var TASKS_KEY = 'femic_ai_tasks_v1';
+  var micBtn = document.getElementById('micBtn');
+  var statusEl = document.getElementById('status');
+  var transcriptEl = document.getElementById('transcript');
+  var sendBtn = document.getElementById('sendBtn');
+  var clearBtn = document.getElementById('clearBtn');
+  var taskListEl = document.getElementById('taskList');
+  var toastEl = document.getElementById('toast');
+  var syncCard = document.getElementById('syncCard');
+  var syncStatusEl = document.getElementById('syncStatus');
+  var configToggle = document.getElementById('configToggle');
+  var loginBtn = document.getElementById('loginBtn');
+  var syncBtn = document.getElementById('syncBtn');
+
+  var recognition = null;
+  var listening = false;
+  var finalText = '';
+  var finalSegments = {};
+  var configExpanded = false;
+
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(function(){ toastEl.classList.remove('show'); }, 3000);
+  }
+
+  function setSyncStatus(message, state){
+    syncStatusEl.textContent = message;
+    syncStatusEl.dataset.state = state || 'offline';
+    updateConfigVisibility();
+  }
+
+  function updateConfigVisibility(){
+    var canHide = hasValidSession() && !configExpanded;
+    syncCard.classList.toggle('is-compact', canHide);
+    configToggle.setAttribute('aria-label', canHide ? 'Mostrar configurações' : 'Ocultar configurações');
+  }
+
+  function base(){
+    return (document.getElementById('sbUrl').value || localStorage.femic_agenda_url || '').trim().replace(/\/$/,'');
+  }
+
+  function key(){
+    return (document.getElementById('sbKey').value || localStorage.femic_agenda_key || '').trim();
+  }
+
+  function authHeaders(){
+    return {
+      apikey:key(),
+      Authorization:'Bearer ' + key(),
+      'Content-Type':'application/json'
+    };
+  }
+
+  async function parseSupabaseError(res){
+    var fallback = 'Login falhou. Confira os dados.';
+    var text = await res.text().catch(function(){ return ''; });
+    var data = {};
+    try{ data = text ? JSON.parse(text) : {}; }catch(e){}
+    var raw = String(data.error_description || data.msg || data.message || data.error || text || fallback);
+    var lower = raw.toLowerCase();
+    if(res.status === 401 || /invalid login credentials|invalid credentials|invalid grant/.test(lower)){
+      return 'E-mail ou senha inválidos no Supabase.';
+    }
+    if(/email not confirmed|confirm/.test(lower)){
+      return 'E-mail ainda não confirmado no Supabase Auth.';
+    }
+    if(/api key|apikey|invalid jwt|jwt/.test(lower)){
+      return 'Anon key inválida. Use a chave anon/public do projeto.';
+    }
+    if(/user not found/.test(lower)){
+      return 'Usuário não encontrado no Supabase Auth.';
+    }
+    if(/signup|email logins are disabled|provider/.test(lower)){
+      return 'Login por e-mail/senha não está habilitado no Supabase Auth.';
+    }
+    return raw;
+  }
+
+  function hasValidSession(){
+    var jwt = sessionStorage.getItem('femic_jwt');
+    var expiry = Number(sessionStorage.getItem('femic_token_expiry') || 0);
+    return !!(jwt && expiry && Date.now() < expiry);
+  }
+
+  async function refreshToken(){
+    var refresh = sessionStorage.getItem('femic_refresh_token');
+    if(!base() || !key() || !refresh) return false;
+    try{
+      var res = await fetch(base() + '/auth/v1/token?grant_type=refresh_token', {
+        method:'POST',
+        headers:authHeaders(),
+        body:JSON.stringify({refresh_token:refresh})
+      });
+      if(!res.ok) return false;
+      var data = await res.json();
+      storeSession(data);
+      return true;
+    }catch(e){ return false; }
+  }
+
+  async function ensureSession(){
+    if(hasValidSession()) return true;
+    if(await refreshToken()) return true;
+    throw new Error('Conecte o Supabase para sincronizar.');
+  }
+
+  function storeSession(data){
+    sessionStorage.setItem('femic_jwt', data.access_token || '');
+    sessionStorage.setItem('femic_refresh_token', data.refresh_token || '');
+    sessionStorage.setItem('femic_token_expiry', String(Date.now() + ((Number(data.expires_in) || 3600) - 60) * 1000));
+    sessionStorage.setItem('femic_user', JSON.stringify(data.user || {}));
+  }
+
+  function apiHeaders(){
+    return {
+      apikey:key(),
+      Authorization:'Bearer ' + sessionStorage.getItem('femic_jwt'),
+      'Content-Type':'application/json',
+      Prefer:'return=representation'
+    };
+  }
+
+  async function mobileApi(path, options){
+    if(!base() || !key()) throw new Error('Informe URL e anon key do Supabase.');
+    await ensureSession();
+    var res = await fetch(base() + '/rest/v1/' + path, Object.assign({headers:apiHeaders()}, options || {}));
+    if(!res.ok){
+      var body = await res.text();
+      throw new Error(body || ('Supabase ' + res.status));
+    }
+    if(res.status === 204) return null;
+    var textBody = await res.text();
+    return textBody ? JSON.parse(textBody) : null;
+  }
+
+  function saveConfig(){
+    localStorage.femic_agenda_url = document.getElementById('sbUrl').value.trim().replace(/\/$/,'');
+    localStorage.femic_agenda_key = document.getElementById('sbKey').value.trim();
+  }
+
+  function loadConfig(){
+    document.getElementById('sbUrl').value = localStorage.femic_agenda_url || '';
+    document.getElementById('sbKey').value = localStorage.femic_agenda_key || '';
+    if(hasValidSession()) setSyncStatus('Conectado', 'online');
+    else setSyncStatus('Local', 'offline');
+  }
+
+  async function login(){
+    saveConfig();
+    var email = document.getElementById('sbEmail').value.trim();
+    var password = document.getElementById('sbPassword').value;
+    if(!base() || !key() || !email || !password){
+      showToast('Informe Supabase, e-mail e senha.');
+      return;
+    }
+    if(base().indexOf('https://') !== 0 || base().indexOf('.supabase.co') === -1){
+      showToast('Informe a URL completa do projeto Supabase.');
+      return;
+    }
+    if(key().length < 20){
+      showToast('Informe a anon key do Supabase.');
+      return;
+    }
+    setSyncStatus('Conectando...', 'offline');
+    try{
+      var res = await fetch(base() + '/auth/v1/token?grant_type=password', {
+        method:'POST',
+        headers:authHeaders(),
+        body:JSON.stringify({email:email,password:password})
+      });
+      if(!res.ok) throw new Error(await parseSupabaseError(res));
+      storeSession(await res.json());
+      document.getElementById('sbPassword').value = '';
+      configExpanded = false;
+      setSyncStatus('Conectado', 'online');
+      showToast('Supabase conectado.');
+      await loadCloudTasks(false);
+    }catch(e){
+      configExpanded = true;
+      setSyncStatus('Local', 'offline');
+      showToast(e.message || 'Login falhou. Confira os dados.');
+    }
+  }
+
+  function cloudTaskRow(task){
+    return {
+      id: task.id,
+      title: task.title || taskTypeLabel(task.type) + ' · Lembrete por voz',
+      type: task.type || 'marcacao',
+      status: task.status || 'aberta',
+      priority: task.priority || 'normal',
+      patient_id: task.patient_id || null,
+      patient_name: task.patient_name || '',
+      phone: task.phone || '',
+      origin: task.origin || 'voice',
+      requested_action: task.requested_action || task.type || 'marcacao',
+      notes: task.notes || '',
+      parsed_shift: task.parsed_shift || '',
+      parsed_dates: Array.isArray(task.parsed_dates) ? task.parsed_dates : [],
+      suggested_slots: Array.isArray(task.suggested_slots) ? task.suggested_slots : [],
+      candidates: Array.isArray(task.candidates) ? task.candidates : [],
+      needs_review: task.needs_review !== false,
+      extension_fingerprint: task.extension_fingerprint || null,
+      created_at: task.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: task.completed_at || null
+    };
+  }
+
+  function taskFromCloud(row){
+    return {
+      id: row.id,
+      title: row.title || taskTypeLabel(row.type) + ' · Pendência',
+      type: row.type || row.requested_action || 'marcacao',
+      status: row.status || 'aberta',
+      priority: row.priority || 'normal',
+      patient_id: row.patient_id || '',
+      patient_name: row.patient_name || '',
+      service_id: row.service_id || '',
+      service_name: row.service_name || '',
+      phone: row.phone || '',
+      origin: row.origin || 'voice',
+      requested_action: row.requested_action || row.type || 'marcacao',
+      notes: row.notes || '',
+      suggested_slots: Array.isArray(row.suggested_slots) ? row.suggested_slots : [],
+      candidates: Array.isArray(row.candidates) ? row.candidates : [],
+      parsed_shift: row.parsed_shift || '',
+      parsed_dates: Array.isArray(row.parsed_dates) ? row.parsed_dates : [],
+      needs_review: row.needs_review !== false,
+      extension_fingerprint: row.extension_fingerprint || '',
+      created_at: row.created_at || new Date().toISOString(),
+      updated_at: row.updated_at || row.created_at || new Date().toISOString(),
+      completed_at: row.completed_at || null,
+      sync_pending: false
+    };
+  }
+
+  function mergeTasks(primary, secondary){
+    var map = {};
+    (primary || []).concat(secondary || []).forEach(function(task){
+      if(!task || !task.id) return;
+      var current = map[task.id];
+      if(!current || new Date(task.updated_at || task.created_at || 0) >= new Date(current.updated_at || current.created_at || 0)){
+        map[task.id] = task;
+      }
+    });
+    return Object.keys(map).map(function(id){ return map[id]; }).sort(function(a,b){
+      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
+  }
+
+  async function persistTask(task){
+    if(!base() || !key()) throw new Error('Supabase não configurado.');
+    var row = cloudTaskRow(task);
+    var patched = await mobileApi('assistant_tasks?id=eq.' + encodeURIComponent(row.id), {method:'PATCH', body:JSON.stringify(row)});
+    if(!Array.isArray(patched) || !patched.length){
+      await mobileApi('assistant_tasks', {method:'POST', body:JSON.stringify(row)});
+    }
+    var list = readTasks().map(function(item){
+      return item.id === task.id ? Object.assign({}, item, {updated_at: row.updated_at, sync_pending:false}) : item;
+    });
+    saveTasks(list);
+    setSyncStatus('Conectado', 'online');
+  }
+
+  async function loadCloudTasks(silent){
+    try{
+      var rows = await mobileApi('assistant_tasks?select=*&order=updated_at.desc&limit=200');
+      var cloud = Array.isArray(rows) ? rows.map(taskFromCloud) : [];
+      var merged = mergeTasks(cloud, readTasks());
+      saveTasks(merged);
+      renderTasks();
+      setSyncStatus('Conectado', 'online');
+      var pending = merged.filter(function(t){ return t.sync_pending; });
+      pending.forEach(function(t){ persistTask(t).catch(function(){}); });
+      if(!silent) showToast('Pendências atualizadas.');
+    }catch(e){
+      setSyncStatus('Local', 'offline');
+      if(!silent) showToast('Modo local: não sincronizou.');
+    }
+  }
+
+  function norm(v){
+    return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+  }
+
+  function detectAction(text){
+    var n = norm(text);
+    if(/cancel|desmarc|nao vou|nao pod/.test(n)) return 'cancelamento';
+    if(/remarc|reagen|remanej|mudar|trocar|alterar/.test(n)) return 'remarcacao';
+    return 'marcacao';
+  }
+
+  function detectShift(text){
+    var n = norm(text);
+    if(/\bmanha\b/.test(n)) return 'manha';
+    if(/\btarde\b/.test(n)) return 'tarde';
+    if(/\bnoite\b/.test(n)) return 'noite';
+    return '';
+  }
+
+  function detectDates(text){
+    var n = norm(text);
+    var dates = [];
+    var dias = {domingo:0,segund:1,terc:2,quarta:3,quint:4,sext:5,sabad:6};
+    var hoje = new Date();
+    for(var name in dias){
+      if(n.indexOf(name)!==-1){
+        var dow = dias[name];
+        var d = new Date(hoje);
+        var diff = (dow - d.getDay() + 7) % 7;
+        if(diff===0) diff = 7;
+        d.setDate(d.getDate() + diff);
+        dates.push(d.toISOString().slice(0,10));
+      }
+    }
+    var match = n.match(/(\d{1,2})\s*\/\s*(\d{1,2})/);
+    if(match){
+      var day = parseInt(match[1],10), month = parseInt(match[2],10);
+      var y = month < hoje.getMonth()+1 ? hoje.getFullYear()+1 : hoje.getFullYear();
+      dates.push(y + '-' + String(month).padStart(2,'0') + '-' + String(day).padStart(2,'0'));
+    }
+    if(n.indexOf('hoje')!==-1) dates.push(hoje.toISOString().slice(0,10));
+    if(n.indexOf('amanha')!==-1){
+      var am = new Date(hoje);
+      am.setDate(am.getDate()+1);
+      dates.push(am.toISOString().slice(0,10));
+    }
+    return dates;
+  }
+
+  function readTasks(){
+    try{
+      var raw = JSON.parse(localStorage.getItem(TASKS_KEY)||'[]');
+      return Array.isArray(raw) ? raw : [];
+    }catch(e){ return []; }
+  }
+
+  function saveTasks(list){
+    localStorage.setItem(TASKS_KEY, JSON.stringify(list));
+  }
+
+  function makeTaskId(){
+    return 'task_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+  }
+
+  function taskTypeLabel(t){
+    return {marcacao:'Marcação',remarcacao:'Remarcação',cancelamento:'Cancelamento'}[t]||'Outro';
+  }
+
+  function fmtDate(ds){
+    if(!ds) return '';
+    var p = ds.split('-');
+    return p[2]+'/'+p[1]+'/'+p[0];
+  }
+
+  function createTask(text){
+    var action = detectAction(text);
+    var shift = detectShift(text);
+    var dates = detectDates(text);
+    var task = {
+      id: makeTaskId(),
+      title: taskTypeLabel(action) + ' · Lembrete por voz',
+      type: action,
+      status: 'aberta',
+      priority: 'normal',
+      patient_id: '',
+      patient_name: '',
+      service_id: '',
+      service_name: '',
+      phone: '',
+      origin: 'voice',
+      requested_action: action,
+      notes: text,
+      suggested_slots: [],
+      candidates: [],
+      parsed_shift: shift,
+      parsed_dates: dates,
+      needs_review: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: null
+    };
+    var list = readTasks();
+    list.unshift(task);
+    saveTasks(list);
+    return task;
+  }
+
+  function renderTasks(){
+    var list = readTasks().filter(function(t){
+      return t.origin === 'voice' || t.origin === 'voice_mobile' || t.origin === 'chrome_extension';
+    }).slice(0, 10);
+    if(!list.length){
+      taskListEl.innerHTML = '<div class="empty">Nenhum lembrete ainda</div>';
+      return;
+    }
+    taskListEl.innerHTML = list.map(function(t){
+      var ago = Math.round((Date.now() - new Date(t.created_at).getTime()) / 60000);
+      var timeLabel = ago < 1 ? 'agora' : ago < 60 ? ago + ' min atrás' : Math.round(ago/60) + 'h atrás';
+      var syncLabel = t.sync_pending ? ' · sincronização pendente' : '';
+      var note = String(t.notes || '');
+      return '<div class="task-item">' +
+        '<strong><span class="task-type">' + taskTypeLabel(t.type) + '</span>' + esc(t.title) + '</strong>' +
+        '<span>' + esc(note).slice(0,80) + (note.length>80?'...':'') + ' · ' + timeLabel + syncLabel + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  function esc(v){
+    return String(v||'').replace(/[&<>"']/g,function(m){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m];
+    });
+  }
+
+  function resetTranscript(){
+    finalText = '';
+    finalSegments = {};
+    transcriptEl.value = '';
+    sendBtn.disabled = true;
+  }
+
+  function tidySpeechText(text){
+    return String(text || '').replace(/\s+/g,' ').trim();
+  }
+
+  function mergeSpeechPart(current, part){
+    current = tidySpeechText(current);
+    part = tidySpeechText(part);
+    if(!part) return current;
+    if(!current) return part;
+    var currentNorm = norm(current);
+    var partNorm = norm(part);
+    if(currentNorm === partNorm || currentNorm.indexOf(partNorm) !== -1) return current;
+    if(partNorm.indexOf(currentNorm) === 0) return part;
+
+    var currentWords = current.split(' ');
+    var partWords = part.split(' ');
+    var maxOverlap = Math.min(currentWords.length, partWords.length);
+    for(var size = maxOverlap; size > 0; size--){
+      var currentTail = norm(currentWords.slice(-size).join(' '));
+      var partHead = norm(partWords.slice(0, size).join(' '));
+      if(currentTail === partHead){
+        return tidySpeechText(current + ' ' + partWords.slice(size).join(' '));
+      }
+    }
+    return tidySpeechText(current + ' ' + part);
+  }
+
+  function buildFinalText(){
+    var text = '';
+    Object.keys(finalSegments).sort(function(a,b){
+      return Number(a) - Number(b);
+    }).forEach(function(key){
+      text = mergeSpeechPart(text, finalSegments[key]);
+    });
+    return text;
+  }
+
+  function startListening(){
+    var Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!Ctor){
+      showToast('Microfone não disponível neste navegador.');
+      return;
+    }
+    if(listening){
+      stopListening();
+      return;
+    }
+    resetTranscript();
+    recognition = new Ctor();
+    recognition.lang = 'pt-BR';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+    recognition.onstart = function(){
+      listening = true;
+      micBtn.classList.add('is-recording');
+      micBtn.textContent = '⏹';
+      statusEl.textContent = 'Ouvindo... Fale agora';
+    };
+    recognition.onresult = function(event){
+      var interim = '';
+      for(var i = event.resultIndex; i < event.results.length; i++){
+        var part = tidySpeechText(event.results[i][0].transcript);
+        if(!part) continue;
+        if(event.results[i].isFinal) finalSegments[i] = part;
+        else interim += ' ' + part;
+      }
+      finalText = buildFinalText();
+      transcriptEl.value = tidySpeechText(finalText + ' ' + interim);
+      sendBtn.disabled = !transcriptEl.value.trim();
+    };
+    recognition.onerror = function(){
+      stopListening();
+      statusEl.textContent = 'Falha no microfone';
+    };
+    recognition.onend = function(){
+      if(listening){
+        listening = false;
+        micBtn.classList.remove('is-recording');
+        micBtn.textContent = '🎤';
+        if(finalText.trim()){
+          statusEl.textContent = 'Pronto para enviar';
+        } else {
+          statusEl.textContent = 'Nada captado. Toque para tentar novamente.';
+        }
+      }
+    };
+    recognition.start();
+  }
+
+  function stopListening(){
+    if(recognition && listening){
+      try{ recognition.stop(); }catch(e){}
+    }
+    listening = false;
+    micBtn.classList.remove('is-recording');
+    micBtn.textContent = '🎤';
+  }
+
+  function sendTask(){
+    var text = transcriptEl.value.trim();
+    if(!text){
+      showToast('Nada para enviar.');
+      return;
+    }
+    var task = createTask(text);
+    showToast(taskTypeLabel(task.type) + ' criado com sucesso!');
+    resetTranscript();
+    statusEl.textContent = 'Toque para novo lembrete';
+    renderTasks();
+    persistTask(task).then(function(){
+      renderTasks();
+      showToast('Sincronizado com o FEMIC.');
+    }).catch(function(){
+      var list = readTasks().map(function(item){
+        return item.id === task.id ? Object.assign({}, item, {sync_pending:true}) : item;
+      });
+      saveTasks(list);
+      renderTasks();
+      setSyncStatus('Local', 'offline');
+      showToast('Salvo no celular. Sincronização pendente.');
+    });
+  }
+
+  function clearTask(){
+    resetTranscript();
+    statusEl.textContent = 'Toque para começar';
+    stopListening();
+  }
+
+  micBtn.addEventListener('click', startListening);
+  sendBtn.addEventListener('click', sendTask);
+  clearBtn.addEventListener('click', clearTask);
+  configToggle.addEventListener('click', function(){
+    configExpanded = !configExpanded;
+    updateConfigVisibility();
+  });
+  loginBtn.addEventListener('click', login);
+  syncBtn.addEventListener('click', function(){ saveConfig(); loadCloudTasks(false); });
+
+  transcriptEl.addEventListener('input', function(){
+    sendBtn.disabled = !transcriptEl.value.trim();
+  });
+
+  loadConfig();
+  renderTasks();
+  if(hasValidSession()) loadCloudTasks(true);
+})();
+</script>
+</body>
+</html>

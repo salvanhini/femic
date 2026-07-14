@@ -1,0 +1,254 @@
+#femic-wa-connector,
+#femic-wa-connector * {
+  box-sizing: border-box;
+  font-family: "Segoe UI", sans-serif;
+}
+
+#femic-wa-connector {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2147483647;
+  color: #12324a;
+}
+
+.femic-wa-btn {
+  border: 0;
+  border-radius: 999px;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #0b5fa5, #15a8df);
+  color: #fff;
+  cursor: grab;
+  font-size: 18px;
+  font-weight: 800;
+  box-shadow: 0 12px 30px rgba(5, 38, 66, .28);
+  transition: box-shadow .2s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.femic-wa-btn:hover {
+  box-shadow: 0 14px 36px rgba(5, 38, 66, .36);
+}
+.femic-wa-btn.is-dragging {
+  cursor: grabbing;
+  box-shadow: 0 18px 44px rgba(5, 38, 66, .42);
+}
+
+.femic-wa-panel {
+  position: absolute;
+  right: 0;
+  bottom: 52px;
+  width: 330px;
+  display: grid;
+  gap: 9px;
+  padding: 14px;
+  border: 1px solid #cfe0ee;
+  border-radius: 18px;
+  background: #f8fbff;
+  box-shadow: 0 18px 46px rgba(5, 38, 66, .28);
+}
+
+.femic-wa-panel[hidden] {
+  display: none !important;
+}
+
+.femic-wa-head,
+.femic-wa-actions,
+.femic-wa-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.femic-wa-head {
+  justify-content: space-between;
+}
+
+.femic-wa-head strong {
+  color: #073b70;
+  font-size: 15px;
+}
+
+.femic-wa-head button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #cfe0ee;
+  border-radius: 999px;
+  background: #fff;
+  color: #073b70;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+#femic-wa-connector label {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+  color: #5f7690;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
+#femic-wa-connector input,
+#femic-wa-connector select,
+#femic-wa-connector textarea {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #cfe0ee;
+  border-radius: 11px;
+  background: #fff;
+  color: #12324a;
+  font-size: 13px;
+  outline: 0;
+  padding: 8px 10px;
+  text-transform: none;
+}
+
+#femic-wa-connector textarea {
+  resize: vertical;
+}
+
+.femic-wa-actions {
+  justify-content: flex-end;
+}
+
+.femic-wa-actions button {
+  border: 1px solid #cfe0ee;
+  border-radius: 11px;
+  background: #fff;
+  color: #073b70;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 9px 10px;
+}
+
+.femic-wa-actions #femicWaSend {
+  border-color: transparent;
+  background: linear-gradient(135deg, #0b5fa5, #15a8df);
+  color: #fff;
+}
+
+.femic-wa-actions #femicWaSend:disabled {
+  cursor: wait;
+  opacity: .78;
+  box-shadow: none;
+}
+
+.femic-wa-actions #femicWaSend[data-state="success"] {
+  background: linear-gradient(135deg, #0f9f6e, #34d399);
+  color: #fff;
+}
+
+.femic-wa-actions #femicWaSend[data-state="sending"] {
+  background: linear-gradient(135deg, #3b82f6, #60a5fa);
+  color: #fff;
+}
+
+#femicWaStatus {
+  margin: 0;
+  color: #5f7690;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+#femicWaStatus[data-tone="success"] {
+  color: #047857;
+}
+
+#femicWaStatus[data-tone="error"] {
+  color: #b91c1c;
+}
+
+.femic-wa-actions #femicWaMic {
+  border-color: transparent;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 16px;
+}
+.femic-wa-actions #femicWaMic:hover {
+  background: #e2e8f0;
+}
+.femic-wa-actions #femicWaMic.is-listening {
+  background: #ef4444;
+  color: #fff;
+  animation: mic-pulse 1.2s ease-in-out infinite;
+}
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.4); }
+  50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+}
+
+
+.femic-wa-quick {
+  position: absolute;
+  right: 56px;
+  bottom: 6px;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  color: #fff;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 800;
+  box-shadow: 0 10px 24px rgba(120, 53, 15, .28);
+}
+
+.femic-wa-note {
+  min-height: 14px;
+  color: #7b8fa4;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.femic-wa-note[data-tone="strong"] {
+  color: #0f766e;
+}
+
+.femic-wa-note[data-tone="warning"],
+.femic-wa-note[data-tone="weak"] {
+  color: #b45309;
+}
+
+.femic-wa-note[data-tone="manual"] {
+  color: #1d4ed8;
+}
+
+.femic-wa-note[data-tone="empty"] {
+  color: transparent;
+}
+
+#femic-wa-connector input[data-capture-state="strong"],
+#femic-wa-connector select[data-capture-state="strong"],
+#femic-wa-connector textarea[data-capture-state="strong"] {
+  border-color: rgba(16, 185, 129, .45);
+  background: rgba(236, 253, 245, .7);
+}
+
+#femic-wa-connector input[data-capture-state="warning"],
+#femic-wa-connector input[data-capture-state="weak"],
+#femic-wa-connector select[data-capture-state="warning"],
+#femic-wa-connector select[data-capture-state="weak"],
+#femic-wa-connector textarea[data-capture-state="warning"],
+#femic-wa-connector textarea[data-capture-state="weak"] {
+  border-color: rgba(245, 158, 11, .45);
+  background: rgba(255, 251, 235, .82);
+}
+
+#femic-wa-connector input[data-capture-state="manual"],
+#femic-wa-connector select[data-capture-state="manual"],
+#femic-wa-connector textarea[data-capture-state="manual"] {
+  border-color: rgba(37, 99, 235, .45);
+  background: rgba(239, 246, 255, .85);
+}
+
+#femicWaStatus[data-tone="warning"] {
+  color: #b45309;
+}
